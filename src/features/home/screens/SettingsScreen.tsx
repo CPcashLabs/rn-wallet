@@ -1,0 +1,158 @@
+import React from "react"
+
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native"
+import { useTranslation } from "react-i18next"
+import type { NativeStackScreenProps } from "@react-navigation/native-stack"
+
+import { resetToAuthStack } from "@/app/navigation/navigationRef"
+import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { clearAuthSession } from "@/shared/api/auth-session"
+import { getCurrentLanguage, setLanguage } from "@/shared/i18n"
+import { useAuthStore } from "@/shared/store/useAuthStore"
+import { useBalanceStore } from "@/shared/store/useBalanceStore"
+import { useUserStore } from "@/shared/store/useUserStore"
+import { useWalletStore } from "@/shared/store/useWalletStore"
+import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { persistThemePreference } from "@/shared/theme/themePersistence"
+import { useThemeStore, type ThemeMode } from "@/shared/store/useThemeStore"
+
+import type { SettingsStackParamList } from "@/app/navigation/types"
+
+type Props = NativeStackScreenProps<SettingsStackParamList, "SettingsHomeScreen">
+
+const themeModes: ThemeMode[] = ["system", "light", "dark"]
+
+export function SettingsScreen({ navigation }: Props) {
+  const theme = useAppTheme()
+  const { t } = useTranslation()
+  const themeMode = useThemeStore(state => state.themeMode)
+  const currentLanguage = getCurrentLanguage()
+  const isPasskeyLogin = useAuthStore(state => state.loginType) === "passkey"
+
+  const logout = async () => {
+    try {
+      await clearAuthSession()
+      useAuthStore.getState().clearSession()
+      useWalletStore.getState().reset()
+      useUserStore.getState().clearProfile()
+      useBalanceStore.getState().clear()
+      resetToAuthStack()
+    } catch {
+      Alert.alert(t("common.errorTitle"), t("home.settings.logoutFailed"))
+    }
+  }
+
+  return (
+    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("home.settings.title")}>
+      <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("home.settings.accountSection")}</Text>
+        <SettingsRow label={t("home.settings.personal")} onPress={() => navigation.navigate("PersonalScreen")} />
+        {isPasskeyLogin ? (
+          <SettingsRow label={t("home.settings.exportPasskey")} onPress={() => navigation.navigate("ExportPasskeyScreen")} />
+        ) : null}
+        <SettingsRow
+          detail={t(`home.settings.theme.${themeMode}`)}
+          label={t("home.settings.themeMode")}
+          onPress={() => {
+            const nextMode = themeModes[(themeModes.indexOf(themeMode) + 1) % themeModes.length]
+            persistThemePreference(nextMode)
+          }}
+        />
+        <SettingsRow
+          detail={t(`home.settings.languageOptions.${currentLanguage}`)}
+          label={t("home.settings.language")}
+          onPress={() => {
+            void setLanguage(currentLanguage === "zh-CN" ? "en-US" : "zh-CN")
+          }}
+        />
+      </View>
+
+      <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("home.settings.preferenceSection")}</Text>
+        <SettingsRow
+          detail={t("home.settings.comingSoon")}
+          label={t("home.settings.email")}
+          onPress={() => Alert.alert(t("common.infoTitle"), t("home.settings.comingSoonDetail"))}
+        />
+        <SettingsRow
+          detail={t("home.settings.comingSoon")}
+          label={t("home.settings.unit")}
+          onPress={() => Alert.alert(t("common.infoTitle"), t("home.settings.comingSoonDetail"))}
+        />
+        <SettingsRow
+          detail={t("home.settings.comingSoon")}
+          label={t("home.settings.node")}
+          onPress={() => Alert.alert(t("common.infoTitle"), t("home.settings.comingSoonDetail"))}
+        />
+      </View>
+
+      <Pressable onPress={() => void logout()} style={[styles.logoutButton, { backgroundColor: "#DC2626" }]}>
+        <Text style={styles.logoutText}>{t("home.settings.logout")}</Text>
+      </Pressable>
+    </HomeScaffold>
+  )
+}
+
+function SettingsRow(props: { label: string; detail?: string; onPress: () => void }) {
+  const theme = useAppTheme()
+
+  return (
+    <Pressable
+      onPress={props.onPress}
+      style={styles.row}
+    >
+      <Text style={[styles.rowLabel, { color: theme.colors.text }]}>{props.label}</Text>
+      <View style={styles.rowRight}>
+        {props.detail ? <Text style={[styles.rowDetail, { color: theme.colors.mutedText }]}>{props.detail}</Text> : null}
+        <Text style={[styles.rowArrow, { color: theme.colors.mutedText }]}>›</Text>
+      </View>
+    </Pressable>
+  )
+}
+
+const styles = StyleSheet.create({
+  card: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 16,
+    padding: 14,
+    gap: 10,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  row: {
+    minHeight: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#CBD5E133",
+  },
+  rowLabel: {
+    fontSize: 15,
+    fontWeight: "500",
+  },
+  rowRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  rowDetail: {
+    fontSize: 13,
+  },
+  rowArrow: {
+    fontSize: 18,
+  },
+  logoutButton: {
+    minHeight: 48,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  logoutText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 15,
+  },
+})

@@ -1,0 +1,66 @@
+import { NativeModules, Platform } from "react-native"
+
+import { NativeCapabilityUnavailableError } from "@/shared/errors"
+
+export type NativePickedImage = {
+  uri: string
+  name?: string
+  mimeType?: string
+}
+
+type NativeFilePickerConstants = {
+  isSupported?: boolean
+  reason?: string
+}
+
+type NativeFilePickerModuleShape = NativeFilePickerConstants & {
+  pickImage(): Promise<NativePickedImage>
+}
+
+const nativeFilePickerModule = NativeModules.CPCashFilePicker as NativeFilePickerModuleShape | undefined
+
+export function readNativeFilePickerCapability() {
+  if (Platform.OS !== "ios" && Platform.OS !== "android") {
+    return {
+      supported: false,
+      reason: "File picking is only available on iOS and Android.",
+    }
+  }
+
+  if (!nativeFilePickerModule) {
+    return {
+      supported: false,
+      reason: "File picker native module is not installed.",
+    }
+  }
+
+  if (nativeFilePickerModule.isSupported === false) {
+    return {
+      supported: false,
+      reason: nativeFilePickerModule.reason ?? "File picker is not supported on this device.",
+    }
+  }
+
+  if (typeof nativeFilePickerModule.reason === "string" && nativeFilePickerModule.reason.trim()) {
+    return {
+      supported: false,
+      reason: nativeFilePickerModule.reason,
+    }
+  }
+
+  return {
+    supported: true,
+  }
+}
+
+function requireNativeFilePickerModule() {
+  if (!nativeFilePickerModule) {
+    throw new NativeCapabilityUnavailableError("file", "File picker native module is not installed.")
+  }
+
+  return nativeFilePickerModule
+}
+
+export async function pickNativeImage() {
+  return requireNativeFilePickerModule().pickImage()
+}

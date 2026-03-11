@@ -1,0 +1,27 @@
+import React from "react"
+
+import { createNativeStackNavigator } from "@react-navigation/native-stack"
+
+import { AddressBookStackNavigator } from "@/app/navigation/AddressBookStackNavigator"
+import { AuthNavigator } from "@/app/navigation/AuthNavigator"
+import { BootstrapGate } from "@/app/navigation/BootstrapGate"
+import { MainTabNavigator } from "@/app/navigation/MainTabNavigator"
+import { SupportNavigator } from "@/app/navigation/SupportNavigator"
+import { TransferStackNavigator } from "@/app/navigation/TransferStackNavigator"
+
+import type { RootStackParamList } from "@/app/navigation/types"
+
+const Stack = createNativeStackNavigator<RootStackParamList>()
+
+export function RootNavigator() {
+  return (
+    <Stack.Navigator initialRouteName="BootstrapGate" screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="BootstrapGate" component={BootstrapGate} />
+      <Stack.Screen name="AuthStack" component={AuthNavigator} />
+      <Stack.Screen name="MainTabs" component={MainTabNavigator} />
+      <Stack.Screen name="AddressBookStack" component={AddressBookStackNavigator} />
+      <Stack.Screen name="TransferStack" component={TransferStackNavigator} />
+      <Stack.Screen name="SupportStack" component={SupportNavigator} />
+    </Stack.Navigator>
+  )
+}

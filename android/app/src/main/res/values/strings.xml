@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">CPCashRN</string>
+    <string name="asset_statements" translatable="false">[{\"include\":\"https://wallet.charprotocol.dev/.well-known/assetlinks.json\"},{\"include\":\"https://wallet.charprotocol.com/.well-known/assetlinks.json\"},{\"include\":\"https://wallet-preview.cp.cash/.well-known/assetlinks.json\"},{\"include\":\"https://wallet.cp.cash/.well-known/assetlinks.json\"}]</string>
+</resources>

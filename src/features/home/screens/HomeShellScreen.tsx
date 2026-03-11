@@ -1,0 +1,261 @@
+import React, { useEffect, useMemo, useRef, useState } from "react"
+
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native"
+import { useTranslation } from "react-i18next"
+import type { NativeStackScreenProps } from "@react-navigation/native-stack"
+
+import { bindInviteCode } from "@/features/auth/services/authApi"
+import { getInviteBindingMessage } from "@/features/auth/utils/authMessages"
+import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { getCurrentUserProfile } from "@/features/home/services/homeApi"
+import { formatAddress, formatCurrency } from "@/features/home/utils/format"
+import { getBoolean, setBoolean } from "@/shared/storage/kvStorage"
+import { KvStorageKeys } from "@/shared/storage/sessionKeys"
+import { useAuthStore } from "@/shared/store/useAuthStore"
+import { useBalanceStore } from "@/shared/store/useBalanceStore"
+import { useUserStore } from "@/shared/store/useUserStore"
+import { useWalletStore } from "@/shared/store/useWalletStore"
+import { useAppTheme } from "@/shared/theme/useAppTheme"
+
+import type { HomeTabStackParamList } from "@/app/navigation/types"
+
+type Props = NativeStackScreenProps<HomeTabStackParamList, "HomeShellScreen">
+
+export function HomeShellScreen({ navigation, route }: Props) {
+  const theme = useAppTheme()
+  const { t } = useTranslation()
+  const session = useAuthStore(state => state.session)
+  const walletChainId = useWalletStore(state => state.chainId)
+  const profile = useUserStore(state => state.profile)
+  const setProfile = useUserStore(state => state.setProfile)
+  const coins = useBalanceStore(state => state.coins)
+  const balances = useBalanceStore(state => state.balances)
+  const loadingCoins = useBalanceStore(state => state.loading)
+  const loadCoins = useBalanceStore(state => state.loadCoins)
+  const [showBalance, setShowBalance] = useState(true)
+  const [loadingProfile, setLoadingProfile] = useState(false)
+  const inviteHandledRef = useRef(false)
+
+  const address = profile?.address ?? session?.address ?? ""
+  const displayName = profile?.nickname || t("home.shell.defaultNickname")
+
+  const totalAssetValue = useMemo(() => {
+    return coins.reduce((sum, coin) => {
+      const balance = balances[coin.code] ?? 0
+      return sum + balance * coin.price
+    }, 0)
+  }, [balances, coins])
+
+  useEffect(() => {
+    const persisted = getBoolean(KvStorageKeys.ShowBalance)
+    if (typeof persisted === "boolean") {
+      setShowBalance(persisted)
+    }
+  }, [])
+
+  useEffect(() => {
+    void (async () => {
+      setLoadingProfile(true)
+      try {
+        const userProfile = await getCurrentUserProfile()
+        setProfile(userProfile)
+      } catch {
+        Alert.alert(t("common.errorTitle"), t("home.shell.loadProfileFailed"))
+      } finally {
+        setLoadingProfile(false)
+      }
+    })()
+  }, [setProfile, t])
+
+  useEffect(() => {
+    void loadCoins(walletChainId)
+  }, [loadCoins, walletChainId])
+
+  useEffect(() => {
+    if (!route.params?.inviteCode || inviteHandledRef.current) {
+      return
+    }
+
+    inviteHandledRef.current = true
+
+    void (async () => {
+      try {
+        await bindInviteCode(route.params?.inviteCode as string)
+        Alert.alert(t("common.infoTitle"), t("home.shell.inviteBound"))
+      } catch (error) {
+        Alert.alert(t("common.errorTitle"), getInviteBindingMessage(error))
+      }
+    })()
+  }, [route.params?.inviteCode, t])
+
+  const handleToggleBalance = () => {
+    const next = !showBalance
+    setShowBalance(next)
+    setBoolean(KvStorageKeys.ShowBalance, next)
+  }
+
+  const handleOpenPendingFeature = () => {
+    Alert.alert(t("common.infoTitle"), t("common.unsupported"))
+  }
+
+  const handleOpenTransfer = () => {
+    ;(navigation.getParent()?.getParent() as any)?.navigate("TransferStack", {
+      screen: "SelectTokenScreen",
+    })
+  }
+
+  return (
+    <HomeScaffold
+      title={t("home.shell.title")}
+      right={<Text style={[styles.headerAddress, { color: theme.colors.mutedText }]}>{formatAddress(address)}</Text>}
+    >
+      <View style={[styles.balanceCard, { backgroundColor: theme.colors.primary }]}>
+        <View style={styles.balanceHeader}>
+          <Text style={styles.balanceLabel}>{t("home.shell.walletBalance")}</Text>
+          <Pressable onPress={handleToggleBalance} style={styles.balanceToggle}>
+            <Text style={styles.balanceToggleText}>{showBalance ? t("home.shell.hide") : t("home.shell.show")}</Text>
+          </Pressable>
+        </View>
+
+        <Text style={styles.balanceValue}>{showBalance ? formatCurrency(totalAssetValue) : "*****"}</Text>
+
+        <Pressable onPress={() => navigation.navigate("TotalAssetsScreen")} style={styles.totalAssetsButton}>
+          <Text style={styles.totalAssetsButtonText}>{t("home.shell.openTotalAssets")}</Text>
+        </Pressable>
+      </View>
+
+      <View style={[styles.profileCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+        <Text style={[styles.profileTitle, { color: theme.colors.text }]}>{displayName}</Text>
+        <Text style={[styles.profileAddress, { color: theme.colors.mutedText }]}>{formatAddress(address)}</Text>
+        <Text style={[styles.profileStatus, { color: theme.colors.mutedText }]}>
+          {loadingProfile ? t("home.shell.loadingProfile") : t("home.shell.profileReady")}
+        </Text>
+      </View>
+
+      <View style={styles.actionRow}>
+        <ActionButton label={t("home.actions.transfer")} onPress={handleOpenTransfer} />
+        <ActionButton label={t("home.actions.receive")} onPress={handleOpenPendingFeature} />
+        <ActionButton label={t("home.actions.copouch")} onPress={handleOpenPendingFeature} />
+        <ActionButton label={t("home.actions.bill")} onPress={handleOpenPendingFeature} />
+      </View>
+
+      <View style={[styles.tipsCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+        <Text style={[styles.tipTitle, { color: theme.colors.text }]}>{t("home.shell.statusTitle")}</Text>
+        <Text style={[styles.tipBody, { color: theme.colors.mutedText }]}>
+          {loadingCoins ? t("home.shell.loadingAssets") : t("home.shell.loadedCoins", { count: coins.length })}
+        </Text>
+      </View>
+    </HomeScaffold>
+  )
+}
+
+function ActionButton(props: { label: string; onPress: () => void }) {
+  const theme = useAppTheme()
+
+  return (
+    <Pressable
+      onPress={props.onPress}
+      style={[styles.actionButton, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
+    >
+      <Text style={[styles.actionLabel, { color: theme.colors.text }]}>{props.label}</Text>
+    </Pressable>
+  )
+}
+
+const styles = StyleSheet.create({
+  headerAddress: {
+    fontSize: 12,
+  },
+  balanceCard: {
+    borderRadius: 20,
+    padding: 18,
+    gap: 10,
+  },
+  balanceHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  balanceLabel: {
+    fontSize: 14,
+    color: "#FFFFFF",
+    fontWeight: "600",
+  },
+  balanceToggle: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.18)",
+  },
+  balanceToggleText: {
+    fontSize: 12,
+    color: "#FFFFFF",
+    fontWeight: "600",
+  },
+  balanceValue: {
+    fontSize: 28,
+    color: "#FFFFFF",
+    fontWeight: "800",
+  },
+  totalAssetsButton: {
+    alignSelf: "flex-start",
+    marginTop: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.2)",
+  },
+  totalAssetsButtonText: {
+    fontSize: 12,
+    color: "#FFFFFF",
+    fontWeight: "700",
+  },
+  profileCard: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 16,
+    padding: 14,
+    gap: 4,
+  },
+  profileTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  profileAddress: {
+    fontSize: 13,
+  },
+  profileStatus: {
+    fontSize: 12,
+  },
+  actionRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  actionButton: {
+    flex: 1,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 14,
+    minHeight: 72,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 8,
+  },
+  actionLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  tipsCard: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 16,
+    padding: 14,
+    gap: 6,
+  },
+  tipTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  tipBody: {
+    fontSize: 13,
+    lineHeight: 20,
+  },
+})

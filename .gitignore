@@ -1,0 +1,60 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build / cache
+dist
+*.tsbuildinfo
+.metro
+.expo
+coverage
+.turbo
+
+# Android
+android/.gradle
+android/build
+android/app/build
+*.keystore
+*.jks
+
+# iOS
+ios/Pods
+ios/build
+ios/.xcode.env.local
+*.xcuserstate
+*.xcworkspace/xcuserdata
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
+
+# Local / private config (machine-specific or sensitive)
+android/local.properties
+**/config.local.*
+**/*.local.config.*
+*.mobileprovision
+*.p12
+*.pem
+credentials.json
+**/credentials.json
+secrets.json
+**/secrets.json
+.cursor/
+# Firebase / Google (uncomment if you keep real keys only locally)
+# ios/GoogleService-Info.plist
+# android/app/google-services.json
+
+# IDE (optional)
+.idea
+*.hprof
