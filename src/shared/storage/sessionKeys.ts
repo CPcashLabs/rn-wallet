@@ -9,6 +9,7 @@ export enum KvStorageKeys {
   ThemeMode = "app.theme_mode",
   WalletChainId = "wallet.chain_id",
   PasskeyHistory = "auth.passkey_history",
+  UserProfile = "auth.user_profile",
   VerificationCodeCountdownEndAt = "auth.verification_code_countdown_end_at",
   ShowBalance = "home.show_balance",
   TransferDraft = "transfer.draft",

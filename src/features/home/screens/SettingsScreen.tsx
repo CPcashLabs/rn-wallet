@@ -6,6 +6,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import { resetToAuthStack } from "@/app/navigation/navigationRef"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { resetProfileSyncSession } from "@/features/home/hooks/useProfileSync"
 import { clearAuthSession } from "@/shared/api/auth-session"
 import { getCurrentLanguage, setLanguage } from "@/shared/i18n"
 import { setString } from "@/shared/storage/kvStorage"
@@ -52,6 +53,7 @@ export function SettingsScreen({ navigation }: Props) {
   const logout = async () => {
     try {
       await clearAuthSession()
+      resetProfileSyncSession()
       useAuthStore.getState().clearSession()
       useWalletStore.getState().setWalletState({
         status: "idle",

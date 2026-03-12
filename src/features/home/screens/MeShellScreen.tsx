@@ -1,12 +1,12 @@
-import React, { useEffect } from "react"
+import React from "react"
 
 import { Pressable, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { useProfileSync } from "@/features/home/hooks/useProfileSync"
 import { UserAvatar } from "@/features/home/components/UserAvatar"
-import { getCurrentUserProfile } from "@/features/home/services/homeApi"
 import { formatAddress } from "@/features/home/utils/format"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useUserStore } from "@/shared/store/useUserStore"
@@ -23,9 +23,8 @@ export function MeShellScreen({ navigation }: Props) {
   const loginType = useAuthStore(state => state.loginType)
   const session = useAuthStore(state => state.session)
   const walletAddress = useWalletStore(state => state.address)
-  const profile = useUserStore(state => state.profile)
+  const { profile } = useProfileSync()
   const avatarVersion = useUserStore(state => state.avatarVersion)
-  const setProfile = useUserStore(state => state.setProfile)
 
   const displayName = profile?.nickname || t("home.shell.defaultNickname")
   const address = walletAddress ?? profile?.address ?? session?.address ?? ""
@@ -33,17 +32,6 @@ export function MeShellScreen({ navigation }: Props) {
   const inviteBound = Boolean(profile?.inviteBound)
   const passkeyExported = Boolean(profile?.walletIsBackup)
   const isPasskeyLogin = loginType === "passkey"
-
-  useEffect(() => {
-    void (async () => {
-      try {
-        const userProfile = await getCurrentUserProfile()
-        setProfile(userProfile)
-      } catch {
-        // P-015/P-016 在后续会补完整错误态，这里先保持页面可用。
-      }
-    })()
-  }, [setProfile])
 
   return (
     <HomeScaffold title={t("home.tabs.me")}>

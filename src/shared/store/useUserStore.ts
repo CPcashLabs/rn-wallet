@@ -1,11 +1,13 @@
 import { create } from "zustand"
 
+import { getJson, removeItem, setJson } from "@/shared/storage/kvStorage"
+import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 import type { UserProfile } from "@/shared/types/auth"
 
 type UserState = {
   profile: UserProfile | null
   avatarVersion: number
-  setProfile: (profile: UserProfile | null) => void
+  mergeRemoteProfile: (profile: UserProfile) => void
   patchProfile: (patch: Partial<UserProfile>) => void
   clearProfile: () => void
 }
@@ -18,23 +20,70 @@ function resolveAvatarVersion(currentVersion: number, prevAvatar?: string | null
   return normalizeAvatar(prevAvatar) === normalizeAvatar(nextAvatar) ? currentVersion : currentVersion + 1
 }
 
+function readPersistedProfile() {
+  return getJson<UserProfile>(KvStorageKeys.UserProfile)
+}
+
+function persistProfile(profile: UserProfile | null) {
+  if (profile) {
+    setJson(KvStorageKeys.UserProfile, profile)
+    return
+  }
+
+  removeItem(KvStorageKeys.UserProfile)
+}
+
+function shouldPreserveRemoteField(value: unknown) {
+  if (value === null || value === undefined) {
+    return true
+  }
+
+  return typeof value === "string" && value.trim() === ""
+}
+
+function mergeProfiles(current: UserProfile | null, remote: UserProfile) {
+  const merged: UserProfile = { ...(current ?? {}) }
+  const nextProfile = merged as Record<string, unknown>
+
+  for (const [key, value] of Object.entries(remote) as [keyof UserProfile, UserProfile[keyof UserProfile]][]) {
+    if (shouldPreserveRemoteField(value)) {
+      continue
+    }
+
+    nextProfile[key] = value
+  }
+
+  return merged
+}
+
+const initialProfile = readPersistedProfile()
+
 export const useUserStore = create<UserState>(set => ({
-  profile: null,
+  profile: initialProfile,
   avatarVersion: 0,
-  setProfile: profile =>
-    set(state => ({
-      profile,
-      avatarVersion: resolveAvatarVersion(state.avatarVersion, state.profile?.avatar, profile?.avatar),
-    })),
+  mergeRemoteProfile: profile =>
+    set(state => {
+      const nextProfile = mergeProfiles(state.profile, profile)
+      persistProfile(nextProfile)
+
+      return {
+        profile: nextProfile,
+        avatarVersion: resolveAvatarVersion(state.avatarVersion, state.profile?.avatar, nextProfile.avatar),
+      }
+    }),
   patchProfile: patch =>
     set(state => {
-      const hasAvatarPatch = Object.prototype.hasOwnProperty.call(patch, "avatar")
       const profile = state.profile ? { ...state.profile, ...patch } : ({ ...patch } as UserProfile)
+      const hasAvatarPatch = Object.prototype.hasOwnProperty.call(patch, "avatar")
+      persistProfile(profile)
 
       return {
         profile,
         avatarVersion: hasAvatarPatch ? state.avatarVersion + 1 : state.avatarVersion,
       }
     }),
-  clearProfile: () => set({ profile: null, avatarVersion: 0 }),
+  clearProfile: () => {
+    persistProfile(null)
+    set({ profile: null, avatarVersion: 0 })
+  },
 }))

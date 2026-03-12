@@ -1,3 +1,4 @@
+import { resetProfileSyncSession } from "@/features/home/hooks/useProfileSync"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useUserStore } from "@/shared/store/useUserStore"
 import { DEFAULT_WALLET_CHAIN_ID, useWalletStore } from "@/shared/store/useWalletStore"
@@ -204,11 +205,14 @@ export async function persistAuthenticatedSession(input: AuthenticatedSessionInp
 
   await writeAuthSession(session)
 
+  resetProfileSyncSession()
   useAuthStore.getState().setSession(session)
   useAuthStore.getState().setLoginType(input.loginType)
-  useUserStore.getState().setProfile({
-    address: input.address,
-  })
+  if (!useUserStore.getState().profile?.address) {
+    useUserStore.getState().patchProfile({
+      address: input.address,
+    })
+  }
   const walletState = useWalletStore.getState()
   useWalletStore.getState().setWalletState({
     status: "connected",

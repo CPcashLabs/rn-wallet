@@ -5,9 +5,10 @@ import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { useProfileSync } from "@/features/home/hooks/useProfileSync"
 import { UserAvatar } from "@/features/home/components/UserAvatar"
 import { formatAddress } from "@/features/home/utils/format"
-import { getCurrentUserProfile, updateProfileAvatar, uploadProfileImage } from "@/features/home/services/homeApi"
+import { updateProfileAvatar, uploadProfileImage } from "@/features/home/services/homeApi"
 import { fileAdapter, isNativeImagePickerCancelledError } from "@/shared/native"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useUserStore } from "@/shared/store/useUserStore"
@@ -21,12 +22,11 @@ type Props = NativeStackScreenProps<SettingsStackParamList, "PersonalScreen">
 export function PersonalScreen({ navigation }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
-  const profile = useUserStore(state => state.profile)
+  const { profile, refresh } = useProfileSync()
   const avatarVersion = useUserStore(state => state.avatarVersion)
   const session = useAuthStore(state => state.session)
   const walletAddress = useWalletStore(state => state.address)
   const patchProfile = useUserStore(state => state.patchProfile)
-  const setProfile = useUserStore(state => state.setProfile)
   const [uploading, setUploading] = React.useState(false)
 
   const address = walletAddress ?? profile?.address ?? session?.address ?? ""
@@ -60,13 +60,7 @@ export function PersonalScreen({ navigation }: Props) {
 
       await updateProfileAvatar(avatarUrl)
       patchProfile({ avatar: avatarUrl })
-
-      try {
-        const freshProfile = await getCurrentUserProfile()
-        setProfile(freshProfile)
-      } catch {
-        // 刷新失败时保留本地乐观更新。
-      }
+      void refresh()
 
       Alert.alert(t("common.infoTitle"), t("home.personal.avatarUpdated"))
     } catch (error) {

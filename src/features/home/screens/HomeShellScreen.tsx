@@ -5,16 +5,14 @@ import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import { bindInviteCode } from "@/features/auth/services/authApi"
+import { useProfileSync } from "@/features/home/hooks/useProfileSync"
 import { getInviteBindingMessage } from "@/features/auth/utils/authMessages"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
-import { getCurrentUserProfile } from "@/features/home/services/homeApi"
 import { formatAddress, formatCurrency } from "@/features/home/utils/format"
-import { resolveChainNameById } from "@/features/home/services/homeApi"
 import { getBoolean, setBoolean } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useBalanceStore } from "@/shared/store/useBalanceStore"
-import { useUserStore } from "@/shared/store/useUserStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
@@ -28,14 +26,12 @@ export function HomeShellScreen({ navigation, route }: Props) {
   const session = useAuthStore(state => state.session)
   const walletAddress = useWalletStore(state => state.address)
   const walletChainId = useWalletStore(state => state.chainId)
-  const profile = useUserStore(state => state.profile)
-  const setProfile = useUserStore(state => state.setProfile)
+  const { profile, isRefreshing: loadingProfile } = useProfileSync()
   const coins = useBalanceStore(state => state.coins)
   const balances = useBalanceStore(state => state.balances)
   const loadingCoins = useBalanceStore(state => state.loading)
   const loadCoins = useBalanceStore(state => state.loadCoins)
   const [showBalance, setShowBalance] = useState(true)
-  const [loadingProfile, setLoadingProfile] = useState(false)
   const inviteHandledRef = useRef(false)
 
   const address = walletAddress ?? profile?.address ?? session?.address ?? ""
@@ -54,20 +50,6 @@ export function HomeShellScreen({ navigation, route }: Props) {
       setShowBalance(persisted)
     }
   }, [])
-
-  useEffect(() => {
-    void (async () => {
-      setLoadingProfile(true)
-      try {
-        const userProfile = await getCurrentUserProfile()
-        setProfile(userProfile)
-      } catch {
-        Alert.alert(t("common.errorTitle"), t("home.shell.loadProfileFailed"))
-      } finally {
-        setLoadingProfile(false)
-      }
-    })()
-  }, [setProfile, t])
 
   useEffect(() => {
     void loadCoins(walletChainId)

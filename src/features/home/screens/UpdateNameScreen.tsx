@@ -5,7 +5,8 @@ import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
-import { getCurrentUserProfile, updateProfileNickname } from "@/features/home/services/homeApi"
+import { useProfileSync } from "@/features/home/hooks/useProfileSync"
+import { updateProfileNickname } from "@/features/home/services/homeApi"
 import { useUserStore } from "@/shared/store/useUserStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
@@ -18,9 +19,8 @@ const MAX_NAME_LENGTH = 20
 export function UpdateNameScreen({ navigation }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
-  const profile = useUserStore(state => state.profile)
+  const { profile, refresh } = useProfileSync()
   const patchProfile = useUserStore(state => state.patchProfile)
-  const setProfile = useUserStore(state => state.setProfile)
   const [name, setName] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
@@ -42,13 +42,7 @@ export function UpdateNameScreen({ navigation }: Props) {
       patchProfile({
         nickname: trimmed,
       })
-
-      try {
-        const freshProfile = await getCurrentUserProfile()
-        setProfile(freshProfile)
-      } catch {
-        // 刷新失败不阻断昵称更新反馈。
-      }
+      void refresh()
 
       Alert.alert(t("common.infoTitle"), t("home.updateName.success"))
       navigation.goBack()
