@@ -107,11 +107,10 @@ export function HomeShellScreen({ navigation, route }: Props) {
   }
 
   const handleOpenReceive = () => {
-    ;(navigation.getParent()?.getParent() as any)?.navigate("ReceiveStack", {
-      screen: "ReceiveHomeScreen",
+    ;(navigation.getParent()?.getParent() as any)?.navigate("TransferStack", {
+      screen: "SelectTokenScreen",
       params: {
-        payChain: resolveChainNameById(walletChainId),
-        chainColor: theme.colors.primary,
+        intent: "receive",
       },
     })
   }

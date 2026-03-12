@@ -77,6 +77,27 @@ export function resolveApiBaseUrl() {
   return resolveDefaultApiBaseUrl()
 }
 
+export function resolveRuntimeEnv(): "dev" | "test" | "preview" | "prod" {
+  const apiHost = normalizeHost(resolveApiBaseUrl())
+
+  switch (apiHost) {
+    case "charprotocol.dev":
+    case "wallet.charprotocol.dev":
+      return "dev"
+    case "charprotocol.com":
+    case "wallet.charprotocol.com":
+      return "test"
+    case "preview.cp.cash":
+    case "wallet-preview.cp.cash":
+      return "preview"
+    case "cp.cash":
+    case "wallet.cp.cash":
+      return "prod"
+    default:
+      return __DEV__ ? "dev" : "prod"
+  }
+}
+
 export function resolveAuthBaseUrl() {
   const apiHost = normalizeHost(resolveApiBaseUrl())
 

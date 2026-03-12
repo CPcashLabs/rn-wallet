@@ -11,21 +11,16 @@ type Props = {
   cacheVersion?: number
 }
 
-function buildAvatarUri(uri: string, cacheVersion: number) {
-  const separator = uri.includes("?") ? "&" : "?"
-  return `${uri}${separator}avatar_version=${cacheVersion}`
-}
-
 export function UserAvatar(props: Props) {
   const theme = useAppTheme()
   const [imageFailed, setImageFailed] = React.useState(false)
 
   React.useEffect(() => {
     setImageFailed(false)
-  }, [props.cacheVersion, props.uri])
+  }, [props.uri])
 
   const normalizedUri = props.uri?.trim() || ""
-  const resolvedUri = normalizedUri ? buildAvatarUri(normalizedUri, props.cacheVersion ?? 0) : ""
+  const resolvedUri = normalizedUri
   const fallbackLabel = props.label.trim().slice(0, 1).toUpperCase() || "?"
   const fontSize = Math.max(12, Math.round(props.size * 0.38))
   const shellStyle = {

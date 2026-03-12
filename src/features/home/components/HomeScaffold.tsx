@@ -1,6 +1,6 @@
 import React from "react"
 
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
+import { Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 
 import { useAppTheme } from "@/shared/theme/useAppTheme"
@@ -12,15 +12,22 @@ export function HomeScaffold(props: {
   onBack?: () => void
   right?: React.ReactNode
   scroll?: boolean
+  backgroundColor?: string
+  headerBackgroundColor?: string
+  headerTintColor?: string
+  contentContainerStyle?: StyleProp<ViewStyle>
 }) {
   const theme = useAppTheme()
+  const backgroundColor = props.backgroundColor ?? theme.colors.background
+  const headerBackgroundColor = props.headerBackgroundColor ?? theme.colors.surface
+  const headerTintColor = props.headerTintColor ?? theme.colors.text
 
   const content = props.scroll === false ? (
     <View style={styles.body}>{props.children}</View>
   ) : (
     <ScrollView
       bounces={false}
-      contentContainerStyle={styles.scrollContent}
+      contentContainerStyle={[styles.scrollContent, props.contentContainerStyle]}
       style={styles.body}
     >
       {props.children}
@@ -28,23 +35,23 @@ export function HomeScaffold(props: {
   )
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor }]}>
       <View
         style={[
           styles.header,
           {
             borderBottomColor: theme.colors.border,
-            backgroundColor: theme.colors.surface,
+            backgroundColor: headerBackgroundColor,
           },
         ]}
       >
         <View style={styles.left}>
           {props.canGoBack ? (
             <Pressable onPress={props.onBack} style={styles.backButton}>
-              <Text style={[styles.backText, { color: theme.colors.primary }]}>返回</Text>
+              <Text style={[styles.backText, { color: headerTintColor }]}>返回</Text>
             </Pressable>
           ) : null}
-          <Text style={[styles.title, { color: theme.colors.text }]}>{props.title}</Text>
+          <Text style={[styles.title, { color: headerTintColor }]}>{props.title}</Text>
         </View>
         <View>{props.right}</View>
       </View>

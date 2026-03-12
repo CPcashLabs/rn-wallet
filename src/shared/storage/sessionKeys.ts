@@ -14,4 +14,6 @@ export enum KvStorageKeys {
   TransferDraft = "transfer.draft",
   SelectTokenPageReload = "transfer.select_token_page_reload",
   HomePageNeedRefresh = "home.home_page_need_refresh",
+  ReceiveGuideDismissed = "receive.guide.dismissed",
+  ReceiveShowedList = "receive.showed_list",
 }
