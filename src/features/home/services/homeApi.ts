@@ -1,4 +1,6 @@
 import { apiClient } from "@/shared/api/client"
+import { useAuthStore } from "@/shared/store/useAuthStore"
+import { useWalletStore } from "@/shared/store/useWalletStore"
 import type { UserProfile } from "@/shared/types/auth"
 
 type ApiEnvelope<T> = {
@@ -72,9 +74,12 @@ function resolveUploadedFileUrl(payload: UploadFilePayload) {
 }
 
 function toUserProfile(payload: UserProfilePayload): UserProfile {
+  const walletAddress = useWalletStore.getState().address ?? undefined
+  const sessionAddress = useAuthStore.getState().session?.address
+
   return {
     id: payload.id,
-    address: payload.address,
+    address: payload.address ?? walletAddress ?? sessionAddress,
     nickname: payload.nickname,
     email: payload.email,
     avatar: payload.avatar,
