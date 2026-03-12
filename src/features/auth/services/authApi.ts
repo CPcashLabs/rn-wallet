@@ -1,6 +1,6 @@
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useUserStore } from "@/shared/store/useUserStore"
-import { useWalletStore } from "@/shared/store/useWalletStore"
+import { DEFAULT_WALLET_CHAIN_ID, useWalletStore } from "@/shared/store/useWalletStore"
 import { apiClient, authClient } from "@/shared/api/client"
 import { writeAuthSession } from "@/shared/api/auth-session"
 import type { PasskeyHistoryItem } from "@/shared/types/auth"
@@ -209,10 +209,12 @@ export async function persistAuthenticatedSession(input: AuthenticatedSessionInp
   useUserStore.getState().setProfile({
     address: input.address,
   })
-
-  if (input.loginType === "passkey") {
-    useWalletStore.getState().reset()
-  }
+  const walletState = useWalletStore.getState()
+  useWalletStore.getState().setWalletState({
+    status: "connected",
+    address: input.address,
+    chainId: walletState.chainId ?? DEFAULT_WALLET_CHAIN_ID,
+  })
 }
 
 export function saveRecentPasskey(entry: PasskeyHistoryItem) {
