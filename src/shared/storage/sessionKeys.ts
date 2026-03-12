@@ -7,9 +7,11 @@ export enum SecureStorageKeys {
 export enum KvStorageKeys {
   AppLanguage = "app.language",
   ThemeMode = "app.theme_mode",
+  WalletChainId = "wallet.chain_id",
   PasskeyHistory = "auth.passkey_history",
   VerificationCodeCountdownEndAt = "auth.verification_code_countdown_end_at",
   ShowBalance = "home.show_balance",
   TransferDraft = "transfer.draft",
   SelectTokenPageReload = "transfer.select_token_page_reload",
+  HomePageNeedRefresh = "home.home_page_need_refresh",
 }
