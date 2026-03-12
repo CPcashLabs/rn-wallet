@@ -1,6 +1,7 @@
 import { create } from "zustand"
 
 type WalletStatus = "idle" | "connected" | "disconnected"
+export const DEFAULT_WALLET_CHAIN_ID = "199"
 
 type WalletState = {
   status: WalletStatus
@@ -27,4 +28,3 @@ export const useWalletStore = create<WalletState>(set => ({
       chainId: null,
     }),
 }))
-

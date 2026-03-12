@@ -1,6 +1,8 @@
 import { create } from "zustand"
 
 import { getCoinList, resolveChainNameById, type HomeCoin } from "@/features/home/services/homeApi"
+import { fetchOnChainBalances } from "@/shared/web3/balanceService"
+import { useWalletStore } from "@/shared/store/useWalletStore"
 
 type BalanceMap = Record<string, number>
 
@@ -39,7 +41,9 @@ export const useBalanceStore = create<BalanceState>((set, get) => ({
     try {
       const chainName = resolveChainNameById(chainId)
       const coins = await getCoinList(chainName)
-      const balances = withDefaultBalance(coins, get().balances)
+      const address = useWalletStore.getState().address
+      const snapshot = await fetchOnChainBalances({ address, chainId, coins })
+      const balances = withDefaultBalance(coins, snapshot)
 
       set({
         coins,
@@ -60,7 +64,9 @@ export const useBalanceStore = create<BalanceState>((set, get) => ({
     try {
       const chainName = resolveChainNameById(chainId)
       const coins = await getCoinList(chainName)
-      const balances = withDefaultBalance(coins, get().balances)
+      const address = useWalletStore.getState().address
+      const snapshot = await fetchOnChainBalances({ address, chainId, coins })
+      const balances = withDefaultBalance(coins, snapshot)
 
       set({
         coins,
