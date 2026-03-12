@@ -371,42 +371,72 @@ function deriveShareUrl(orderSn: string) {
   return `https://share.cpcash.app/send?share=${orderSn}`
 }
 
-export async function getTransferChannels(chainId?: string | number | null) {
+export async function getTransferChannels(chainId?: string | number | null, intent: "transfer" | "receive" = "transfer") {
   const sendChainName = resolveChainNameById(chainId)
-
-  const [rebates, bridgeAllowList, normalAllowList] = await Promise.all([
-    getRebateExchangePairs(),
-    apiClient.get<ApiEnvelope<BridgeAllowListPayload[]>>("/api/seller/member/exchange/cp-cash-allow-list", {
-      params: {
-        group_by_type: 1,
-        send_coin_symbol: "USDT",
-        send_chain_name: sendChainName,
-      },
-    }),
-    apiClient.get<ApiEnvelope<NormalAllowListPayload[]>>("/api/system/member/coinallow/allow-list", {
-      params: {
-        is_send_allowed: true,
-        is_recv_allowed: true,
-      },
-    }),
+  const bridgeSendChains = intent === "receive" ? Array.from(new Set([sendChainName, "BTT", "BTT_TEST"])) : [sendChainName]
+  const [rebatesResult, bridgeAllowListResults, normalAllowListResult] = await Promise.all([
+    getRebateExchangePairs()
+      .then(data => ({ ok: true as const, data }))
+      .catch(error => ({ ok: false as const, error })),
+    Promise.allSettled(
+      bridgeSendChains.map(sendChain =>
+        apiClient.get<ApiEnvelope<BridgeAllowListPayload[]>>("/api/seller/member/exchange/cp-cash-allow-list", {
+          params: {
+            group_by_type: 1,
+            send_coin_symbol: "USDT",
+            send_chain_name: sendChain,
+          },
+        }),
+      ),
+    ),
+    apiClient
+      .get<ApiEnvelope<NormalAllowListPayload[]>>("/api/system/member/coinallow/allow-list", {
+        params: {
+          is_send_allowed: true,
+          is_recv_allowed: true,
+        },
+      })
+      .then(data => ({ ok: true as const, data }))
+      .catch(error => ({ ok: false as const, error })),
   ])
 
+  const rebates = rebatesResult.ok ? rebatesResult.data : []
+  const bridgeAllowLists = bridgeAllowListResults.flatMap(result => {
+    if (result.status !== "fulfilled") {
+      return []
+    }
+
+    return [result.value]
+  })
+  const normalAllowList = normalAllowListResult.ok ? normalAllowListResult.data : null
+
+  if (bridgeAllowLists.length === 0 && !normalAllowList?.data) {
+    throw (normalAllowListResult.ok ? rebatesResult.ok ? new Error("receive_channel_unavailable") : rebatesResult.error : normalAllowListResult.error)
+  }
+
   const rebateCoinCodes = new Set(rebates.map(item => item.recv_coin_code))
+  const bridgeMap = new Map<string, TransferChannel>()
 
-  const bridgeChannels = unwrapEnvelope(bridgeAllowList.data).map(item => ({
-    key: `bridge:${item.chain_name}`,
-    channelType: "bridge" as const,
-    receiveChainName: item.chain_name,
-    receiveChainFullName: item.chain_full_name,
-    receiveChainColor: item.chain_color,
-    receiveChainLogo: item.chain_logo,
-    addressRegexes: item.chain_address_format_regex,
-    title: item.chain_name,
-    subtitle: item.chain_full_name,
-    isRebate: item.exchange_pairs.some(pair => rebateCoinCodes.has(pair.recv_coin_code)),
-  }))
+  bridgeAllowLists.flatMap(response => unwrapEnvelope(response.data)).forEach(item => {
+    if (!item.chain_name || bridgeMap.has(item.chain_name)) {
+      return
+    }
 
-  const activeNormalChannel = unwrapEnvelope(normalAllowList.data)
+    bridgeMap.set(item.chain_name, {
+      key: `bridge:${item.chain_name}`,
+      channelType: "bridge",
+      receiveChainName: item.chain_name,
+      receiveChainFullName: item.chain_full_name,
+      receiveChainColor: item.chain_color,
+      receiveChainLogo: item.chain_logo,
+      addressRegexes: item.chain_address_format_regex,
+      title: item.chain_name,
+      subtitle: item.chain_full_name,
+      isRebate: item.exchange_pairs.some(pair => rebateCoinCodes.has(pair.recv_coin_code)),
+    })
+  })
+
+  const normalChannels = (normalAllowList?.data ? unwrapEnvelope(normalAllowList.data) : [])
     .filter(item => item.chain_name === sendChainName)
     .map(item => ({
       key: `normal:${item.chain_name}`,
@@ -421,7 +451,7 @@ export async function getTransferChannels(chainId?: string | number | null) {
       isRebate: false,
     }))
 
-  return [...activeNormalChannel, ...bridgeChannels]
+  return [...normalChannels, ...bridgeMap.values()]
 }
 
 async function getRebateExchangePairs() {

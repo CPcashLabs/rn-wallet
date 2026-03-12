@@ -35,22 +35,26 @@ export function SelectTokenScreen({ navigation, route }: Props) {
     setLoading(true)
 
     try {
-      const result = await getTransferChannels(chainId)
+      const result = await getTransferChannels(chainId, intent)
       setChannels(result)
       setBoolean(KvStorageKeys.SelectTokenPageReload, false)
-    } catch {
+    } catch (error) {
+      console.error("[select-token][loadChannels]", error)
+      setChannels([])
       Alert.alert(t("common.errorTitle"), t("transfer.selectToken.loadFailed"))
     } finally {
       setLoading(false)
     }
-  }, [chainId, t])
+  }, [chainId, intent, t])
 
   useFocusEffect(
     useCallback(() => {
       const shouldReload = getBoolean(KvStorageKeys.SelectTokenPageReload) ?? true
 
       if (shouldReload || channels.length === 0) {
-        void loadChannels()
+        void loadChannels().catch(error => {
+          console.error("[select-token][focusReload]", error)
+        })
       }
 
       return () => {

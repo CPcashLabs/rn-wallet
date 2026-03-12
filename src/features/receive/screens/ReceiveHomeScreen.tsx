@@ -515,7 +515,8 @@ function CollapseCard(props: {
   children?: React.ReactNode
 }) {
   const rotate = useRef(new Animated.Value(props.expanded ? 1 : 0)).current
-  const fade = useRef(new Animated.Value(props.expanded ? 1 : 0)).current
+  const progress = useRef(new Animated.Value(props.expanded ? 1 : 0)).current
+  const [contentHeight, setContentHeight] = useState(0)
 
   useEffect(() => {
     Animated.parallel([
@@ -525,18 +526,30 @@ function CollapseCard(props: {
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
-      Animated.timing(fade, {
+      Animated.timing(progress, {
         toValue: props.expanded ? 1 : 0,
-        duration: props.expanded ? 240 : 180,
-        easing: Easing.out(Easing.quad),
+        duration: props.expanded ? 320 : 220,
+        easing: props.expanded ? Easing.out(Easing.cubic) : Easing.inOut(Easing.quad),
         useNativeDriver: true,
       }),
     ]).start()
-  }, [fade, props.expanded, rotate])
+  }, [progress, props.expanded, rotate])
 
   const arrowRotate = rotate.interpolate({
     inputRange: [0, 1],
     outputRange: ["0deg", "180deg"],
+  })
+  const drawerHeight = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, contentHeight || 1],
+  })
+  const drawerOpacity = progress.interpolate({
+    inputRange: [0, 0.2, 1],
+    outputRange: [0, 0.35, 1],
+  })
+  const drawerTranslateY = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-14, 0],
   })
 
   return (
@@ -548,26 +561,43 @@ function CollapseCard(props: {
         </View>
         <Animated.Text style={[styles.collapseArrow, { transform: [{ rotate: arrowRotate }] }]}>⌃</Animated.Text>
       </Pressable>
-      {props.expanded ? (
-        <Animated.View
-          style={[
-            styles.collapseBody,
-            {
-              opacity: fade,
-              transform: [
-                {
-                  translateY: fade.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [-8, 0],
-                  }),
-                },
-              ],
-            },
-          ]}
+      {contentHeight === 0 ? (
+        <View
+          pointerEvents="none"
+          style={styles.measureWrap}
+          onLayout={event => {
+            const nextHeight = event.nativeEvent.layout.height
+            if (nextHeight > 0 && nextHeight !== contentHeight) {
+              setContentHeight(nextHeight)
+            }
+          }}
         >
           {props.children}
-        </Animated.View>
+        </View>
       ) : null}
+      <Animated.View
+        style={[
+          styles.drawerFrame,
+          {
+            height: drawerHeight,
+            opacity: drawerOpacity,
+            transform: [{ translateY: drawerTranslateY }],
+          },
+        ]}
+        pointerEvents={props.expanded ? "auto" : "none"}
+      >
+        <View
+          style={styles.collapseBody}
+          onLayout={event => {
+            const nextHeight = event.nativeEvent.layout.height
+            if (nextHeight > 0 && nextHeight !== contentHeight) {
+              setContentHeight(nextHeight)
+            }
+          }}
+        >
+          {props.children}
+        </View>
+      </Animated.View>
     </View>
   )
 }
@@ -712,6 +742,16 @@ const styles = StyleSheet.create({
     paddingTop: SPACE.md,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "#DFE3E8",
+  },
+  drawerFrame: {
+    overflow: "hidden",
+  },
+  measureWrap: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    opacity: 0,
+    zIndex: -1,
   },
   detailWrap: {
     gap: SPACE.md,
