@@ -42,7 +42,13 @@ export type AddressBookStackParamList = {
 }
 
 export type TransferStackParamList = {
-  SelectTokenScreen: undefined
+  SelectTokenScreen:
+    | {
+        intent?: "transfer" | "receive"
+        cowallet?: string
+        multisigWalletId?: string
+      }
+    | undefined
   TransferAddressScreen: {
     receiveChainName: string
     receiveChainFullName: string
@@ -90,7 +96,15 @@ export type TransferStackParamList = {
   SendCodeCoverScreen: {
     orderSn: string
   }
-  BuyCryptoScreen: undefined
+  BuyCryptoScreen:
+    | {
+        payChain?: string
+        sellerId?: string
+        sendCoinCode?: string
+        recvCoinCode?: string
+        recvAddress?: string
+      }
+    | undefined
   BttClaimScreen: undefined
 }
 
@@ -102,6 +116,7 @@ export type ReceiveStackParamList = {
         multisigWalletId?: string
         collapse?: "individuals" | "business"
         chainColor?: string
+        receiveMode?: "normal" | "trace"
       }
     | undefined
   ReceiveAddressListScreen:
@@ -114,8 +129,23 @@ export type ReceiveStackParamList = {
         multisigWalletId?: string
       }
     | undefined
-  ReceiveAddressCreateScreen: undefined
-  ReceiveAddressDeleteScreen: undefined
+  ReceiveAddressCreateScreen:
+    | {
+        orderSn: string
+        address: string
+        remarkName?: string
+        multisigWalletId?: string
+      }
+    | undefined
+  ReceiveAddressDeleteScreen:
+    | {
+        orderType?: "TRACE" | "TRACE_LONG_TERM"
+        sendCoinCode?: string
+        recvCoinCode?: string
+        sellerId?: string
+        multisigWalletId?: string
+      }
+    | undefined
   InvalidReceiveAddressScreen:
     | {
         orderType?: "TRACE" | "TRACE_LONG_TERM"
@@ -125,7 +155,16 @@ export type ReceiveStackParamList = {
         multisigWalletId?: string
       }
     | undefined
-  ReceiveExpiryScreen: undefined
+  ReceiveExpiryScreen:
+    | {
+        multisigWalletId?: string
+        collapse?: "individuals" | "business"
+        sellerId?: string
+        sendCoinCode?: string
+        recvCoinCode?: string
+        payChain?: string
+      }
+    | undefined
   ReceiveTxlogsScreen:
     | {
         orderSn: string

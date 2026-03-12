@@ -28,6 +28,40 @@ function pickMarkedOrder(orders: ReceiveOrder[]) {
   return orders.find(item => item.isMarked) ?? orders[0] ?? null
 }
 
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+async function waitForReceivingOrder(serialNumber: string) {
+  let lastError: unknown = null
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    try {
+      return await getReceivingOrderStatus(serialNumber)
+    } catch (error) {
+      lastError = error
+      await sleep(1200)
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("receive_order_not_ready")
+}
+
+async function waitForTraceDetail(orderSn: string) {
+  let lastError: unknown = null
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    try {
+      return await getTraceDetail(orderSn)
+    } catch (error) {
+      lastError = error
+      await sleep(1200)
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("receive_order_not_ready")
+}
+
 export const useReceiveStore = create<ReceiveStoreState>((set, get) => ({
   config: null,
   loading: false,
@@ -88,7 +122,7 @@ export const useReceiveStore = create<ReceiveStoreState>((set, get) => ({
       })
 
       const current =
-        result.orderSn.trim().length > 0 ? await getTraceDetail(result.orderSn) : await getReceivingOrderStatus(result.serialNumber)
+        result.orderSn.trim().length > 0 ? await waitForTraceDetail(result.orderSn) : await waitForReceivingOrder(result.serialNumber)
 
       if (input.variant === "short") {
         set({ personalOrder: current })

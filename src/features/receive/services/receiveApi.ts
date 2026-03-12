@@ -1,5 +1,7 @@
 import { apiClient } from "@/shared/api/client"
 import { getCoinList, resolveChainNameById } from "@/features/home/services/homeApi"
+import { resolveRuntimeEnv } from "@/shared/config/runtime"
+import { DEFAULT_WALLET_CHAIN_ID } from "@/shared/store/useWalletStore"
 
 type ApiEnvelope<T> = {
   code: number
@@ -45,6 +47,14 @@ type TraceListItemPayload = {
   expired_at?: number | string | null
 }
 
+type ReceiveSharePayload = {
+  order_sn?: string
+  share_url?: string
+  share_link?: string
+  deposit_address?: string
+  send_chain_name?: string
+}
+
 type TraceShowPayload = TraceListItemPayload & {
   send_chain_name?: string
   recv_chain_name?: string
@@ -62,6 +72,13 @@ type TraceChildPayload = {
   txid?: string
 }
 
+type TraceStatisticsPayload = {
+  receipt_amount?: number | string
+  order_count?: number | string
+  send_actual_fee_amount?: number | string
+  recv_actual_amount?: number | string
+}
+
 type BeautifulAddressPayload = {
   address?: string
   match_tail?: string
@@ -77,6 +94,12 @@ type BttCheckPayload = {
 type ReceiveCreatePayload = {
   order_sn?: string
   serial_number?: string
+}
+
+type ExpireOptionPayload = {
+  expire_duration?: number | string
+  system_default?: boolean
+  user_marked?: boolean
 }
 
 export type ReceiveConfig = {
@@ -120,6 +143,13 @@ export type ReceiveLog = {
   txid: string
 }
 
+export type ReceiveTraceStatistics = {
+  receiptAmount: number
+  orderCount: number
+  sendActualFeeAmount: number
+  recvActualAmount: number
+}
+
 export type RareAddressItem = {
   address: string
   matchTail: string
@@ -130,6 +160,19 @@ export type BttClaimStatus = {
   claimAmount: number
   reasonCode: string
   threshold: number
+}
+
+export type ReceiveShareDetail = {
+  orderSn: string
+  shareUrl: string
+  address: string
+  sendChainName: string
+}
+
+export type ReceiveExpireOption = {
+  expireDuration: number
+  systemDefault: boolean
+  userMarked: boolean
 }
 
 function unwrapEnvelope<T>(payload: ApiEnvelope<T>) {
@@ -189,36 +232,84 @@ function toReceiveOrder(payload: TraceListItemPayload | TraceShowPayload): Recei
   }
 }
 
+function uniqueValues(values: Array<string | null | undefined>) {
+  return values.filter((value, index, array): value is string => Boolean(value) && array.indexOf(value) === index)
+}
+
+async function requestReceiveAllowList(input: {
+  sendChainName: string
+  recvChainName?: string
+  env: "dev" | "test" | "preview" | "prod"
+}) {
+  const response = await apiClient.get<ApiEnvelope<ReceiveAllowPayload[]>>("/api/seller/member/exchange/cp-cash-allow-list", {
+    params: {
+      group_by_type: 0,
+      recv_coin_symbol: "USDT",
+      send_coin_symbol: "USDT",
+      send_chain_name: input.sendChainName,
+      ...(input.recvChainName ? { recv_chain_name: input.recvChainName } : {}),
+      env: input.env,
+    },
+  })
+
+  return unwrapEnvelope(response.data)
+}
+
 export async function getReceiveConfig(input: { payChain?: string; chainId?: string | number | null }) {
-  const recvChainName = resolveChainNameById(input.chainId)
-  const sendChainName = input.payChain || recvChainName
+  const resolvedChainId = input.chainId ?? DEFAULT_WALLET_CHAIN_ID
+  const recvChainName = resolveChainNameById(resolvedChainId)
+  const env = resolveRuntimeEnv()
+  const primarySendChainName = input.payChain || recvChainName
+  const recvCandidates = uniqueValues([recvChainName, "BTT", "BTT_TEST"])
+  const sendCandidates = uniqueValues([primarySendChainName, recvChainName, "BTT", "BTT_TEST"])
 
-  const [allowListResponse, sendCoins] = await Promise.all([
-    apiClient.get<ApiEnvelope<ReceiveAllowPayload[]>>("/api/seller/member/exchange/cp-cash-allow-list", {
-      params: {
-        group_by_type: 0,
-        recv_coin_symbol: "USDT",
-        send_coin_symbol: "USDT",
-        recv_chain_name: recvChainName,
-        send_chain_name: sendChainName,
-      },
-    }),
-    getCoinList(sendChainName as "BTT" | "BTT_TEST"),
-  ])
+  let allowList: ReceiveAllowPayload[] = []
+  let selectedSendChainName = primarySendChainName
 
-  const allowList = unwrapEnvelope(allowListResponse.data)
+  for (const sendChainName of sendCandidates) {
+    for (const recvCandidate of recvCandidates) {
+      allowList = await requestReceiveAllowList({
+        sendChainName,
+        recvChainName: recvCandidate,
+        env,
+      })
+
+      if (allowList.length > 0) {
+        selectedSendChainName = sendChainName
+        break
+      }
+    }
+
+    if (allowList.length > 0) {
+      break
+    }
+
+    allowList = await requestReceiveAllowList({
+      sendChainName,
+      env,
+    })
+
+    if (allowList.length > 0) {
+      selectedSendChainName = sendChainName
+      break
+    }
+  }
+
   const first = allowList[0]
   const firstPair = first?.exchange_pairs?.[0]
 
   if (!first || !firstPair) {
-    throw new Error("receive_config_missing")
+    throw new Error(`receive_config_missing: ${sendCandidates.join(",")}`)
   }
+
+  const sendCoins = await getCoinList(selectedSendChainName as "BTT" | "BTT_TEST")
 
   const exchangeShowResponse = await apiClient.get<ApiEnvelope<ReceiveExchangePayload>>("/api/seller/member/exchange/cp-cash-show", {
     params: {
       send_coin_code: firstPair.send_coin_code,
       recv_coin_code: firstPair.recv_coin_code,
       rate_type: 1,
+      env,
     },
   })
 
@@ -226,8 +317,8 @@ export async function getReceiveConfig(input: { payChain?: string; chainId?: str
   const sendCoinMeta = sendCoins.find(item => item.code === firstPair.send_coin_code)
 
   return {
-    payChain: String(first.chain_name ?? sendChainName),
-    payChainFullName: String(first.chain_full_name ?? first.chain_name ?? sendChainName),
+    payChain: String(first.chain_name ?? selectedSendChainName),
+    payChainFullName: String(first.chain_full_name ?? first.chain_name ?? selectedSendChainName),
     payChainColor: String(first.chain_color ?? "#0F766E"),
     payChainLogo: String(first.chain_logo ?? ""),
     sellerId: String(exchange.seller_id ?? ""),
@@ -278,6 +369,24 @@ export async function getInvalidReceiveOrders(input: {
   return unwrapEnvelope(response.data).map(toReceiveOrder)
 }
 
+export async function getReceiveAddressLimit(input: {
+  orderType: "TRACE" | "TRACE_LONG_TERM"
+  sendCoinCode: string
+  recvCoinCode: string
+  multisigWalletId?: string
+}) {
+  const response = await apiClient.get<ApiEnvelope<number>>("/api/order/member/order-limit/limit-count", {
+    params: {
+      order_type: input.orderType,
+      send_coin_code: input.sendCoinCode,
+      recv_coin_code: input.recvCoinCode,
+      multisig_wallet_id: input.multisigWalletId,
+    },
+  })
+
+  return toNumber(unwrapEnvelope(response.data))
+}
+
 export async function createReceiveOrder(input: {
   variant: "short" | "long"
   sellerId: string
@@ -299,6 +408,7 @@ export async function createReceiveOrder(input: {
     send_coin_code: input.sendCoinCode,
     recv_coin_code: input.recvCoinCode,
     multisig_wallet_id: input.multisigWalletId,
+    env: resolveRuntimeEnv(),
   })
 
   const payload = unwrapEnvelope(response.data)
@@ -317,6 +427,18 @@ export async function getReceivingOrderStatus(orderSnOrSerial: string) {
 export async function getTraceDetail(orderSn: string) {
   const response = await apiClient.get<ApiEnvelope<TraceShowPayload>>(`/api/order/member/order/trace-show/${orderSn}`)
   return toReceiveOrder(unwrapEnvelope(response.data))
+}
+
+export async function getReceiveShareDetail(orderSn: string) {
+  const response = await apiClient.get<ApiEnvelope<ReceiveSharePayload>>(`/api/order/member/order/receive-share-show-v2/${orderSn}`)
+  const payload = unwrapEnvelope(response.data)
+
+  return {
+    orderSn: String(payload.order_sn ?? orderSn),
+    shareUrl: String(payload.share_url ?? payload.share_link ?? ""),
+    address: String(payload.deposit_address ?? ""),
+    sendChainName: String(payload.send_chain_name ?? ""),
+  } satisfies ReceiveShareDetail
 }
 
 export async function getTraceChildLogs(input: { orderSn: string; page?: number; perPage?: number }) {
@@ -338,6 +460,23 @@ export async function getTraceChildLogs(input: { orderSn: string; page?: number;
     fromAddress: String(item.from_address ?? ""),
     txid: String(item.txid ?? ""),
   }))
+}
+
+export async function getTraceChildStatistics(input: { orderSn: string }) {
+  const response = await apiClient.get<ApiEnvelope<TraceStatisticsPayload>>("/api/order/member/order/trace-child-statistics", {
+    params: {
+      order_sn: input.orderSn,
+    },
+  })
+
+  const payload = unwrapEnvelope(response.data)
+
+  return {
+    receiptAmount: toNumber(payload.receipt_amount),
+    orderCount: toNumber(payload.order_count),
+    sendActualFeeAmount: toNumber(payload.send_actual_fee_amount),
+    recvActualAmount: toNumber(payload.recv_actual_amount),
+  } satisfies ReceiveTraceStatistics
 }
 
 export async function getRareAddressPage(input: {
@@ -369,6 +508,59 @@ export async function getRareAddressPage(input: {
   }))
 }
 
+export async function editReceiveAddressRemark(input: {
+  orderSn: string
+  remarkName: string
+  address: string
+  multisigWalletId?: string
+}) {
+  const endpoint = input.multisigWalletId
+    ? "/api/order/member/orderAddressInfo/editMultisigAddressInfo"
+    : "/api/order/member/orderAddressInfo/editAddressInfo"
+
+  await apiClient.post(endpoint, {
+    order_sn: input.orderSn,
+    remark_name: input.remarkName,
+    address: input.address,
+    multisig_wallet_id: input.multisigWalletId,
+  })
+}
+
+export async function batchExpireReceiveOrders(input: {
+  orderSnList: string[]
+}) {
+  await apiClient.post("/api/order/member/order/batch-expire", {
+    order_sn_list: input.orderSnList,
+  })
+}
+
+export async function getReceiveExpireOptions() {
+  const response = await apiClient.get<ApiEnvelope<ExpireOptionPayload[]>>(
+    "/api/system/member/config/trace-order-expire-duration-collection",
+  )
+
+  return unwrapEnvelope(response.data).map<ReceiveExpireOption>(item => ({
+    expireDuration: toNumber(item.expire_duration),
+    systemDefault: Boolean(item.system_default),
+    userMarked: Boolean(item.user_marked),
+  }))
+}
+
+export async function markReceiveExpireDuration(input: { expireDuration: number; multisigWalletId?: string }) {
+  const params = new URLSearchParams()
+  params.append("expire_duration", String(input.expireDuration))
+
+  if (input.multisigWalletId) {
+    params.append("multisig_wallet_id", input.multisigWalletId)
+  }
+
+  await apiClient.post("/api/system/member/config/trace-order-expire-duration-mark", params, {
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+  })
+}
+
 export async function checkBttClaim(chainId?: string | number | null, walletAddress?: string | null) {
   const chainName = resolveChainNameById(chainId)
   const response = await apiClient.get<ApiEnvelope<BttCheckPayload>>("/api/order/member/order/btt-fee/check", {
@@ -398,11 +590,20 @@ export async function claimBtt(chainId?: string | number | null, walletAddress?:
   })
 }
 
-export async function createNativeOrder(input: { amount: number; recvAddress: string; recvCoinCode: string }) {
+export async function createNativeOrder(input: {
+  amount: number
+  recvAddress: string
+  recvCoinCode: string
+  sendCoinCode: string
+  sellerId: string
+}) {
   const response = await apiClient.post<ApiEnvelope<ReceiveCreatePayload>>("/api/order/member/receiving/create-native", {
     send_amount: input.amount,
     recv_address: input.recvAddress,
     recv_coin_code: input.recvCoinCode,
+    send_coin_code: input.sendCoinCode,
+    seller_id: input.sellerId,
+    env: resolveRuntimeEnv(),
   })
 
   const payload = unwrapEnvelope(response.data)

@@ -3,6 +3,7 @@ import React from "react"
 import { Pressable, StyleSheet, Text, View } from "react-native"
 
 import { SectionCard } from "@/features/transfer/components/TransferUi"
+import type { QrMatrix } from "@/features/receive/utils/qrcode"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 export function SegmentedTabs<T extends string>(props: {
@@ -43,6 +44,7 @@ export function ReceiveOrderCard(props: {
   amountLabel: string
   orderSn?: string
   extra?: string
+  qrMatrix?: QrMatrix | null
   onPrimaryPress?: () => void
   onSecondaryPress?: () => void
   primaryLabel?: string
@@ -62,10 +64,16 @@ export function ReceiveOrderCard(props: {
       </View>
 
       <View style={[styles.codeBox, { borderColor: theme.colors.border, backgroundColor: theme.colors.background }]}>
-        <Text style={[styles.codeHint, { color: theme.colors.mutedText }]}>QR / 分享卡片</Text>
-        <Text numberOfLines={3} style={[styles.codeValue, { color: theme.colors.text }]}>
-          {props.address || "-"}
-        </Text>
+        {props.qrMatrix ? (
+          <QrMatrixView matrix={props.qrMatrix} />
+        ) : (
+          <>
+            <Text style={[styles.codeHint, { color: theme.colors.mutedText }]}>QR / 分享卡片</Text>
+            <Text numberOfLines={3} style={[styles.codeValue, { color: theme.colors.text }]}>
+              {props.address || "-"}
+            </Text>
+          </>
+        )}
       </View>
 
       <View style={styles.metaBlock}>
@@ -86,6 +94,32 @@ export function ReceiveOrderCard(props: {
         ) : null}
       </View>
     </SectionCard>
+  )
+}
+
+function QrMatrixView(props: { matrix: QrMatrix }) {
+  const cellSize = Math.max(4, Math.floor(180 / props.matrix.size))
+
+  return (
+    <View style={styles.qrWrap}>
+      {props.matrix.rows.map((row, rowIndex) => (
+        <View key={`row-${rowIndex}`} style={styles.qrRow}>
+          {row.map((filled, columnIndex) => (
+            <View
+              key={`cell-${rowIndex}-${columnIndex}`}
+              style={[
+                styles.qrCell,
+                {
+                  width: cellSize,
+                  height: cellSize,
+                  backgroundColor: filled ? "#111827" : "#FFFFFF",
+                },
+              ]}
+            />
+          ))}
+        </View>
+      ))}
+    </View>
   )
 }
 
@@ -158,6 +192,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     textAlign: "center",
+  },
+  qrWrap: {
+    width: 180,
+    height: 180,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 6,
+  },
+  qrRow: {
+    flexDirection: "row",
+  },
+  qrCell: {
+    flexShrink: 0,
   },
   metaBlock: {
     gap: 8,

@@ -7,7 +7,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import type { ReceiveStackParamList } from "@/app/navigation/types"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { InfoRow, SegmentedTabs } from "@/features/receive/components/ReceiveUi"
-import { createReceiveOrder, getRecentReceiveOrders, type ReceiveOrder } from "@/features/receive/services/receiveApi"
+import { createReceiveOrder, getReceiveAddressLimit, getRecentReceiveOrders, type ReceiveOrder } from "@/features/receive/services/receiveApi"
 import { SectionCard } from "@/features/transfer/components/TransferUi"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
@@ -23,6 +23,7 @@ export function ReceiveAddressListScreen({ navigation, route }: Props) {
   const [items, setItems] = useState<ReceiveOrder[]>([])
   const [loading, setLoading] = useState(false)
   const [creating, setCreating] = useState(false)
+  const [limit, setLimit] = useState<number | null>(null)
 
   useEffect(() => {
     if (!params?.sendCoinCode || !params?.recvCoinCode) {
@@ -42,7 +43,14 @@ export function ReceiveAddressListScreen({ navigation, route }: Props) {
           recvCoinCode,
           multisigWalletId,
         })
+        const max = await getReceiveAddressLimit({
+          orderType: tab,
+          sendCoinCode,
+          recvCoinCode,
+          multisigWalletId,
+        })
         setItems(next)
+        setLimit(max)
       } catch {
         Alert.alert(t("common.errorTitle"), t("receive.addressList.loadFailed"))
       } finally {
@@ -67,13 +75,21 @@ export function ReceiveAddressListScreen({ navigation, route }: Props) {
           <SectionCard>
             <InfoRow label={t("receive.addressList.currentMode")} value={tab === "TRACE" ? t("receive.home.individuals") : t("receive.home.business")} />
             <InfoRow label={t("receive.home.payChain")} value={params?.payChain || "-"} />
+            <InfoRow label={t("receive.addressList.capacity")} value={`${items.length}/${limit ?? "-"}`} />
           </SectionCard>
 
           {items.map(item => (
             <Pressable
               key={`${item.orderSn}-${item.address}`}
               style={[styles.item, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
-              onPress={() => navigation.navigate("ReceiveTxlogsScreen", { orderSn: item.orderSn, orderType: tab })}
+              onPress={() =>
+                navigation.navigate("ReceiveAddressCreateScreen", {
+                  orderSn: item.orderSn,
+                  address: item.address,
+                  remarkName: item.remarkName,
+                  multisigWalletId: params?.multisigWalletId,
+                })
+              }
             >
               <Text style={[styles.itemTitle, { color: theme.colors.text }]}>
                 {item.remarkName || item.address || item.orderSn}
@@ -95,10 +111,10 @@ export function ReceiveAddressListScreen({ navigation, route }: Props) {
 
         <View style={[styles.footer, { borderTopColor: theme.colors.border, backgroundColor: theme.colors.background }]}>
           <Pressable
-            onPress={() => navigation.navigate("InvalidReceiveAddressScreen", params)}
+            onPress={() => navigation.navigate("ReceiveAddressDeleteScreen", params)}
             style={[styles.lightButton, { borderColor: theme.colors.border }]}
           >
-            <Text style={[styles.lightText, { color: theme.colors.text }]}>{t("receive.home.invalid")}</Text>
+            <Text style={[styles.lightText, { color: theme.colors.text }]}>{t("receive.addressList.delete")}</Text>
           </Pressable>
           <Pressable
             disabled={creating || !walletAddress || !params?.sendCoinCode || !params?.recvCoinCode}
