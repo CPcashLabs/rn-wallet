@@ -121,6 +121,7 @@ export type ReceiveStackParamList = {
         orderType?: "TRACE" | "TRACE_LONG_TERM"
         sendCoinCode?: string
         recvCoinCode?: string
+        sellerId?: string
         multisigWalletId?: string
       }
     | undefined
@@ -140,6 +141,9 @@ export type ReceiveStackParamList = {
         multisigWalletId?: string
       }
     | undefined
+  ReceiveShareScreen: {
+    orderSn: string
+  }
 }
 
 export type MainTabParamList = {
