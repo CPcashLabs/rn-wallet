@@ -46,6 +46,7 @@ export function SendCodeScreen({ navigation }: Props) {
         const result = await getTransferOrderOptions({
           sendChainName: resolveChainNameById(chainId),
           receiveChainName: selectedChannel.receiveChainName,
+          channelType: selectedChannel.channelType,
         })
 
         if (mounted) {

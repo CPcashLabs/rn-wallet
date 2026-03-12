@@ -64,7 +64,7 @@ export function SendCodeLogsScreen({ navigation }: Props) {
                 <SectionCard>
                   <Text style={[styles.title, { color: theme.colors.text }]}>{item.orderSn}</Text>
                   <Text style={[styles.body, { color: theme.colors.mutedText }]}>
-                    {item.sendAmount} {item.sendCoinName} -> {item.recvAmount} {item.recvCoinName}
+                    {item.sendAmount} {item.sendCoinName} {"->"} {item.recvAmount} {item.recvCoinName}
                   </Text>
                   <Text style={[styles.body, { color: theme.colors.mutedText }]}>
                     {formatDateTime(item.createdAt)} · {t("transfer.send.statusCode", { status: item.status })}

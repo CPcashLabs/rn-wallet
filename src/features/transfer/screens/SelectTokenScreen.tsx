@@ -19,9 +19,10 @@ type Props = NativeStackScreenProps<TransferStackParamList, "SelectTokenScreen">
 
 type ChannelItem = Awaited<ReturnType<typeof getTransferChannels>>[number]
 
-export function SelectTokenScreen({ navigation }: Props) {
+export function SelectTokenScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const intent = route.params?.intent ?? "transfer"
   const chainId = useWalletStore(state => state.chainId)
   const selectedChannel = useTransferDraftStore(state => state.selectedChannel)
   const recipientAddress = useTransferDraftStore(state => state.recipientAddress)
@@ -75,6 +76,20 @@ export function SelectTokenScreen({ navigation }: Props) {
 
   const handleSelectChannel = useCallback(
     (item: ChannelItem) => {
+      if (intent === "receive") {
+        ;(navigation.getParent() as any)?.navigate("ReceiveStack", {
+          screen: "ReceiveHomeScreen",
+          params: {
+            payChain: item.receiveChainName,
+            chainColor: item.receiveChainColor,
+            cowallet: route.params?.cowallet,
+            multisigWalletId: route.params?.multisigWalletId,
+            receiveMode: item.channelType === "normal" ? "normal" : "trace",
+          },
+        })
+        return
+      }
+
       const initialAddress = selectedChannel?.key === item.key ? recipientAddress : ""
 
       setSelectedChannel(item)
@@ -91,22 +106,31 @@ export function SelectTokenScreen({ navigation }: Props) {
         initialAddress,
       })
     },
-    [navigation, recipientAddress, selectedChannel?.key, setSelectedChannel],
+    [intent, navigation, recipientAddress, route.params?.cowallet, route.params?.multisigWalletId, selectedChannel?.key, setSelectedChannel],
   )
 
   return (
-    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("transfer.selectToken.title")} scroll={false}>
+    <HomeScaffold
+      canGoBack
+      onBack={navigation.goBack}
+      title={intent === "receive" ? t("receive.select.title") : t("transfer.selectToken.title")}
+      scroll={false}
+    >
       <ScrollView bounces={false} contentContainerStyle={styles.content}>
         <View style={[styles.tipCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <Text style={[styles.tipTitle, { color: theme.colors.text }]}>{t("transfer.selectToken.tipTitle")}</Text>
-          <Text style={[styles.tipBody, { color: theme.colors.mutedText }]}>{t("transfer.selectToken.tipBody")}</Text>
+          <Text style={[styles.tipTitle, { color: theme.colors.text }]}>
+            {intent === "receive" ? t("receive.select.tipTitle") : t("transfer.selectToken.tipTitle")}
+          </Text>
+          <Text style={[styles.tipBody, { color: theme.colors.mutedText }]}>
+            {intent === "receive" ? t("receive.select.tipBody") : t("transfer.selectToken.tipBody")}
+          </Text>
         </View>
 
         <View style={[styles.searchCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
           <TextInput
             autoCapitalize="none"
             onChangeText={setKeyword}
-            placeholder={t("transfer.selectToken.searchPlaceholder")}
+            placeholder={intent === "receive" ? t("receive.select.searchPlaceholder") : t("transfer.selectToken.searchPlaceholder")}
             placeholderTextColor={theme.colors.mutedText}
             style={[styles.searchInput, { color: theme.colors.text }]}
             value={keyword}
@@ -117,7 +141,10 @@ export function SelectTokenScreen({ navigation }: Props) {
           {loading ? (
             <EmptyState body={t("transfer.selectToken.loading")} title={t("common.loading")} />
           ) : filteredChannels.length === 0 ? (
-            <EmptyState body={t("transfer.selectToken.emptyBody")} title={t("transfer.selectToken.emptyTitle")} />
+            <EmptyState
+              body={intent === "receive" ? t("receive.select.emptyBody") : t("transfer.selectToken.emptyBody")}
+              title={intent === "receive" ? t("receive.select.emptyTitle") : t("transfer.selectToken.emptyTitle")}
+            />
           ) : (
             filteredChannels.map(item => (
               <ChannelRow

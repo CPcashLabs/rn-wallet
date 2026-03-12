@@ -53,7 +53,17 @@ type ExchangeShowPayload = {
   chain_full_name?: string
   chain_logo?: string
   chain_color?: string
+  fee_amount?: number
+  fee_value?: number
+  recv_amount?: number
+  recv_coin_code?: string
+  recv_coin_name?: string
+  send_amount?: number
+  send_coin_code?: string
+  send_coin_name?: string
   send_min_amount?: number
+  send_max_amount?: number
+  seller_id?: number | string
   exchange_pairs?: Array<{
     seller_id?: string | number
     recv_coin_code?: string
@@ -202,6 +212,20 @@ export type TransferGasEstimate = {
   gasAmount: number
 }
 
+export type TransferQuote = {
+  feeAmount: number
+  feeValue: number
+  recvAmount: number
+  recvCoinCode: string
+  recvCoinName: string
+  sendAmount: number
+  sendCoinCode: string
+  sendCoinName: string
+  sendMinAmount: number
+  sendMaxAmount: number
+  sellerId: number
+}
+
 export type TransferOrderDetail = {
   orderSn: string
   status: number
@@ -327,6 +351,22 @@ function toOrderDetail(payload: OrderShowPayload | ReceivingShowPayload): Transf
   }
 }
 
+function toTransferQuote(payload: ExchangeShowPayload): TransferQuote {
+  return {
+    feeAmount: toNumber(payload.fee_amount),
+    feeValue: toNumber(payload.fee_value),
+    recvAmount: toNumber(payload.recv_amount),
+    recvCoinCode: String(payload.recv_coin_code ?? ""),
+    recvCoinName: String(payload.recv_coin_name ?? payload.recv_coin_code ?? ""),
+    sendAmount: toNumber(payload.send_amount),
+    sendCoinCode: String(payload.send_coin_code ?? ""),
+    sendCoinName: String(payload.send_coin_name ?? payload.send_coin_code ?? ""),
+    sendMinAmount: toNumber(payload.send_min_amount),
+    sendMaxAmount: toNumber(payload.send_max_amount),
+    sellerId: toNumber(payload.seller_id),
+  }
+}
+
 function deriveShareUrl(orderSn: string) {
   return `https://share.cpcash.app/send?share=${orderSn}`
 }
@@ -415,62 +455,79 @@ export async function getRecentTransferEntries(input: {
 export async function getTransferOrderOptions(input: {
   sendChainName: string
   receiveChainName: string
+  channelType: "bridge" | "normal"
 }) {
-  const [exchangeResponse, coinList] = await Promise.all([
-    apiClient.get<ApiEnvelope<ExchangeShowPayload>>("/api/seller/member/exchange/cp-cash-show", {
-      params: {
-        send_chain_name: input.sendChainName,
-        recv_chain_name: input.receiveChainName,
-        send_coin_symbol: "USDT",
-      },
-    }),
+  const [coinList, bridgeAllowList, normalAllowList] = await Promise.all([
     getCoinList(input.sendChainName as "BTT" | "BTT_TEST"),
+    input.channelType === "bridge"
+      ? apiClient.get<ApiEnvelope<BridgeAllowListPayload[]>>("/api/seller/member/exchange/cp-cash-allow-list", {
+          params: {
+            group_by_type: 1,
+            send_coin_symbol: "USDT",
+            send_chain_name: input.sendChainName,
+          },
+        })
+      : Promise.resolve(null),
+    input.channelType === "normal"
+      ? apiClient.get<ApiEnvelope<NormalAllowListPayload[]>>("/api/system/member/coinallow/allow-list", {
+          params: {
+            chain_name: input.sendChainName,
+            is_send_allowed: true,
+            is_recv_allowed: true,
+          },
+        })
+      : Promise.resolve(null),
   ])
-
-  const payload = unwrapEnvelope(exchangeResponse.data)
   const coinLookup = new Map(coinList.map(item => [item.code, item]))
 
+  const bridgeChannel =
+    bridgeAllowList?.data ? unwrapEnvelope(bridgeAllowList.data).find(item => item.chain_name === input.receiveChainName) : null
+  const normalChannel =
+    normalAllowList?.data ? unwrapEnvelope(normalAllowList.data).find(item => item.chain_name === input.sendChainName) : null
+
   const pairOptions =
-    payload.exchange_pairs?.map<TransferOrderOption>(item => {
+    bridgeChannel?.exchange_pairs?.map<TransferOrderOption>(item => {
       const coin = coinLookup.get(String(item.send_coin_code ?? ""))
 
       return {
-        sellerId: String(item.seller_id ?? ""),
+        sellerId: "",
         sendCoinCode: String(item.send_coin_code ?? ""),
         sendCoinSymbol: String(item.send_coin_symbol ?? coin?.symbol ?? item.send_coin_code ?? ""),
         recvCoinCode: String(item.recv_coin_code ?? ""),
         recvCoinSymbol: String(item.recv_coin_symbol ?? item.recv_coin_code ?? ""),
-        feeAmount: toNumber(item.fee_value ?? item.fee_amount),
-        recvEstimateAmount: toNumber(item.recv_estimate_amount ?? item.recv_amount),
-        sendMinAmount: toNumber(item.send_min_amount ?? payload.send_min_amount),
-        sendCoinContract: String(item.send_coin_contract ?? coin?.contract ?? ""),
-      }
-    }) ?? []
-
-  const normalOptions =
-    payload.coins?.map<TransferOrderOption>(item => {
-      const code = String(item.coin_code ?? "")
-      const coin = coinLookup.get(code)
-
-      return {
-        sellerId: "",
-        sendCoinCode: code,
-        sendCoinSymbol: String(item.coin_symbol ?? coin?.symbol ?? code),
-        recvCoinCode: "",
-        recvCoinSymbol: "",
-        feeAmount: toNumber(item.fee_value ?? item.fee_amount),
+        feeAmount: 0,
         recvEstimateAmount: 0,
-        sendMinAmount: toNumber(payload.send_min_amount),
-        sendCoinContract: String(item.send_coin_contract ?? coin?.contract ?? ""),
+        sendMinAmount: 0,
+        sendCoinContract: String(coin?.contract ?? ""),
       }
     }) ?? []
+
+  const sameChainOptions =
+    normalChannel?.coins
+      ?.filter(item => item.is_send_allowed)
+      .map<TransferOrderOption>(item => {
+        const code = String(item.coin_code ?? "")
+        const coin = coinLookup.get(code)
+
+        return {
+          sellerId: "",
+          sendCoinCode: code,
+          sendCoinSymbol: String(item.coin_symbol ?? coin?.symbol ?? code),
+          recvCoinCode: "",
+          recvCoinSymbol: "",
+          feeAmount: 0,
+          recvEstimateAmount: 0,
+          sendMinAmount: 0,
+          sendCoinContract: String(coin?.contract ?? ""),
+        }
+      }) ?? []
 
   return {
-    chainName: String(payload.chain_name ?? input.receiveChainName),
-    chainFullName: String(payload.chain_full_name ?? input.receiveChainName),
-    chainLogo: String(payload.chain_logo ?? ""),
-    chainColor: String(payload.chain_color ?? ""),
-    options: pairOptions.length > 0 ? pairOptions : normalOptions,
+    chainName: String(bridgeChannel?.chain_name ?? normalChannel?.chain_name ?? input.receiveChainName),
+    chainFullName: String(bridgeChannel?.chain_full_name ?? normalChannel?.chain_full_name ?? input.receiveChainName),
+    chainLogo: String(bridgeChannel?.chain_logo ?? normalChannel?.chain_logo ?? ""),
+    chainColor: String(bridgeChannel?.chain_color ?? normalChannel?.chain_color ?? ""),
+    options: input.channelType === "bridge" ? pairOptions : sameChainOptions,
   } satisfies TransferOrderOptions
 }
 
@@ -491,6 +548,24 @@ export async function getTransferGasEstimate(input: { chainName: string; contrac
   return {
     gasAmount: toNumber(unwrapEnvelope(response.data)),
   } satisfies TransferGasEstimate
+}
+
+export async function getTransferQuote(input: {
+  sendCoinCode: string
+  recvCoinCode: string
+  recvAmount: number
+  rateType?: 0 | 1
+}) {
+  const response = await apiClient.get<ApiEnvelope<ExchangeShowPayload>>("/api/seller/member/exchange/cp-cash-show", {
+    params: {
+      send_coin_code: input.sendCoinCode,
+      recv_coin_code: input.recvCoinCode,
+      recv_amount: input.recvAmount,
+      rate_type: input.rateType ?? 1,
+    },
+  })
+
+  return toTransferQuote(unwrapEnvelope(response.data))
 }
 
 export async function createPaymentOrder(input: {

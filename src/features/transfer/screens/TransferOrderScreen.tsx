@@ -9,6 +9,7 @@ import {
   createPaymentOrder,
   getTransferGasEstimate,
   getTransferOrderOptions,
+  getTransferQuote,
   type TransferOrderOption,
 } from "@/features/transfer/services/transferApi"
 import { useTransferDraftStore } from "@/features/transfer/store/useTransferDraftStore"
@@ -46,6 +47,7 @@ export function TransferOrderScreen({ navigation, route }: Props) {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [gasAmount, setGasAmount] = useState(0)
+  const [quotedOption, setQuotedOption] = useState<TransferOrderOption | null>(null)
 
   const sendChainName = resolveChainNameById(chainId)
   const isNormalRoute = route.name === "TransferOrderNormalScreen"
@@ -114,6 +116,7 @@ export function TransferOrderScreen({ navigation, route }: Props) {
         const result = await getTransferOrderOptions({
           sendChainName,
           receiveChainName: selectedChannel.receiveChainName,
+          channelType: selectedChannel.channelType,
         })
 
         if (!mounted) {
@@ -177,8 +180,49 @@ export function TransferOrderScreen({ navigation, route }: Props) {
     }
   }, [selectedOption?.sendCoinContract, sendChainName])
 
+  useEffect(() => {
+    let mounted = true
+
+    if (!selectedOption || !selectedOption.recvCoinCode || !numericAmount || numericAmount <= 0) {
+      setQuotedOption(null)
+      return
+    }
+
+    void (async () => {
+      try {
+        const quote = await getTransferQuote({
+          sendCoinCode: selectedOption.sendCoinCode,
+          recvCoinCode: selectedOption.recvCoinCode,
+          recvAmount: numericAmount,
+        })
+
+        if (!mounted) {
+          return
+        }
+
+        setQuotedOption({
+          ...selectedOption,
+          sellerId: String(quote.sellerId ?? selectedOption.sellerId),
+          feeAmount: quote.feeValue,
+          recvEstimateAmount: quote.recvAmount,
+          sendMinAmount: quote.sendMinAmount,
+        })
+      } catch {
+        if (mounted) {
+          setQuotedOption(null)
+        }
+      }
+    })()
+
+    return () => {
+      mounted = false
+    }
+  }, [numericAmount, selectedOption])
+
+  const resolvedOption = quotedOption && selectedOption && quotedOption.sendCoinCode === selectedOption.sendCoinCode ? quotedOption : selectedOption
+
   const handleSubmit = useCallback(async () => {
-    if (!selectedOption || validationMessage) {
+    if (!resolvedOption || validationMessage) {
       Alert.alert(t("common.errorTitle"), validationMessage || t("transfer.order.noOption"))
       return
     }
@@ -187,9 +231,9 @@ export function TransferOrderScreen({ navigation, route }: Props) {
 
     try {
       const result = await createPaymentOrder({
-        sellerId: selectedOption.sellerId,
-        recvCoinCode: selectedOption.recvCoinCode,
-        sendCoinCode: selectedOption.sendCoinCode,
+        sellerId: resolvedOption.sellerId,
+        recvCoinCode: resolvedOption.recvCoinCode,
+        sendCoinCode: resolvedOption.sendCoinCode,
         sendAmount: numericAmount,
         recvAddress: recipientAddress,
         note,
@@ -197,8 +241,8 @@ export function TransferOrderScreen({ navigation, route }: Props) {
 
       setLatestOrderSn(result.orderSn)
       setOrderDraft({
-        sendCoinCode: selectedOption.sendCoinCode,
-        recvCoinCode: selectedOption.recvCoinCode,
+        sendCoinCode: resolvedOption.sendCoinCode,
+        recvCoinCode: resolvedOption.recvCoinCode,
       })
 
       navigation.navigate(isNormalRoute ? "TransferConfirmNormalScreen" : "TransferConfirmScreen", {
@@ -220,7 +264,7 @@ export function TransferOrderScreen({ navigation, route }: Props) {
     note,
     numericAmount,
     recipientAddress,
-    selectedOption,
+    resolvedOption,
     setLatestOrderSn,
     setOrderDraft,
     t,
@@ -320,8 +364,8 @@ export function TransferOrderScreen({ navigation, route }: Props) {
           <FieldRow
             label={t("transfer.order.receiveEstimate")}
             value={
-              selectedOption?.recvCoinSymbol
-                ? `${formatAmount((numericAmount || 0) + selectedOption.recvEstimateAmount)} ${selectedOption.recvCoinSymbol}`
+                  selectedOption?.recvCoinSymbol
+                ? `${formatAmount((resolvedOption?.recvEstimateAmount || 0) || (numericAmount || 0))} ${selectedOption.recvCoinSymbol}`
                 : `${formatAmount(numericAmount)} ${selectedOption?.sendCoinSymbol ?? ""}`.trim()
             }
           />
