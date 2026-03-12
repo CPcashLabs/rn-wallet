@@ -5,8 +5,11 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 
 import { readAuthSession } from "@/shared/api/auth-session"
 import { hydrateI18n } from "@/shared/i18n"
+import { getString } from "@/shared/storage/kvStorage"
+import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 import { hydrateThemePreference } from "@/shared/theme/themePersistence"
 import { useAuthStore } from "@/shared/store/useAuthStore"
+import { DEFAULT_WALLET_CHAIN_ID, useWalletStore } from "@/shared/store/useWalletStore"
 
 import type { RootStackParamList } from "@/app/navigation/types"
 import { BootScreen } from "@/app/screens/BootScreen"
@@ -24,11 +27,17 @@ export function BootstrapGate() {
         await Promise.all([hydrateI18n(), hydrateThemePreference()])
 
         const session = await readAuthSession()
+        const persistedChainId = getString(KvStorageKeys.WalletChainId) ?? DEFAULT_WALLET_CHAIN_ID
         if (!mounted) return
 
         const authStore = useAuthStore.getState()
         if (session?.accessToken) {
           authStore.setSession(session)
+          useWalletStore.getState().setWalletState({
+            status: session.address ? "connected" : "idle",
+            address: session.address ?? null,
+            chainId: persistedChainId,
+          })
           navigation.reset({
             index: 0,
             routes: [{ name: "MainTabs", params: { screen: "HomeTab" } }],
@@ -37,6 +46,11 @@ export function BootstrapGate() {
         }
 
         authStore.clearSession()
+        useWalletStore.getState().setWalletState({
+          status: "idle",
+          address: null,
+          chainId: persistedChainId,
+        })
         navigation.reset({
           index: 0,
           routes: [{ name: "AuthStack", params: { screen: "LoginScreen" } }],
@@ -44,6 +58,11 @@ export function BootstrapGate() {
       } catch {
         if (!mounted) return
         useAuthStore.getState().clearSession()
+        useWalletStore.getState().setWalletState({
+          status: "idle",
+          address: null,
+          chainId: getString(KvStorageKeys.WalletChainId) ?? DEFAULT_WALLET_CHAIN_ID,
+        })
         navigation.reset({
           index: 0,
           routes: [{ name: "SupportStack", params: { screen: "SupportPlaceholder", params: { reason: "bootstrap_failed" } } }],

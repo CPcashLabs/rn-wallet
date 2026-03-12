@@ -54,6 +54,92 @@ export type TransferStackParamList = {
     isRebate: boolean
     initialAddress?: string
   }
+  TransferOrderScreen: undefined
+  TransferOrderNormalScreen: undefined
+  TransferOrderCowalletScreen:
+    | {
+        multisigWalletId?: string
+      }
+    | undefined
+  TransferConfirmScreen: {
+    orderSn: string
+  }
+  TransferConfirmNormalScreen: {
+    orderSn: string
+  }
+  TxPayStatusScreen: {
+    orderSn: string
+    pay?: boolean
+    walletId?: string
+    skipCountdown?: boolean
+  }
+  SendEntryScreen:
+    | {
+        orderSn?: string
+      }
+    | undefined
+  SendPaymentInfoScreen: {
+    orderSn: string
+  }
+  SendTokenScreen: undefined
+  SendCodeScreen: undefined
+  SendCodeDetailScreen: {
+    orderSn: string
+  }
+  SendCodeLogsScreen: undefined
+  SendCodeCoverScreen: {
+    orderSn: string
+  }
+  BuyCryptoScreen: undefined
+  BttClaimScreen: undefined
+}
+
+export type ReceiveStackParamList = {
+  ReceiveHomeScreen:
+    | {
+        payChain?: string
+        cowallet?: string
+        multisigWalletId?: string
+        collapse?: "individuals" | "business"
+        chainColor?: string
+      }
+    | undefined
+  ReceiveAddressListScreen:
+    | {
+        orderType?: "TRACE" | "TRACE_LONG_TERM"
+        sendCoinCode?: string
+        recvCoinCode?: string
+        payChain?: string
+        sellerId?: string
+        multisigWalletId?: string
+      }
+    | undefined
+  ReceiveAddressCreateScreen: undefined
+  ReceiveAddressDeleteScreen: undefined
+  InvalidReceiveAddressScreen:
+    | {
+        orderType?: "TRACE" | "TRACE_LONG_TERM"
+        sendCoinCode?: string
+        recvCoinCode?: string
+        multisigWalletId?: string
+      }
+    | undefined
+  ReceiveExpiryScreen: undefined
+  ReceiveTxlogsScreen:
+    | {
+        orderSn: string
+        orderType?: "TRACE" | "TRACE_LONG_TERM"
+      }
+    | undefined
+  RareAddressScreen:
+    | {
+        payChain?: string
+        sendCoinCode?: string
+        recvCoinCode?: string
+        sellerId?: string
+        multisigWalletId?: string
+      }
+    | undefined
 }
 
 export type MainTabParamList = {
@@ -71,5 +157,6 @@ export type RootStackParamList = {
   MainTabs: NavigatorScreenParams<MainTabParamList>
   AddressBookStack: NavigatorScreenParams<AddressBookStackParamList>
   TransferStack: NavigatorScreenParams<TransferStackParamList>
+  ReceiveStack: NavigatorScreenParams<ReceiveStackParamList>
   SupportStack: NavigatorScreenParams<SupportStackParamList>
 }
