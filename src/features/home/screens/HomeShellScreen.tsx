@@ -9,6 +9,7 @@ import { getInviteBindingMessage } from "@/features/auth/utils/authMessages"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { getCurrentUserProfile } from "@/features/home/services/homeApi"
 import { formatAddress, formatCurrency } from "@/features/home/utils/format"
+import { resolveChainNameById } from "@/features/home/services/homeApi"
 import { getBoolean, setBoolean } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 import { useAuthStore } from "@/shared/store/useAuthStore"
@@ -25,6 +26,7 @@ export function HomeShellScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
   const session = useAuthStore(state => state.session)
+  const walletAddress = useWalletStore(state => state.address)
   const walletChainId = useWalletStore(state => state.chainId)
   const profile = useUserStore(state => state.profile)
   const setProfile = useUserStore(state => state.setProfile)
@@ -36,7 +38,7 @@ export function HomeShellScreen({ navigation, route }: Props) {
   const [loadingProfile, setLoadingProfile] = useState(false)
   const inviteHandledRef = useRef(false)
 
-  const address = profile?.address ?? session?.address ?? ""
+  const address = walletAddress ?? profile?.address ?? session?.address ?? ""
   const displayName = profile?.nickname || t("home.shell.defaultNickname")
 
   const totalAssetValue = useMemo(() => {
@@ -69,7 +71,7 @@ export function HomeShellScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     void loadCoins(walletChainId)
-  }, [loadCoins, walletChainId])
+  }, [loadCoins, walletAddress, walletChainId])
 
   useEffect(() => {
     if (!route.params?.inviteCode || inviteHandledRef.current) {
@@ -104,6 +106,16 @@ export function HomeShellScreen({ navigation, route }: Props) {
     })
   }
 
+  const handleOpenReceive = () => {
+    ;(navigation.getParent()?.getParent() as any)?.navigate("ReceiveStack", {
+      screen: "ReceiveHomeScreen",
+      params: {
+        payChain: resolveChainNameById(walletChainId),
+        chainColor: theme.colors.primary,
+      },
+    })
+  }
+
   return (
     <HomeScaffold
       title={t("home.shell.title")}
@@ -134,7 +146,7 @@ export function HomeShellScreen({ navigation, route }: Props) {
 
       <View style={styles.actionRow}>
         <ActionButton label={t("home.actions.transfer")} onPress={handleOpenTransfer} />
-        <ActionButton label={t("home.actions.receive")} onPress={handleOpenPendingFeature} />
+        <ActionButton label={t("home.actions.receive")} onPress={handleOpenReceive} />
         <ActionButton label={t("home.actions.copouch")} onPress={handleOpenPendingFeature} />
         <ActionButton label={t("home.actions.bill")} onPress={handleOpenPendingFeature} />
       </View>

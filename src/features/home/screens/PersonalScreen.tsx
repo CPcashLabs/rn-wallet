@@ -1,15 +1,17 @@
 import React from "react"
 
-import { Alert, Image, Pressable, StyleSheet, Text, View } from "react-native"
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { UserAvatar } from "@/features/home/components/UserAvatar"
 import { formatAddress } from "@/features/home/utils/format"
 import { getCurrentUserProfile, updateProfileAvatar, uploadProfileImage } from "@/features/home/services/homeApi"
 import { fileAdapter, isNativeImagePickerCancelledError } from "@/shared/native"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useUserStore } from "@/shared/store/useUserStore"
+import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 import type { SettingsStackParamList } from "@/app/navigation/types"
@@ -20,12 +22,14 @@ export function PersonalScreen({ navigation }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
   const profile = useUserStore(state => state.profile)
+  const avatarVersion = useUserStore(state => state.avatarVersion)
   const session = useAuthStore(state => state.session)
+  const walletAddress = useWalletStore(state => state.address)
   const patchProfile = useUserStore(state => state.patchProfile)
   const setProfile = useUserStore(state => state.setProfile)
   const [uploading, setUploading] = React.useState(false)
 
-  const address = profile?.address ?? session?.address ?? ""
+  const address = walletAddress ?? profile?.address ?? session?.address ?? ""
   const nickname = profile?.nickname || t("home.shell.defaultNickname")
   const email = profile?.email || "--"
   const avatar = profile?.avatar
@@ -82,7 +86,7 @@ export function PersonalScreen({ navigation }: Props) {
         <Pressable onPress={handleAvatarPress} style={styles.row}>
           <Text style={[styles.rowLabel, { color: theme.colors.text }]}>{t("home.personal.avatar")}</Text>
           <View style={styles.rowRight}>
-            {avatar ? <Image source={{ uri: avatar }} style={styles.avatarImage} /> : <AvatarFallback label={nickname} />}
+            <UserAvatar cacheVersion={avatarVersion} label={nickname} size={32} uri={avatar} />
             <Text style={[styles.rowValue, { color: theme.colors.mutedText }]}>
               {uploading ? t("common.loading") : "›"}
             </Text>
@@ -114,14 +118,6 @@ export function PersonalScreen({ navigation }: Props) {
   )
 }
 
-function AvatarFallback(props: { label: string }) {
-  return (
-    <View style={styles.avatarFallback}>
-      <Text style={styles.avatarFallbackText}>{props.label.slice(0, 1).toUpperCase()}</Text>
-    </View>
-  )
-}
-
 const styles = StyleSheet.create({
   card: {
     borderWidth: StyleSheet.hairlineWidth,
@@ -145,24 +141,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-  },
-  avatarImage: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-  },
-  avatarFallback: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#1D4ED8",
-  },
-  avatarFallbackText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "700",
   },
   rowValue: {
     fontSize: 13,

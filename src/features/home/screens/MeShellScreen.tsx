@@ -5,10 +5,12 @@ import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { UserAvatar } from "@/features/home/components/UserAvatar"
 import { getCurrentUserProfile } from "@/features/home/services/homeApi"
 import { formatAddress } from "@/features/home/utils/format"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useUserStore } from "@/shared/store/useUserStore"
+import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 import type { SettingsStackParamList } from "@/app/navigation/types"
@@ -20,11 +22,14 @@ export function MeShellScreen({ navigation }: Props) {
   const { t } = useTranslation()
   const loginType = useAuthStore(state => state.loginType)
   const session = useAuthStore(state => state.session)
+  const walletAddress = useWalletStore(state => state.address)
   const profile = useUserStore(state => state.profile)
+  const avatarVersion = useUserStore(state => state.avatarVersion)
   const setProfile = useUserStore(state => state.setProfile)
 
   const displayName = profile?.nickname || t("home.shell.defaultNickname")
-  const address = profile?.address ?? session?.address ?? ""
+  const address = walletAddress ?? profile?.address ?? session?.address ?? ""
+  const avatar = profile?.avatar
   const inviteBound = Boolean(profile?.inviteBound)
   const passkeyExported = Boolean(profile?.walletIsBackup)
   const isPasskeyLogin = loginType === "passkey"
@@ -43,9 +48,7 @@ export function MeShellScreen({ navigation }: Props) {
   return (
     <HomeScaffold title={t("home.tabs.me")}>
       <View style={[styles.profileCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-        <View style={[styles.avatar, { backgroundColor: theme.colors.primary }]}>
-          <Text style={styles.avatarText}>{displayName.slice(0, 1).toUpperCase()}</Text>
-        </View>
+        <UserAvatar cacheVersion={avatarVersion} label={displayName} size={48} uri={avatar} />
         <View style={styles.profileMeta}>
           <Text style={[styles.name, { color: theme.colors.text }]}>{displayName}</Text>
           <Text style={[styles.address, { color: theme.colors.mutedText }]}>{formatAddress(address)}</Text>
@@ -113,20 +116,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
   },
-  avatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarText: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "800",
-  },
   profileMeta: {
     flex: 1,
+    minWidth: 0,
     gap: 4,
   },
   name: {

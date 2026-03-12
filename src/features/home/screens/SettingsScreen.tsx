@@ -8,10 +8,12 @@ import { resetToAuthStack } from "@/app/navigation/navigationRef"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { clearAuthSession } from "@/shared/api/auth-session"
 import { getCurrentLanguage, setLanguage } from "@/shared/i18n"
+import { setString } from "@/shared/storage/kvStorage"
+import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useBalanceStore } from "@/shared/store/useBalanceStore"
 import { useUserStore } from "@/shared/store/useUserStore"
-import { useWalletStore } from "@/shared/store/useWalletStore"
+import { DEFAULT_WALLET_CHAIN_ID, useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { persistThemePreference } from "@/shared/theme/themePersistence"
 import { useThemeStore, type ThemeMode } from "@/shared/store/useThemeStore"
@@ -28,12 +30,34 @@ export function SettingsScreen({ navigation }: Props) {
   const themeMode = useThemeStore(state => state.themeMode)
   const currentLanguage = getCurrentLanguage()
   const isPasskeyLogin = useAuthStore(state => state.loginType) === "passkey"
+  const chainId = useWalletStore(state => state.chainId) ?? DEFAULT_WALLET_CHAIN_ID
+
+  const switchNetwork = () => {
+    const nextChainId = chainId === "199" ? "1029" : "199"
+    const walletState = useWalletStore.getState()
+
+    setString(KvStorageKeys.WalletChainId, nextChainId)
+    useWalletStore.getState().setWalletState({
+      status: walletState.status,
+      address: walletState.address,
+      chainId: nextChainId,
+    })
+    useBalanceStore.getState().clear()
+
+    if (walletState.address) {
+      void useBalanceStore.getState().loadCoins(nextChainId)
+    }
+  }
 
   const logout = async () => {
     try {
       await clearAuthSession()
       useAuthStore.getState().clearSession()
-      useWalletStore.getState().reset()
+      useWalletStore.getState().setWalletState({
+        status: "idle",
+        address: null,
+        chainId,
+      })
       useUserStore.getState().clearProfile()
       useBalanceStore.getState().clear()
       resetToAuthStack()
@@ -64,6 +88,11 @@ export function SettingsScreen({ navigation }: Props) {
           onPress={() => {
             void setLanguage(currentLanguage === "zh-CN" ? "en-US" : "zh-CN")
           }}
+        />
+        <SettingsRow
+          detail={t(`home.settings.networkOptions.${chainId === "199" ? "mainnet" : "testnet"}`)}
+          label={t("home.settings.network")}
+          onPress={switchNetwork}
         />
       </View>
 

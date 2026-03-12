@@ -19,6 +19,7 @@ type Props = NativeStackScreenProps<HomeTabStackParamList, "TotalAssetsScreen">
 export function TotalAssetsScreen({ navigation }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const address = useWalletStore(state => state.address)
   const chainId = useWalletStore(state => state.chainId)
   const coins = useBalanceStore(state => state.coins)
   const balances = useBalanceStore(state => state.balances)
@@ -38,7 +39,7 @@ export function TotalAssetsScreen({ navigation }: Props) {
 
   useEffect(() => {
     void loadCoins(chainId)
-  }, [chainId, loadCoins])
+  }, [address, chainId, loadCoins])
 
   const rows = useMemo(() => {
     return coins
