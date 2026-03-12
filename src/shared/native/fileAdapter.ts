@@ -1,5 +1,5 @@
 import { NativeCapabilityUnavailableError } from "@/shared/errors"
-import { pickNativeImage, readNativeFilePickerCapability } from "@/shared/native/nativeFilePickerModule"
+import { pickNativeImage, readNativeFilePickerCapability, saveNativeImage } from "@/shared/native/nativeFilePickerModule"
 import type { AdapterResult, CapabilityDescriptor } from "@/shared/native/types"
 import { unavailableResult } from "@/shared/native/types"
 
@@ -38,8 +38,27 @@ export const fileAdapter: FileAdapter = {
   async exportFile() {
     return unavailableResult("file")
   },
-  async saveImage() {
-    return unavailableResult("file")
+  async saveImage(input) {
+    const capability = readNativeFilePickerCapability()
+    if (!capability.supported) {
+      return {
+        ok: false,
+        error: new NativeCapabilityUnavailableError("file", capability.reason),
+      }
+    }
+
+    try {
+      await saveNativeImage(input.filename, input.base64)
+      return {
+        ok: true,
+        data: undefined,
+      }
+    } catch (error) {
+      return {
+        ok: false,
+        error: normalizeNativeFileError(error),
+      }
+    }
   },
 }
 

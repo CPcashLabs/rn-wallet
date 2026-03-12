@@ -15,6 +15,7 @@ type NativeFilePickerConstants = {
 
 type NativeFilePickerModuleShape = NativeFilePickerConstants & {
   pickImage(): Promise<NativePickedImage>
+  saveImage(filename: string, base64: string): Promise<void>
 }
 
 const nativeFilePickerModule = NativeModules.CPCashFilePicker as NativeFilePickerModuleShape | undefined
@@ -63,4 +64,8 @@ function requireNativeFilePickerModule() {
 
 export async function pickNativeImage() {
   return requireNativeFilePickerModule().pickImage()
+}
+
+export async function saveNativeImage(filename: string, base64: string) {
+  return requireNativeFilePickerModule().saveImage(filename, base64)
 }

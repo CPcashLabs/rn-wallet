@@ -2,6 +2,7 @@
 
 #import <AVFoundation/AVFoundation.h>
 #import <CoreImage/CoreImage.h>
+#import <Photos/Photos.h>
 #import <PhotosUI/PhotosUI.h>
 #import <React/RCTUtils.h>
 
@@ -211,6 +212,8 @@ didOutputMetadataObjects:(NSArray<__kindof AVMetadataObject *> *)metadataObjects
 @property (nonatomic, copy, nullable) NSString *pendingPickerMode;
 @property (nonatomic, copy, nullable) RCTPromiseResolveBlock pendingScanResolve;
 @property (nonatomic, copy, nullable) RCTPromiseRejectBlock pendingScanReject;
+@property (nonatomic, copy, nullable) RCTPromiseResolveBlock pendingSaveResolve;
+@property (nonatomic, copy, nullable) RCTPromiseRejectBlock pendingSaveReject;
 @end
 
 @implementation CPCashFilePicker
@@ -328,6 +331,88 @@ RCT_EXPORT_METHOD(scan:(RCTPromiseResolveBlock)resolve
   dispatch_async(dispatch_get_main_queue(), ^{
     [self presentScannerViewController];
   });
+}
+
+RCT_EXPORT_METHOD(saveImage:(NSString *)filename
+                  base64:(NSString *)base64
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+{
+  if (self.pendingSaveResolve != nil || self.pendingSaveReject != nil) {
+    reject(@"busy", @"Another save request is already in progress.", nil);
+    return;
+  }
+
+  NSData *imageData = [[NSData alloc] initWithBase64EncodedString:base64 options:NSDataBase64DecodingIgnoreUnknownCharacters];
+  if (imageData == nil) {
+    reject(@"invalid_image", @"Failed to decode image data.", nil);
+    return;
+  }
+
+  self.pendingSaveResolve = resolve;
+  self.pendingSaveReject = reject;
+
+  void (^performSave)(void) = ^{
+    [[PHPhotoLibrary sharedPhotoLibrary] performChanges:^{
+      PHAssetCreationRequest *request = [PHAssetCreationRequest creationRequestForAsset];
+      PHAssetResourceCreationOptions *options = [[PHAssetResourceCreationOptions alloc] init];
+      options.originalFilename = filename.length > 0 ? filename : @"receive-qr.png";
+      [request addResourceWithType:PHAssetResourceTypePhoto data:imageData options:options];
+    } completionHandler:^(BOOL success, NSError * _Nullable error) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        if (success) {
+          [self resolvePendingSave];
+          return;
+        }
+
+        [self rejectPendingSaveWithCode:@"save_failed"
+                                message:error.localizedDescription ?: @"Failed to save image."
+                                  error:error];
+      });
+    }];
+  };
+
+  PHAuthorizationStatus status;
+  if (@available(iOS 14, *)) {
+    status = [PHPhotoLibrary authorizationStatusForAccessLevel:PHAccessLevelAddOnly];
+  } else {
+    status = [PHPhotoLibrary authorizationStatus];
+  }
+
+  if (status == PHAuthorizationStatusAuthorized || status == PHAuthorizationStatusLimited) {
+    performSave();
+    return;
+  }
+
+  if (status == PHAuthorizationStatusDenied || status == PHAuthorizationStatusRestricted) {
+    [self rejectPendingSaveWithCode:@"permission_denied" message:@"Photo permission was denied." error:nil];
+    return;
+  }
+
+  if (@available(iOS 14, *)) {
+    [PHPhotoLibrary requestAuthorizationForAccessLevel:PHAccessLevelAddOnly handler:^(PHAuthorizationStatus authorizationStatus) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        if (authorizationStatus == PHAuthorizationStatusAuthorized || authorizationStatus == PHAuthorizationStatusLimited) {
+          performSave();
+          return;
+        }
+
+        [self rejectPendingSaveWithCode:@"permission_denied" message:@"Photo permission was denied." error:nil];
+      });
+    }];
+    return;
+  }
+
+  [PHPhotoLibrary requestAuthorization:^(PHAuthorizationStatus authorizationStatus) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+      if (authorizationStatus == PHAuthorizationStatusAuthorized) {
+        performSave();
+        return;
+      }
+
+      [self rejectPendingSaveWithCode:@"permission_denied" message:@"Photo permission was denied." error:nil];
+    });
+  }];
 }
 
 - (BOOL)hasPendingRequest
@@ -596,6 +681,38 @@ RCT_EXPORT_METHOD(scan:(RCTPromiseResolveBlock)resolve
 {
   self.pendingScanResolve = nil;
   self.pendingScanReject = nil;
+}
+
+- (void)resolvePendingSave
+{
+  RCTPromiseResolveBlock resolve = self.pendingSaveResolve;
+  [self clearPendingSaveCallbacks];
+
+  if (resolve == nil) {
+    return;
+  }
+
+  resolve(nil);
+}
+
+- (void)rejectPendingSaveWithCode:(NSString *)code
+                          message:(NSString *)message
+                            error:(NSError * _Nullable)error
+{
+  RCTPromiseRejectBlock reject = self.pendingSaveReject;
+  [self clearPendingSaveCallbacks];
+
+  if (reject == nil) {
+    return;
+  }
+
+  reject(code, message, error);
+}
+
+- (void)clearPendingSaveCallbacks
+{
+  self.pendingSaveResolve = nil;
+  self.pendingSaveReject = nil;
 }
 
 - (NSString *)unavailableReason

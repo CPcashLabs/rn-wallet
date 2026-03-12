@@ -1,9 +1,14 @@
 package com.cpcashrn.passkey
 
 import android.app.Activity
+import android.content.ContentValues
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import android.provider.OpenableColumns
+import android.util.Base64
 import android.webkit.MimeTypeMap
 import com.facebook.react.bridge.ActivityEventListener
 import com.facebook.react.bridge.Arguments
@@ -218,6 +223,46 @@ class CPCashFilePickerModule(private val reactContext: ReactApplicationContext) 
     } catch (error: Exception) {
       pendingImageScanPromise = null
       promise.reject("picker_error", error.message, error)
+    }
+  }
+
+  @ReactMethod
+  fun saveImage(filename: String, base64: String, promise: Promise) {
+    try {
+      val bytes = Base64.decode(base64, Base64.DEFAULT)
+      val resolver = reactContext.contentResolver
+      val values = ContentValues().apply {
+        put(MediaStore.Images.Media.DISPLAY_NAME, filename.ifBlank { "receive-qr.png" })
+        put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+          put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/CPCash")
+          put(MediaStore.Images.Media.IS_PENDING, 1)
+        }
+      }
+
+      val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+      if (uri == null) {
+        promise.reject("save_failed", "Failed to create image entry.")
+        return
+      }
+
+      resolver.openOutputStream(uri)?.use { output ->
+        output.write(bytes)
+        output.flush()
+      } ?: run {
+        promise.reject("save_failed", "Failed to open image output stream.")
+        return
+      }
+
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        values.clear()
+        values.put(MediaStore.Images.Media.IS_PENDING, 0)
+        resolver.update(uri, values, null, null)
+      }
+
+      promise.resolve(null)
+    } catch (error: Exception) {
+      promise.reject("save_failed", error.message, error)
     }
   }
 

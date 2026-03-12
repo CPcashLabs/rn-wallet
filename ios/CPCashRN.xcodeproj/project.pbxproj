@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		00E356F31AD99517003FC87E /* CPCashRNTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 00E356F21AD99517003FC87E /* CPCashRNTests.m */; };
 		08F9A1C10000000000000001 /* AuthenticationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 08F9A1C00000000000000001 /* AuthenticationServices.framework */; };
+		08F9A1C50000000000000001 /* Photos.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 08F9A1C40000000000000001 /* Photos.framework */; };
 		08F9A1C30000000000000001 /* PhotosUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 08F9A1C20000000000000001 /* PhotosUI.framework */; };
 		0C80B921A6F3F58F76C31292 /* libPods-CPCashRN.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DCACB8F33CDC322A6C60F78 /* libPods-CPCashRN.a */; };
 		13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB01A68108700A75B9A /* AppDelegate.mm */; };
@@ -36,6 +37,7 @@
 		00E356F11AD99517003FC87E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		00E356F21AD99517003FC87E /* CPCashRNTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CPCashRNTests.m; sourceTree = "<group>"; };
 		08F9A1C00000000000000001 /* AuthenticationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AuthenticationServices.framework; path = System/Library/Frameworks/AuthenticationServices.framework; sourceTree = SDKROOT; };
+		08F9A1C40000000000000001 /* Photos.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Photos.framework; path = System/Library/Frameworks/Photos.framework; sourceTree = SDKROOT; };
 		08F9A1C20000000000000001 /* PhotosUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = PhotosUI.framework; path = System/Library/Frameworks/PhotosUI.framework; sourceTree = SDKROOT; };
 		13B07F961A680F5B00A75B9A /* CPCashRN.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CPCashRN.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FAF1A68108700A75B9A /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AppDelegate.h; path = CPCashRN/AppDelegate.h; sourceTree = "<group>"; };
@@ -73,6 +75,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				08F9A1C10000000000000001 /* AuthenticationServices.framework in Frameworks */,
+				08F9A1C50000000000000001 /* Photos.framework in Frameworks */,
 				08F9A1C30000000000000001 /* PhotosUI.framework in Frameworks */,
 				0C80B921A6F3F58F76C31292 /* libPods-CPCashRN.a in Frameworks */,
 			);
@@ -121,6 +124,7 @@
 			isa = PBXGroup;
 			children = (
 				08F9A1C00000000000000001 /* AuthenticationServices.framework */,
+				08F9A1C40000000000000001 /* Photos.framework */,
 				08F9A1C20000000000000001 /* PhotosUI.framework */,
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
 				5DCACB8F33CDC322A6C60F78 /* libPods-CPCashRN.a */,
