@@ -5,12 +5,9 @@ import {
   Alert,
   Animated,
   Easing,
-  LayoutAnimation,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
-  UIManager,
   View,
 } from "react-native"
 import { useTranslation } from "react-i18next"
@@ -32,9 +29,11 @@ type CollapseKey = "individuals" | "business"
 
 const FONT = {
   caption: 12,
+  footnote: 13,
   body: 14,
+  subhead: 15,
   bodyLarge: 16,
-  title: 20,
+  title: 17,
   headline: 28,
 } as const
 
@@ -71,14 +70,7 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
   const currentOrderType = expandedCard === "individuals" ? "TRACE" : "TRACE_LONG_TERM"
   const dynamicColor = config?.payChainColor || route.params?.chainColor || theme.colors.primary
   const surfaceColor = "#F4F4F1"
-  const cardColor = "#FFFFFF"
   const qrSource = isNormalReceive ? receiveAddress : currentOrder?.address || receiveAddress
-
-  useEffect(() => {
-    if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
-      UIManager.setLayoutAnimationEnabledExperimental(true)
-    }
-  }, [])
 
   function resolveLoadHomeMessage(error: unknown) {
     if (!(error instanceof Error) || !error.message) {
@@ -368,21 +360,6 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
       return
     }
 
-    LayoutAnimation.configureNext({
-      duration: 280,
-      create: {
-        type: LayoutAnimation.Types.easeInEaseOut,
-        property: LayoutAnimation.Properties.opacity,
-      },
-      update: {
-        type: LayoutAnimation.Types.easeInEaseOut,
-      },
-      delete: {
-        type: LayoutAnimation.Types.easeInEaseOut,
-        property: LayoutAnimation.Properties.opacity,
-      },
-    })
-
     setExpandedCard(kind)
   }
 
@@ -516,10 +493,14 @@ function CollapseCard(props: {
 }) {
   const rotate = useRef(new Animated.Value(props.expanded ? 1 : 0)).current
   const progress = useRef(new Animated.Value(props.expanded ? 1 : 0)).current
-  const [contentHeight, setContentHeight] = useState(0)
+  const [shouldRenderBody, setShouldRenderBody] = useState(props.expanded)
 
   useEffect(() => {
-    Animated.parallel([
+    if (props.expanded) {
+      setShouldRenderBody(true)
+    }
+
+    const animation = Animated.parallel([
       Animated.timing(rotate, {
         toValue: props.expanded ? 1 : 0,
         duration: 260,
@@ -532,20 +513,30 @@ function CollapseCard(props: {
         easing: props.expanded ? Easing.out(Easing.cubic) : Easing.inOut(Easing.quad),
         useNativeDriver: true,
       }),
-    ]).start()
+    ])
+
+    animation.start(({ finished }) => {
+      if (finished && !props.expanded) {
+        setShouldRenderBody(false)
+      }
+    })
+
+    return () => {
+      animation.stop()
+    }
   }, [progress, props.expanded, rotate])
 
   const arrowRotate = rotate.interpolate({
     inputRange: [0, 1],
     outputRange: ["0deg", "180deg"],
   })
-  const drawerHeight = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, contentHeight || 1],
-  })
   const drawerOpacity = progress.interpolate({
     inputRange: [0, 0.2, 1],
     outputRange: [0, 0.35, 1],
+  })
+  const drawerScaleY = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.92, 1],
   })
   const drawerTranslateY = progress.interpolate({
     inputRange: [0, 1],
@@ -561,43 +552,20 @@ function CollapseCard(props: {
         </View>
         <Animated.Text style={[styles.collapseArrow, { transform: [{ rotate: arrowRotate }] }]}>⌃</Animated.Text>
       </Pressable>
-      {contentHeight === 0 ? (
-        <View
-          pointerEvents="none"
-          style={styles.measureWrap}
-          onLayout={event => {
-            const nextHeight = event.nativeEvent.layout.height
-            if (nextHeight > 0 && nextHeight !== contentHeight) {
-              setContentHeight(nextHeight)
-            }
-          }}
+      {shouldRenderBody ? (
+        <Animated.View
+          style={[
+            styles.drawerFrame,
+            {
+              opacity: drawerOpacity,
+              transform: [{ translateY: drawerTranslateY }, { scaleY: drawerScaleY }],
+            },
+          ]}
+          pointerEvents={props.expanded ? "auto" : "none"}
         >
-          {props.children}
-        </View>
+          <View style={styles.collapseBody}>{props.children}</View>
+        </Animated.View>
       ) : null}
-      <Animated.View
-        style={[
-          styles.drawerFrame,
-          {
-            height: drawerHeight,
-            opacity: drawerOpacity,
-            transform: [{ translateY: drawerTranslateY }],
-          },
-        ]}
-        pointerEvents={props.expanded ? "auto" : "none"}
-      >
-        <View
-          style={styles.collapseBody}
-          onLayout={event => {
-            const nextHeight = event.nativeEvent.layout.height
-            if (nextHeight > 0 && nextHeight !== contentHeight) {
-              setContentHeight(nextHeight)
-            }
-          }}
-        >
-          {props.children}
-        </View>
-      </Animated.View>
     </View>
   )
 }
@@ -629,6 +597,7 @@ function QrPreview(props: { matrix: QrMatrix }) {
 }
 
 function ActionButton(props: { label: string; onPress: () => void }) {
+  const theme = useAppTheme()
   const scale = useRef(new Animated.Value(1)).current
 
   return (
@@ -651,7 +620,16 @@ function ActionButton(props: { label: string; onPress: () => void }) {
       }}
       onPress={props.onPress}
     >
-      <Animated.View style={[styles.actionButton, { transform: [{ scale }] }]}>
+      <Animated.View
+        style={[
+          styles.actionButton,
+          {
+            borderColor: theme.colors.border,
+            backgroundColor: theme.colors.surface,
+            transform: [{ scale }],
+          },
+        ]}
+      >
         <Text style={styles.actionButtonText}>{props.label}</Text>
       </Animated.View>
     </Pressable>
@@ -701,7 +679,7 @@ const styles = StyleSheet.create({
   collapseCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 28,
-    paddingHorizontal: SPACE.lg,
+    paddingHorizontal: SPACE.md,
     paddingVertical: SPACE.md,
     shadowColor: "#7A5A00",
     shadowOpacity: 0.08,
@@ -730,7 +708,7 @@ const styles = StyleSheet.create({
   },
   collapseTitle: {
     fontSize: FONT.title,
-    fontWeight: "500",
+    fontWeight: "600",
     color: "#121926",
   },
   collapseArrow: {
@@ -739,26 +717,19 @@ const styles = StyleSheet.create({
   },
   collapseBody: {
     marginTop: SPACE.sm,
-    paddingTop: SPACE.md,
+    paddingTop: SPACE.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "#DFE3E8",
   },
   drawerFrame: {
     overflow: "hidden",
   },
-  measureWrap: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    opacity: 0,
-    zIndex: -1,
-  },
   detailWrap: {
-    gap: SPACE.md,
+    gap: SPACE.sm,
   },
   supportText: {
-    fontSize: FONT.bodyLarge,
-    lineHeight: 22,
+    fontSize: FONT.subhead,
+    lineHeight: 21,
     textAlign: "center",
     color: "#232B37",
   },
@@ -811,13 +782,13 @@ const styles = StyleSheet.create({
     gap: SPACE.xs,
   },
   addressLabel: {
-    fontSize: FONT.bodyLarge,
+    fontSize: FONT.footnote,
     color: "#8B9098",
   },
   addressValue: {
-    fontSize: FONT.title,
-    lineHeight: 30,
-    fontWeight: "700",
+    fontSize: FONT.bodyLarge,
+    lineHeight: 24,
+    fontWeight: "600",
     color: "#2E3137",
   },
   addressText: {
@@ -832,18 +803,17 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
-    minHeight: 52,
-    borderRadius: 999,
+    minHeight: 44,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#D3D8DE",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FFFFFF",
+    paddingHorizontal: SPACE.sm,
   },
   actionButtonText: {
-    fontSize: FONT.title,
+    fontSize: FONT.subhead,
     color: "#111111",
-    fontWeight: "500",
+    fontWeight: "600",
   },
   depositRow: {
     flexDirection: "row",
@@ -851,20 +821,20 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   depositLabel: {
-    fontSize: FONT.title,
+    fontSize: FONT.subhead,
     color: "#8B9098",
   },
   depositValue: {
-    fontSize: FONT.title,
+    fontSize: FONT.subhead,
     color: "#111111",
-    fontWeight: "500",
+    fontWeight: "600",
   },
   recordRow: {
     minHeight: 64,
     flexDirection: "row",
     alignItems: "center",
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#D9DDE2",
+    borderTopColor: "#E5E7EB",
     gap: SPACE.sm,
     paddingTop: SPACE.md,
   },

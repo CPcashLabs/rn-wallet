@@ -28,4 +28,8 @@ export type UserProfile = {
   levelRank?: number
   inviteBound?: boolean
   walletIsBackup?: boolean
+  transferEmailNotifyEnable?: boolean
+  rewardEmailNotifyEnable?: boolean
+  receiptEmailNotifyEnable?: boolean
+  backupWalletNotifyEnable?: boolean
 }

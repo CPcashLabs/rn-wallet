@@ -57,6 +57,22 @@ export function MeShellScreen({ navigation }: Props) {
           }}
         />
         <MenuRow
+          label={t("home.me.messages")}
+          onPress={() => {
+            ;(navigation.getParent()?.getParent() as any)?.navigate("MessageStack", {
+              screen: "MessageScreen",
+            })
+          }}
+        />
+        <MenuRow
+          label={t("home.me.tags")}
+          onPress={() => {
+            ;(navigation.getParent()?.getParent() as any)?.navigate("OrdersStack", {
+              screen: "LabelManagementScreen",
+            })
+          }}
+        />
+        <MenuRow
           label={t("home.me.totalAssets")}
           onPress={() => {
             ;(navigation.getParent() as any)?.navigate("HomeTab", {
@@ -64,6 +80,7 @@ export function MeShellScreen({ navigation }: Props) {
             })
           }}
         />
+        <MenuRow label={t("wp09.invite.title")} onPress={() => navigation.navigate("InviteHomeScreen")} />
         <MenuRow label={t("home.me.settings")} onPress={() => navigation.navigate("SettingsHomeScreen")} />
         {isPasskeyLogin ? (
           <MenuRow

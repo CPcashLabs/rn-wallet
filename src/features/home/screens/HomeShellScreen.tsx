@@ -78,10 +78,6 @@ export function HomeShellScreen({ navigation, route }: Props) {
     setBoolean(KvStorageKeys.ShowBalance, next)
   }
 
-  const handleOpenPendingFeature = () => {
-    Alert.alert(t("common.infoTitle"), t("common.unsupported"))
-  }
-
   const handleOpenTransfer = () => {
     ;(navigation.getParent()?.getParent() as any)?.navigate("TransferStack", {
       screen: "SelectTokenScreen",
@@ -94,6 +90,12 @@ export function HomeShellScreen({ navigation, route }: Props) {
       params: {
         intent: "receive",
       },
+    })
+  }
+
+  const handleOpenCopouch = () => {
+    ;(navigation.getParent()?.getParent() as any)?.navigate("CowalletStack", {
+      screen: "CowalletHomeScreen",
     })
   }
 
@@ -128,8 +130,8 @@ export function HomeShellScreen({ navigation, route }: Props) {
       <View style={styles.actionRow}>
         <ActionButton label={t("home.actions.transfer")} onPress={handleOpenTransfer} />
         <ActionButton label={t("home.actions.receive")} onPress={handleOpenReceive} />
-        <ActionButton label={t("home.actions.copouch")} onPress={handleOpenPendingFeature} />
-        <ActionButton label={t("home.actions.bill")} onPress={handleOpenPendingFeature} />
+        <ActionButton label={t("home.actions.copouch")} onPress={handleOpenCopouch} />
+        <ActionButton label={t("home.actions.bill")} onPress={() => Alert.alert(t("common.infoTitle"), t("common.unsupported"))} />
       </View>
 
       <View style={[styles.tipsCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>

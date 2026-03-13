@@ -8,8 +8,8 @@ import { resetToAuthStack } from "@/app/navigation/navigationRef"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { resetProfileSyncSession } from "@/features/home/hooks/useProfileSync"
 import { clearAuthSession } from "@/shared/api/auth-session"
-import { getCurrentLanguage, setLanguage } from "@/shared/i18n"
-import { setString } from "@/shared/storage/kvStorage"
+import { getCurrentLanguage } from "@/shared/i18n"
+import { getJson, getNumber, setString } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useBalanceStore } from "@/shared/store/useBalanceStore"
@@ -24,6 +24,10 @@ import type { SettingsStackParamList } from "@/app/navigation/types"
 type Props = NativeStackScreenProps<SettingsStackParamList, "SettingsHomeScreen">
 
 const themeModes: ThemeMode[] = ["system", "light", "dark"]
+type SelectedCurrency = {
+  currency: string
+  symbol: string
+}
 
 export function SettingsScreen({ navigation }: Props) {
   const theme = useAppTheme()
@@ -32,6 +36,9 @@ export function SettingsScreen({ navigation }: Props) {
   const currentLanguage = getCurrentLanguage()
   const isPasskeyLogin = useAuthStore(state => state.loginType) === "passkey"
   const chainId = useWalletStore(state => state.chainId) ?? DEFAULT_WALLET_CHAIN_ID
+  const profile = useUserStore(state => state.profile)
+  const selectedCurrency = getJson<SelectedCurrency>(KvStorageKeys.SelectedCurrency)
+  const rpcIndex = getNumber(KvStorageKeys.WalletRpcIndex) ?? 0
 
   const switchNetwork = () => {
     const nextChainId = chainId === "199" ? "1029" : "199"
@@ -87,9 +94,7 @@ export function SettingsScreen({ navigation }: Props) {
         <SettingsRow
           detail={t(`home.settings.languageOptions.${currentLanguage}`)}
           label={t("home.settings.language")}
-          onPress={() => {
-            void setLanguage(currentLanguage === "zh-CN" ? "en-US" : "zh-CN")
-          }}
+          onPress={() => navigation.navigate("LanguageScreen")}
         />
         <SettingsRow
           detail={t(`home.settings.networkOptions.${chainId === "199" ? "mainnet" : "testnet"}`)}
@@ -101,20 +106,23 @@ export function SettingsScreen({ navigation }: Props) {
       <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
         <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("home.settings.preferenceSection")}</Text>
         <SettingsRow
-          detail={t("home.settings.comingSoon")}
+          detail={profile?.email || t("wp09.email.unbound")}
           label={t("home.settings.email")}
-          onPress={() => Alert.alert(t("common.infoTitle"), t("home.settings.comingSoonDetail"))}
+          onPress={() => navigation.navigate("EmailHomeScreen")}
         />
         <SettingsRow
-          detail={t("home.settings.comingSoon")}
+          detail={selectedCurrency?.currency ?? "USD"}
           label={t("home.settings.unit")}
-          onPress={() => Alert.alert(t("common.infoTitle"), t("home.settings.comingSoonDetail"))}
+          onPress={() => navigation.navigate("UnitScreen")}
         />
         <SettingsRow
-          detail={t("home.settings.comingSoon")}
+          detail={t("wp09.node.nodeDetail", { index: rpcIndex + 1 })}
           label={t("home.settings.node")}
-          onPress={() => Alert.alert(t("common.infoTitle"), t("home.settings.comingSoonDetail"))}
+          onPress={() => navigation.navigate("NodeSetupScreen")}
         />
+        <SettingsRow label={t("wp09.email.notificationTitle")} onPress={() => navigation.navigate("EmailNotificationScreen")} />
+        <SettingsRow label={t("wp09.help.title")} onPress={() => navigation.navigate("HelpCenterScreen")} />
+        <SettingsRow label={t("wp09.about.title")} onPress={() => navigation.navigate("AboutScreen")} />
       </View>
 
       <Pressable onPress={() => void logout()} style={[styles.logoutButton, { backgroundColor: "#DC2626" }]}>

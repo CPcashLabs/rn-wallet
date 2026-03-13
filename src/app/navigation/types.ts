@@ -23,6 +23,45 @@ export type SettingsStackParamList = {
   SettingsHomeScreen: undefined
   UpdateNameScreen: undefined
   ExportPasskeyScreen: undefined
+  EmailNotificationScreen: undefined
+  EmailHomeScreen: undefined
+  EmailBindedScreen: undefined
+  EmailUnbindScreen: undefined
+  VerifyEmailScreen: { email: string }
+  LanguageScreen: undefined
+  UnitScreen: undefined
+  NodeSetupScreen: undefined
+  HelpCenterScreen: undefined
+  FAQScreen: undefined
+  ReceiveDiffScreen: undefined
+  AboutScreen: undefined
+  FeedbackScreen: undefined
+  LicensesScreen: undefined
+  UserGuideScreen: undefined
+  WalletGuideDetailScreen: undefined
+  FAQGuideDetailScreen: undefined
+  KnowledgeGuideDetailScreen: undefined
+  SafetyGuideDetailScreen: undefined
+  InviteHomeScreen: undefined
+  InviteCodeScreen: undefined
+  InvitePromotionScreen: undefined
+  InviteHowItWorksScreen: undefined
+}
+
+export type MessageStackParamList = {
+  MessageScreen: undefined
+}
+
+export type OrdersStackParamList = {
+  OrderDetailScreen: {
+    orderSn: string
+    source?: "message" | "manual"
+  }
+  TagsNotesScreen: {
+    orderSn: string
+  }
+  TagsNotesEditScreen: undefined
+  LabelManagementScreen: undefined
 }
 
 export type AddressBookStackParamList = {
@@ -185,6 +224,36 @@ export type ReceiveStackParamList = {
   }
 }
 
+export type CowalletStackParamList = {
+  CowalletHomeScreen: undefined
+  CowalletFaqScreen: undefined
+  CowalletDetailScreen: {
+    id: string
+    walletBgColor?: number
+  }
+  CowalletMemberScreen: {
+    id: string
+  }
+  CowalletSettingScreen: {
+    id: string
+  }
+  CowalletBillListScreen: {
+    id: string
+  }
+  CowalletRemindScreen: {
+    id: string
+  }
+  CowalletBalanceScreen: {
+    id: string
+  }
+  CowalletSendSelfScreen: {
+    id: string
+  }
+  CowalletReceiveScreen: {
+    id: string
+  }
+}
+
 export type MainTabParamList = {
   HomeTab: NavigatorScreenParams<HomeTabStackParamList> | undefined
   MeTab: NavigatorScreenParams<SettingsStackParamList> | undefined
@@ -198,8 +267,11 @@ export type RootStackParamList = {
   BootstrapGate: undefined
   AuthStack: NavigatorScreenParams<AuthStackParamList>
   MainTabs: NavigatorScreenParams<MainTabParamList>
+  MessageStack: NavigatorScreenParams<MessageStackParamList>
+  OrdersStack: NavigatorScreenParams<OrdersStackParamList>
   AddressBookStack: NavigatorScreenParams<AddressBookStackParamList>
   TransferStack: NavigatorScreenParams<TransferStackParamList>
   ReceiveStack: NavigatorScreenParams<ReceiveStackParamList>
+  CowalletStack: NavigatorScreenParams<CowalletStackParamList>
   SupportStack: NavigatorScreenParams<SupportStackParamList>
 }
