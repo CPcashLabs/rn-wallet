@@ -18,6 +18,10 @@ type UserProfilePayload = {
   level_rank?: number
   invite_bound?: boolean
   wallet_is_backup?: boolean
+  transfer_email_notify_enable?: boolean
+  reward_email_notify_enable?: boolean
+  receipt_email_notify_enable?: boolean
+  backup_wallet_notify_enable?: boolean
 }
 
 type CoinListPayloadItem = {
@@ -86,6 +90,10 @@ function toUserProfile(payload: UserProfilePayload): UserProfile {
     levelRank: payload.level_rank,
     inviteBound: payload.invite_bound,
     walletIsBackup: payload.wallet_is_backup,
+    transferEmailNotifyEnable: payload.transfer_email_notify_enable,
+    rewardEmailNotifyEnable: payload.reward_email_notify_enable,
+    receiptEmailNotifyEnable: payload.receipt_email_notify_enable,
+    backupWalletNotifyEnable: payload.backup_wallet_notify_enable,
   }
 }
 

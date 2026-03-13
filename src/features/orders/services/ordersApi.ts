@@ -160,6 +160,28 @@ type BillDetailPayload = {
   status?: number | string
 }
 
+type CategoryLabelPayload = {
+  category_label_id?: number | string
+  label_name?: string
+  remark?: string
+}
+
+type BoundOrderLabelPayload = {
+  notes?: string
+  notes_image_url?: string | null
+  member_order_label_item_volist?: Array<{
+    category_label_id?: number | string
+    label_name?: string
+  }>
+}
+
+type UploadFilePayload = {
+  url?: string
+  file_url?: string
+  full_url?: string
+  path?: string
+}
+
 export type OrderListItem = {
   walletAddress: string
   createdAt: number | null
@@ -304,6 +326,24 @@ export type BillDetail = {
   feeAmount: number
   note: string
   status: number
+}
+
+export type CategoryLabel = {
+  id: string
+  name: string
+  remark: string
+}
+
+export type OrderLabelBinding = {
+  notes: string
+  notesImageUrl: string
+  labels: CategoryLabel[]
+}
+
+export type UploadableImage = {
+  uri: string
+  name?: string
+  mimeType?: string
 }
 
 export type RangeQuery = {
@@ -542,6 +582,23 @@ function toBillDetail(payload?: BillDetailPayload | null): BillDetail {
   }
 }
 
+function toCategoryLabel(payload?: CategoryLabelPayload | null): CategoryLabel {
+  return {
+    id: toStringValue(payload?.category_label_id),
+    name: toStringValue(payload?.label_name),
+    remark: toStringValue(payload?.remark),
+  }
+}
+
+function resolveUploadedFileUrl(payload?: UploadFilePayload | null) {
+  return (
+    toStringValue(payload?.full_url) ||
+    toStringValue(payload?.url) ||
+    toStringValue(payload?.file_url) ||
+    toStringValue(payload?.path)
+  )
+}
+
 export async function getOrderTxlogs(input: {
   page?: number
   perPage?: number
@@ -716,4 +773,80 @@ export async function exportOrderBill(input: {
   })
 
   return response.data.data
+}
+
+export async function listUserCategoryLabels() {
+  const response = await apiClient.get<ApiEnvelope<CategoryLabelPayload[]>>(
+    "/api/order/member/orderCategory/listUserCategoryLabel",
+  )
+
+  return Array.isArray(response.data.data) ? response.data.data.map(toCategoryLabel) : []
+}
+
+export async function createCategoryLabel(input: { labelName: string }) {
+  const response = await apiClient.post<ApiEnvelope<boolean>>("/api/order/member/orderCategory/saveCategoryLabel", {
+    label_name: input.labelName,
+  })
+
+  return Boolean(response.data.data)
+}
+
+export async function deleteCategoryLabel(categoryId: string) {
+  const response = await apiClient.delete<ApiEnvelope<boolean>>("/api/order/member/orderCategory/deleteCategoryLabel", {
+    params: {
+      category_id: categoryId,
+    },
+  })
+
+  return Boolean(response.data.data)
+}
+
+export async function findOrderLabels(orderSn: string) {
+  const response = await apiClient.get<ApiEnvelope<BoundOrderLabelPayload>>("/api/order/member/orderCategory/findOrderLabels", {
+    params: {
+      order_sn: orderSn,
+    },
+  })
+
+  const data = response.data.data
+
+  return {
+    notes: toStringValue(data?.notes),
+    notesImageUrl: toStringValue(data?.notes_image_url),
+    labels: Array.isArray(data?.member_order_label_item_volist) ? data.member_order_label_item_volist.map(toCategoryLabel) : [],
+  } satisfies OrderLabelBinding
+}
+
+export async function bindCategoryLabel(input: {
+  orderSn: string
+  categoryLabelIds: string[]
+  notes: string
+  notesImageUrl?: string
+}) {
+  const response = await apiClient.post<ApiEnvelope<boolean>>("/api/order/member/orderCategory/bindCategoryLabel", {
+    order_sn: input.orderSn,
+    category_label_ids: input.categoryLabelIds,
+    notes: input.notes,
+    notes_image_url: input.notesImageUrl,
+  })
+
+  return Boolean(response.data.data)
+}
+
+export async function uploadOrderNoteImage(image: UploadableImage) {
+  const formData = new FormData()
+
+  formData.append("file", {
+    uri: image.uri,
+    name: image.name ?? "note.jpg",
+    type: image.mimeType ?? "image/jpeg",
+  } as any)
+
+  const response = await apiClient.post<ApiEnvelope<UploadFilePayload>>("/api/system/member/storage/upload-file", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  })
+
+  return resolveUploadedFileUrl(response.data.data)
 }
