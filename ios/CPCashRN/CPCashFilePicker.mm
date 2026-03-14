@@ -214,6 +214,9 @@ didOutputMetadataObjects:(NSArray<__kindof AVMetadataObject *> *)metadataObjects
 @property (nonatomic, copy, nullable) RCTPromiseRejectBlock pendingScanReject;
 @property (nonatomic, copy, nullable) RCTPromiseResolveBlock pendingSaveResolve;
 @property (nonatomic, copy, nullable) RCTPromiseRejectBlock pendingSaveReject;
+@property (nonatomic, copy, nullable) RCTPromiseResolveBlock pendingExportResolve;
+@property (nonatomic, copy, nullable) RCTPromiseRejectBlock pendingExportReject;
+@property (nonatomic, strong, nullable) NSURL *pendingExportTemporaryURL;
 @end
 
 @implementation CPCashFilePicker
@@ -413,6 +416,75 @@ RCT_EXPORT_METHOD(saveImage:(NSString *)filename
       [self rejectPendingSaveWithCode:@"permission_denied" message:@"Photo permission was denied." error:nil];
     });
   }];
+}
+
+RCT_EXPORT_METHOD(exportFile:(NSString *)filename
+                  base64:(NSString *)base64
+                  mimeType:(NSString *)mimeType
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+{
+  if (self.pendingExportResolve != nil || self.pendingExportReject != nil) {
+    reject(@"busy", @"Another export request is already in progress.", nil);
+    return;
+  }
+
+  NSData *fileData = [[NSData alloc] initWithBase64EncodedString:base64 options:NSDataBase64DecodingIgnoreUnknownCharacters];
+  if (fileData == nil) {
+    reject(@"invalid_file", @"Failed to decode file data.", nil);
+    return;
+  }
+
+  NSString *safeFilename = filename.length > 0 ? filename : @"cpcash-export.txt";
+  NSString *temporaryFilename = [NSString stringWithFormat:@"%@-%@", NSUUID.UUID.UUIDString, safeFilename];
+  NSURL *temporaryURL = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:temporaryFilename]];
+
+  NSError *writeError = nil;
+  if (![fileData writeToURL:temporaryURL options:NSDataWritingAtomic error:&writeError]) {
+    reject(@"export_failed", writeError.localizedDescription ?: @"Failed to prepare export file.", writeError);
+    return;
+  }
+
+  self.pendingExportResolve = resolve;
+  self.pendingExportReject = reject;
+  self.pendingExportTemporaryURL = temporaryURL;
+
+  dispatch_async(dispatch_get_main_queue(), ^{
+    UIViewController *presented = RCTPresentedViewController();
+    if (presented == nil) {
+      [self rejectPendingExportWithCode:@"activity_unavailable" message:@"Unable to present export sheet." error:nil];
+      return;
+    }
+
+    (void)mimeType;
+    UIActivityViewController *activityViewController = [[UIActivityViewController alloc] initWithActivityItems:@[temporaryURL] applicationActivities:nil];
+    activityViewController.completionWithItemsHandler = ^(UIActivityType * _Nullable activityType, BOOL completed, NSArray * _Nullable returnedItems, NSError * _Nullable activityError) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        if (activityError != nil) {
+          [self rejectPendingExportWithCode:@"export_failed"
+                                    message:activityError.localizedDescription ?: @"Failed to export file."
+                                      error:activityError];
+          return;
+        }
+
+        if (!completed) {
+          [self rejectPendingExportWithCode:@"cancelled" message:@"User cancelled file export." error:nil];
+          return;
+        }
+
+        [self resolvePendingExport];
+      });
+    };
+
+    UIPopoverPresentationController *popover = activityViewController.popoverPresentationController;
+    if (popover != nil) {
+      popover.sourceView = presented.view;
+      popover.sourceRect = CGRectMake(CGRectGetMidX(presented.view.bounds), CGRectGetMaxY(presented.view.bounds) - 1.0, 1.0, 1.0);
+      popover.permittedArrowDirections = 0;
+    }
+
+    [presented presentViewController:activityViewController animated:YES completion:nil];
+  });
 }
 
 - (BOOL)hasPendingRequest
@@ -713,6 +785,44 @@ RCT_EXPORT_METHOD(saveImage:(NSString *)filename
 {
   self.pendingSaveResolve = nil;
   self.pendingSaveReject = nil;
+}
+
+- (void)resolvePendingExport
+{
+  RCTPromiseResolveBlock resolve = self.pendingExportResolve;
+  [self clearPendingExportCallbacks];
+
+  if (resolve == nil) {
+    return;
+  }
+
+  resolve(nil);
+}
+
+- (void)rejectPendingExportWithCode:(NSString *)code
+                            message:(NSString *)message
+                              error:(NSError * _Nullable)error
+{
+  RCTPromiseRejectBlock reject = self.pendingExportReject;
+  [self clearPendingExportCallbacks];
+
+  if (reject == nil) {
+    return;
+  }
+
+  reject(code, message, error);
+}
+
+- (void)clearPendingExportCallbacks
+{
+  NSURL *temporaryURL = self.pendingExportTemporaryURL;
+  self.pendingExportResolve = nil;
+  self.pendingExportReject = nil;
+  self.pendingExportTemporaryURL = nil;
+
+  if (temporaryURL != nil) {
+    [[NSFileManager defaultManager] removeItemAtURL:temporaryURL error:nil];
+  }
 }
 
 - (NSString *)unavailableReason

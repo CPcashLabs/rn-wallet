@@ -33,9 +33,47 @@ class CPCashFilePickerModule(private val reactContext: ReactApplicationContext) 
   private var pendingPromise: Promise? = null
   private var pendingImageScanPromise: Promise? = null
   private var pendingCameraScanPromise: Promise? = null
+  private var pendingExportPromise: Promise? = null
+  private var pendingExportBytes: ByteArray? = null
 
   private val activityEventListener: ActivityEventListener = object : BaseActivityEventListener() {
     override fun onActivityResult(activity: Activity?, requestCode: Int, resultCode: Int, data: Intent?) {
+      if (requestCode == REQUEST_CODE_EXPORT_FILE) {
+        val promise = pendingExportPromise.also { pendingExportPromise = null }
+        val bytes = pendingExportBytes.also { pendingExportBytes = null }
+
+        if (promise == null || bytes == null) {
+          return
+        }
+
+        if (resultCode != Activity.RESULT_OK) {
+          promise.reject("cancelled", "User cancelled file export.")
+          return
+        }
+
+        val uri = data?.data
+        if (uri == null) {
+          promise.reject("empty_result", "No export destination was selected.")
+          return
+        }
+
+        try {
+          reactContext.contentResolver.openOutputStream(uri, "w")?.use { output ->
+            output.write(bytes)
+            output.flush()
+          } ?: run {
+            promise.reject("export_failed", "Failed to open the selected export destination.")
+            return
+          }
+
+          promise.resolve(null)
+        } catch (error: Exception) {
+          promise.reject("export_failed", error.message, error)
+        }
+
+        return
+      }
+
       if (requestCode != REQUEST_CODE_PICK_IMAGE && requestCode != REQUEST_CODE_SCAN_IMAGE) {
         return
       }
@@ -266,6 +304,51 @@ class CPCashFilePickerModule(private val reactContext: ReactApplicationContext) 
     }
   }
 
+  @ReactMethod
+  fun exportFile(filename: String, base64: String, mimeType: String?, promise: Promise) {
+    if (isBusy()) {
+      promise.reject("busy", "Another file request is already in progress.")
+      return
+    }
+
+    val activity = currentActivity
+    if (activity == null) {
+      promise.reject("activity_unavailable", "Activity is not available.")
+      return
+    }
+
+    val bytes = try {
+      Base64.decode(base64, Base64.DEFAULT)
+    } catch (error: IllegalArgumentException) {
+      promise.reject("invalid_file", "Failed to decode file data.", error)
+      return
+    }
+
+    val exportName = filename.ifBlank { "cpcash-export.txt" }
+    val exportMimeType = resolveExportMimeType(exportName, mimeType)
+    val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+      addCategory(Intent.CATEGORY_OPENABLE)
+      type = exportMimeType
+      putExtra(Intent.EXTRA_TITLE, exportName)
+      addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+    }
+
+    if (intent.resolveActivity(reactContext.packageManager) == null) {
+      promise.reject("unsupported", "No system file exporter is available on this device.")
+      return
+    }
+
+    pendingExportPromise = promise
+    pendingExportBytes = bytes
+
+    try {
+      activity.startActivityForResult(intent, REQUEST_CODE_EXPORT_FILE)
+    } catch (error: Exception) {
+      clearPendingExportState()
+      promise.reject("export_failed", error.message, error)
+    }
+  }
+
   private fun createPickImageIntent(): Intent {
     return Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
       addCategory(Intent.CATEGORY_OPENABLE)
@@ -335,15 +418,37 @@ class CPCashFilePickerModule(private val reactContext: ReactApplicationContext) 
   }
 
   private fun isBusy(): Boolean {
-    return pendingPromise != null || pendingImageScanPromise != null || pendingCameraScanPromise != null
+    return pendingPromise != null || pendingImageScanPromise != null || pendingCameraScanPromise != null || pendingExportPromise != null
   }
 
   private fun isGoogleScannerAvailable(): Boolean {
     return GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(reactContext) == ConnectionResult.SUCCESS
   }
 
+  private fun resolveExportMimeType(filename: String, explicitMimeType: String?): String {
+    if (!explicitMimeType.isNullOrBlank()) {
+      return explicitMimeType
+    }
+
+    val extension = filename.substringAfterLast('.', "").lowercase(Locale.US)
+    if (extension.isNotEmpty()) {
+      val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
+      if (!mimeType.isNullOrBlank()) {
+        return mimeType
+      }
+    }
+
+    return "application/octet-stream"
+  }
+
+  private fun clearPendingExportState() {
+    pendingExportPromise = null
+    pendingExportBytes = null
+  }
+
   companion object {
     private const val REQUEST_CODE_PICK_IMAGE = 64102
     private const val REQUEST_CODE_SCAN_IMAGE = 64103
+    private const val REQUEST_CODE_EXPORT_FILE = 64104
   }
 }
