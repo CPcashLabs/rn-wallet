@@ -4,6 +4,7 @@ import { clearAuthSession, readTokenPair } from "@/shared/api/auth-session"
 import { mapApiError } from "@/shared/api/error-mapping"
 import { resolveAcceptLanguage } from "@/shared/api/language-header"
 import { ApiError, AuthExpiredError, NetworkUnavailableError } from "@/shared/errors"
+import { resetProfileSyncSession } from "@/shared/session/profileSyncSession"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 
 type UnauthorizedHandler = (() => void) | null
@@ -47,6 +48,7 @@ export function registerInterceptors(client: AxiosInstance) {
 
       if (mappedError instanceof AuthExpiredError) {
         await clearAuthSession()
+        resetProfileSyncSession()
         useAuthStore.getState().clearSession()
         unauthorizedHandler?.()
       }
