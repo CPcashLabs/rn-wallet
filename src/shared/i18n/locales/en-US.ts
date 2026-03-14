@@ -99,6 +99,7 @@ const auth = {
     passkeyUnsupported: "Passkey is not supported on this device.",
     passkeyAuthFailed: "Passkey verification failed.",
     passkeyRegisterFailed: "Passkey registration failed.",
+    passkeyDomainAssociationFailed: "Passkey domain verification failed. Please try again later. If it keeps failing, contact support to check the website association setup.",
     walletUnavailable: "Wallet connection is not available yet.",
     passwordLoginFailed: "Password login failed.",
     lookupEmailFailed: "Unable to fetch the bound email for this address.",

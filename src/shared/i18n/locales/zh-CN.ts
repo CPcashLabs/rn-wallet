@@ -99,6 +99,7 @@ const auth = {
     passkeyUnsupported: "当前设备不支持 Passkey。",
     passkeyAuthFailed: "Passkey 验证失败。",
     passkeyRegisterFailed: "Passkey 注册失败。",
+    passkeyDomainAssociationFailed: "Passkey 服务校验失败，请稍后再试。如果问题持续，请联系支持检查网站关联配置。",
     walletUnavailable: "钱包连接能力暂未接入。",
     passwordLoginFailed: "密码登录失败。",
     lookupEmailFailed: "查询绑定邮箱失败。",

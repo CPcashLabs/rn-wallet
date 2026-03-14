@@ -9,6 +9,7 @@ import type { ExchangeRateItem } from "@/features/settings/services/settingsApi"
 import type { GuideSection } from "@/features/settings/utils/settingsHub"
 import { useUserStore } from "@/shared/store/useUserStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppCard, APP_LIST_ROW_MIN_HEIGHT } from "@/shared/ui/AppCard"
 import { AppButton } from "@/shared/ui/AppButton"
 
 export type StackProps<T extends keyof SettingsStackParamList> = NativeStackScreenProps<SettingsStackParamList, T>
@@ -36,8 +37,7 @@ export const LOCAL_NODE_MAP: Record<string, string[]> = {
 }
 
 export function Card(props: { children: React.ReactNode }) {
-  const theme = useAppTheme()
-  return <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>{props.children}</View>
+  return <AppCard>{props.children}</AppCard>
 }
 
 export function Row(props: { label: string; detail?: string; onPress?: () => void; children?: React.ReactNode }) {
@@ -69,14 +69,8 @@ export function useProfileRefresh() {
 }
 
 export const styles = StyleSheet.create({
-  card: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 16,
-    padding: 14,
-    gap: 12,
-  },
   row: {
-    minHeight: 52,
+    minHeight: APP_LIST_ROW_MIN_HEIGHT,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",

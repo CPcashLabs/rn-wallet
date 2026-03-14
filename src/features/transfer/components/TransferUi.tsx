@@ -2,17 +2,12 @@ import React from "react"
 
 import { StyleProp, StyleSheet, Text, View, type ViewStyle } from "react-native"
 
+import { AppCard } from "@/shared/ui/AppCard"
 import { AppButton } from "@/shared/ui/AppButton"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
-export function SectionCard(props: { children: React.ReactNode }) {
-  const theme = useAppTheme()
-
-  return (
-    <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-      {props.children}
-    </View>
-  )
+export function SectionCard(props: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
+  return <AppCard style={props.style}>{props.children}</AppCard>
 }
 
 export function FieldRow(props: { label: string; value: string; emphasized?: boolean }) {
@@ -71,12 +66,6 @@ export function PageEmpty(props: { title: string; body: string }) {
 }
 
 const styles = StyleSheet.create({
-  card: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 16,
-    padding: 14,
-    gap: 10,
-  },
   fieldRow: {
     flexDirection: "row",
     justifyContent: "space-between",

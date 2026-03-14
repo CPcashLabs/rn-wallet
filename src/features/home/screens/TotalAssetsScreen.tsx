@@ -11,6 +11,7 @@ import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 import { useBalanceStore } from "@/shared/store/useBalanceStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppCard, APP_LIST_ROW_PADDING } from "@/shared/ui/AppCard"
 
 import type { HomeTabStackParamList } from "@/app/navigation/types"
 
@@ -87,13 +88,13 @@ export function TotalAssetsScreen({ navigation }: Props) {
           <Text style={styles.totalValue}>{showBalance ? formatCurrency(totalAssetValue) : "*****"}</Text>
         </View>
 
-        <View style={[styles.metaCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+        <AppCard gap={6} padding={12} style={styles.metaCard}>
           <Text style={[styles.metaText, { color: theme.colors.mutedText }]}>
             {loading ? t("home.totalAssets.loading") : t("home.totalAssets.updatedAt", { at: formatDateTime(lastUpdatedAt) })}
           </Text>
-        </View>
+        </AppCard>
 
-        <View style={[styles.listCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+        <AppCard overflow="hidden" padding={0} style={styles.listCard}>
           {rows.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={[styles.emptyText, { color: theme.colors.mutedText }]}>{t("home.totalAssets.empty")}</Text>
@@ -116,7 +117,7 @@ export function TotalAssetsScreen({ navigation }: Props) {
               </View>
             ))
           )}
-        </View>
+        </AppCard>
       </ScrollView>
     </HomeScaffold>
   )
@@ -159,18 +160,14 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   metaCard: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    minHeight: 42,
+    justifyContent: "center",
   },
   metaText: {
     fontSize: 12,
   },
   listCard: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 16,
-    overflow: "hidden",
+    gap: 0,
   },
   emptyState: {
     minHeight: 120,
@@ -183,7 +180,7 @@ const styles = StyleSheet.create({
   },
   assetRow: {
     minHeight: 66,
-    paddingHorizontal: 14,
+    paddingHorizontal: APP_LIST_ROW_PADDING,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",

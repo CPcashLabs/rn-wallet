@@ -15,6 +15,7 @@ import { useUserStore } from "@/shared/store/useUserStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppCard, APP_LIST_ROW_MIN_HEIGHT, APP_LIST_ROW_PADDING } from "@/shared/ui/AppCard"
 
 import type { SettingsStackParamList } from "@/app/navigation/types"
 
@@ -79,7 +80,7 @@ export function PersonalScreen({ navigation }: Props) {
 
   return (
     <HomeScaffold canGoBack onBack={navigation.goBack} title={t("home.personal.title")}>
-      <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+      <AppCard overflow="hidden" padding={0}>
         <Pressable onPress={handleAvatarPress} style={styles.row}>
           <Text style={[styles.rowLabel, { color: theme.colors.text }]}>{t("home.personal.avatar")}</Text>
           <View style={styles.rowRight}>
@@ -116,20 +117,15 @@ export function PersonalScreen({ navigation }: Props) {
             <Text style={[styles.rowValue, { color: theme.colors.mutedText }]}>›</Text>
           </View>
         </Pressable>
-      </View>
+      </AppCard>
     </HomeScaffold>
   )
 }
 
 const styles = StyleSheet.create({
-  card: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 16,
-    overflow: "hidden",
-  },
   row: {
-    minHeight: 52,
-    paddingHorizontal: 14,
+    minHeight: APP_LIST_ROW_MIN_HEIGHT,
+    paddingHorizontal: APP_LIST_ROW_PADDING,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",

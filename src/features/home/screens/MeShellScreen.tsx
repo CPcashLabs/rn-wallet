@@ -12,6 +12,7 @@ import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useUserStore } from "@/shared/store/useUserStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppCard, APP_LIST_ROW_MIN_HEIGHT, APP_LIST_ROW_PADDING } from "@/shared/ui/AppCard"
 
 import type { SettingsStackParamList } from "@/app/navigation/types"
 
@@ -32,7 +33,7 @@ export function MeShellScreen({ navigation }: Props) {
 
   return (
     <HomeScaffold title={t("home.tabs.me")}>
-      <View style={[styles.profileCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+      <AppCard style={styles.profileCard}>
         <UserAvatar cacheVersion={avatarVersion} label={displayName} size={48} uri={avatar} />
         <View style={styles.profileMeta}>
           <Text style={[styles.name, { color: theme.colors.text }]}>{displayName}</Text>
@@ -41,9 +42,9 @@ export function MeShellScreen({ navigation }: Props) {
             {t("home.me.inviteStatus", { status: inviteBound ? t("home.me.inviteBound") : t("home.me.inviteUnbound") })}
           </Text>
         </View>
-      </View>
+      </AppCard>
 
-      <View style={[styles.listCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+      <AppCard overflow="hidden" padding={0} style={styles.listCard}>
         <MenuRow label={t("home.me.personal")} onPress={() => navigation.navigate("PersonalScreen")} />
         <MenuRow
           label={t("home.me.addressBook")}
@@ -54,11 +55,12 @@ export function MeShellScreen({ navigation }: Props) {
           }}
         />
         <MenuRow label={t("settingsHub.invite.title")} onPress={() => navigation.navigate("InviteHomeScreen")} />
-        <MenuRow label={t("home.me.settings")} onPress={() => navigation.navigate("SettingsHomeScreen")} />
-      </View>
+        <MenuRow label={t("home.me.settings")} last onPress={() => navigation.navigate("SettingsHomeScreen")} />
+      </AppCard>
 
-      <View style={[styles.listCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+      <AppCard overflow="hidden" padding={0} style={styles.listCard}>
         <MenuRow
+          last
           label={t("home.me.messages")}
           onPress={() => {
             ;(navigation.getParent()?.getParent() as any)?.navigate("MessageStack", {
@@ -66,16 +68,19 @@ export function MeShellScreen({ navigation }: Props) {
             })
           }}
         />
-      </View>
+      </AppCard>
     </HomeScaffold>
   )
 }
 
-function MenuRow(props: { label: string; badge?: string; onPress: () => void }) {
+function MenuRow(props: { label: string; badge?: string; onPress: () => void; last?: boolean }) {
   const theme = useAppTheme()
 
   return (
-    <Pressable onPress={props.onPress} style={[styles.row, { borderBottomColor: theme.colors.border }]}>
+    <Pressable
+      onPress={props.onPress}
+      style={[styles.row, { borderBottomColor: theme.colors.border }, props.last ? styles.rowLast : null]}
+    >
       <Text style={[styles.rowLabel, { color: theme.colors.text }]}>{props.label}</Text>
       <View style={styles.rowRight}>
         {props.badge ? (
@@ -91,12 +96,9 @@ function MenuRow(props: { label: string; badge?: string; onPress: () => void }) 
 
 const styles = StyleSheet.create({
   profileCard: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 16,
-    padding: 14,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 14,
   },
   profileMeta: {
     flex: 1,
@@ -114,17 +116,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   listCard: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 16,
-    overflow: "hidden",
+    gap: 0,
   },
   row: {
-    minHeight: 52,
-    paddingHorizontal: 14,
+    minHeight: APP_LIST_ROW_MIN_HEIGHT,
+    paddingHorizontal: APP_LIST_ROW_PADDING,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  rowLast: {
+    borderBottomWidth: 0,
   },
   rowLabel: {
     fontSize: 15,

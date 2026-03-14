@@ -17,6 +17,7 @@ import { useBalanceStore } from "@/shared/store/useBalanceStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppCard, APP_CARD_RADIUS } from "@/shared/ui/AppCard"
 
 import type { HomeTabStackParamList } from "@/app/navigation/types"
 
@@ -134,13 +135,13 @@ export function HomeShellScreen({ navigation, route }: Props) {
         </Pressable>
       </View>
 
-      <View style={[styles.profileCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+      <AppCard style={styles.profileCard}>
         <Text style={[styles.profileTitle, { color: theme.colors.text }]}>{displayName}</Text>
         <Text style={[styles.profileAddress, { color: theme.colors.mutedText }]}>{formatAddress(address)}</Text>
         <Text style={[styles.profileStatus, { color: theme.colors.mutedText }]}>
           {loadingProfile ? t("home.shell.loadingProfile") : t("home.shell.profileReady")}
         </Text>
-      </View>
+      </AppCard>
 
       <View style={styles.actionGrid}>
         <ActionButton label={t("home.actions.transfer")} onPress={handleOpenTransfer} />
@@ -151,12 +152,12 @@ export function HomeShellScreen({ navigation, route }: Props) {
 
       <HomeMessagePreview onPress={handleOpenMessages} />
 
-      <View style={[styles.tipsCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+      <AppCard style={styles.tipsCard}>
         <Text style={[styles.tipTitle, { color: theme.colors.text }]}>{t("home.shell.statusTitle")}</Text>
         <Text style={[styles.tipBody, { color: theme.colors.mutedText }]}>
           {loadingCoins ? t("home.shell.loadingAssets") : t("home.shell.loadedCoins", { count: coins.length })}
         </Text>
-      </View>
+      </AppCard>
     </HomeScaffold>
   )
 }
@@ -223,10 +224,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   profileCard: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 16,
-    padding: 14,
-    gap: 4,
+    gap: 6,
   },
   profileTitle: {
     fontSize: 18,
@@ -245,16 +243,16 @@ const styles = StyleSheet.create({
   actionGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 12,
   },
   actionButton: {
     width: "48%",
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 14,
-    minHeight: 72,
+    borderRadius: APP_CARD_RADIUS,
+    minHeight: 76,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 8,
+    paddingHorizontal: 12,
   },
   actionLabel: {
     fontSize: 13,
@@ -262,9 +260,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   tipsCard: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 16,
-    padding: 14,
     gap: 6,
   },
   tipTitle: {

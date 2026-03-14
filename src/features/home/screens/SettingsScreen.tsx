@@ -18,6 +18,7 @@ import { DEFAULT_WALLET_CHAIN_ID, useWalletStore } from "@/shared/store/useWalle
 import { useThemeStore, type ThemeMode } from "@/shared/store/useThemeStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { persistThemePreference } from "@/shared/theme/themePersistence"
+import { AppCard, APP_LIST_ROW_MIN_HEIGHT } from "@/shared/ui/AppCard"
 import { AppButton } from "@/shared/ui/AppButton"
 
 import type { SettingsStackParamList } from "@/app/navigation/types"
@@ -78,7 +79,7 @@ export function SettingsScreen({ navigation }: Props) {
 
   return (
     <HomeScaffold canGoBack onBack={navigation.goBack} title={t("home.settings.title")}>
-      <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+      <AppCard style={styles.card}>
         <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("home.settings.accountSection")}</Text>
         <SettingsRow
           label={t("home.settings.changePassword")}
@@ -109,9 +110,9 @@ export function SettingsScreen({ navigation }: Props) {
           label={t("home.settings.network")}
           onPress={switchNetwork}
         />
-      </View>
+      </AppCard>
 
-      <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+      <AppCard style={styles.card}>
         <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("home.settings.preferenceSection")}</Text>
         <SettingsRow
           detail={profile?.email || t("settingsHub.email.unbound")}
@@ -131,7 +132,7 @@ export function SettingsScreen({ navigation }: Props) {
         <SettingsRow label={t("settingsHub.email.notificationTitle")} onPress={() => navigation.navigate("EmailNotificationScreen")} />
         <SettingsRow label={t("settingsHub.help.title")} onPress={() => navigation.navigate("HelpCenterScreen")} />
         <SettingsRow label={t("settingsHub.about.title")} onPress={() => navigation.navigate("AboutScreen")} />
-      </View>
+      </AppCard>
 
       <AppButton label={t("home.settings.logout")} onPress={() => void logout()} tone="danger" />
     </HomeScaffold>
@@ -157,9 +158,6 @@ function SettingsRow(props: { label: string; detail?: string; onPress: () => voi
 
 const styles = StyleSheet.create({
   card: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 16,
-    padding: 14,
     gap: 10,
   },
   sectionTitle: {
@@ -167,7 +165,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   row: {
-    minHeight: 48,
+    minHeight: APP_LIST_ROW_MIN_HEIGHT,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",

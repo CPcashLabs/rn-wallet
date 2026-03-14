@@ -9,6 +9,17 @@ function errorCodeOf(error: unknown) {
   return ""
 }
 
+function isPasskeyAssociationErrorMessage(message: string) {
+  const normalized = message.trim().toLowerCase()
+
+  return (
+    normalized.includes("webcredentials association") ||
+    normalized.includes("unable to verify webcredentials") ||
+    normalized.includes("apple-app-site-association") ||
+    (normalized.includes("associated with domain") && normalized.includes("credential"))
+  )
+}
+
 export function getAuthErrorMessage(error: unknown, fallbackKey = "auth.errors.generic") {
   if (error instanceof NativeCapabilityUnavailableError) {
     return error.message || i18n.t("auth.errors.capabilityUnavailable")
@@ -45,6 +56,10 @@ export function getAuthErrorMessage(error: unknown, fallbackKey = "auth.errors.g
   }
 
   if (error instanceof Error && error.message) {
+    if (isPasskeyAssociationErrorMessage(error.message)) {
+      return i18n.t("auth.errors.passkeyDomainAssociationFailed")
+    }
+
     return error.message
   }
 

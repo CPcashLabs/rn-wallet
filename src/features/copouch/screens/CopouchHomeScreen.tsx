@@ -317,9 +317,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   walletCard: {
-    borderRadius: 16,
-    padding: 14,
-    gap: 8,
+    borderRadius: 18,
+    padding: 16,
+    gap: 10,
     borderWidth: StyleSheet.hairlineWidth,
   },
   walletHeader: {
