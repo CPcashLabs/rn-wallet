@@ -140,3 +140,20 @@ export async function signWithLocalWallet(message: string) {
     signature: await signer.signMessage(message),
   }
 }
+
+export async function getLocalPasskeyWallet(rawId: string) {
+  const privateKey = await getSecureItem(passkeyPrivateKeyKey(rawId))
+
+  if (!privateKey) {
+    throw new Error("Passkey credential is missing")
+  }
+
+  const wallet = new Wallet(privateKey)
+
+  return {
+    address: wallet.address,
+    chainId: DEFAULT_CHAIN_ID,
+    providerName: "Local Passkey Wallet",
+    privateKey,
+  }
+}
