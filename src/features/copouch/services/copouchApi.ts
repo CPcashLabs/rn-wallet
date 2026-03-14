@@ -1,8 +1,11 @@
-import { formatUnits } from "ethers"
+import { Contract, Interface, Wallet, ZeroAddress, formatUnits } from "ethers"
 
 import { getCoinList, resolveChainNameById, type HomeCoin } from "@/features/home/services/homeApi"
 import { apiClient } from "@/shared/api/client"
 import { ApiError } from "@/shared/errors"
+import { getLocalPasskeyWallet, getOrCreateLocalWallet } from "@/shared/native/localAuthVault"
+import { useAuthStore } from "@/shared/store/useAuthStore"
+import { useWalletStore } from "@/shared/store/useWalletStore"
 import { fetchOnChainBalances, getRpcProvider } from "@/shared/web3/balanceService"
 
 type ApiEnvelope<T> = {
@@ -84,6 +87,27 @@ export type CopouchOverview = {
   ownerLimit: number
   finishedCount: number
   bttBalance: number
+}
+
+const SAFE_SETUP_ABI = [
+  "function setup(address[] _owners, uint256 _threshold, address to, bytes data, address fallbackHandler, address paymentToken, uint256 payment, address paymentReceiver)",
+]
+
+const SAFE_PROXY_FACTORY_ABI = [
+  "function createProxyWithNonce(address _singleton, bytes initializer, uint256 saltNonce) returns (address proxy)",
+]
+
+const SAFE_NETWORKS: Record<number, { safeSingletonAddress: string; safeProxyFactoryAddress: string; fallbackHandlerAddress: string }> = {
+  199: {
+    safeSingletonAddress: "0x3BdD5a1E25247b1d819eD348501f7303a9b56025",
+    safeProxyFactoryAddress: "0x24B30FF11223F79F3A5d9f40676D273614f55d36",
+    fallbackHandlerAddress: "0xD0415ED5F5f73897e1Cc1BCc9F52A5e7338a6834",
+  },
+  1029: {
+    safeSingletonAddress: "0x91fC153Addb1dAB12FDFBa7016CFdD24345D354b",
+    safeProxyFactoryAddress: "0xa7b8d2fF03627b353694e870eA07cE21C29DccF0",
+    fallbackHandlerAddress: "0x2C79A587c172c8E20B16156782C69983af126a36",
+  },
 }
 
 function unwrapEnvelope<T>(payload: ApiEnvelope<T>) {
@@ -221,6 +245,51 @@ export async function preValidateCopouchCreate(input: { chainId?: string | numbe
   })
 }
 
+export async function createCopouchWallet(input: {
+  chainId?: string | number | null
+  walletName: string
+  walletBgColor: number
+}) {
+  const chainId = String(input.chainId ?? "") === "199" ? 199 : 1029
+  const networkConfig = SAFE_NETWORKS[chainId]
+  const walletState = useWalletStore.getState()
+  const signerWallet = await resolveCreationWallet()
+
+  if (walletState.address && signerWallet.address.toLowerCase() !== walletState.address.toLowerCase()) {
+    throw new Error("walletMismatch")
+  }
+
+  const provider = getRpcProvider(chainId)
+  const signer = new Wallet(signerWallet.privateKey, provider)
+  const setupInterface = new Interface(SAFE_SETUP_ABI)
+  const initializer = setupInterface.encodeFunctionData("setup", [
+    [signer.address],
+    1,
+    ZeroAddress,
+    "0x",
+    networkConfig.fallbackHandlerAddress,
+    ZeroAddress,
+    0,
+    ZeroAddress,
+  ])
+  const saltNonce = BigInt(Date.now()) + BigInt(Math.floor(Math.random() * 1_000_000))
+  const proxyFactory = new Contract(networkConfig.safeProxyFactoryAddress, SAFE_PROXY_FACTORY_ABI, signer)
+  const txResponse = await proxyFactory.createProxyWithNonce(networkConfig.safeSingletonAddress, initializer, saltNonce, {
+    gasLimit: 300000n,
+  })
+
+  await apiClient.post("/api/system/member/multisig-wallet/create/v2", {
+    chain_name: resolveChainNameById(chainId),
+    tx_id: txResponse.hash,
+    wallet_bg_color: input.walletBgColor,
+    wallet_name: input.walletName,
+  })
+
+  return {
+    txHash: txResponse.hash,
+  }
+}
+
 export async function markCopouchFirstEnterSeen(id: string) {
   await apiClient.put(`/api/system/member/multisig-wallet/${id}/first-enter-status`)
 }
@@ -250,4 +319,23 @@ export function describeCopouchEligibilityError(error: unknown) {
   }
 
   return "generic"
+}
+
+async function resolveCreationWallet() {
+  const session = useAuthStore.getState().session
+  const loginType = useAuthStore.getState().loginType
+
+  if (loginType === "passkey") {
+    if (!session?.passkeyRawId) {
+      throw new Error("missingPasskey")
+    }
+
+    return getLocalPasskeyWallet(session.passkeyRawId)
+  }
+
+  if (loginType === "wallet") {
+    return getOrCreateLocalWallet()
+  }
+
+  throw new Error("unsupportedLoginType")
 }

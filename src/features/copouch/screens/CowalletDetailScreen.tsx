@@ -13,6 +13,7 @@ import { PageEmpty, PrimaryButton, SectionCard, SecondaryButton } from "@/featur
 import { ApiError } from "@/shared/errors"
 import { getJson, setJson } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
+import { useSocketStore } from "@/shared/store/useSocketStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 import type { CowalletStackParamList } from "@/app/navigation/types"
@@ -32,6 +33,7 @@ export function CowalletDetailScreen({ navigation, route }: Props) {
   const refreshOverview = useCowalletStore(state => state.refreshOverview)
   const refreshWalletValue = useCowalletStore(state => state.refreshWalletValue)
   const wallets = useCowalletStore(state => state.wallets)
+  const lastEvent = useSocketStore(state => state.lastEvent)
   const [loading, setLoading] = useState(true)
   const [detail, setDetail] = useState<CopouchDetail | null>(null)
   const [owners, setOwners] = useState<CopouchOwner[]>([])
@@ -77,6 +79,19 @@ export function CowalletDetailScreen({ navigation, route }: Props) {
       void loadDetail()
     }, [loadDetail, refreshOverview]),
   )
+
+  useEffect(() => {
+    const type = lastEvent?.type
+
+    if (!type) {
+      return
+    }
+
+    if (["MultisigWalletMemberAddSuc", "MultisigWalletMemberDelSuc", "MultisigWalletMemberRemoved", "MultisigWalletCreatedSuc"].includes(type)) {
+      void refreshOverview().catch(() => null)
+      void loadDetail()
+    }
+  }, [lastEvent, loadDetail, refreshOverview])
 
   const ownerSummary = useMemo(() => {
     return owners.slice(0, 5)

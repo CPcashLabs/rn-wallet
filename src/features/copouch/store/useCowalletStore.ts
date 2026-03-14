@@ -1,6 +1,7 @@
 import { create } from "zustand"
 
 import {
+  createCopouchWallet,
   getCopouchOverview,
   preValidateCopouchCreate,
   refreshCopouchWalletBalance,
@@ -27,6 +28,7 @@ type CowalletState = {
   refreshWalletValue: (walletId: string, walletAddress: string) => Promise<void>
   toggleSortByAmount: () => void
   validateCreateEligibility: (walletName: string) => Promise<void>
+  createWallet: (input: { walletName: string; walletBgColor: number }) => Promise<{ txHash: string }>
   clear: () => void
 }
 
@@ -157,6 +159,46 @@ export const useCowalletStore = create<CowalletState>((set, get) => ({
         chainId: walletState.chainId,
         walletName,
       })
+    } finally {
+      set({ creating: false })
+    }
+  },
+  createWallet: async input => {
+    if (get().creating) {
+      throw new Error("creating")
+    }
+
+    set({ creating: true })
+
+    try {
+      const state = get()
+      const walletState = useWalletStore.getState()
+
+      if (state.finishedCount <= 0) {
+        throw new Error("finishedCount")
+      }
+
+      if (state.wallets.length >= state.walletLimit) {
+        throw new Error("walletLimit")
+      }
+
+      if (state.bttBalance < MIN_BTT_OPERATION_BALANCE) {
+        throw new Error("bttBalance")
+      }
+
+      await preValidateCopouchCreate({
+        chainId: walletState.chainId,
+        walletName: input.walletName,
+      })
+
+      const result = await createCopouchWallet({
+        chainId: walletState.chainId,
+        walletName: input.walletName,
+        walletBgColor: input.walletBgColor,
+      })
+
+      await get().refreshOverview()
+      return result
     } finally {
       set({ creating: false })
     }

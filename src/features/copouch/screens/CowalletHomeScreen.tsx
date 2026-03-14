@@ -10,6 +10,7 @@ import { useCowalletStore } from "@/features/copouch/store/useCowalletStore"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { formatCurrency } from "@/features/home/utils/format"
 import { PageEmpty, PrimaryButton, SecondaryButton, SectionCard } from "@/features/transfer/components/TransferUi"
+import { useSocketStore } from "@/shared/store/useSocketStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 import type { CowalletStackParamList } from "@/app/navigation/types"
@@ -32,11 +33,13 @@ export function CowalletHomeScreen({ navigation }: Props) {
   const loadOverview = useCowalletStore(state => state.loadOverview)
   const refreshOverview = useCowalletStore(state => state.refreshOverview)
   const toggleSortByAmount = useCowalletStore(state => state.toggleSortByAmount)
-  const validateCreateEligibility = useCowalletStore(state => state.validateCreateEligibility)
+  const createWallet = useCowalletStore(state => state.createWallet)
+  const lastEvent = useSocketStore(state => state.lastEvent)
 
   const [modalVisible, setModalVisible] = useState(false)
   const [walletName, setWalletName] = useState("")
   const [selectedBgColor, setSelectedBgColor] = useState(1)
+  const [cooldownUntil, setCooldownUntil] = useState<number | null>(null)
 
   useEffect(() => {
     void loadOverview().catch(() => {
@@ -52,6 +55,16 @@ export function CowalletHomeScreen({ navigation }: Props) {
     }, [refreshOverview, t]),
   )
 
+  useEffect(() => {
+    if (!lastEvent?.type) {
+      return
+    }
+
+    if (["MultisigWalletCreatedSuc", "MultisigWalletCreatedFail", "MultisigWalletMemberRemoved"].includes(lastEvent.type)) {
+      void refreshOverview().catch(() => null)
+    }
+  }, [lastEvent, refreshOverview])
+
   const creationSummary = useMemo(() => {
     return t("copouch.home.qualificationSummary", {
       finishedCount,
@@ -61,6 +74,11 @@ export function CowalletHomeScreen({ navigation }: Props) {
   }, [bttBalance, finishedCount, t, walletLimit])
 
   const handleOpenCreate = () => {
+    if (cooldownUntil && cooldownUntil > Date.now()) {
+      Alert.alert(t("common.infoTitle"), t("copouch.home.cooldown"))
+      return
+    }
+
     if (wallets.length === 0 && finishedCount <= 0) {
       Alert.alert(t("common.infoTitle"), t("copouch.home.needFinishedOrder"))
       return
@@ -88,9 +106,13 @@ export function CowalletHomeScreen({ navigation }: Props) {
 
   const handleSubmitCreate = async () => {
     try {
-      await validateCreateEligibility(walletName.trim())
+      const result = await createWallet({
+        walletName: walletName.trim(),
+        walletBgColor: selectedBgColor,
+      })
       setModalVisible(false)
-      Alert.alert(t("common.infoTitle"), t("copouch.home.createReady"))
+      setCooldownUntil(Date.now() + 3_000)
+      Alert.alert(t("common.infoTitle"), t("copouch.home.createSubmitted", { txHash: result.txHash.slice(0, 10) }))
     } catch (error) {
       if (error instanceof Error && error.message === "finishedCount") {
         Alert.alert(t("common.infoTitle"), t("copouch.home.needFinishedOrder"))
@@ -107,6 +129,16 @@ export function CowalletHomeScreen({ navigation }: Props) {
         return
       }
 
+      if (error instanceof Error && error.message === "unsupportedLoginType") {
+        Alert.alert(t("common.infoTitle"), t("copouch.home.needWalletLogin"))
+        return
+      }
+
+      if (error instanceof Error && error.message === "walletMismatch") {
+        Alert.alert(t("common.infoTitle"), t("copouch.home.walletMismatch"))
+        return
+      }
+
       switch (describeCopouchEligibilityError(error)) {
         case "finishedCount":
           Alert.alert(t("common.infoTitle"), t("copouch.home.needFinishedOrder"))
@@ -118,7 +150,7 @@ export function CowalletHomeScreen({ navigation }: Props) {
           Alert.alert(t("common.infoTitle"), t("copouch.home.ownerLimitReached"))
           break
         default:
-          Alert.alert(t("common.errorTitle"), t("copouch.home.preValidateFailed"))
+          Alert.alert(t("common.errorTitle"), t("copouch.home.createFailed"))
       }
     }
   }
@@ -196,7 +228,7 @@ export function CowalletHomeScreen({ navigation }: Props) {
       <PrimaryButton
         label={creating ? t("common.loading") : refreshing ? t("copouch.home.refreshing") : t("copouch.home.createButton")}
         onPress={handleOpenCreate}
-        disabled={creating}
+        disabled={creating || Boolean(cooldownUntil && cooldownUntil > Date.now())}
       />
 
       <Modal animationType="slide" transparent visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
