@@ -65,7 +65,9 @@ const COLLAPSE_LAYOUT_ANIMATION: LayoutAnimationConfig = {
   },
 }
 
-if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+const CAN_USE_COLLAPSE_LAYOUT_ANIMATION = Platform.OS === "android"
+
+if (CAN_USE_COLLAPSE_LAYOUT_ANIMATION && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true)
 }
 
@@ -389,7 +391,10 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
       return
     }
 
-    LayoutAnimation.configureNext(COLLAPSE_LAYOUT_ANIMATION)
+    // Fabric on iOS is hitting a native strict-weak-ordering assertion here.
+    if (CAN_USE_COLLAPSE_LAYOUT_ANIMATION) {
+      LayoutAnimation.configureNext(COLLAPSE_LAYOUT_ANIMATION)
+    }
     setExpandedCard(kind)
   }
 
