@@ -1,12 +1,8 @@
-import { resetProfileSyncSession } from "@/features/home/hooks/useProfileSync"
 import { useAuthStore } from "@/shared/store/useAuthStore"
-import { useUserStore } from "@/shared/store/useUserStore"
-import { DEFAULT_WALLET_CHAIN_ID, useWalletStore } from "@/shared/store/useWalletStore"
 import { apiClient, authClient } from "@/shared/api/client"
-import { writeAuthSession } from "@/shared/api/auth-session"
 import type { PasskeyHistoryItem } from "@/shared/types/auth"
 
-import type { AddressValidationResult, AuthenticatedSessionInput, AuthTokens, PasswordRules } from "@/features/auth/types"
+import type { AddressValidationResult, AuthTokens, PasswordRules } from "@/features/auth/types"
 
 type ApiEnvelope<T> = {
   code: number
@@ -192,33 +188,6 @@ export async function updateNickname(nickname: string) {
   })
 
   return unwrapEnvelope(response.data)
-}
-
-export async function persistAuthenticatedSession(input: AuthenticatedSessionInput) {
-  const session = {
-    accessToken: input.accessToken,
-    refreshToken: input.refreshToken,
-    address: input.address,
-    loginType: input.loginType,
-    passkeyRawId: input.passkeyRawId,
-  }
-
-  await writeAuthSession(session)
-
-  resetProfileSyncSession()
-  useAuthStore.getState().setSession(session)
-  useAuthStore.getState().setLoginType(input.loginType)
-  if (!useUserStore.getState().profile?.address) {
-    useUserStore.getState().patchProfile({
-      address: input.address,
-    })
-  }
-  const walletState = useWalletStore.getState()
-  useWalletStore.getState().setWalletState({
-    status: "connected",
-    address: input.address,
-    chainId: walletState.chainId ?? DEFAULT_WALLET_CHAIN_ID,
-  })
 }
 
 export function saveRecentPasskey(entry: PasskeyHistoryItem) {
