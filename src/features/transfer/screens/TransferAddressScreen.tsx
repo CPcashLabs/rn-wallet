@@ -5,15 +5,15 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
+import { useAddressBookStore } from "@/features/address-book/store/useAddressBookStore"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
-import { resolveChainNameById } from "@/features/home/services/homeApi"
 import { formatAddress, formatDateTime } from "@/features/home/utils/format"
 import { getRecentTransferEntries, type TransferChannel } from "@/features/transfer/services/transferApi"
 import { useTransferDraftStore, type TransferAddressSource } from "@/features/transfer/store/useTransferDraftStore"
 import { buildAddressRegexes, extractTransferAddress, resolveTransferChainType } from "@/features/transfer/utils/address"
+import { resolveChainNameById } from "@/shared/api/walletAssets"
 import { NativeCapabilityUnavailableError } from "@/shared/errors"
 import { scannerAdapter } from "@/shared/native"
-import { useUserAddressBookStore } from "@/shared/store/useUserAddressBookStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
@@ -76,11 +76,11 @@ export function TransferAddressScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
   const chainId = useWalletStore(state => state.chainId)
-  const addressBookEntries = useUserAddressBookStore(state => state.entries)
-  const addressBookLoading = useUserAddressBookStore(state => state.loading)
-  const loadEntries = useUserAddressBookStore(state => state.loadEntries)
-  const selectedAddressBookEntry = useUserAddressBookStore(state => state.selectedEntry)
-  const setSelectedAddressBookEntry = useUserAddressBookStore(state => state.setSelectedEntry)
+  const addressBookEntries = useAddressBookStore(state => state.entries)
+  const addressBookLoading = useAddressBookStore(state => state.loading)
+  const loadEntries = useAddressBookStore(state => state.loadEntries)
+  const selectedAddressBookEntry = useAddressBookStore(state => state.selectedEntry)
+  const setSelectedAddressBookEntry = useAddressBookStore(state => state.setSelectedEntry)
   const selectedChannel = useTransferDraftStore(state => state.selectedChannel)
   const draftRecipientAddress = useTransferDraftStore(state => state.recipientAddress)
   const setSelectedChannel = useTransferDraftStore(state => state.setSelectedChannel)

@@ -15,7 +15,7 @@ import {
 import { useTransferDraftStore } from "@/features/transfer/store/useTransferDraftStore"
 import { formatAmount, parseDecimalInput } from "@/features/transfer/utils/order"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
-import { resolveChainNameById } from "@/features/home/services/homeApi"
+import { resolveChainNameById } from "@/shared/api/walletAssets"
 import { useBalanceStore } from "@/shared/store/useBalanceStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"

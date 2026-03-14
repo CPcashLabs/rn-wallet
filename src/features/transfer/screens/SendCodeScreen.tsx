@@ -9,7 +9,7 @@ import { createSendCodeOrder, getTransferOrderOptions, type TransferOrderOption 
 import { useTransferDraftStore } from "@/features/transfer/store/useTransferDraftStore"
 import { parseDecimalInput } from "@/features/transfer/utils/order"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
-import { resolveChainNameById } from "@/features/home/services/homeApi"
+import { resolveChainNameById } from "@/shared/api/walletAssets"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 

@@ -1,7 +1,7 @@
 import axios from "axios"
 
-import { getCoinList, resolveChainNameById } from "@/features/home/services/homeApi"
 import { apiClient } from "@/shared/api/client"
+import { getCoinList, resolveChainNameById, type WalletChainName } from "@/shared/api/walletAssets"
 import { resolveApiBaseUrl } from "@/shared/config/runtime"
 
 type ApiEnvelope<T> = {
@@ -579,7 +579,7 @@ export async function getTransferOrderOptions(input: {
   channelType: "bridge" | "normal"
 }) {
   const [coinList, bridgeAllowList, normalAllowList] = await Promise.all([
-    getCoinList(input.sendChainName as "BTT" | "BTT_TEST"),
+    getCoinList(input.sendChainName as WalletChainName),
     input.channelType === "bridge"
       ? apiClient.get<ApiEnvelope<BridgeAllowListPayload[]>>("/api/seller/member/exchange/cp-cash-allow-list", {
           params: {
