@@ -5,9 +5,12 @@ import {
   Alert,
   Animated,
   Easing,
+  LayoutAnimation,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
+  UIManager,
   View,
 } from "react-native"
 import { useTranslation } from "react-i18next"
@@ -71,6 +74,12 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
   const dynamicColor = config?.payChainColor || route.params?.chainColor || theme.colors.primary
   const surfaceColor = "#F4F4F1"
   const qrSource = isNormalReceive ? receiveAddress : currentOrder?.address || receiveAddress
+
+  useEffect(() => {
+    if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+      UIManager.setLayoutAnimationEnabledExperimental(true)
+    }
+  }, [])
 
   function resolveLoadHomeMessage(error: unknown) {
     if (!(error instanceof Error) || !error.message) {
@@ -494,9 +503,26 @@ function CollapseCard(props: {
   const rotate = useRef(new Animated.Value(props.expanded ? 1 : 0)).current
   const progress = useRef(new Animated.Value(props.expanded ? 1 : 0)).current
   const [shouldRenderBody, setShouldRenderBody] = useState(props.expanded)
+  const [cachedChildren, setCachedChildren] = useState<React.ReactNode>(props.children)
+
+  useEffect(() => {
+    if (props.expanded && props.children != null) {
+      setCachedChildren(props.children)
+    }
+  }, [props.children, props.expanded])
 
   useEffect(() => {
     if (props.expanded) {
+      LayoutAnimation.configureNext({
+        duration: 220,
+        create: {
+          type: LayoutAnimation.Types.easeInEaseOut,
+          property: LayoutAnimation.Properties.opacity,
+        },
+        update: {
+          type: LayoutAnimation.Types.easeInEaseOut,
+        },
+      })
       setShouldRenderBody(true)
     }
 
@@ -517,6 +543,16 @@ function CollapseCard(props: {
 
     animation.start(({ finished }) => {
       if (finished && !props.expanded) {
+        LayoutAnimation.configureNext({
+          duration: 180,
+          update: {
+            type: LayoutAnimation.Types.easeInEaseOut,
+          },
+          delete: {
+            type: LayoutAnimation.Types.easeInEaseOut,
+            property: LayoutAnimation.Properties.opacity,
+          },
+        })
         setShouldRenderBody(false)
       }
     })
@@ -542,6 +578,7 @@ function CollapseCard(props: {
     inputRange: [0, 1],
     outputRange: [-14, 0],
   })
+  const bodyContent = props.expanded ? props.children : cachedChildren
 
   return (
     <View style={[styles.collapseCard, props.expanded ? styles.collapseCardExpanded : null]}>
@@ -563,7 +600,7 @@ function CollapseCard(props: {
           ]}
           pointerEvents={props.expanded ? "auto" : "none"}
         >
-          <View style={styles.collapseBody}>{props.children}</View>
+          <View style={styles.collapseBody}>{bodyContent}</View>
         </Animated.View>
       ) : null}
     </View>
@@ -602,6 +639,7 @@ function ActionButton(props: { label: string; onPress: () => void }) {
 
   return (
     <Pressable
+      style={styles.actionButtonPressable}
       onPressIn={() => {
         Animated.spring(scale, {
           toValue: 0.97,
@@ -801,8 +839,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: SPACE.sm,
   },
-  actionButton: {
+  actionButtonPressable: {
     flex: 1,
+  },
+  actionButton: {
     minHeight: 44,
     borderRadius: 14,
     borderWidth: 1,
