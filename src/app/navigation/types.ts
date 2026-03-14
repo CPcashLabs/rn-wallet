@@ -1,5 +1,7 @@
 import type { NavigatorScreenParams } from "@react-navigation/native"
 
+import type { PluginId, PluginRouteParams } from "@/shared/plugins/types"
+
 export type AuthStackParamList = {
   LoginScreen: { inviteCode?: string } | undefined
   PasskeySignupScreen: { inviteCode?: string } | undefined
@@ -414,5 +416,9 @@ export type RootStackParamList = {
   ReceiveStack: NavigatorScreenParams<ReceiveStackParamList>
   CopouchStack: NavigatorScreenParams<CopouchStackParamList>
   CowalletStack: NavigatorScreenParams<CopouchStackParamList>
+  PluginHost: {
+    pluginId: PluginId
+    pluginParams?: PluginRouteParams
+  }
   SupportStack: NavigatorScreenParams<SupportStackParamList>
 }

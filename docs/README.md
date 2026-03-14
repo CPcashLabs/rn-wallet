@@ -5,6 +5,7 @@ This directory contains public repository documentation for `rn_code`.
 ## Index
 
 - [architecture/source-layout.md](architecture/source-layout.md): repository layout, dependency rules, and follow-up cleanup priorities
+- [architecture/plugin-runtime.md](architecture/plugin-runtime.md): compile-time plugin architecture, host SDK boundaries, and plugin presentation rules
 - [../tests/README.md](../tests/README.md): test suite topology, naming, and placement rules
 
 ## Governance

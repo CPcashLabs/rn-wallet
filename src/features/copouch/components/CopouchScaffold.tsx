@@ -5,18 +5,21 @@ import { useTranslation } from "react-i18next"
 
 import { resetToMainTabs } from "@/app/navigation/navigationRef"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { usePluginRuntime } from "@/shared/plugins/PluginRuntimeProvider"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 type Props = React.ComponentProps<typeof HomeScaffold>
 
 export function CopouchScaffold({ right, ...props }: Props) {
+  const pluginRuntime = usePluginRuntime()
+
   return (
     <HomeScaffold
       {...props}
       right={
         <View style={styles.headerActions}>
           {right}
-          <CopouchCloseButton />
+          {!pluginRuntime ? <CopouchCloseButton /> : null}
         </View>
       }
     />

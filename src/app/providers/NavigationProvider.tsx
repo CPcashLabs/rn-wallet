@@ -15,6 +15,8 @@ import { useNavigationStateStore } from "@/shared/store/useNavigationStateStore"
 import { useThemeStore } from "@/shared/store/useThemeStore"
 import { resolveTheme } from "@/shared/theme/resolveTheme"
 
+import type { RootStackParamList } from "@/app/navigation/types"
+
 export function NavigationProvider({ children }: PropsWithChildren) {
   const systemScheme = useColorScheme()
   const themeMode = useThemeStore(state => state.themeMode)
@@ -41,10 +43,13 @@ export function NavigationProvider({ children }: PropsWithChildren) {
       setPendingProtectedUrl(resolution.pendingProtectedUrl)
     }
 
-    const wechatInterceptorRoute = resolution.routes.find(
-      (route): route is RootRouteDescriptor<"SupportStack"> =>
-        route.name === "SupportStack" && route.params?.screen === "WechatInterceptorScreen",
-    )
+    const wechatInterceptorRoute = resolution.routes.find((route): route is RootRouteDescriptor<"SupportStack"> => {
+      if (route.name !== "SupportStack") {
+        return false
+      }
+
+      return (route.params as RootStackParamList["SupportStack"] | undefined)?.screen === "WechatInterceptorScreen"
+    })
     const targetPath =
       wechatInterceptorRoute?.params?.screen === "WechatInterceptorScreen"
         ? wechatInterceptorRoute.params.params?.targetPath

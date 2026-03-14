@@ -83,23 +83,20 @@ export function HomeShellScreen({ navigation, route }: Props) {
   }
 
   const handleOpenTransfer = () => {
-    ;(navigation.getParent()?.getParent() as any)?.navigate("TransferStack", {
-      screen: "SelectTokenScreen",
+    ;(navigation.getParent()?.getParent() as any)?.navigate("PluginHost", {
+      pluginId: "transfer",
     })
   }
 
   const handleOpenReceive = () => {
-    ;(navigation.getParent()?.getParent() as any)?.navigate("TransferStack", {
-      screen: "SelectTokenScreen",
-      params: {
-        intent: "receive",
-      },
+    ;(navigation.getParent()?.getParent() as any)?.navigate("PluginHost", {
+      pluginId: "receive",
     })
   }
 
   const handleOpenCopouch = () => {
-    ;(navigation.getParent()?.getParent() as any)?.navigate("CopouchStack", {
-      screen: "CopouchHomeScreen",
+    ;(navigation.getParent()?.getParent() as any)?.navigate("PluginHost", {
+      pluginId: "copouch",
     })
   }
 
