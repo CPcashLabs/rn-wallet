@@ -287,6 +287,10 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
             multisigWalletId: route.params?.multisigWalletId,
           }),
       },
+      {
+        label: t("receive.home.faq"),
+        action: () => navigation.navigate("ReceiveFaqScreen"),
+      },
     ]
 
     Alert.alert(

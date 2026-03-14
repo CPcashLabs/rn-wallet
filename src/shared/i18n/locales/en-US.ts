@@ -478,6 +478,7 @@ const home = {
       buyCrypto: "Buy Crypto",
       bttClaim: "BTT Claim",
       invalid: "Invalid Addresses",
+      faq: "FAQ",
       saveQr: "Save QR",
       qrUnavailable: "There is no QR image to save right now.",
       saveQrSuccess: "QR image saved to Photos.",

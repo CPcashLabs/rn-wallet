@@ -79,7 +79,6 @@ export function SettingsScreen({ navigation }: Props) {
     <HomeScaffold canGoBack onBack={navigation.goBack} title={t("home.settings.title")}>
       <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
         <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("home.settings.accountSection")}</Text>
-        <SettingsRow label={t("home.settings.personal")} onPress={() => navigation.navigate("PersonalScreen")} />
         <SettingsRow
           label={t("home.settings.changePassword")}
           onPress={() => {

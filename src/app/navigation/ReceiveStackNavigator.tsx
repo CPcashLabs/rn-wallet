@@ -8,6 +8,7 @@ import { ReceiveAddressCreateScreen } from "@/features/receive/screens/ReceiveAd
 import { ReceiveAddressDeleteScreen } from "@/features/receive/screens/ReceiveAddressDeleteScreen"
 import { ReceiveAddressListScreen } from "@/features/receive/screens/ReceiveAddressListScreen"
 import { ReceiveExpiryScreen } from "@/features/receive/screens/ReceiveExpiryScreen"
+import { ReceiveFaqDiffScreen, ReceiveFaqScreen } from "@/features/receive/screens/ReceiveFaqScreens"
 import { ReceiveHomeScreen } from "@/features/receive/screens/ReceiveHomeScreen"
 import { ReceiveShareScreen } from "@/features/receive/screens/ReceiveShareScreen"
 import { ReceiveTxlogsScreen } from "@/features/receive/screens/ReceiveTxlogsScreen"
@@ -28,6 +29,8 @@ export function ReceiveStackNavigator() {
       <Stack.Screen name="ReceiveTxlogsScreen" component={ReceiveTxlogsScreen} />
       <Stack.Screen name="RareAddressScreen" component={RareAddressScreen} />
       <Stack.Screen name="ReceiveShareScreen" component={ReceiveShareScreen} />
+      <Stack.Screen name="ReceiveFaqScreen" component={ReceiveFaqScreen} />
+      <Stack.Screen name="ReceiveFaqDiffScreen" component={ReceiveFaqDiffScreen} />
     </Stack.Navigator>
   )
 }

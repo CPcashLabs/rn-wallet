@@ -280,6 +280,8 @@ export type ReceiveStackParamList = {
   ReceiveShareScreen: {
     orderSn: string
   }
+  ReceiveFaqScreen: undefined
+  ReceiveFaqDiffScreen: undefined
 }
 
 type CopouchStackScreenParamList = {

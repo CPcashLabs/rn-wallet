@@ -478,6 +478,7 @@ const home = {
       buyCrypto: "买币",
       bttClaim: "领取 BTT",
       invalid: "失效地址",
+      faq: "常见问题",
       saveQr: "保存二维码",
       qrUnavailable: "当前还没有可保存的二维码。",
       saveQrSuccess: "二维码已保存到相册。",
