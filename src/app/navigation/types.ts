@@ -113,10 +113,13 @@ export type TransferStackParamList = {
     orderSn: string
   }
   TxPayStatusScreen: {
-    orderSn: string
+    orderSn?: string
     pay?: boolean
     walletId?: string
     skipCountdown?: boolean
+    publicAccess?: boolean
+    publicTxid?: string
+    publicBaseUrl?: string
   }
   SendEntryScreen:
     | {
@@ -125,6 +128,8 @@ export type TransferStackParamList = {
     | undefined
   SendPaymentInfoScreen: {
     orderSn: string
+    publicAccess?: boolean
+    publicBaseUrl?: string
   }
   SendTokenScreen: undefined
   SendCodeScreen: undefined
@@ -234,7 +239,26 @@ export type CowalletStackParamList = {
   CowalletMemberScreen: {
     id: string
   }
+  CowalletDeleteMemberScreen: {
+    id: string
+  }
+  CowalletAddMemberScreen: {
+    id: string
+  }
+  CowalletAddMemberForTeamScreen: {
+    id: string
+  }
+  CowalletAddMemberForTeamSelectScreen: {
+    id: string
+    teamId: string
+  }
   CowalletSettingScreen: {
+    id: string
+  }
+  CowalletSetNameScreen: {
+    id: string
+  }
+  CowalletBgSettingScreen: {
     id: string
   }
   CowalletBillListScreen: {
@@ -251,6 +275,14 @@ export type CowalletStackParamList = {
   }
   CowalletReceiveScreen: {
     id: string
+  }
+  CowalletAllocationScreen: {
+    id: string
+    orderSn: string
+  }
+  CowalletViewAllocationScreen: {
+    id: string
+    orderSn: string
   }
 }
 

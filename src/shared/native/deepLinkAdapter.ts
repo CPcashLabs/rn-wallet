@@ -17,6 +17,55 @@ export interface DeepLinkAdapter {
   open(url: string): Promise<AdapterResult<void>>
 }
 
+function emptyParsedDeepLink(url: string | null): ParsedDeepLink {
+  return {
+    raw: url,
+    isValid: false,
+    scheme: null,
+    host: null,
+    pathSegments: [],
+    query: {},
+  }
+}
+
+function parseDeepLinkUrl(url: string): ParsedDeepLink {
+  const schemeMatch = url.match(/^([a-z][a-z0-9+.-]*):/i)
+  if (!schemeMatch) {
+    return emptyParsedDeepLink(url)
+  }
+
+  const scheme = schemeMatch[1].toLowerCase()
+  let remainder = url.slice(schemeMatch[0].length)
+  let host: string | null = null
+
+  if (remainder.startsWith("//")) {
+    remainder = remainder.slice(2)
+    const authorityEnd = remainder.search(/[/?#]/)
+    if (authorityEnd === -1) {
+      host = remainder || null
+      remainder = ""
+    } else {
+      host = remainder.slice(0, authorityEnd) || null
+      remainder = remainder.slice(authorityEnd)
+    }
+  }
+
+  const hashIndex = remainder.indexOf("#")
+  const withoutHash = hashIndex >= 0 ? remainder.slice(0, hashIndex) : remainder
+  const queryIndex = withoutHash.indexOf("?")
+  const pathname = queryIndex >= 0 ? withoutHash.slice(0, queryIndex) : withoutHash
+  const search = queryIndex >= 0 ? withoutHash.slice(queryIndex + 1) : ""
+
+  return {
+    raw: url,
+    isValid: true,
+    scheme,
+    host,
+    pathSegments: pathname.split("/").filter(Boolean),
+    query: Object.fromEntries(new URLSearchParams(search).entries()),
+  }
+}
+
 export const deepLinkAdapter: DeepLinkAdapter = {
   getCapability() {
     return {
@@ -25,38 +74,10 @@ export const deepLinkAdapter: DeepLinkAdapter = {
   },
   parse(url) {
     if (!url) {
-      return {
-        raw: url,
-        isValid: false,
-        scheme: null,
-        host: null,
-        pathSegments: [],
-        query: {},
-      }
+      return emptyParsedDeepLink(url)
     }
 
-    try {
-      const parsed = new URL(url)
-      const query = Object.fromEntries(parsed.searchParams.entries())
-
-      return {
-        raw: url,
-        isValid: true,
-        scheme: parsed.protocol.replace(":", ""),
-        host: parsed.host,
-        pathSegments: parsed.pathname.split("/").filter(Boolean),
-        query,
-      }
-    } catch {
-      return {
-        raw: url,
-        isValid: false,
-        scheme: null,
-        host: null,
-        pathSegments: [],
-        query: {},
-      }
-    }
+    return parseDeepLinkUrl(url)
   },
   async open(url) {
     try {
