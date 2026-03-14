@@ -1,7 +1,39 @@
 import { formatAddress } from "@/features/home/utils/format"
-import type { OrderBillAddressItem, OrderDetail, OrderListItem, OrderStatistics, OrderTypeFilter } from "@/features/orders/services/ordersApi"
+import type { ExplorerLink, OrderBillAddressItem, OrderDetail, OrderListItem, OrderStatistics, OrderTypeFilter } from "@/features/orders/services/ordersApi"
+
+export enum OrderStatus {
+  BuyerPaying = 0,
+  BuyerPaid = 1,
+  SellerPaying = 2,
+  BuyerConfirming = 3,
+  OrderFinished = 4,
+  BuyerPaymentBroadcasting = 5,
+  OrderFrozen = -1,
+  BuyerCancelled = -2,
+  TimeoutClosed = -3,
+  AppealClosed = -4,
+  ErrorClosed = -5,
+  Refunded = -6,
+}
 
 type Translator = (key: string, options?: Record<string, unknown>) => string
+
+const RECEIPT_ORDER_TYPES = [
+  "RECEIPT",
+  "RECEIPT_FIXED",
+  "RECEIPT_NORMAL",
+  "TRACE",
+  "TRACE_LONG_TERM",
+  "TRACE_CHILD",
+  "SEND_RECEIVE",
+  "SEND_TOKEN_RECEIVE",
+] as const
+
+const BILL_ACTION_STATUSES = [OrderStatus.BuyerConfirming, OrderStatus.OrderFinished] as const
+
+function includesStatus(status: number, candidates: readonly OrderStatus[]) {
+  return candidates.includes(status as OrderStatus)
+}
 
 export type RangePreset = "all" | "today" | "yesterday" | "last7d" | "last30d"
 
@@ -21,27 +53,29 @@ type TimeRange = {
 }
 
 export function isIncomingOrderType(orderType: string) {
-  return /RECEIPT|TRACE|SEND_RECEIVE/i.test(orderType)
+  return RECEIPT_ORDER_TYPES.includes(orderType.toUpperCase() as (typeof RECEIPT_ORDER_TYPES)[number])
 }
 
 export function resolveOrderTypeLabel(t: Translator, orderType: string) {
-  if (/SEND_TOKEN/i.test(orderType)) {
+  const normalized = orderType.toUpperCase()
+
+  if (normalized === "SEND_TOKEN" || normalized === "SEND_TOKEN_RECEIVE") {
     return t("orders.types.sendToken")
   }
 
-  if (/SEND/i.test(orderType)) {
+  if (normalized === "SEND" || normalized === "SEND_RECEIVE") {
     return t("orders.types.sendCode")
   }
 
-  if (/NATIVE/i.test(orderType)) {
+  if (normalized === "NATIVE") {
     return t("orders.types.native")
   }
 
-  if (/PAYMENT/i.test(orderType)) {
+  if (normalized === "PAYMENT" || normalized === "PAYMENT_NORMAL") {
     return t("orders.types.payment")
   }
 
-  if (/RECEIPT|TRACE/i.test(orderType)) {
+  if (isIncomingOrderType(normalized)) {
     return t("orders.types.receipt")
   }
 
@@ -49,23 +83,31 @@ export function resolveOrderTypeLabel(t: Translator, orderType: string) {
 }
 
 export function resolveOrderStatusLabel(t: Translator, status: number) {
-  if (status >= 4) {
+  if (status === OrderStatus.OrderFinished) {
     return t("orders.status.finished")
   }
 
-  if (status === 3) {
+  if (status === OrderStatus.BuyerConfirming) {
     return t("orders.status.confirming")
   }
 
-  if (status === 2) {
+  if (status === OrderStatus.SellerPaying) {
     return t("orders.status.processing")
   }
 
-  if (status >= 0) {
+  if (status === OrderStatus.BuyerPaid) {
+    return t("orders.status.buyerPaid")
+  }
+
+  if (status === OrderStatus.BuyerPaymentBroadcasting) {
+    return t("orders.status.broadcasting")
+  }
+
+  if (status === OrderStatus.BuyerPaying) {
     return t("orders.status.pending")
   }
 
-  if (status === -6) {
+  if (status === OrderStatus.Refunded) {
     return t("orders.status.refunded")
   }
 
@@ -260,11 +302,37 @@ export function resolveCounterpartyLabel(t: Translator, orderType: string) {
 }
 
 export function shouldShowConfirm(order: Pick<OrderDetail, "status" | "statusName">) {
-  return order.status === 3 || /confirm/i.test(order.statusName)
+  return order.status === OrderStatus.BuyerConfirming
 }
 
 export function shouldShowRefund(order: Pick<OrderDetail, "status" | "buyerRefundAddress">) {
-  return order.status < 0 || Boolean(order.buyerRefundAddress)
+  return order.status === OrderStatus.Refunded
+}
+
+export function shouldShowHistoryAction(status: number) {
+  return includesStatus(status, [OrderStatus.TimeoutClosed, OrderStatus.BuyerConfirming, OrderStatus.OrderFinished])
+}
+
+export function shouldShowVoucherAction(orderType: string, status: number) {
+  return !isIncomingOrderType(orderType) && includesStatus(status, [
+    OrderStatus.BuyerPaid,
+    OrderStatus.SellerPaying,
+    OrderStatus.BuyerConfirming,
+    OrderStatus.OrderFinished,
+  ])
+}
+
+export function shouldShowBillAction(status: number) {
+  return includesStatus(status, BILL_ACTION_STATUSES)
+}
+
+export function resolveOrderExplorerUrl(order: Pick<OrderDetail, "orderType" | "sendChainBrowsers" | "recvChainBrowsers">) {
+  const browsers = shouldUseSendChainExplorer(order.orderType) ? order.sendChainBrowsers : order.recvChainBrowsers
+  return resolveExplorerUrl(browsers)
+}
+
+export function resolveVoucherExternalUrl(voucher: { orderReceiptUrl: string; txBrowserUrl: string }) {
+  return voucher.orderReceiptUrl || voucher.txBrowserUrl
 }
 
 export function buildFlowProofRange(order: Pick<OrderDetail, "createdAt">, preset: "last7d" | "last30d" | "sinceCreated") {
@@ -309,4 +377,18 @@ export function formatAddressLabel(address: string, fallback = "--") {
 
 export function resolveBillAddressTitle(item: OrderBillAddressItem) {
   return formatAddressLabel(item.address)
+}
+
+function shouldUseSendChainExplorer(orderType: string) {
+  const normalized = orderType.toUpperCase()
+  return normalized === "PAYMENT_NORMAL" || isIncomingOrderType(normalized)
+}
+
+function resolveExplorerUrl(browsers: ExplorerLink[]) {
+  const primary = browsers[0]
+  if (!primary) {
+    return ""
+  }
+
+  return primary.txIdUrl || primary.url || primary.addressUrl || ""
 }

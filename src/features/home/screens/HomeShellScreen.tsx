@@ -105,6 +105,12 @@ export function HomeShellScreen({ navigation, route }: Props) {
     })
   }
 
+  const handleOpenOrders = () => {
+    ;(navigation.getParent()?.getParent() as any)?.navigate("OrdersStack", {
+      screen: "TxlogsScreen",
+    })
+  }
+
   return (
     <HomeScaffold
       title={t("home.shell.title")}
@@ -133,11 +139,12 @@ export function HomeShellScreen({ navigation, route }: Props) {
         </Text>
       </View>
 
-      <View style={styles.actionRow}>
+      <View style={styles.actionGrid}>
         <ActionButton label={t("home.actions.transfer")} onPress={handleOpenTransfer} />
         <ActionButton label={t("home.actions.receive")} onPress={handleOpenReceive} />
         <ActionButton label={t("home.actions.invite")} onPress={handleOpenInvite} />
         <ActionButton label={t("home.actions.copouch")} onPress={handleOpenCopouch} />
+        <ActionButton label={t("home.actions.bill")} onPress={handleOpenOrders} />
       </View>
 
       <View style={[styles.tipsCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
@@ -231,8 +238,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
   },
+  actionGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
   actionButton: {
-    flex: 1,
+    width: "31%",
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 14,
     minHeight: 72,

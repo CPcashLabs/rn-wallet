@@ -53,9 +53,54 @@ export type MessageStackParamList = {
 }
 
 export type OrdersStackParamList = {
+  TxlogsScreen: undefined
+  TxlogsByAddressScreen: {
+    address: string
+  }
   OrderDetailScreen: {
     orderSn: string
     source?: "message" | "manual"
+  }
+  SplitDetailScreen: {
+    orderSn: string
+  }
+  TxPayStatusScreen: {
+    orderSn?: string
+    pay?: boolean
+    walletId?: string
+    skipCountdown?: boolean
+    publicAccess?: boolean
+    publicTxid?: string
+    publicBaseUrl?: string
+  }
+  OrderVoucherScreen: {
+    orderSn: string
+  }
+  DigitalReceiptScreen: {
+    orderSn: string
+  }
+  FlowProofScreen: {
+    orderSn: string
+  }
+  ReimburseScreen: {
+    orderSn: string
+  }
+  RefundDetailScreen: {
+    orderSn: string
+  }
+  OrderBillScreen:
+    | {
+        preset?: "today" | "yesterday" | "last7d" | "last30d"
+      }
+    | undefined
+  BillExportScreen: {
+    startedAt: string
+    endedAt: string
+    startedTimestamp?: number
+    endedTimestamp?: number
+    email?: string
+    orderSn?: string
+    orderType?: string
   }
   TagsNotesScreen: {
     orderSn: string

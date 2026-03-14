@@ -93,6 +93,35 @@ function toOrderDetail(orderSn: string): RootRouteDescriptor<"OrdersStack"> {
   }
 }
 
+function toOrderStackScreen(
+  screen:
+    | "SplitDetailScreen"
+    | "OrderVoucherScreen"
+    | "DigitalReceiptScreen"
+    | "FlowProofScreen"
+    | "RefundDetailScreen",
+  orderSn: string,
+): RootRouteDescriptor<"OrdersStack"> {
+  return {
+    name: "OrdersStack",
+    params: {
+      screen,
+      params: {
+        orderSn,
+      },
+    },
+  }
+}
+
+function toOrderBill(): RootRouteDescriptor<"OrdersStack"> {
+  return {
+    name: "OrdersStack",
+    params: {
+      screen: "OrderBillScreen",
+    },
+  }
+}
+
 function toTxPayStatus(orderSn: string): RootRouteDescriptor<"TransferStack"> {
   return {
     name: "TransferStack",
@@ -273,6 +302,50 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
       return toNotFound(url)
     }
 
+    case "order-voucher": {
+      const orderSn = readString(segments[1])
+      if (!orderSn || segments.length !== 2) {
+        return toNotFound(url)
+      }
+
+      return withAuth([toHomeTab(), toOrderStackScreen("OrderVoucherScreen", orderSn)], url, authenticated, 1)
+    }
+
+    case "digitalreceipt": {
+      const orderSn = readString(segments[1])
+      if (!orderSn || segments.length !== 2) {
+        return toNotFound(url)
+      }
+
+      return withAuth([toHomeTab(), toOrderStackScreen("DigitalReceiptScreen", orderSn)], url, authenticated, 1)
+    }
+
+    case "flowproof": {
+      const orderSn = readString(segments[1])
+      if (!orderSn || segments.length !== 2) {
+        return toNotFound(url)
+      }
+
+      return withAuth([toHomeTab(), toOrderStackScreen("FlowProofScreen", orderSn)], url, authenticated, 1)
+    }
+
+    case "refund": {
+      const orderSn = readString(segments[1])
+      if (!orderSn || segments.length !== 2) {
+        return toNotFound(url)
+      }
+
+      return withAuth([toHomeTab(), toOrderStackScreen("RefundDetailScreen", orderSn)], url, authenticated, 1)
+    }
+
+    case "orderbill": {
+      if (segments.length !== 1) {
+        return toNotFound(url)
+      }
+
+      return withAuth([toHomeTab(), toOrderBill()], url, authenticated, 1)
+    }
+
     case "txlogs": {
       const section = segments[1]?.toLowerCase()
       const orderSn = readString(segments[2])
@@ -286,6 +359,10 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
 
       if (section === "txpaystatus") {
         return withAuth([toHomeTab(), toTxPayStatus(orderSn)], url, authenticated, 1)
+      }
+
+      if (section === "splitdetail") {
+        return withAuth([toHomeTab(), toOrderStackScreen("SplitDetailScreen", orderSn)], url, authenticated, 1)
       }
 
       return toNotFound(url)
