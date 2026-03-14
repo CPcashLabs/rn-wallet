@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { sendFeedback } from "@/features/settings/services/settingsApi"
 import { getGuideLinks, openExternalUrl } from "@/features/settings/utils/settingsHub"
+import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { useToast } from "@/shared/toast/useToast"
 import { AppTextField } from "@/shared/ui/AppTextField"
 
@@ -103,6 +104,7 @@ export function AboutScreen({ navigation }: StackProps<"AboutScreen">) {
 
 export function FeedbackScreen({ navigation }: StackProps<"FeedbackScreen">) {
   const { t } = useTranslation()
+  const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
   const [content, setContent] = useState("")
   const [loading, setLoading] = useState(false)
@@ -113,8 +115,11 @@ export function FeedbackScreen({ navigation }: StackProps<"FeedbackScreen">) {
       await sendFeedback(content.trim())
       setContent("")
       showToast({ message: t("settingsHub.feedback.success"), tone: "success" })
-    } catch {
-      showToast({ message: t("settingsHub.feedback.failed"), tone: "error" })
+    } catch (error) {
+      presentError(error, {
+        fallbackKey: "settingsHub.feedback.failed",
+        mode: "toast",
+      })
     } finally {
       setLoading(false)
     }

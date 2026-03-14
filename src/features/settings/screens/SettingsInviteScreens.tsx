@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react"
 
-import { ActivityIndicator, Alert, Image, Pressable, Text, View } from "react-native"
+import { ActivityIndicator, Image, Pressable, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 
 import { bindInviteCode } from "@/features/auth/services/authApi"
@@ -8,6 +8,7 @@ import { getInviteBindingMessage } from "@/features/auth/utils/authMessages"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { getInviteCodes, getInviteStats, validateInviteCode } from "@/features/invite/services/inviteApi"
 import { buildInviteQrDataUrl } from "@/features/settings/utils/settingsHub"
+import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { shareAdapter } from "@/shared/native/shareAdapter"
 import { getNumber, setNumber } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
@@ -19,6 +20,7 @@ import { Card, PrimaryButton, Row, type StackProps, styles } from "@/features/se
 
 export function InviteHomeScreen({ navigation }: StackProps<"InviteHomeScreen">) {
   const { t } = useTranslation()
+  const { presentError, presentMessage } = useErrorPresenter()
   const { showToast } = useToast()
   const profile = useUserStore(state => state.profile)
   const [inviteCodes, setInviteCodes] = useState<Array<{ inviteCode: string; level: number }>>([])
@@ -30,13 +32,20 @@ export function InviteHomeScreen({ navigation }: StackProps<"InviteHomeScreen">)
     void (async () => {
       try {
         setInviteCodes(await getInviteCodes())
-      } catch {
+      } catch (error) {
         setInviteCodes([])
+        presentError(error, {
+          fallbackKey: "settingsHub.invite.empty",
+          mode: "toast",
+          tone: "warning",
+          preferApiMessage: false,
+          preferErrorMessage: false,
+        })
       } finally {
         setLoading(false)
       }
     })()
-  }, [])
+  }, [presentError])
 
   useEffect(() => {
     if (inviteCodes.length === 0) {
@@ -87,7 +96,7 @@ export function InviteHomeScreen({ navigation }: StackProps<"InviteHomeScreen">)
     })
 
     if (!result.ok) {
-      Alert.alert(t("common.errorTitle"), t("settingsHub.invite.shareFailed"))
+      presentMessage(t("settingsHub.invite.shareFailed"))
     }
   }
 
@@ -122,6 +131,7 @@ export function InviteHomeScreen({ navigation }: StackProps<"InviteHomeScreen">)
 
 export function InviteCodeScreen({ navigation }: StackProps<"InviteCodeScreen">) {
   const { t } = useTranslation()
+  const { presentMessage } = useErrorPresenter()
   const [code, setCode] = useState("")
   const [loading, setLoading] = useState(false)
 
@@ -130,7 +140,7 @@ export function InviteCodeScreen({ navigation }: StackProps<"InviteCodeScreen">)
       setLoading(true)
       const valid = await validateInviteCode(code.trim())
       if (!valid) {
-        Alert.alert(t("common.errorTitle"), t("settingsHub.invite.invalid"))
+        presentMessage(t("settingsHub.invite.invalid"))
         return
       }
 
@@ -138,7 +148,7 @@ export function InviteCodeScreen({ navigation }: StackProps<"InviteCodeScreen">)
       useUserStore.getState().patchProfile({ inviteBound: true })
       navigation.navigate("InviteHomeScreen")
     } catch (error) {
-      Alert.alert(t("common.errorTitle"), getInviteBindingMessage(error))
+      presentMessage(getInviteBindingMessage(error))
     } finally {
       setLoading(false)
     }
@@ -162,6 +172,7 @@ export function InviteCodeScreen({ navigation }: StackProps<"InviteCodeScreen">)
 
 export function InvitePromotionScreen({ navigation }: StackProps<"InvitePromotionScreen">) {
   const { t } = useTranslation()
+  const { presentError } = useErrorPresenter()
   const [stats, setStats] = useState<Array<{ relationLevel: number; number: number; orderCount: number }>>([])
   const [loading, setLoading] = useState(true)
 
@@ -169,13 +180,20 @@ export function InvitePromotionScreen({ navigation }: StackProps<"InvitePromotio
     void (async () => {
       try {
         setStats(await getInviteStats())
-      } catch {
+      } catch (error) {
         setStats([])
+        presentError(error, {
+          fallbackKey: "settingsHub.invite.promotionEmpty",
+          mode: "toast",
+          tone: "warning",
+          preferApiMessage: false,
+          preferErrorMessage: false,
+        })
       } finally {
         setLoading(false)
       }
     })()
-  }, [])
+  }, [presentError])
 
   return (
     <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.invite.promotion")}>

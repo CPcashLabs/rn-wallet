@@ -12,8 +12,9 @@
     "test:unit": "jest --runInBand",
     "test:unit:coverage": "jest --runInBand --coverage",
     "typecheck": "tsc --noEmit",
-    "lint": "npm run typecheck && npm run check:wp00",
-    "check:wp00": "node ./scripts/verify-wp00.mjs"
+    "lint": "npm run typecheck && npm run check:wp00 && npm run check:repo",
+    "check:wp00": "node ./scripts/verify-wp00.mjs",
+    "check:repo": "node ./scripts/verify-repo-standards.mjs"
   },
   "dependencies": {
     "@react-navigation/bottom-tabs": "^7.2.0",

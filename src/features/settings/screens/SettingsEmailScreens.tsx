@@ -15,6 +15,7 @@ import {
   updateRewardEmailNotification,
   updateTransferEmailNotification,
 } from "@/features/settings/services/settingsApi"
+import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { setNumber } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 import { useUserStore } from "@/shared/store/useUserStore"
@@ -27,6 +28,7 @@ import { Card, PrimaryButton, Row, type StackProps, styles, useProfileRefresh } 
 export function EmailNotificationScreen({ navigation }: StackProps<"EmailNotificationScreen">) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
   const profile = useUserStore(state => state.profile)
   const patchProfile = useUserStore(state => state.patchProfile)
@@ -51,8 +53,11 @@ export function EmailNotificationScreen({ navigation }: StackProps<"EmailNotific
       await toggleActions[field](nextValue)
       patchProfile(togglePatches[field](nextValue))
       await refreshProfile()
-    } catch {
-      showToast({ message: t("settingsHub.common.saveFailed"), tone: "error" })
+    } catch (error) {
+      presentError(error, {
+        fallbackKey: "settingsHub.common.saveFailed",
+        mode: "toast",
+      })
     }
   }
 
@@ -78,6 +83,7 @@ export function EmailNotificationScreen({ navigation }: StackProps<"EmailNotific
 
 export function EmailHomeScreen({ navigation }: StackProps<"EmailHomeScreen">) {
   const { t } = useTranslation()
+  const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
   const profile = useUserStore(state => state.profile)
   const [email, setEmail] = useState(profile?.email ?? "")
@@ -103,8 +109,11 @@ export function EmailHomeScreen({ navigation }: StackProps<"EmailHomeScreen">) {
       setNumber(KvStorageKeys.EmailBindCountdownEndAt, Date.now() + 60_000)
       showToast({ message: t("settingsHub.email.codeSent"), tone: "success" })
       navigation.navigate("VerifyEmailScreen", { email: email.trim() })
-    } catch {
-      showToast({ message: t("settingsHub.email.sendCodeFailed"), tone: "error" })
+    } catch (error) {
+      presentError(error, {
+        fallbackKey: "settingsHub.email.sendCodeFailed",
+        mode: "toast",
+      })
     } finally {
       setLoading(false)
     }
@@ -145,6 +154,7 @@ export function EmailBindedScreen({ navigation }: StackProps<"EmailBindedScreen"
 
 export function EmailUnbindScreen({ navigation }: StackProps<"EmailUnbindScreen">) {
   const { t } = useTranslation()
+  const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
   const profile = useUserStore(state => state.profile)
   const refreshProfile = useProfileRefresh()
@@ -159,8 +169,11 @@ export function EmailUnbindScreen({ navigation }: StackProps<"EmailUnbindScreen"
       await sendUnbindEmailCaptcha(profile?.email ?? "")
       countdown.start()
       showToast({ message: t("settingsHub.email.codeSent"), tone: "success" })
-    } catch {
-      showToast({ message: t("settingsHub.email.sendCodeFailed"), tone: "error" })
+    } catch (error) {
+      presentError(error, {
+        fallbackKey: "settingsHub.email.sendCodeFailed",
+        mode: "toast",
+      })
     } finally {
       setSending(false)
     }
@@ -172,8 +185,11 @@ export function EmailUnbindScreen({ navigation }: StackProps<"EmailUnbindScreen"
       await unbindEmail({ email: profile?.email ?? "", captcha: code.trim() })
       await refreshProfile()
       navigation.navigate("SettingsHomeScreen")
-    } catch {
-      showToast({ message: t("settingsHub.email.unbindFailed"), tone: "error" })
+    } catch (error) {
+      presentError(error, {
+        fallbackKey: "settingsHub.email.unbindFailed",
+        mode: "toast",
+      })
     } finally {
       setSubmitting(false)
     }
@@ -202,6 +218,7 @@ export function EmailUnbindScreen({ navigation }: StackProps<"EmailUnbindScreen"
 
 export function VerifyEmailScreen({ navigation, route }: StackProps<"VerifyEmailScreen">) {
   const { t } = useTranslation()
+  const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
   const refreshProfile = useProfileRefresh()
   const [code, setCode] = useState("")
@@ -215,8 +232,11 @@ export function VerifyEmailScreen({ navigation, route }: StackProps<"VerifyEmail
       await bindEmail({ email: route.params.email, captcha: code.trim() })
       await refreshProfile()
       navigation.navigate("SettingsHomeScreen")
-    } catch {
-      showToast({ message: t("settingsHub.email.bindFailed"), tone: "error" })
+    } catch (error) {
+      presentError(error, {
+        fallbackKey: "settingsHub.email.bindFailed",
+        mode: "toast",
+      })
     } finally {
       setSubmitting(false)
     }
@@ -228,8 +248,11 @@ export function VerifyEmailScreen({ navigation, route }: StackProps<"VerifyEmail
       await sendBindEmailCaptcha(route.params.email)
       countdown.start()
       showToast({ message: t("settingsHub.email.codeSent"), tone: "success" })
-    } catch {
-      showToast({ message: t("settingsHub.email.sendCodeFailed"), tone: "error" })
+    } catch (error) {
+      presentError(error, {
+        fallbackKey: "settingsHub.email.sendCodeFailed",
+        mode: "toast",
+      })
     } finally {
       setSending(false)
     }
