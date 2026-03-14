@@ -24,8 +24,6 @@ export type PluginPermission =
 export type PluginPresentation = {
   style: "sheet" | "fullscreen"
   closeButton: "top-right"
-  enterAnimation: "slide-up"
-  exitAnimation: "slide-right"
 }
 
 export type WalletAddressDescriptor = {

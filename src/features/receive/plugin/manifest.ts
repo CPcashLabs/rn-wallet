@@ -11,7 +11,5 @@ export const receivePluginManifest: PluginManifest = {
   presentation: {
     style: "sheet",
     closeButton: "top-right",
-    enterAnimation: "slide-up",
-    exitAnimation: "slide-right",
   },
 }

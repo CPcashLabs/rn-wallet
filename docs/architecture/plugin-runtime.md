@@ -139,8 +139,6 @@ export const pluginRegistry: Record<string, PluginManifest> = {
     presentation: {
       style: "sheet",
       closeButton: "top-right",
-      enterAnimation: "slide-up",
-      exitAnimation: "slide-right",
     },
   },
   transfer: {
@@ -153,8 +151,6 @@ export const pluginRegistry: Record<string, PluginManifest> = {
     presentation: {
       style: "sheet",
       closeButton: "top-right",
-      enterAnimation: "slide-up",
-      exitAnimation: "slide-right",
     },
   },
 }
@@ -186,8 +182,6 @@ export interface PluginManifest {
 export interface PluginPresentation {
   style: "sheet" | "fullscreen"
   closeButton: "top-right"
-  enterAnimation: "slide-up"
-  exitAnimation: "slide-right"
 }
 ```
 
@@ -198,6 +192,8 @@ Manifest fields should answer only these questions:
 - what privileged abilities does it request
 - how should the host present it
 - how should the host lazy-load it
+
+Plugin transition behavior is not part of the manifest. The root host defines one shared transition spec for every plugin instance.
 
 ## Host SDK Contract
 
@@ -258,8 +254,8 @@ Required rules:
 - a close button is always shown in the top-right corner
 - the host, not the plugin, owns the close affordance
 - plugin close always funnels through `host.close()`
-- the close animation is always `slide-right`
-- the recommended enter animation is `slide-up`
+- enter and exit animations are defined centrally by the host, not by individual plugins
+- the current root-project spec is `slide-left` on open and `slide-right` on close
 
 This preserves a stable mental model:
 
@@ -329,7 +325,7 @@ The host remains responsible for:
 5. Host lazy-loads the plugin entry.
 6. Plugin uses HostApi to query session, addresses, and privileged actions.
 7. Plugin finishes, fails, or the user taps close.
-8. Host runs slide-right exit and unmounts the plugin.
+8. Host runs the root-defined exit transition and unmounts the plugin.
 ```
 
 ## Recommended Directory Layout

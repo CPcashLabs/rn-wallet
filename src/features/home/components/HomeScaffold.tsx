@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type Vie
 import { useTranslation } from "react-i18next"
 import { SafeAreaView } from "react-native-safe-area-context"
 
+import { usePluginRuntime } from "@/shared/plugins/PluginRuntimeProvider"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 export function HomeScaffold(props: {
@@ -21,10 +22,12 @@ export function HomeScaffold(props: {
 }) {
   const { t } = useTranslation()
   const theme = useAppTheme()
+  const pluginRuntime = usePluginRuntime()
   const backgroundColor = props.backgroundColor ?? theme.colors.background
   const headerBackgroundColor = props.headerBackgroundColor ?? theme.colors.surface
   const headerTintColor = props.headerTintColor ?? theme.colors.text
   const titleAlign = props.titleAlign ?? (props.canGoBack ? "center" : "left")
+  const safeAreaEdges = pluginRuntime ? (["left", "right", "bottom"] as const) : undefined
 
   const content = props.scroll === false ? (
     <View style={styles.body}>{props.children}</View>
@@ -41,7 +44,7 @@ export function HomeScaffold(props: {
   )
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor }]}>
+    <SafeAreaView edges={safeAreaEdges} style={[styles.safeArea, { backgroundColor }]}>
       {titleAlign === "center" ? (
         <View
           style={[

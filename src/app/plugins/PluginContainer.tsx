@@ -4,6 +4,7 @@ import { ActivityIndicator, Animated, Pressable, StyleSheet, Text, View, useWind
 import { useTranslation } from "react-i18next"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
+import { PLUGIN_TRANSITION_SPEC } from "@/app/plugins/pluginPresentationSpec"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import type { PluginPresentation } from "@/shared/plugins/types"
 
@@ -30,9 +31,9 @@ export function PluginContainer({
 }: Props) {
   const theme = useAppTheme()
   const insets = useSafeAreaInsets()
-  const { height, width } = useWindowDimensions()
+  const { width } = useWindowDimensions()
   const { t } = useTranslation()
-  const translateY = useRef(new Animated.Value(height)).current
+  const translateY = useRef(new Animated.Value(0)).current
   const translateX = useRef(new Animated.Value(0)).current
   const overlayOpacity = useRef(new Animated.Value(0)).current
   const hasAnimatedInRef = useRef(false)
@@ -44,23 +45,23 @@ export function PluginContainer({
     }
 
     hasAnimatedInRef.current = true
-    translateY.setValue(height)
-    translateX.setValue(0)
+    translateY.setValue(0)
+    translateX.setValue(width)
     overlayOpacity.setValue(0)
 
     Animated.parallel([
-      Animated.timing(translateY, {
+      Animated.timing(translateX, {
         toValue: 0,
-        duration: presentation.enterAnimation === "slide-up" ? 260 : 220,
+        duration: PLUGIN_TRANSITION_SPEC.enterDurationMs,
         useNativeDriver: true,
       }),
       Animated.timing(overlayOpacity, {
         toValue: 1,
-        duration: 220,
+        duration: PLUGIN_TRANSITION_SPEC.overlayEnterDurationMs,
         useNativeDriver: true,
       }),
     ]).start()
-  }, [height, overlayOpacity, presentation.enterAnimation, translateX, translateY])
+  }, [overlayOpacity, translateX, translateY, width])
 
   useEffect(() => {
     if (!closing || hasAnimatedOutRef.current) {
@@ -72,12 +73,12 @@ export function PluginContainer({
     Animated.parallel([
       Animated.timing(translateX, {
         toValue: width,
-        duration: presentation.exitAnimation === "slide-right" ? 240 : 220,
+        duration: PLUGIN_TRANSITION_SPEC.exitDurationMs,
         useNativeDriver: true,
       }),
       Animated.timing(overlayOpacity, {
         toValue: 0,
-        duration: 180,
+        duration: PLUGIN_TRANSITION_SPEC.overlayExitDurationMs,
         useNativeDriver: true,
       }),
     ]).start(({ finished }) => {
@@ -85,7 +86,7 @@ export function PluginContainer({
         onClosed()
       }
     })
-  }, [closing, onClosed, overlayOpacity, presentation.exitAnimation, translateX, width])
+  }, [closing, onClosed, overlayOpacity, translateX, width])
 
   const closeButtonBackgroundColor = theme.isDark ? "rgba(15,23,42,0.88)" : "rgba(255,255,255,0.92)"
   const closeButtonBorderColor = theme.isDark ? "rgba(148,163,184,0.28)" : "rgba(15,23,42,0.1)"
@@ -123,23 +124,31 @@ export function PluginContainer({
         </View>
 
         {loading ? (
-          <View style={styles.stateContainer}>
-            <ActivityIndicator color={theme.colors.primary} />
-            <Text style={[styles.stateTitle, { color: theme.colors.text }]}>{pluginName}</Text>
-            <Text style={[styles.stateBody, { color: theme.colors.mutedText }]}>{t("common.loading")}</Text>
+          <View style={[styles.viewport, { paddingTop: insets.top }]}>
+            <View style={styles.stateContainer}>
+              <ActivityIndicator color={theme.colors.primary} />
+              <Text style={[styles.stateTitle, { color: theme.colors.text }]}>{pluginName}</Text>
+              <Text style={[styles.stateBody, { color: theme.colors.mutedText }]}>{t("common.loading")}</Text>
+            </View>
           </View>
         ) : null}
 
         {error ? (
-          <View style={styles.stateContainer}>
-            <Text style={[styles.stateTitle, { color: theme.colors.text }]}>{t("common.errorTitle")}</Text>
-            <Text style={[styles.stateBody, { color: theme.colors.mutedText }]} numberOfLines={3}>
-              {error.message}
-            </Text>
+          <View style={[styles.viewport, { paddingTop: insets.top }]}>
+            <View style={styles.stateContainer}>
+              <Text style={[styles.stateTitle, { color: theme.colors.text }]}>{t("common.errorTitle")}</Text>
+              <Text style={[styles.stateBody, { color: theme.colors.mutedText }]} numberOfLines={3}>
+                {error.message}
+              </Text>
+            </View>
           </View>
         ) : null}
 
-        {!loading && !error ? <View style={styles.content}>{children}</View> : null}
+        {!loading && !error ? (
+          <View style={[styles.content, { paddingTop: insets.top }]}>
+            {children}
+          </View>
+        ) : null}
       </Animated.View>
     </View>
   )
@@ -198,6 +207,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 20,
     textAlign: "center",
+  },
+  viewport: {
+    flex: 1,
   },
   content: {
     flex: 1,
