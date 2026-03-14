@@ -15,6 +15,7 @@ import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import type { SettingsStackParamList } from "@/app/navigation/types"
+import { usePersistentCountdown } from "@/features/auth/hooks/usePersistentCountdown"
 import { bindInviteCode } from "@/features/auth/services/authApi"
 import { getInviteBindingMessage } from "@/features/auth/utils/authMessages"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
@@ -104,39 +105,6 @@ function useProfileRefresh() {
     mergeRemoteProfile(profile)
     return profile
   }
-}
-
-function useCountdown(storageKey: KvStorageKeys) {
-  const [seconds, setSeconds] = useState(0)
-
-  useEffect(() => {
-    let timeoutId: ReturnType<typeof setTimeout> | null = null
-
-    const tick = () => {
-      const endAt = getNumber(storageKey) ?? 0
-      const nextSeconds = Math.max(0, Math.ceil((endAt - Date.now()) / 1000))
-      setSeconds(nextSeconds)
-
-      if (nextSeconds > 0) {
-        timeoutId = setTimeout(tick, 1000)
-      }
-    }
-
-    tick()
-
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId)
-      }
-    }
-  }, [storageKey])
-
-  const start = (durationMs = 60_000) => {
-    setNumber(storageKey, Date.now() + durationMs)
-    setSeconds(Math.ceil(durationMs / 1000))
-  }
-
-  return { seconds, start }
 }
 
 export function EmailNotificationScreen({ navigation }: StackProps<"EmailNotificationScreen">) {
@@ -256,13 +224,13 @@ export function EmailUnbindScreen({ navigation }: StackProps<"EmailUnbindScreen"
   const [code, setCode] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [sending, setSending] = useState(false)
-  const { seconds, start } = useCountdown(KvStorageKeys.EmailUnbindCountdownEndAt)
+  const countdown = usePersistentCountdown(KvStorageKeys.EmailUnbindCountdownEndAt, 60_000)
 
   const handleSend = async () => {
     try {
       setSending(true)
       await sendUnbindEmailCaptcha(profile?.email ?? "")
-      start()
+      countdown.start()
       Alert.alert(t("common.infoTitle"), t("wp09.email.codeSent"))
     } catch {
       Alert.alert(t("common.errorTitle"), t("wp09.email.sendCodeFailed"))
@@ -290,8 +258,8 @@ export function EmailUnbindScreen({ navigation }: StackProps<"EmailUnbindScreen"
         <Text style={styles.centerMuted}>{t("wp09.email.currentBound")}</Text>
         <Text style={styles.emailValue}>{profile?.email}</Text>
         <TextInput keyboardType="number-pad" maxLength={6} onChangeText={setCode} placeholder={t("wp09.email.codePlaceholder")} style={styles.input} value={code} />
-        <Pressable disabled={seconds > 0 || sending} onPress={() => void handleSend()} style={styles.inlineTextButton}>
-          <Text style={styles.inlineTextButtonLabel}>{seconds > 0 ? t("wp09.email.resendCountdown", { sec: seconds }) : t("wp09.email.sendCode")}</Text>
+        <Pressable disabled={countdown.isActive || sending} onPress={() => void handleSend()} style={styles.inlineTextButton}>
+          <Text style={styles.inlineTextButtonLabel}>{countdown.isActive ? t("wp09.email.resendCountdown", { sec: countdown.secondsLeft }) : t("wp09.email.sendCode")}</Text>
         </Pressable>
       </Card>
       <PrimaryButton disabled={code.length !== 6} label={t("common.confirm")} loading={submitting} onPress={() => void handleConfirm()} />
@@ -305,7 +273,7 @@ export function VerifyEmailScreen({ navigation, route }: StackProps<"VerifyEmail
   const [code, setCode] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [sending, setSending] = useState(false)
-  const { seconds, start } = useCountdown(KvStorageKeys.EmailBindCountdownEndAt)
+  const countdown = usePersistentCountdown(KvStorageKeys.EmailBindCountdownEndAt, 60_000)
 
   const handleSubmit = async () => {
     try {
@@ -324,7 +292,7 @@ export function VerifyEmailScreen({ navigation, route }: StackProps<"VerifyEmail
     try {
       setSending(true)
       await sendBindEmailCaptcha(route.params.email)
-      start()
+      countdown.start()
       Alert.alert(t("common.infoTitle"), t("wp09.email.codeSent"))
     } catch {
       Alert.alert(t("common.errorTitle"), t("wp09.email.sendCodeFailed"))
@@ -339,8 +307,8 @@ export function VerifyEmailScreen({ navigation, route }: StackProps<"VerifyEmail
         <Text style={styles.sectionLabel}>{t("wp09.email.verifySentTo")}</Text>
         <Text style={styles.emailValue}>{route.params.email}</Text>
         <TextInput keyboardType="number-pad" maxLength={6} onChangeText={setCode} placeholder={t("wp09.email.codePlaceholder")} style={styles.input} value={code} />
-        <Pressable disabled={seconds > 0 || sending} onPress={() => void handleResend()} style={styles.inlineTextButton}>
-          <Text style={styles.inlineTextButtonLabel}>{seconds > 0 ? t("wp09.email.resendCountdown", { sec: seconds }) : t("wp09.email.resend")}</Text>
+        <Pressable disabled={countdown.isActive || sending} onPress={() => void handleResend()} style={styles.inlineTextButton}>
+          <Text style={styles.inlineTextButtonLabel}>{countdown.isActive ? t("wp09.email.resendCountdown", { sec: countdown.secondsLeft }) : t("wp09.email.resend")}</Text>
         </Pressable>
       </Card>
       <PrimaryButton disabled={code.length !== 6} label={t("common.confirm")} loading={submitting} onPress={() => void handleSubmit()} />

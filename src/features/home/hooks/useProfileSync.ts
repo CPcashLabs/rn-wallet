@@ -1,52 +1,33 @@
 import { useEffect, useState } from "react"
 
 import { getCurrentUserProfile } from "@/features/home/services/homeApi"
+import {
+  getProfileSyncInFlightRequest,
+  hasProfileSyncHydratedThisSession,
+  resetProfileSyncSession,
+  runProfileSync,
+} from "@/shared/session/profileSyncSession"
 import { useUserStore } from "@/shared/store/useUserStore"
 
-let didFetchThisSession = false
-let inFlightRequest: Promise<void> | null = null
-
 async function syncProfile(force = false) {
-  if (inFlightRequest && !force) {
-    return inFlightRequest
-  }
-
-  if (didFetchThisSession && !force) {
-    return
-  }
-
-  didFetchThisSession = true
-
-  let request: Promise<void> | null = null
-
-  request = (async () => {
+  return runProfileSync(async () => {
     try {
       const profile = await getCurrentUserProfile()
       useUserStore.getState().mergeRemoteProfile(profile)
     } catch {
       // Keep cached profile untouched when refresh fails.
-    } finally {
-      if (inFlightRequest === request) {
-        inFlightRequest = null
-      }
     }
-  })()
-
-  inFlightRequest = request
-  return request
+  }, force)
 }
 
-export function resetProfileSyncSession() {
-  didFetchThisSession = false
-  inFlightRequest = null
-}
+export { resetProfileSyncSession }
 
 export function useProfileSync() {
   const profile = useUserStore(state => state.profile)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   useEffect(() => {
-    if (didFetchThisSession || inFlightRequest) {
+    if (hasProfileSyncHydratedThisSession() || getProfileSyncInFlightRequest()) {
       return
     }
 
