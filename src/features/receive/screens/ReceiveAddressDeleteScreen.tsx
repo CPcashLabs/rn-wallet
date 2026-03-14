@@ -10,6 +10,7 @@ import { batchExpireReceiveOrders, getRecentReceiveOrders, type ReceiveOrder } f
 import { SectionCard } from "@/features/transfer/components/TransferUi"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppButton } from "@/shared/ui/AppButton"
 
 type Props = NativeStackScreenProps<ReceiveStackParamList, "ReceiveAddressDeleteScreen">
 
@@ -74,8 +75,9 @@ export function ReceiveAddressDeleteScreen({ navigation, route }: Props) {
         </ScrollView>
 
         <View style={[styles.footer, { borderTopColor: theme.colors.border, backgroundColor: theme.colors.background }]}>
-          <Pressable
+          <AppButton
             disabled={submitting || selected.length === 0}
+            label={submitting ? t("common.loading") : t("receive.addressDelete.confirm")}
             onPress={() => {
               void (async () => {
                 setSubmitting(true)
@@ -92,10 +94,7 @@ export function ReceiveAddressDeleteScreen({ navigation, route }: Props) {
                 }
               })()
             }}
-            style={[styles.button, { backgroundColor: theme.colors.primary, opacity: submitting || selected.length === 0 ? 0.6 : 1 }]}
-          >
-            <Text style={styles.buttonText}>{submitting ? t("common.loading") : t("receive.addressDelete.confirm")}</Text>
-          </Pressable>
+          />
         </View>
       </View>
     </HomeScaffold>
@@ -125,16 +124,5 @@ const styles = StyleSheet.create({
   footer: {
     padding: 16,
     borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  button: {
-    minHeight: 48,
-    borderRadius: 999,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  buttonText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "700",
   },
 })

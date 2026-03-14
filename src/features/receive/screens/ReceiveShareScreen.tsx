@@ -13,6 +13,7 @@ import { FieldRow, SectionCard } from "@/features/transfer/components/TransferUi
 import { fileAdapter, shareAdapter } from "@/shared/native"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppButton } from "@/shared/ui/AppButton"
 
 type Props = NativeStackScreenProps<ReceiveStackParamList, "ReceiveShareScreen">
 
@@ -85,8 +86,9 @@ export function ReceiveShareScreen({ navigation, route }: Props) {
         </SectionCard>
 
         <View style={styles.buttonRow}>
-          <Pressable
+          <AppButton
             disabled={!detail?.address || !detail?.orderSn}
+            label={t("receive.share.saveImage")}
             onPress={() => {
               if (!detail?.address || !detail?.orderSn) {
                 return
@@ -94,12 +96,12 @@ export function ReceiveShareScreen({ navigation, route }: Props) {
 
               void saveQrImage()
             }}
-            style={[styles.secondaryButton, { borderColor: theme.colors.border, opacity: detail?.address && detail?.orderSn ? 1 : 0.6 }]}
-          >
-            <Text style={[styles.secondaryText, { color: theme.colors.text }]}>{t("receive.share.saveImage")}</Text>
-          </Pressable>
-          <Pressable
+            style={styles.buttonFlex}
+            variant="secondary"
+          />
+          <AppButton
             disabled={sharing || !detail?.shareUrl}
+            label={sharing ? t("common.loading") : t("receive.share.shareNow")}
             onPress={() => {
               if (!detail?.shareUrl) {
                 return
@@ -122,10 +124,8 @@ export function ReceiveShareScreen({ navigation, route }: Props) {
                 }
               })()
             }}
-            style={[styles.button, { backgroundColor: theme.colors.primary, opacity: sharing || !detail?.shareUrl ? 0.6 : 1 }]}
-          >
-            <Text style={styles.buttonText}>{sharing ? t("common.loading") : t("receive.share.shareNow")}</Text>
-          </Pressable>
+            style={styles.buttonFlex}
+          />
         </View>
       </ScrollView>
     </HomeScaffold>
@@ -147,28 +147,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 10,
   },
-  button: {
+  buttonFlex: {
     flex: 1,
-    minHeight: 48,
-    borderRadius: 999,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  secondaryButton: {
-    flex: 1,
-    minHeight: 48,
-    borderRadius: 999,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  buttonText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  secondaryText: {
-    fontSize: 15,
-    fontWeight: "700",
   },
 })

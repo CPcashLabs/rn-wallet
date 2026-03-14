@@ -15,7 +15,7 @@ type AppButtonProps = {
   textStyle?: StyleProp<TextStyle>
 }
 
-export function AppButton(props: AppButtonProps) {
+export const AppButton = React.memo(function AppButton(props: AppButtonProps) {
   const theme = useAppTheme()
   const variant = props.variant ?? "primary"
   const tone = props.tone ?? "default"
@@ -59,7 +59,9 @@ export function AppButton(props: AppButtonProps) {
       )}
     </Pressable>
   )
-}
+})
+
+AppButton.displayName = "AppButton"
 
 const styles = StyleSheet.create({
   base: {

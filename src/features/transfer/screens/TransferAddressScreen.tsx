@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react"
+import React, { startTransition, useCallback, useDeferredValue, useEffect, useMemo, useState } from "react"
 
 import { useFocusEffect } from "@react-navigation/native"
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native"
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -17,6 +17,9 @@ import { NativeCapabilityUnavailableError } from "@/shared/errors"
 import { scannerAdapter } from "@/shared/native"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppEmptyState } from "@/shared/ui/AppEmptyState"
+import { AppListCard, AppListRow } from "@/shared/ui/AppList"
+import { AppTextField } from "@/shared/ui/AppTextField"
 
 import type { RootStackParamList, TransferStackParamList } from "@/app/navigation/types"
 
@@ -91,6 +94,7 @@ export function TransferAddressScreen({ navigation, route }: Props) {
     selectedChannel?.channelType === route.params.channelType &&
     selectedChannel?.receiveChainName === route.params.receiveChainName
   const [address, setAddress] = useState(route.params.initialAddress ?? (shouldReuseDraftAddress ? draftRecipientAddress : ""))
+  const deferredAddress = useDeferredValue(address)
   const [recentEntries, setRecentEntries] = useState<RecentEntry[]>([])
   const [loadingRecent, setLoadingRecent] = useState(true)
 
@@ -100,36 +104,48 @@ export function TransferAddressScreen({ navigation, route }: Props) {
     [route.params.addressRegexes, route.params.receiveChainName],
   )
   const normalizedAddress = address.trim()
+  const deferredNormalizedAddress = deferredAddress.trim()
+  const validateAddress = useCallback(
+    (value: string) => {
+      if (!value) {
+        return false
+      }
+
+      return regexes.some(regex => regex.test(value))
+    },
+    [regexes],
+  )
   const isAddressValid = useMemo(() => {
-    if (!normalizedAddress) {
+    if (!deferredNormalizedAddress) {
       return false
     }
 
-    return regexes.some(regex => regex.test(normalizedAddress))
-  }, [normalizedAddress, regexes])
+    return validateAddress(deferredNormalizedAddress)
+  }, [deferredNormalizedAddress, validateAddress])
+  const canSubmit = useMemo(() => validateAddress(normalizedAddress), [normalizedAddress, validateAddress])
 
   const addressBookMatch = useMemo(() => {
-    const lookup = normalizedAddress.toLowerCase()
+    const lookup = deferredNormalizedAddress.toLowerCase()
     if (!lookup) {
       return null
     }
 
     return addressBookEntries.find(item => item.walletAddress.toLowerCase() === lookup) ?? null
-  }, [addressBookEntries, normalizedAddress])
+  }, [addressBookEntries, deferredNormalizedAddress])
   const addressError = useMemo(() => {
-    if (!normalizedAddress) {
+    if (!deferredNormalizedAddress) {
       return ""
     }
 
     return isAddressValid ? "" : t("transfer.address.invalid")
-  }, [isAddressValid, normalizedAddress, t])
+  }, [deferredNormalizedAddress, isAddressValid, t])
 
   const filteredAddressBook = useMemo(() => {
     return addressBookEntries.filter(item => item.chainType === targetChainType).slice(0, 8)
   }, [addressBookEntries, targetChainType])
 
   const addressSuggestions = useMemo(() => {
-    const keyword = normalizedAddress.toLowerCase()
+    const keyword = deferredNormalizedAddress.toLowerCase()
     if (!keyword) {
       return []
     }
@@ -141,7 +157,7 @@ export function TransferAddressScreen({ navigation, route }: Props) {
         return (nameMatched || addressMatched) && item.walletAddress.toLowerCase() !== keyword
       })
       .slice(0, 5)
-  }, [filteredAddressBook, normalizedAddress])
+  }, [deferredNormalizedAddress, filteredAddressBook])
 
   useEffect(() => {
     setSelectedChannel(toDraftChannel(route))
@@ -173,11 +189,15 @@ export function TransferAddressScreen({ navigation, route }: Props) {
         })
 
         if (mounted) {
-          setRecentEntries(result)
+          startTransition(() => {
+            setRecentEntries(result)
+          })
         }
       } catch {
         if (mounted) {
-          setRecentEntries([])
+          startTransition(() => {
+            setRecentEntries([])
+          })
         }
       } finally {
         if (mounted) {
@@ -282,7 +302,7 @@ export function TransferAddressScreen({ navigation, route }: Props) {
   }
 
   const handleNext = () => {
-    if (!isAddressValid) {
+    if (!canSubmit) {
       Alert.alert(t("common.errorTitle"), t("transfer.address.invalid"))
       return
     }
@@ -293,7 +313,12 @@ export function TransferAddressScreen({ navigation, route }: Props) {
 
   return (
     <HomeScaffold canGoBack onBack={navigation.goBack} title={t("transfer.address.title")} scroll={false}>
-      <ScrollView bounces={false} contentContainerStyle={styles.content}>
+      <ScrollView
+        bounces={false}
+        contentContainerStyle={styles.content}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={[styles.channelCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
           <View style={styles.channelHeader}>
             <View style={styles.channelMeta}>
@@ -322,22 +347,16 @@ export function TransferAddressScreen({ navigation, route }: Props) {
         </View>
 
         <View style={[styles.inputCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <Text style={[styles.label, { color: theme.colors.text }]}>{t("transfer.address.label")}</Text>
-          <TextInput
+          <AppTextField
             autoCapitalize="none"
             autoCorrect={false}
+            backgroundTone="background"
+            error={addressError}
+            helperText={t("transfer.address.helper")}
+            label={t("transfer.address.label")}
             multiline
             onChangeText={handleAddressChange}
             placeholder={t("transfer.address.placeholder")}
-            placeholderTextColor={theme.colors.mutedText}
-            style={[
-              styles.input,
-              {
-                color: theme.colors.text,
-                borderColor: addressError ? "#DC2626" : theme.colors.border,
-                backgroundColor: theme.colors.background,
-              },
-            ]}
             value={address}
           />
           <View style={styles.inlineActions}>
@@ -351,25 +370,24 @@ export function TransferAddressScreen({ navigation, route }: Props) {
               <Text style={[styles.inlineButtonText, { color: theme.colors.primary }]}>{t("transfer.address.fromAddressBook")}</Text>
             </Pressable>
           </View>
-          <Text style={[styles.helperText, { color: addressError ? "#DC2626" : theme.colors.mutedText }]}>
-            {addressError || t("transfer.address.helper")}
-          </Text>
         </View>
 
         {addressSuggestions.length > 0 ? (
           <>
             <SectionTitle title={t("transfer.address.suggestions")} />
-            <View style={[styles.listCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-              {addressSuggestions.map(item => (
-                <Pressable key={item.id} onPress={() => syncAddress(item.walletAddress, "suggestion")} style={styles.row}>
-                  <View style={styles.rowMeta}>
-                    <Text style={[styles.rowTitle, { color: theme.colors.text }]}>{item.name}</Text>
-                    <Text style={[styles.rowSubtitle, { color: theme.colors.mutedText }]}>{formatAddress(item.walletAddress)}</Text>
-                  </View>
-                  <Text style={[styles.rowArrow, { color: theme.colors.mutedText }]}>›</Text>
-                </Pressable>
+            <AppListCard>
+              {addressSuggestions.map((item, index) => (
+                <AppListRow
+                  key={item.id}
+                  hideDivider={index === addressSuggestions.length - 1}
+                  onPress={() => syncAddress(item.walletAddress, "suggestion")}
+                  subtitle={formatAddress(item.walletAddress)}
+                  subtitleStyle={styles.rowSubtitle}
+                  title={item.name}
+                  titleStyle={styles.rowTitle}
+                />
               ))}
-            </View>
+            </AppListCard>
           </>
         ) : null}
 
@@ -391,46 +409,48 @@ export function TransferAddressScreen({ navigation, route }: Props) {
         </View>
 
         <SectionTitle title={t("transfer.address.recent")} />
-        <View style={[styles.listCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+        <AppListCard>
           {loadingRecent ? (
-            <ListEmpty body={t("transfer.address.loadingRecent")} title={t("common.loading")} />
+            <AppEmptyState body={t("transfer.address.loadingRecent")} title={t("common.loading")} />
           ) : recentEntries.length === 0 ? (
-            <ListEmpty body={t("transfer.address.noRecent")} title={t("transfer.address.noRecentTitle")} />
+            <AppEmptyState body={t("transfer.address.noRecent")} title={t("transfer.address.noRecentTitle")} />
           ) : (
-            recentEntries.slice(0, 5).map(item => (
-              <Pressable key={`${item.address}-${item.createdAt}`} onPress={() => syncAddress(item.address, "recent")} style={styles.row}>
-                <View style={styles.rowMeta}>
-                  <Text style={[styles.rowTitle, { color: theme.colors.text }]}>{formatAddress(item.address)}</Text>
-                  <Text style={[styles.rowSubtitle, { color: theme.colors.mutedText }]}>
-                    {t(`transfer.address.direction.${item.direction}`)} · {item.coinName} · {formatDateTime(item.createdAt)}
-                  </Text>
-                </View>
-                <Text style={[styles.rowArrow, { color: theme.colors.mutedText }]}>›</Text>
-              </Pressable>
+            recentEntries.slice(0, 5).map((item, index, source) => (
+              <AppListRow
+                key={`${item.address}-${item.createdAt}`}
+                hideDivider={index === source.length - 1}
+                onPress={() => syncAddress(item.address, "recent")}
+                subtitle={`${t(`transfer.address.direction.${item.direction}`)} · ${item.coinName} · ${formatDateTime(item.createdAt)}`}
+                subtitleStyle={styles.rowSubtitle}
+                title={formatAddress(item.address)}
+                titleStyle={styles.rowTitle}
+              />
             ))
           )}
-        </View>
+        </AppListCard>
 
         <SectionTitle title={t("transfer.address.addressBook")} />
-        <View style={[styles.listCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+        <AppListCard>
           {addressBookLoading && filteredAddressBook.length === 0 ? (
-            <ListEmpty body={t("home.addressBook.loading")} title={t("common.loading")} />
+            <AppEmptyState body={t("home.addressBook.loading")} title={t("common.loading")} />
           ) : filteredAddressBook.length === 0 ? (
-            <ListEmpty body={t("transfer.address.noAddressBook")} title={t("transfer.address.noAddressBookTitle")} />
+            <AppEmptyState body={t("transfer.address.noAddressBook")} title={t("transfer.address.noAddressBookTitle")} />
           ) : (
-            filteredAddressBook.map(item => (
-              <Pressable key={item.id} onPress={() => syncAddress(item.walletAddress, "addressBook")} style={styles.row}>
-                <View style={styles.rowMeta}>
-                  <Text style={[styles.rowTitle, { color: theme.colors.text }]}>{item.name}</Text>
-                  <Text style={[styles.rowSubtitle, { color: theme.colors.mutedText }]}>{formatAddress(item.walletAddress)}</Text>
-                </View>
-                <Text style={[styles.rowArrow, { color: theme.colors.mutedText }]}>›</Text>
-              </Pressable>
+            filteredAddressBook.map((item, index) => (
+              <AppListRow
+                key={item.id}
+                hideDivider={index === filteredAddressBook.length - 1}
+                onPress={() => syncAddress(item.walletAddress, "addressBook")}
+                subtitle={formatAddress(item.walletAddress)}
+                subtitleStyle={styles.rowSubtitle}
+                title={item.name}
+                titleStyle={styles.rowTitle}
+              />
             ))
           )}
-        </View>
+        </AppListCard>
 
-        <PrimaryButton disabled={!isAddressValid} label={t("transfer.address.next")} onPress={handleNext} />
+        <PrimaryButton disabled={!canSubmit} label={t("transfer.address.next")} onPress={handleNext} />
       </ScrollView>
     </HomeScaffold>
   )
@@ -440,17 +460,6 @@ function SectionTitle(props: { title: string }) {
   const theme = useAppTheme()
 
   return <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{props.title}</Text>
-}
-
-function ListEmpty(props: { title: string; body: string }) {
-  const theme = useAppTheme()
-
-  return (
-    <View style={styles.emptyState}>
-      <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>{props.title}</Text>
-      <Text style={[styles.emptyBody, { color: theme.colors.mutedText }]}>{props.body}</Text>
-    </View>
-  )
 }
 
 const styles = StyleSheet.create({
@@ -522,15 +531,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
   },
-  input: {
-    minHeight: 96,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingTop: 12,
-    textAlignVertical: "top",
-    fontSize: 15,
-  },
   inlineActions: {
     flexDirection: "row",
     gap: 10,
@@ -542,10 +542,6 @@ const styles = StyleSheet.create({
   inlineButtonText: {
     fontSize: 13,
     fontWeight: "700",
-  },
-  helperText: {
-    fontSize: 12,
-    lineHeight: 18,
   },
   addAddressCard: {
     borderWidth: StyleSheet.hairlineWidth,
@@ -579,24 +575,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
   },
-  listCard: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 16,
-    overflow: "hidden",
-  },
-  row: {
-    minHeight: 64,
-    paddingHorizontal: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#CBD5E133",
-  },
-  rowMeta: {
-    flex: 1,
-    gap: 4,
-  },
   rowTitle: {
     fontSize: 14,
     fontWeight: "700",
@@ -604,24 +582,5 @@ const styles = StyleSheet.create({
   rowSubtitle: {
     fontSize: 13,
     lineHeight: 18,
-  },
-  rowArrow: {
-    fontSize: 18,
-  },
-  emptyState: {
-    minHeight: 140,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 16,
-    gap: 8,
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  emptyBody: {
-    fontSize: 13,
-    lineHeight: 20,
-    textAlign: "center",
   },
 })

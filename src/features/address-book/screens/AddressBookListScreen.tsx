@@ -1,13 +1,18 @@
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react"
 
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native"
+import { FlatList, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
+import type { AddressBookEntry } from "@/features/address-book/services/addressBookApi"
 import { useAddressBookStore } from "@/features/address-book/store/useAddressBookStore"
-import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { HeaderTextAction, HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { formatAddress } from "@/features/home/utils/format"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppButton } from "@/shared/ui/AppButton"
+import { AppEmptyState } from "@/shared/ui/AppEmptyState"
+import { AppListRow } from "@/shared/ui/AppList"
+import { AppTextField } from "@/shared/ui/AppTextField"
 
 import type { AddressBookStackParamList } from "@/app/navigation/types"
 
@@ -23,6 +28,7 @@ export function AddressBookListScreen({ navigation, route }: Props) {
   const refreshEntries = useAddressBookStore(state => state.refreshEntries)
   const setSelectedEntry = useAddressBookStore(state => state.setSelectedEntry)
   const [keyword, setKeyword] = useState("")
+  const deferredKeyword = useDeferredValue(keyword)
 
   const mode = route.params?.mode ?? "manage"
   const chainType = route.params?.chainType
@@ -32,7 +38,7 @@ export function AddressBookListScreen({ navigation, route }: Props) {
   }, [loadEntries])
 
   const filteredEntries = useMemo(() => {
-    const normalized = keyword.trim().toLowerCase()
+    const normalized = deferredKeyword.trim().toLowerCase()
 
     return entries.filter(entry => {
       if (chainType && entry.chainType !== chainType) {
@@ -49,9 +55,9 @@ export function AddressBookListScreen({ navigation, route }: Props) {
         entry.chainType.toLowerCase().includes(normalized)
       )
     })
-  }, [chainType, entries, keyword])
+  }, [chainType, deferredKeyword, entries])
 
-  const handleRowPress = (id: string) => {
+  const handleRowPress = useCallback((id: string) => {
     const entry = entries.find(item => item.id === id)
     if (!entry) {
       return
@@ -64,13 +70,39 @@ export function AddressBookListScreen({ navigation, route }: Props) {
     }
 
     navigation.navigate("AddressBookEditScreen", { id })
-  }
+  }, [entries, mode, navigation, setSelectedEntry])
 
-  const handleAddPress = () => {
+  const handleAddPress = useCallback(() => {
     navigation.navigate("AddressBookEditScreen", {
       chainType,
     })
-  }
+  }, [chainType, navigation])
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedEntry(null)
+    navigation.goBack()
+  }, [navigation, setSelectedEntry])
+
+  const renderEntry = useCallback(
+    ({ item, index }: { item: AddressBookEntry; index: number }) => (
+      <AppListRow
+        hideDivider={index === filteredEntries.length - 1}
+        left={
+          <View style={[styles.chainBadge, { backgroundColor: item.chainType === "TRON" ? "#FFF1E9" : "#EBF4FF" }]}>
+            <Text style={[styles.chainBadgeText, { color: item.chainType === "TRON" ? "#E37318" : "#1D4ED8" }]}>
+              {item.chainType}
+            </Text>
+          </View>
+        }
+        onPress={() => handleRowPress(item.id)}
+        subtitle={formatAddress(item.walletAddress)}
+        subtitleStyle={styles.rowAddress}
+        title={item.name}
+        titleStyle={styles.rowName}
+      />
+    ),
+    [filteredEntries.length, handleRowPress],
+  )
 
   const title = mode === "select" ? t("home.addressBook.selectTitle") : t("home.addressBook.title")
 
@@ -80,30 +112,23 @@ export function AddressBookListScreen({ navigation, route }: Props) {
       onBack={navigation.goBack}
       title={title}
       right={
-        <Pressable onPress={() => void refreshEntries()} style={styles.refreshButton}>
-          <Text style={[styles.refreshText, { color: theme.colors.primary }]}>
-            {refreshing ? t("common.loading") : t("home.addressBook.refresh")}
-          </Text>
-        </Pressable>
+        <HeaderTextAction
+          disabled={refreshing}
+          label={refreshing ? t("common.loading") : t("home.addressBook.refresh")}
+          onPress={() => void refreshEntries()}
+        />
       }
       scroll={false}
     >
-      <ScrollView bounces={false} contentContainerStyle={styles.content}>
-        <View style={[styles.searchCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <TextInput
-            autoCapitalize="none"
-            onChangeText={setKeyword}
-            placeholder={t("home.addressBook.searchPlaceholder")}
-            placeholderTextColor={theme.colors.mutedText}
-            style={[
-              styles.searchInput,
-              {
-                color: theme.colors.text,
-              },
-            ]}
-            value={keyword}
-          />
-        </View>
+      <View style={styles.page}>
+        <AppTextField
+          autoCapitalize="none"
+          backgroundTone="surface"
+          containerStyle={styles.searchField}
+          onChangeText={setKeyword}
+          placeholder={t("home.addressBook.searchPlaceholder")}
+          value={keyword}
+        />
 
         {chainType ? (
           <View style={[styles.modeCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
@@ -113,92 +138,55 @@ export function AddressBookListScreen({ navigation, route }: Props) {
           </View>
         ) : null}
 
-        <View style={[styles.listCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          {loading && entries.length === 0 ? (
-            <EmptyState body={t("home.addressBook.loading")} title={t("common.loading")} />
-          ) : filteredEntries.length === 0 ? (
-            <EmptyState
-              body={keyword ? t("home.addressBook.searchEmpty") : t("home.addressBook.emptyBody")}
-              title={keyword ? t("home.addressBook.searchEmptyTitle") : t("home.addressBook.emptyTitle")}
+        <FlatList
+          data={filteredEntries}
+          initialNumToRender={12}
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
+          keyExtractor={item => item.id}
+          ListEmptyComponent={
+            loading && entries.length === 0 ? (
+              <AppEmptyState body={t("home.addressBook.loading")} title={t("common.loading")} />
+            ) : (
+              <AppEmptyState
+                body={keyword ? t("home.addressBook.searchEmpty") : t("home.addressBook.emptyBody")}
+                title={keyword ? t("home.addressBook.searchEmptyTitle") : t("home.addressBook.emptyTitle")}
+              />
+            )
+          }
+          maxToRenderPerBatch={16}
+          removeClippedSubviews
+          renderItem={renderEntry}
+          showsVerticalScrollIndicator={false}
+          style={[styles.listCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
+          windowSize={8}
+          contentContainerStyle={filteredEntries.length === 0 ? styles.listCardEmptyContent : undefined}
+        />
+
+        <View style={styles.footerActions}>
+          <AppButton label={mode === "select" ? t("home.addressBook.addNew") : t("home.addressBook.add")} onPress={handleAddPress} />
+
+          {mode === "select" ? (
+            <AppButton
+              label={t("home.addressBook.clearSelection")}
+              onPress={handleClearSelection}
+              variant="secondary"
             />
-          ) : (
-            filteredEntries.map(entry => (
-              <Pressable key={entry.id} onPress={() => handleRowPress(entry.id)} style={styles.row}>
-                <View style={styles.rowLeft}>
-                  <View style={[styles.chainBadge, { backgroundColor: entry.chainType === "TRON" ? "#FFF1E9" : "#EBF4FF" }]}>
-                    <Text style={[styles.chainBadgeText, { color: entry.chainType === "TRON" ? "#E37318" : "#1D4ED8" }]}>
-                      {entry.chainType}
-                    </Text>
-                  </View>
-                  <View style={styles.rowMeta}>
-                    <Text style={[styles.rowName, { color: theme.colors.text }]}>{entry.name}</Text>
-                    <Text style={[styles.rowAddress, { color: theme.colors.mutedText }]} numberOfLines={1}>
-                      {formatAddress(entry.walletAddress)}
-                    </Text>
-                  </View>
-                </View>
-                <Text style={[styles.rowArrow, { color: theme.colors.mutedText }]}>›</Text>
-              </Pressable>
-            ))
-          )}
+          ) : null}
         </View>
-
-        <Pressable onPress={handleAddPress} style={[styles.addButton, { backgroundColor: theme.colors.primary }]}>
-          <Text style={styles.addButtonText}>
-            {mode === "select" ? t("home.addressBook.addNew") : t("home.addressBook.add")}
-          </Text>
-        </Pressable>
-
-        {mode === "select" ? (
-          <Pressable
-            onPress={() => {
-              setSelectedEntry(null)
-              navigation.goBack()
-            }}
-            style={[styles.secondaryButton, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}
-          >
-            <Text style={[styles.secondaryButtonText, { color: theme.colors.text }]}>
-              {t("home.addressBook.clearSelection")}
-            </Text>
-          </Pressable>
-        ) : null}
-      </ScrollView>
+      </View>
     </HomeScaffold>
   )
 }
 
-function EmptyState(props: { title: string; body: string }) {
-  const theme = useAppTheme()
-
-  return (
-    <View style={styles.emptyState}>
-      <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>{props.title}</Text>
-      <Text style={[styles.emptyBody, { color: theme.colors.mutedText }]}>{props.body}</Text>
-    </View>
-  )
-}
-
 const styles = StyleSheet.create({
-  content: {
+  page: {
+    flex: 1,
     padding: 16,
     gap: 12,
   },
-  refreshButton: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  refreshText: {
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  searchCard: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-  },
-  searchInput: {
-    minHeight: 44,
-    fontSize: 14,
+  searchField: {
+    backgroundColor: "transparent",
   },
   modeCard: {
     borderWidth: StyleSheet.hairlineWidth,
@@ -211,24 +199,16 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   listCard: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 16,
-    overflow: "hidden",
-  },
-  row: {
-    minHeight: 72,
-    paddingHorizontal: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#CBD5E133",
-  },
-  rowLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
     flex: 1,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 18,
+  },
+  listCardEmptyContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+  },
+  footerActions: {
+    gap: 12,
   },
   chainBadge: {
     minWidth: 58,
@@ -242,56 +222,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
   },
-  rowMeta: {
-    flex: 1,
-    gap: 4,
-  },
   rowName: {
     fontSize: 15,
     fontWeight: "700",
   },
   rowAddress: {
     fontSize: 13,
-  },
-  rowArrow: {
-    fontSize: 18,
-  },
-  emptyState: {
-    minHeight: 180,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 20,
-    gap: 8,
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  emptyBody: {
-    fontSize: 13,
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  addButton: {
-    minHeight: 48,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  addButtonText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  secondaryButton: {
-    minHeight: 46,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  secondaryButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
   },
 })

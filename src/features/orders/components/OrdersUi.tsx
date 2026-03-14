@@ -1,12 +1,15 @@
 import React from "react"
 
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native"
+import { Pressable, StyleSheet, Text, View } from "react-native"
 
 import { SectionCard } from "@/features/transfer/components/TransferUi"
 import { formatAddress } from "@/features/home/utils/format"
 import type { OrderListItem } from "@/features/orders/services/ordersApi"
 import { formatMonthKey, formatSignedTokenAmount, formatTimestamp, resolveCounterpartyAddress, resolveOrderStatusLabel, resolveOrderTypeLabel } from "@/features/orders/utils/orderHelpers"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppListRow } from "@/shared/ui/AppList"
+import { AppStatusHero } from "@/shared/ui/AppStatusHero"
+import { AppTextField } from "@/shared/ui/AppTextField"
 
 type Translator = (key: string, options?: Record<string, unknown>) => string
 
@@ -105,17 +108,7 @@ export function ActionRow(props: {
   body?: string
   onPress: () => void
 }) {
-  const theme = useAppTheme()
-
-  return (
-    <Pressable onPress={props.onPress} style={styles.actionRow}>
-      <View style={styles.actionCopy}>
-        <Text style={[styles.actionLabel, { color: theme.colors.text }]}>{props.label}</Text>
-        {props.body ? <Text style={[styles.actionBody, { color: theme.colors.mutedText }]}>{props.body}</Text> : null}
-      </View>
-      <Text style={[styles.actionArrow, { color: theme.colors.mutedText }]}>›</Text>
-    </Pressable>
-  )
+  return <AppListRow onPress={props.onPress} subtitle={props.body} title={props.label} />
 }
 
 export function StatusHero(props: {
@@ -123,15 +116,7 @@ export function StatusHero(props: {
   amount: string
   subtitle?: string
 }) {
-  const theme = useAppTheme()
-
-  return (
-    <View style={[styles.hero, { backgroundColor: theme.colors.primary }]}>
-      <Text style={styles.heroTitle}>{props.title}</Text>
-      <Text style={styles.heroAmount}>{props.amount}</Text>
-      {props.subtitle ? <Text style={styles.heroSubtitle}>{props.subtitle}</Text> : null}
-    </View>
-  )
+  return <AppStatusHero amount={props.amount} subtitle={props.subtitle} title={props.title} />
 }
 
 export function LabeledInput(props: {
@@ -141,28 +126,16 @@ export function LabeledInput(props: {
   keyboardType?: "default" | "email-address"
   onChangeText: (value: string) => void
 }) {
-  const theme = useAppTheme()
-
   return (
-    <View style={styles.inputWrap}>
-      <Text style={[styles.inputLabel, { color: theme.colors.text }]}>{props.label}</Text>
-      <TextInput
-        autoCapitalize="none"
-        keyboardType={props.keyboardType}
-        onChangeText={props.onChangeText}
-        placeholder={props.placeholder}
-        placeholderTextColor={theme.colors.mutedText}
-        style={[
-          styles.input,
-          {
-            borderColor: theme.colors.border,
-            color: theme.colors.text,
-            backgroundColor: theme.colors.surface,
-          },
-        ]}
-        value={props.value}
-      />
-    </View>
+    <AppTextField
+      autoCapitalize="none"
+      backgroundTone="surface"
+      keyboardType={props.keyboardType}
+      label={props.label}
+      onChangeText={props.onChangeText}
+      placeholder={props.placeholder}
+      value={props.value}
+    />
   )
 }
 
@@ -245,66 +218,6 @@ const styles = StyleSheet.create({
   },
   rowTime: {
     fontSize: 12,
-  },
-  actionRow: {
-    minHeight: 52,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  actionCopy: {
-    flex: 1,
-    gap: 4,
-  },
-  actionLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  actionBody: {
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  actionArrow: {
-    fontSize: 20,
-  },
-  hero: {
-    borderRadius: 24,
-    paddingHorizontal: 20,
-    paddingVertical: 24,
-    gap: 6,
-  },
-  heroTitle: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
-    textAlign: "center",
-  },
-  heroAmount: {
-    color: "#FFFFFF",
-    fontSize: 28,
-    fontWeight: "800",
-    textAlign: "center",
-  },
-  heroSubtitle: {
-    color: "#FFFFFF",
-    opacity: 0.92,
-    fontSize: 13,
-    textAlign: "center",
-  },
-  inputWrap: {
-    gap: 8,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  input: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 14,
-    minHeight: 48,
-    paddingHorizontal: 14,
-    fontSize: 15,
   },
   successTitle: {
     fontSize: 16,

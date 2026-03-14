@@ -11,6 +11,7 @@ import { useUserStore } from "@/shared/store/useUserStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { AppCard, APP_LIST_ROW_MIN_HEIGHT } from "@/shared/ui/AppCard"
 import { AppButton } from "@/shared/ui/AppButton"
+import { AppListRow } from "@/shared/ui/AppList"
 
 export type StackProps<T extends keyof SettingsStackParamList> = NativeStackScreenProps<SettingsStackParamList, T>
 
@@ -41,17 +42,7 @@ export function Card(props: { children: React.ReactNode }) {
 }
 
 export function Row(props: { label: string; detail?: string; onPress?: () => void; children?: React.ReactNode }) {
-  const theme = useAppTheme()
-
-  return (
-    <Pressable disabled={!props.onPress} onPress={props.onPress} style={styles.row}>
-      <View style={styles.rowMain}>
-        <Text style={[styles.rowLabel, { color: theme.colors.text }]}>{props.label}</Text>
-        {props.detail ? <Text style={[styles.rowDetail, { color: theme.colors.mutedText }]}>{props.detail}</Text> : null}
-      </View>
-      {props.children ?? (props.onPress ? <Text style={[styles.rowArrow, { color: theme.colors.mutedText }]}>›</Text> : null)}
-    </Pressable>
-  )
+  return <AppListRow onPress={props.onPress} right={props.children} subtitle={props.detail} title={props.label} />
 }
 
 export function PrimaryButton(props: { label: string; disabled?: boolean; loading?: boolean; onPress: () => void }) {
@@ -69,27 +60,6 @@ export function useProfileRefresh() {
 }
 
 export const styles = StyleSheet.create({
-  row: {
-    minHeight: APP_LIST_ROW_MIN_HEIGHT,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  rowMain: {
-    flex: 1,
-    gap: 4,
-  },
-  rowLabel: {
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  rowDetail: {
-    fontSize: 12,
-  },
-  rowArrow: {
-    fontSize: 18,
-  },
   sectionLabel: {
     fontSize: 14,
     fontWeight: "600",

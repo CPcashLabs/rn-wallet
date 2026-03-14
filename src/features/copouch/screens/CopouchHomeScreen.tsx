@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react"
 
-import { Alert, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native"
+import { Alert, Modal, Pressable, StyleSheet, Text, View } from "react-native"
 import { useFocusEffect } from "@react-navigation/native"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
@@ -13,6 +13,7 @@ import { PageEmpty, PrimaryButton, SecondaryButton, SectionCard } from "@/featur
 import { useSocketStore } from "@/shared/store/useSocketStore"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppTextField } from "@/shared/ui/AppTextField"
 
 import type { CopouchStackParamList } from "@/app/navigation/types"
 
@@ -238,18 +239,11 @@ export function CopouchHomeScreen({ navigation }: Props) {
           <View style={[styles.modalCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
             <Text style={[styles.modalTitle, { color: theme.colors.text }]}>{t("copouch.home.createModalTitle")}</Text>
             <Text style={[styles.modalLabel, { color: theme.colors.mutedText }]}>{t("copouch.home.nameLabel")}</Text>
-            <TextInput
+            <AppTextField
+              backgroundTone="background"
               value={walletName}
               onChangeText={setWalletName}
               placeholder={t("copouch.home.namePlaceholder")}
-              placeholderTextColor={theme.colors.mutedText}
-              style={[
-                styles.input,
-                {
-                  borderColor: theme.colors.border,
-                  color: theme.colors.text,
-                },
-              ]}
             />
             <Text style={[styles.modalLabel, { color: theme.colors.mutedText }]}>{t("copouch.home.backgroundLabel")}</Text>
             <View style={styles.paletteRow}>

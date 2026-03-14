@@ -15,6 +15,7 @@ import { getNumber, removeItem, setBoolean, setNumber } from "@/shared/storage/k
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppStatusHero } from "@/shared/ui/AppStatusHero"
 
 type Props = NativeStackScreenProps<TransferStackParamList, "TxPayStatusScreen">
 type StatusDetail = Awaited<ReturnType<typeof getOrderDetail>> | Awaited<ReturnType<typeof getPublicTxStatusDetail>>
@@ -145,21 +146,17 @@ export function TxPayStatusScreen({ navigation, route }: Props) {
   return (
     <HomeScaffold canGoBack onBack={navigation.goBack} title={t("transfer.status.title")} scroll={false}>
       <ScrollView bounces={false} contentContainerStyle={styles.content}>
-        <View style={[styles.hero, { backgroundColor: theme.colors.primary }]}>
-          <Text style={styles.heroStatus}>
-            {progress === "success"
+        <AppStatusHero
+          amount={detail ? `${progress === "success" ? "+" : "-"}${formatAmount(detail.sendAmount)} ${detail.sendCoinName || detail.sendCoinCode}` : "--"}
+          subtitle={countdownLeft > 0 ? t("transfer.status.countdown", { sec: Math.ceil(countdownLeft / 1000) }) : detail?.statusName || ""}
+          title={
+            progress === "success"
               ? t("transfer.status.success")
               : progress === "closed"
                 ? t("transfer.status.closed")
-                : t("transfer.status.pending")}
-          </Text>
-          <Text style={styles.heroAmount}>
-            {detail ? `${progress === "success" ? "+" : "-"}${formatAmount(detail.sendAmount)} ${detail.sendCoinName || detail.sendCoinCode}` : "--"}
-          </Text>
-          <Text style={styles.heroSubtitle}>
-            {countdownLeft > 0 ? t("transfer.status.countdown", { sec: Math.ceil(countdownLeft / 1000) }) : detail?.statusName || ""}
-          </Text>
-        </View>
+                : t("transfer.status.pending")
+          }
+        />
 
         <SectionCard>
           <FieldRow
@@ -202,30 +199,6 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     gap: 12,
-  },
-  hero: {
-    borderRadius: 24,
-    paddingHorizontal: 20,
-    paddingVertical: 24,
-    gap: 6,
-  },
-  heroStatus: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
-    textAlign: "center",
-  },
-  heroAmount: {
-    color: "#FFFFFF",
-    fontSize: 28,
-    fontWeight: "800",
-    textAlign: "center",
-  },
-  heroSubtitle: {
-    color: "#FFFFFF",
-    opacity: 0.92,
-    fontSize: 13,
-    textAlign: "center",
   },
   tipTitle: {
     fontSize: 14,

@@ -1,6 +1,6 @@
 import React, { useState } from "react"
 
-import { Pressable, Switch, Text, TextInput } from "react-native"
+import { Pressable, Switch, Text } from "react-native"
 import { useTranslation } from "react-i18next"
 
 import { usePersistentCountdown } from "@/shared/hooks/usePersistentCountdown"
@@ -20,6 +20,7 @@ import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 import { useUserStore } from "@/shared/store/useUserStore"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppTextField } from "@/shared/ui/AppTextField"
 
 import { Card, PrimaryButton, Row, type StackProps, styles, useProfileRefresh } from "@/features/settings/screens/settingsShared"
 
@@ -113,8 +114,14 @@ export function EmailHomeScreen({ navigation }: StackProps<"EmailHomeScreen">) {
     <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.email.title")}>
       <Card>
         <Text style={styles.sectionLabel}>{t("settingsHub.email.inputLabel")}</Text>
-        <TextInput autoCapitalize="none" keyboardType="email-address" onChangeText={setEmail} placeholder={t("settingsHub.email.placeholder")} style={styles.input} value={email} />
-        {!emailValid && email.length > 0 ? <Text style={styles.errorText}>{t("settingsHub.email.invalid")}</Text> : null}
+        <AppTextField
+          autoCapitalize="none"
+          error={!emailValid && email.length > 0 ? t("settingsHub.email.invalid") : null}
+          keyboardType="email-address"
+          onChangeText={setEmail}
+          placeholder={t("settingsHub.email.placeholder")}
+          value={email}
+        />
       </Card>
       <PrimaryButton disabled={!emailValid} label={t("common.next")} loading={loading} onPress={() => void handleNext()} />
     </HomeScaffold>
@@ -177,7 +184,13 @@ export function EmailUnbindScreen({ navigation }: StackProps<"EmailUnbindScreen"
       <Card>
         <Text style={styles.centerMuted}>{t("settingsHub.email.currentBound")}</Text>
         <Text style={styles.emailValue}>{profile?.email}</Text>
-        <TextInput keyboardType="number-pad" maxLength={6} onChangeText={setCode} placeholder={t("settingsHub.email.codePlaceholder")} style={styles.input} value={code} />
+        <AppTextField
+          keyboardType="number-pad"
+          maxLength={6}
+          onChangeText={setCode}
+          placeholder={t("settingsHub.email.codePlaceholder")}
+          value={code}
+        />
         <Pressable disabled={countdown.isActive || sending} onPress={() => void handleSend()} style={styles.inlineTextButton}>
           <Text style={styles.inlineTextButtonLabel}>{countdown.isActive ? t("settingsHub.email.resendCountdown", { sec: countdown.secondsLeft }) : t("settingsHub.email.sendCode")}</Text>
         </Pressable>
@@ -227,7 +240,13 @@ export function VerifyEmailScreen({ navigation, route }: StackProps<"VerifyEmail
       <Card>
         <Text style={styles.sectionLabel}>{t("settingsHub.email.verifySentTo")}</Text>
         <Text style={styles.emailValue}>{route.params.email}</Text>
-        <TextInput keyboardType="number-pad" maxLength={6} onChangeText={setCode} placeholder={t("settingsHub.email.codePlaceholder")} style={styles.input} value={code} />
+        <AppTextField
+          keyboardType="number-pad"
+          maxLength={6}
+          onChangeText={setCode}
+          placeholder={t("settingsHub.email.codePlaceholder")}
+          value={code}
+        />
         <Pressable disabled={countdown.isActive || sending} onPress={() => void handleResend()} style={styles.inlineTextButton}>
           <Text style={styles.inlineTextButtonLabel}>{countdown.isActive ? t("settingsHub.email.resendCountdown", { sec: countdown.secondsLeft }) : t("settingsHub.email.resend")}</Text>
         </Pressable>

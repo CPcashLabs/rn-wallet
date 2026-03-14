@@ -32,6 +32,8 @@ export function HomeScaffold(props: {
     <ScrollView
       bounces={false}
       contentContainerStyle={[styles.scrollContent, props.contentContainerStyle]}
+      keyboardDismissMode="on-drag"
+      keyboardShouldPersistTaps="handled"
       style={styles.body}
     >
       {props.children}

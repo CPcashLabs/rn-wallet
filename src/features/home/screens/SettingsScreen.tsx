@@ -1,6 +1,6 @@
 import React from "react"
 
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native"
+import { Alert, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -18,8 +18,9 @@ import { DEFAULT_WALLET_CHAIN_ID, useWalletStore } from "@/shared/store/useWalle
 import { useThemeStore, type ThemeMode } from "@/shared/store/useThemeStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { persistThemePreference } from "@/shared/theme/themePersistence"
-import { AppCard, APP_LIST_ROW_MIN_HEIGHT } from "@/shared/ui/AppCard"
 import { AppButton } from "@/shared/ui/AppButton"
+import { AppCard } from "@/shared/ui/AppCard"
+import { AppListRow } from "@/shared/ui/AppList"
 
 import type { SettingsStackParamList } from "@/app/navigation/types"
 
@@ -140,20 +141,7 @@ export function SettingsScreen({ navigation }: Props) {
 }
 
 function SettingsRow(props: { label: string; detail?: string; onPress: () => void }) {
-  const theme = useAppTheme()
-
-  return (
-    <Pressable
-      onPress={props.onPress}
-      style={styles.row}
-    >
-      <Text style={[styles.rowLabel, { color: theme.colors.text }]}>{props.label}</Text>
-      <View style={styles.rowRight}>
-        {props.detail ? <Text style={[styles.rowDetail, { color: theme.colors.mutedText }]}>{props.detail}</Text> : null}
-        <Text style={[styles.rowArrow, { color: theme.colors.mutedText }]}>›</Text>
-      </View>
-    </Pressable>
-  )
+  return <AppListRow onPress={props.onPress} subtitle={props.detail} title={props.label} />
 }
 
 const styles = StyleSheet.create({
@@ -163,28 +151,5 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 14,
     fontWeight: "700",
-  },
-  row: {
-    minHeight: APP_LIST_ROW_MIN_HEIGHT,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#CBD5E133",
-  },
-  rowLabel: {
-    fontSize: 15,
-    fontWeight: "500",
-  },
-  rowRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  rowDetail: {
-    fontSize: 13,
-  },
-  rowArrow: {
-    fontSize: 18,
   },
 })

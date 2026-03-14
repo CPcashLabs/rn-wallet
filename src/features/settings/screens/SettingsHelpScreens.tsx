@@ -1,13 +1,13 @@
 import React, { useState } from "react"
 
-import { Text, TextInput, View } from "react-native"
+import { Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { sendFeedback } from "@/features/settings/services/settingsApi"
 import { getGuideLinks, openExternalUrl } from "@/features/settings/utils/settingsHub"
 import { useToast } from "@/shared/toast/useToast"
-import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppTextField } from "@/shared/ui/AppTextField"
 
 import { Card, type GuideListScreenProps, PrimaryButton, Row, type StackProps, styles } from "@/features/settings/screens/settingsShared"
 
@@ -103,7 +103,6 @@ export function AboutScreen({ navigation }: StackProps<"AboutScreen">) {
 
 export function FeedbackScreen({ navigation }: StackProps<"FeedbackScreen">) {
   const { t } = useTranslation()
-  const theme = useAppTheme()
   const { showToast } = useToast()
   const [content, setContent] = useState("")
   const [loading, setLoading] = useState(false)
@@ -124,7 +123,13 @@ export function FeedbackScreen({ navigation }: StackProps<"FeedbackScreen">) {
   return (
     <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.feedback.title")}>
       <Card>
-        <TextInput multiline onChangeText={setContent} placeholder={t("settingsHub.feedback.placeholder")} placeholderTextColor={theme.colors.mutedText} style={[styles.textarea, { color: theme.colors.text, borderColor: theme.colors.border }]} value={content} />
+        <AppTextField
+          backgroundTone="background"
+          multiline
+          onChangeText={setContent}
+          placeholder={t("settingsHub.feedback.placeholder")}
+          value={content}
+        />
       </Card>
       <PrimaryButton disabled={!content.trim()} label={t("settingsHub.feedback.submit")} loading={loading} onPress={() => void handleSubmit()} />
     </HomeScaffold>

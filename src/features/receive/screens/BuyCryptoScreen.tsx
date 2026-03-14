@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react"
 
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native"
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -13,6 +13,8 @@ import { useBalanceStore } from "@/shared/store/useBalanceStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppButton } from "@/shared/ui/AppButton"
+import { AppTextField } from "@/shared/ui/AppTextField"
 
 type Props = NativeStackScreenProps<TransferStackParamList, "BuyCryptoScreen">
 
@@ -89,13 +91,12 @@ export function BuyCryptoScreen({ navigation, route }: Props) {
 
         <SectionCard>
           <Text style={[styles.label, { color: theme.colors.text }]}>{t("receive.buy.amount")}</Text>
-          <TextInput
+          <AppTextField
+            backgroundTone="background"
             value={amount}
             onChangeText={setAmount}
             keyboardType="decimal-pad"
             placeholder="10"
-            placeholderTextColor={theme.colors.mutedText}
-            style={[styles.input, { borderColor: theme.colors.border, color: theme.colors.text, backgroundColor: theme.colors.background }]}
           />
           <View style={styles.quickRow}>
             {quickAmounts.map(item => (
@@ -160,17 +161,17 @@ export function BuyCryptoScreen({ navigation, route }: Props) {
 
         <SectionCard>
           <Text style={[styles.label, { color: theme.colors.text }]}>{t("receive.buy.address")}</Text>
-          <TextInput
+          <AppTextField
+            backgroundTone="background"
             value={address}
             onChangeText={setAddress}
             placeholder={t("receive.buy.addressPlaceholder")}
-            placeholderTextColor={theme.colors.mutedText}
-            style={[styles.input, { borderColor: theme.colors.border, color: theme.colors.text, backgroundColor: theme.colors.background }]}
           />
         </SectionCard>
 
-        <Pressable
+        <AppButton
           disabled={loading || submitting || !amount || !address || !sellerId || !sendCoinCode || !recvCoinCode}
+          label={submitting ? t("common.loading") : t("receive.buy.submit")}
           onPress={() => {
             void (async () => {
               setSubmitting(true)
@@ -190,16 +191,7 @@ export function BuyCryptoScreen({ navigation, route }: Props) {
               }
             })()
           }}
-          style={[
-            styles.button,
-            {
-              backgroundColor: theme.colors.primary,
-              opacity: loading || submitting || !amount || !address || !sellerId || !sendCoinCode || !recvCoinCode ? 0.6 : 1,
-            },
-          ]}
-        >
-          <Text style={styles.buttonText}>{submitting ? t("common.loading") : t("receive.buy.submit")}</Text>
-        </Pressable>
+        />
       </ScrollView>
     </HomeScaffold>
   )
@@ -217,13 +209,6 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: "700",
-  },
-  input: {
-    minHeight: 48,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    fontSize: 16,
   },
   quickRow: {
     flexDirection: "row",
@@ -257,17 +242,6 @@ const styles = StyleSheet.create({
   },
   chipText: {
     fontSize: 13,
-    fontWeight: "700",
-  },
-  button: {
-    minHeight: 48,
-    borderRadius: 999,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  buttonText: {
-    color: "#FFFFFF",
-    fontSize: 15,
     fontWeight: "700",
   },
 })

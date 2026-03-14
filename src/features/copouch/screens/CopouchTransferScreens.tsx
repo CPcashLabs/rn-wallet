@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react"
 
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
-import { Alert, Text, TextInput, View } from "react-native"
+import { Alert, Text, View } from "react-native"
 
 import type { CopouchStackParamList } from "@/app/navigation/types"
 import { CopouchScaffold } from "@/features/copouch/components/CopouchScaffold"
@@ -38,6 +38,7 @@ import { useBalanceStore } from "@/shared/store/useBalanceStore"
 import { useUserStore } from "@/shared/store/useUserStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppTextField } from "@/shared/ui/AppTextField"
 
 type StackProps<T extends keyof CopouchStackParamList> = NativeStackScreenProps<CopouchStackParamList, T>
 type TransferMode = "withdraw" | "deposit"
@@ -349,21 +350,19 @@ function CopouchTransferScreen(props: {
 
         <SectionCard>
           <Text style={[styles.inputLabel, { color: theme.colors.text }]}>{t("copouch.transfer.amountLabel")}</Text>
-          <TextInput
+          <AppTextField
+            backgroundTone="background"
             keyboardType="decimal-pad"
             onChangeText={value => setAmount(parseDecimalInput(value))}
             placeholder={t("copouch.transfer.amountPlaceholder")}
-            placeholderTextColor={theme.colors.mutedText}
-            style={[styles.textInput, { borderColor: theme.colors.border, color: theme.colors.text }]}
             value={amount}
           />
           <Text style={[styles.inputLabel, { color: theme.colors.text }]}>{t("copouch.transfer.noteLabel")}</Text>
-          <TextInput
+          <AppTextField
+            backgroundTone="background"
             multiline
             onChangeText={setNote}
             placeholder={t("copouch.transfer.notePlaceholder")}
-            placeholderTextColor={theme.colors.mutedText}
-            style={[styles.textArea, { borderColor: theme.colors.border, color: theme.colors.text }]}
             value={note}
           />
           <FieldRow label={t("copouch.transfer.estimate")} value={formatAmount(resolvedOption?.recvEstimateAmount ?? numericAmount)} />

@@ -1,6 +1,6 @@
 import React from "react"
 
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native"
+import { Alert, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -15,7 +15,7 @@ import { useUserStore } from "@/shared/store/useUserStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
-import { AppCard, APP_LIST_ROW_MIN_HEIGHT, APP_LIST_ROW_PADDING } from "@/shared/ui/AppCard"
+import { AppListCard, AppListRow } from "@/shared/ui/AppList"
 
 import type { SettingsStackParamList } from "@/app/navigation/types"
 
@@ -80,62 +80,54 @@ export function PersonalScreen({ navigation }: Props) {
 
   return (
     <HomeScaffold canGoBack onBack={navigation.goBack} title={t("home.personal.title")}>
-      <AppCard overflow="hidden" padding={0}>
-        <Pressable onPress={handleAvatarPress} style={styles.row}>
-          <Text style={[styles.rowLabel, { color: theme.colors.text }]}>{t("home.personal.avatar")}</Text>
-          <View style={styles.rowRight}>
-            <UserAvatar cacheVersion={avatarVersion} label={nickname} size={32} uri={avatar} />
-            <Text style={[styles.rowValue, { color: theme.colors.mutedText }]}>
-              {uploading ? t("common.loading") : "›"}
-            </Text>
-          </View>
-        </Pressable>
-
-        <Pressable onPress={() => navigation.navigate("UpdateNameScreen")} style={styles.row}>
-          <Text style={[styles.rowLabel, { color: theme.colors.text }]}>{t("home.personal.nickname")}</Text>
-          <View style={styles.rowRight}>
-            <Text style={[styles.rowValue, { color: theme.colors.mutedText }]}>{nickname}</Text>
-            <Text style={[styles.rowValue, { color: theme.colors.mutedText }]}>›</Text>
-          </View>
-        </Pressable>
-
-        <Pressable onPress={() => Alert.alert(t("common.infoTitle"), address)} style={styles.row}>
-          <Text style={[styles.rowLabel, { color: theme.colors.text }]}>{t("home.personal.address")}</Text>
-          <View style={styles.rowRight}>
-            <Text style={[styles.rowValue, { color: theme.colors.mutedText }]}>{formatAddress(address)}</Text>
-            <Text style={[styles.rowValue, { color: theme.colors.mutedText }]}>›</Text>
-          </View>
-        </Pressable>
-
-        <Pressable
+      <AppListCard>
+        <AppListRow
+          onPress={handleAvatarPress}
+          right={
+            <View style={styles.rowRight}>
+              <UserAvatar cacheVersion={avatarVersion} label={nickname} size={32} uri={avatar} />
+              <Text style={[styles.rowValue, { color: theme.colors.mutedText }]}>{uploading ? t("common.loading") : "›"}</Text>
+            </View>
+          }
+          title={t("home.personal.avatar")}
+        />
+        <AppListRow
+          onPress={() => navigation.navigate("UpdateNameScreen")}
+          right={
+            <View style={styles.rowRight}>
+              <Text style={[styles.rowValue, { color: theme.colors.mutedText }]}>{nickname}</Text>
+              <Text style={[styles.rowValue, { color: theme.colors.mutedText }]}>›</Text>
+            </View>
+          }
+          title={t("home.personal.nickname")}
+        />
+        <AppListRow
+          onPress={() => Alert.alert(t("common.infoTitle"), address)}
+          right={
+            <View style={styles.rowRight}>
+              <Text style={[styles.rowValue, { color: theme.colors.mutedText }]}>{formatAddress(address)}</Text>
+              <Text style={[styles.rowValue, { color: theme.colors.mutedText }]}>›</Text>
+            </View>
+          }
+          title={t("home.personal.address")}
+        />
+        <AppListRow
+          hideDivider
           onPress={() => navigation.navigate(hasEmail ? "EmailBindedScreen" : "EmailHomeScreen")}
-          style={styles.row}
-        >
-          <Text style={[styles.rowLabel, { color: theme.colors.text }]}>{t("home.personal.email")}</Text>
-          <View style={styles.rowRight}>
-            <Text style={[styles.rowValue, { color: theme.colors.mutedText }]}>{email}</Text>
-            <Text style={[styles.rowValue, { color: theme.colors.mutedText }]}>›</Text>
-          </View>
-        </Pressable>
-      </AppCard>
+          right={
+            <View style={styles.rowRight}>
+              <Text style={[styles.rowValue, { color: theme.colors.mutedText }]}>{email}</Text>
+              <Text style={[styles.rowValue, { color: theme.colors.mutedText }]}>›</Text>
+            </View>
+          }
+          title={t("home.personal.email")}
+        />
+      </AppListCard>
     </HomeScaffold>
   )
 }
 
 const styles = StyleSheet.create({
-  row: {
-    minHeight: APP_LIST_ROW_MIN_HEIGHT,
-    paddingHorizontal: APP_LIST_ROW_PADDING,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#CBD5E133",
-  },
-  rowLabel: {
-    fontSize: 15,
-    fontWeight: "500",
-  },
   rowRight: {
     flexDirection: "row",
     alignItems: "center",

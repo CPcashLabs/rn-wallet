@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react"
 
-import { ActivityIndicator, Alert, Image, Pressable, Text, TextInput, View } from "react-native"
+import { ActivityIndicator, Alert, Image, Pressable, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 
 import { bindInviteCode } from "@/features/auth/services/authApi"
@@ -13,6 +13,7 @@ import { getNumber, setNumber } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 import { useUserStore } from "@/shared/store/useUserStore"
 import { useToast } from "@/shared/toast/useToast"
+import { AppTextField } from "@/shared/ui/AppTextField"
 
 import { Card, PrimaryButton, Row, type StackProps, styles } from "@/features/settings/screens/settingsShared"
 
@@ -146,7 +147,13 @@ export function InviteCodeScreen({ navigation }: StackProps<"InviteCodeScreen">)
   return (
     <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.invite.bindTitle")}>
       <Card>
-        <TextInput autoCapitalize="characters" maxLength={6} onChangeText={setCode} placeholder={t("settingsHub.invite.codePlaceholder")} style={styles.input} value={code} />
+        <AppTextField
+          autoCapitalize="characters"
+          maxLength={6}
+          onChangeText={setCode}
+          placeholder={t("settingsHub.invite.codePlaceholder")}
+          value={code}
+        />
       </Card>
       <PrimaryButton disabled={code.trim().length !== 6} label={t("common.confirm")} loading={loading} onPress={() => void handleBind()} />
     </HomeScaffold>

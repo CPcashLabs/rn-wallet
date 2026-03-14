@@ -1,6 +1,6 @@
 import React from "react"
 
-import { Pressable, StyleSheet, Text, View } from "react-native"
+import { StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -12,7 +12,8 @@ import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useUserStore } from "@/shared/store/useUserStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
-import { AppCard, APP_LIST_ROW_MIN_HEIGHT, APP_LIST_ROW_PADDING } from "@/shared/ui/AppCard"
+import { AppCard } from "@/shared/ui/AppCard"
+import { AppListCard, AppListRow } from "@/shared/ui/AppList"
 
 import type { SettingsStackParamList } from "@/app/navigation/types"
 
@@ -44,7 +45,7 @@ export function MeShellScreen({ navigation }: Props) {
         </View>
       </AppCard>
 
-      <AppCard overflow="hidden" padding={0} style={styles.listCard}>
+      <AppListCard style={styles.listCard}>
         <MenuRow label={t("home.me.personal")} onPress={() => navigation.navigate("PersonalScreen")} />
         <MenuRow
           label={t("home.me.addressBook")}
@@ -56,9 +57,9 @@ export function MeShellScreen({ navigation }: Props) {
         />
         <MenuRow label={t("settingsHub.invite.title")} onPress={() => navigation.navigate("InviteHomeScreen")} />
         <MenuRow label={t("home.me.settings")} last onPress={() => navigation.navigate("SettingsHomeScreen")} />
-      </AppCard>
+      </AppListCard>
 
-      <AppCard overflow="hidden" padding={0} style={styles.listCard}>
+      <AppListCard style={styles.listCard}>
         <MenuRow
           last
           label={t("home.me.messages")}
@@ -68,7 +69,7 @@ export function MeShellScreen({ navigation }: Props) {
             })
           }}
         />
-      </AppCard>
+      </AppListCard>
     </HomeScaffold>
   )
 }
@@ -77,20 +78,21 @@ function MenuRow(props: { label: string; badge?: string; onPress: () => void; la
   const theme = useAppTheme()
 
   return (
-    <Pressable
+    <AppListRow
+      hideDivider={props.last}
       onPress={props.onPress}
-      style={[styles.row, { borderBottomColor: theme.colors.border }, props.last ? styles.rowLast : null]}
-    >
-      <Text style={[styles.rowLabel, { color: theme.colors.text }]}>{props.label}</Text>
-      <View style={styles.rowRight}>
-        {props.badge ? (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{props.badge}</Text>
+      right={
+        props.badge ? (
+          <View style={styles.rowRight}>
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{props.badge}</Text>
+            </View>
+            <Text style={[styles.rowArrow, { color: theme.colors.mutedText }]}>›</Text>
           </View>
-        ) : null}
-        <Text style={[styles.rowArrow, { color: theme.colors.mutedText }]}>›</Text>
-      </View>
-    </Pressable>
+        ) : undefined
+      }
+      title={props.label}
+    />
   )
 }
 
@@ -117,21 +119,6 @@ const styles = StyleSheet.create({
   },
   listCard: {
     gap: 0,
-  },
-  row: {
-    minHeight: APP_LIST_ROW_MIN_HEIGHT,
-    paddingHorizontal: APP_LIST_ROW_PADDING,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  rowLast: {
-    borderBottomWidth: 0,
-  },
-  rowLabel: {
-    fontSize: 15,
-    fontWeight: "500",
   },
   rowRight: {
     flexDirection: "row",

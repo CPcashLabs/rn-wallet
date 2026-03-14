@@ -1,12 +1,16 @@
 import React from "react"
 
-import { StyleSheet, Text, View } from "react-native"
+import { StyleSheet, View } from "react-native"
+
+import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppEmptyState } from "@/shared/ui/AppEmptyState"
 
 export function PlaceholderScreen(props: { title: string; description: string }) {
+  const theme = useAppTheme()
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>{props.title}</Text>
-      <Text style={styles.description}>{props.description}</Text>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <AppEmptyState body={props.description} minHeight={0} title={props.title} />
     </View>
   )
 }
@@ -14,22 +18,7 @@ export function PlaceholderScreen(props: { title: string; description: string })
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 24,
-    backgroundColor: "#0B1220",
-  },
-  title: {
-    marginBottom: 12,
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#F8FAFC",
-  },
-  description: {
-    textAlign: "center",
-    fontSize: 15,
-    lineHeight: 22,
-    color: "#CBD5E1",
   },
 })
-

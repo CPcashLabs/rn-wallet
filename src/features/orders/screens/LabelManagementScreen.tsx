@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react"
 
-import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native"
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -9,6 +9,7 @@ import { createCategoryLabel, deleteCategoryLabel, listUserCategoryLabels, type 
 import { PageEmpty, PrimaryButton, SectionCard, SecondaryButton } from "@/features/transfer/components/TransferUi"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppTextField } from "@/shared/ui/AppTextField"
 
 import type { OrdersStackParamList } from "@/app/navigation/types"
 
@@ -114,12 +115,11 @@ export function LabelManagementScreen({ navigation }: Props) {
         <View style={styles.modalBackdrop}>
           <View style={[styles.modalCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
             <Text style={[styles.modalTitle, { color: theme.colors.text }]}>{t("orders.labels.addTitle")}</Text>
-            <TextInput
+            <AppTextField
               autoCapitalize="none"
+              backgroundTone="background"
               onChangeText={setNewLabelName}
               placeholder={t("orders.labels.placeholder")}
-              placeholderTextColor={theme.colors.mutedText}
-              style={[styles.input, { borderColor: theme.colors.border, color: theme.colors.text }]}
               value={newLabelName}
             />
             <PrimaryButton label={submitting ? t("common.loading") : t("common.confirm")} onPress={() => void handleCreate()} />
@@ -178,12 +178,5 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 16,
     fontWeight: "700",
-  },
-  input: {
-    minHeight: 46,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    fontSize: 14,
   },
 })

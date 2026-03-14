@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from "react"
 
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
-import { Alert, Pressable, Text, TextInput, View } from "react-native"
+import { Alert, Pressable, Text, View } from "react-native"
 
 import type { CopouchStackParamList } from "@/app/navigation/types"
 import { CopouchScaffold } from "@/features/copouch/components/CopouchScaffold"
@@ -25,6 +25,7 @@ import { PrimaryButton, SectionCard } from "@/features/transfer/components/Trans
 import { ApiError } from "@/shared/errors"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppTextField } from "@/shared/ui/AppTextField"
 
 type StackProps<T extends keyof CopouchStackParamList> = NativeStackScreenProps<CopouchStackParamList, T>
 
@@ -171,12 +172,11 @@ export function CopouchSetNameScreen({ navigation, route }: StackProps<"CopouchS
       >
         <SectionCard>
           <Text style={[styles.inputLabel, { color: theme.colors.text }]}>{t("copouch.setting.nameLabel")}</Text>
-          <TextInput
+          <AppTextField
+            backgroundTone="background"
             maxLength={10}
             onChangeText={setName}
             placeholder={t("copouch.setting.namePlaceholder")}
-            placeholderTextColor={theme.colors.mutedText}
-            style={[styles.textInput, { borderColor: theme.colors.border, color: theme.colors.text }]}
             value={name}
           />
         </SectionCard>

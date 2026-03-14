@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react"
 
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native"
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -12,6 +12,7 @@ import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { resolveChainNameById } from "@/shared/api/walletAssets"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppTextField } from "@/shared/ui/AppTextField"
 
 import type { TransferStackParamList } from "@/app/navigation/types"
 
@@ -96,19 +97,11 @@ export function SendTokenScreen({ navigation }: Props) {
 
         <SectionCard>
           <Text style={[styles.label, { color: theme.colors.text }]}>{t("transfer.send.amount")}</Text>
-          <TextInput
+          <AppTextField
+            backgroundTone="background"
             keyboardType="decimal-pad"
             onChangeText={value => setAmount(parseDecimalInput(value))}
             placeholder={t("transfer.send.amountPlaceholder")}
-            placeholderTextColor={theme.colors.mutedText}
-            style={[
-              styles.input,
-              {
-                color: theme.colors.text,
-                borderColor: theme.colors.border,
-                backgroundColor: theme.colors.background,
-              },
-            ]}
             value={amount}
           />
         </SectionCard>

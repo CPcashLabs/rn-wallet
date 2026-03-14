@@ -1,6 +1,6 @@
 import React, { useState } from "react"
 
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native"
+import { StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -8,8 +8,10 @@ import type { ReceiveStackParamList } from "@/app/navigation/types"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { editReceiveAddressRemark } from "@/features/receive/services/receiveApi"
 import { SectionCard } from "@/features/transfer/components/TransferUi"
+import { AppButton } from "@/shared/ui/AppButton"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppTextField } from "@/shared/ui/AppTextField"
 
 type Props = NativeStackScreenProps<ReceiveStackParamList, "ReceiveAddressCreateScreen">
 
@@ -31,20 +33,20 @@ export function ReceiveAddressCreateScreen({ navigation, route }: Props) {
           </SectionCard>
 
           <SectionCard>
-            <Text style={[styles.label, { color: theme.colors.text }]}>{t("receive.addressEdit.remark")}</Text>
-            <TextInput
+            <AppTextField
+              backgroundTone="background"
+              label={t("receive.addressEdit.remark")}
               value={remarkName}
               onChangeText={setRemarkName}
               placeholder={t("receive.addressEdit.placeholder")}
-              placeholderTextColor={theme.colors.mutedText}
-              style={[styles.input, { color: theme.colors.text, borderColor: theme.colors.border, backgroundColor: theme.colors.background }]}
             />
           </SectionCard>
         </View>
 
         <View style={[styles.footer, { borderTopColor: theme.colors.border, backgroundColor: theme.colors.background }]}>
-          <Pressable
+          <AppButton
             disabled={submitting || !route.params?.orderSn || !route.params?.address}
+            label={submitting ? t("common.loading") : t("receive.addressEdit.save")}
             onPress={() => {
               if (!params?.orderSn || !params?.address) {
                 return
@@ -72,10 +74,7 @@ export function ReceiveAddressCreateScreen({ navigation, route }: Props) {
                 }
               })()
             }}
-            style={[styles.button, { backgroundColor: theme.colors.primary, opacity: submitting ? 0.6 : 1 }]}
-          >
-            <Text style={styles.buttonText}>{submitting ? t("common.loading") : t("receive.addressEdit.save")}</Text>
-          </Pressable>
+          />
         </View>
       </View>
     </HomeScaffold>
@@ -87,26 +86,8 @@ const styles = StyleSheet.create({
   content: { flex: 1, padding: 16, gap: 12 },
   label: { fontSize: 14, fontWeight: "700" },
   address: { fontSize: 13, lineHeight: 20 },
-  input: {
-    minHeight: 48,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    fontSize: 16,
-  },
   footer: {
     padding: 16,
     borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  button: {
-    minHeight: 48,
-    borderRadius: 999,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  buttonText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "700",
   },
 })

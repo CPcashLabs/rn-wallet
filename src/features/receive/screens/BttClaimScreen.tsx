@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react"
 
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native"
+import { Alert, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -11,6 +11,7 @@ import { SectionCard } from "@/features/transfer/components/TransferUi"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppButton } from "@/shared/ui/AppButton"
 
 type Props = NativeStackScreenProps<TransferStackParamList, "BttClaimScreen">
 
@@ -50,8 +51,9 @@ export function BttClaimScreen({ navigation }: Props) {
           <Text style={[styles.ruleBody, { color: theme.colors.mutedText }]}>{t("receive.btt.rulesBody")}</Text>
         </SectionCard>
 
-        <Pressable
+        <AppButton
           disabled={claiming || !status?.eligible}
+          label={claiming ? t("common.loading") : t("receive.btt.claimNow")}
           onPress={() => {
             void (async () => {
               setClaiming(true)
@@ -66,10 +68,7 @@ export function BttClaimScreen({ navigation }: Props) {
               }
             })()
           }}
-          style={[styles.button, { backgroundColor: theme.colors.primary, opacity: claiming || !status?.eligible ? 0.6 : 1 }]}
-        >
-          <Text style={styles.buttonText}>{claiming ? t("common.loading") : t("receive.btt.claimNow")}</Text>
-        </Pressable>
+        />
       </View>
     </HomeScaffold>
   )
@@ -99,16 +98,5 @@ const styles = StyleSheet.create({
   ruleBody: {
     fontSize: 13,
     lineHeight: 20,
-  },
-  button: {
-    minHeight: 48,
-    borderRadius: 999,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  buttonText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "700",
   },
 })

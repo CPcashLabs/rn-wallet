@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react"
 
-import { Alert, ScrollView, StyleSheet, Text, TextInput } from "react-native"
+import { Alert, ScrollView, StyleSheet, Text } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -10,6 +10,7 @@ import { getSendShareDetail, updateSendReceiveAddress } from "@/features/transfe
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppTextField } from "@/shared/ui/AppTextField"
 
 import type { TransferStackParamList } from "@/app/navigation/types"
 
@@ -87,19 +88,11 @@ export function SendPaymentInfoScreen({ navigation, route }: Props) {
         {publicAccess ? null : (
           <SectionCard>
             <Text style={[styles.label, { color: theme.colors.text }]}>{t("transfer.send.receiveAddress")}</Text>
-            <TextInput
+            <AppTextField
               autoCapitalize="none"
+              backgroundTone="background"
               onChangeText={setAddress}
               placeholder={t("transfer.send.receiveAddressPlaceholder")}
-              placeholderTextColor={theme.colors.mutedText}
-              style={[
-                styles.input,
-                {
-                  color: theme.colors.text,
-                  borderColor: theme.colors.border,
-                  backgroundColor: theme.colors.background,
-                },
-              ]}
               value={address}
             />
             <PrimaryButton

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react"
 
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native"
+import { Alert, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -17,6 +17,8 @@ import { HeaderTextAction, HomeScaffold } from "@/features/home/components/HomeS
 import { ApiError } from "@/shared/errors"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { AppButton } from "@/shared/ui/AppButton"
+import { AppCard } from "@/shared/ui/AppCard"
+import { AppTextField } from "@/shared/ui/AppTextField"
 
 import type { AddressBookStackParamList } from "@/app/navigation/types"
 
@@ -204,59 +206,41 @@ export function AddressBookEditScreen({ navigation, route }: Props) {
         ) : null
       }
     >
-      <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-        <Text style={[styles.label, { color: theme.colors.text }]}>{t("home.addressBook.nameLabel")}</Text>
-        <TextInput
+      <AppCard>
+        <AppTextField
+          backgroundTone="background"
+          label={t("home.addressBook.nameLabel")}
           maxLength={MAX_NAME_LENGTH}
           onChangeText={setName}
           placeholder={t("home.addressBook.namePlaceholder")}
-          placeholderTextColor={theme.colors.mutedText}
-          style={[
-            styles.input,
-            {
-              color: theme.colors.text,
-              borderColor: theme.colors.border,
-              backgroundColor: theme.colors.background,
-            },
-          ]}
           value={name}
         />
-      </View>
+      </AppCard>
 
-      <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-        <Text style={[styles.label, { color: theme.colors.text }]}>{t("home.addressBook.addressLabel")}</Text>
-        <TextInput
+      <AppCard>
+        <AppTextField
           autoCapitalize="none"
           autoCorrect={false}
+          backgroundTone="background"
           editable={!loading}
+          error={addressError}
+          helperText={t("home.addressBook.addressHelper")}
+          label={t("home.addressBook.addressLabel")}
           multiline
           onChangeText={setWalletAddress}
           placeholder={t("home.addressBook.addressPlaceholder")}
-          placeholderTextColor={theme.colors.mutedText}
-          style={[
-            styles.input,
-            styles.addressInput,
-            {
-              color: theme.colors.text,
-              borderColor: addressError ? "#DC2626" : theme.colors.border,
-              backgroundColor: theme.colors.background,
-            },
-          ]}
           value={walletAddress}
         />
-        <Text style={[styles.helperText, { color: addressError ? "#DC2626" : theme.colors.mutedText }]}>
-          {addressError || t("home.addressBook.addressHelper")}
-        </Text>
-      </View>
+      </AppCard>
 
-      <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+      <AppCard>
         <Text style={[styles.label, { color: theme.colors.text }]}>{t("home.addressBook.networkLabel")}</Text>
         <View style={[styles.networkBadge, { backgroundColor: chainType === "TRON" ? "#FFF1E9" : "#EBF4FF" }]}>
           <Text style={[styles.networkBadgeText, { color: chainType === "TRON" ? "#E37318" : "#1D4ED8" }]}>
             {networkDescription}
           </Text>
         </View>
-      </View>
+      </AppCard>
 
       <AppButton
         disabled={saveDisabled}
@@ -309,31 +293,9 @@ function resolveAddressBookSaveError(error: unknown, t: (key: string) => string)
 }
 
 const styles = StyleSheet.create({
-  card: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 16,
-    padding: 14,
-    gap: 8,
-  },
   label: {
     fontSize: 14,
     fontWeight: "700",
-  },
-  input: {
-    minHeight: 44,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    fontSize: 15,
-  },
-  addressInput: {
-    minHeight: 96,
-    paddingTop: 12,
-    textAlignVertical: "top",
-  },
-  helperText: {
-    fontSize: 12,
-    lineHeight: 18,
   },
   networkBadge: {
     alignSelf: "flex-start",

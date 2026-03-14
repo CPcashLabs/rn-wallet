@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { useFocusEffect } from "@react-navigation/native"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
-import { Alert, Pressable, Text, TextInput, View } from "react-native"
+import { Alert, Pressable, Text, View } from "react-native"
 
 import type { CopouchStackParamList } from "@/app/navigation/types"
 import { CopouchScaffold } from "@/features/copouch/components/CopouchScaffold"
@@ -39,6 +39,7 @@ import { useSocketStore } from "@/shared/store/useSocketStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppTextField } from "@/shared/ui/AppTextField"
 
 type StackProps<T extends keyof CopouchStackParamList> = NativeStackScreenProps<CopouchStackParamList, T>
 
@@ -324,17 +325,15 @@ export function CopouchAddMemberScreen({ navigation, route }: StackProps<"Copouc
           <>
             <SectionCard>
               <Text style={[styles.inputLabel, { color: theme.colors.text }]}>{t("copouch.member.walletAddressLabel")}</Text>
-              <TextInput
+              <AppTextField
                 autoCapitalize="none"
+                backgroundTone="background"
+                error={validationMessage || null}
+                helperText={t("copouch.member.addressHint")}
                 onChangeText={setWalletAddress}
                 placeholder={t("copouch.member.walletAddressPlaceholder")}
-                placeholderTextColor={theme.colors.mutedText}
-                style={[styles.textInput, { borderColor: theme.colors.border, color: theme.colors.text }]}
                 value={walletAddress}
               />
-              <Text style={[styles.helperText, { color: validationMessage ? "#DC2626" : theme.colors.mutedText }]}>
-                {validationMessage || t("copouch.member.addressHint")}
-              </Text>
             </SectionCard>
 
             <SectionCard>

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native"
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -19,6 +19,7 @@ import { resolveChainNameById } from "@/shared/api/walletAssets"
 import { useBalanceStore } from "@/shared/store/useBalanceStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppTextField } from "@/shared/ui/AppTextField"
 
 import type { TransferStackParamList } from "@/app/navigation/types"
 
@@ -342,19 +343,12 @@ export function TransferOrderScreen({ navigation, route }: Props) {
 
         <SectionCard>
           <Text style={[styles.inputLabel, { color: theme.colors.text }]}>{t("transfer.order.amountLabel")}</Text>
-          <TextInput
+          <AppTextField
+            backgroundTone="background"
+            error={validationMessage || null}
             keyboardType="decimal-pad"
             onChangeText={value => setOrderDraft({ sendAmount: parseDecimalInput(value) })}
             placeholder={t("transfer.order.amountPlaceholder")}
-            placeholderTextColor={theme.colors.mutedText}
-            style={[
-              styles.amountInput,
-              {
-                color: theme.colors.text,
-                borderColor: validationMessage ? "#DC2626" : theme.colors.border,
-                backgroundColor: theme.colors.background,
-              },
-            ]}
             value={sendAmount}
           />
           <FieldRow
@@ -376,24 +370,15 @@ export function TransferOrderScreen({ navigation, route }: Props) {
           {selectedCoin ? (
             <FieldRow label={t("transfer.order.assetChain")} value={`${selectedCoin.chainName} / ${selectedCoin.symbol}`} />
           ) : null}
-          {validationMessage ? <Text style={styles.errorText}>{validationMessage}</Text> : null}
         </SectionCard>
 
         <SectionCard>
           <Text style={[styles.inputLabel, { color: theme.colors.text }]}>{t("transfer.order.noteLabel")}</Text>
-          <TextInput
+          <AppTextField
+            backgroundTone="background"
             multiline
             onChangeText={value => setOrderDraft({ note: value.slice(0, 50) })}
             placeholder={t("transfer.order.notePlaceholder")}
-            placeholderTextColor={theme.colors.mutedText}
-            style={[
-              styles.noteInput,
-              {
-                color: theme.colors.text,
-                borderColor: theme.colors.border,
-                backgroundColor: theme.colors.background,
-              },
-            ]}
             value={note}
           />
         </SectionCard>

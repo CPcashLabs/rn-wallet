@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react"
 
-import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native"
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -16,6 +16,7 @@ import { fileAdapter, isNativeImagePickerCancelledError } from "@/shared/native"
 import { PageEmpty, PrimaryButton, SectionCard, SecondaryButton } from "@/features/transfer/components/TransferUi"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppTextField } from "@/shared/ui/AppTextField"
 
 import type { OrdersStackParamList } from "@/app/navigation/types"
 
@@ -192,14 +193,12 @@ export function TagsNotesScreen({ navigation, route }: Props) {
 
             <SectionCard>
               <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("orders.tags.notes")}</Text>
-              <TextInput
+              <AppTextField
+                backgroundTone="background"
                 multiline
                 maxLength={100}
                 onChangeText={setNotes}
                 placeholder={t("orders.tags.placeholder")}
-                placeholderTextColor={theme.colors.mutedText}
-                style={[styles.textarea, { borderColor: theme.colors.border, color: theme.colors.text }]}
-                textAlignVertical="top"
                 value={notes}
               />
             </SectionCard>
@@ -262,14 +261,6 @@ const styles = StyleSheet.create({
   tagText: {
     fontSize: 13,
     fontWeight: "600",
-  },
-  textarea: {
-    minHeight: 110,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 14,
   },
   previewImage: {
     width: "100%",

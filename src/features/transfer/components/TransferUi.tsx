@@ -4,6 +4,7 @@ import { StyleProp, StyleSheet, Text, View, type ViewStyle } from "react-native"
 
 import { AppCard } from "@/shared/ui/AppCard"
 import { AppButton } from "@/shared/ui/AppButton"
+import { AppEmptyState } from "@/shared/ui/AppEmptyState"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 export function SectionCard(props: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
@@ -55,12 +56,9 @@ export function SecondaryButton(props: {
 }
 
 export function PageEmpty(props: { title: string; body: string }) {
-  const theme = useAppTheme()
-
   return (
     <SectionCard>
-      <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>{props.title}</Text>
-      <Text style={[styles.emptyBody, { color: theme.colors.mutedText }]}>{props.body}</Text>
+      <AppEmptyState body={props.body} title={props.title} />
     </SectionCard>
   )
 }
@@ -85,13 +83,5 @@ const styles = StyleSheet.create({
   },
   buttonBlock: {
     width: "100%",
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  emptyBody: {
-    fontSize: 13,
-    lineHeight: 20,
   },
 })
