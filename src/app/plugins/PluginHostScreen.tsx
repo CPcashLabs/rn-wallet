@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import { getPluginManifest } from "@/app/plugins/pluginRegistry"
-import { resetToMainTabs } from "@/app/navigation/navigationRef"
+import { resetToMainTabs, resetToRootRoutes } from "@/app/navigation/navigationRef"
 import { PluginContainer } from "@/app/plugins/PluginContainer"
 import { PluginRuntimeProvider } from "@/shared/plugins/PluginRuntimeProvider"
 import { createHostApi } from "@/shared/plugins/hostApi"
@@ -87,6 +87,12 @@ export function PluginHostScreen({ navigation, route }: Props) {
 
     if (navigation.canGoBack()) {
       navigation.goBack()
+      return
+    }
+
+    const returnTo = route.params.returnTo
+    if (returnTo && returnTo.name !== "PluginHost") {
+      resetToRootRoutes([{ name: returnTo.name as keyof RootStackParamList, params: returnTo.params as never }], 0)
       return
     }
 

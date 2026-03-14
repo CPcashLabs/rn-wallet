@@ -31,7 +31,15 @@ export function RootNavigator() {
       <Stack.Screen name="ReceiveStack" component={ReceiveStackNavigator} />
       <Stack.Screen name="CopouchStack" component={CopouchStackNavigator} />
       <Stack.Screen name="CowalletStack" component={CopouchStackNavigator} />
-      <Stack.Screen name="PluginHost" component={PluginHostScreen} options={{ animation: "none" }} />
+      <Stack.Screen
+        name="PluginHost"
+        component={PluginHostScreen}
+        options={{
+          animation: "none",
+          presentation: "transparentModal",
+          contentStyle: { backgroundColor: "transparent" },
+        }}
+      />
       <Stack.Screen name="SupportStack" component={SupportNavigator} />
     </Stack.Navigator>
   )

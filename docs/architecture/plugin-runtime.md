@@ -140,7 +140,7 @@ export const pluginRegistry: Record<string, PluginManifest> = {
       style: "sheet",
       closeButton: "top-right",
       enterAnimation: "slide-up",
-      exitAnimation: "slide-down",
+      exitAnimation: "slide-right",
     },
   },
   transfer: {
@@ -154,7 +154,7 @@ export const pluginRegistry: Record<string, PluginManifest> = {
       style: "sheet",
       closeButton: "top-right",
       enterAnimation: "slide-up",
-      exitAnimation: "slide-down",
+      exitAnimation: "slide-right",
     },
   },
 }
@@ -187,7 +187,7 @@ export interface PluginPresentation {
   style: "sheet" | "fullscreen"
   closeButton: "top-right"
   enterAnimation: "slide-up"
-  exitAnimation: "slide-down"
+  exitAnimation: "slide-right"
 }
 ```
 
@@ -258,7 +258,7 @@ Required rules:
 - a close button is always shown in the top-right corner
 - the host, not the plugin, owns the close affordance
 - plugin close always funnels through `host.close()`
-- the close animation is always `slide-down`
+- the close animation is always `slide-right`
 - the recommended enter animation is `slide-up`
 
 This preserves a stable mental model:
@@ -273,6 +273,7 @@ Recommended container responsibilities:
 - error boundary around plugin rendering
 - overlay and animation control
 - a normalized title area when the plugin opts into one
+- keep the previous host screen visually static underneath the plugin layer during open and close
 
 ## Transfer And Receive As Plugins
 
@@ -328,7 +329,7 @@ The host remains responsible for:
 5. Host lazy-loads the plugin entry.
 6. Plugin uses HostApi to query session, addresses, and privileged actions.
 7. Plugin finishes, fails, or the user taps close.
-8. Host runs slide-down exit and unmounts the plugin.
+8. Host runs slide-right exit and unmounts the plugin.
 ```
 
 ## Recommended Directory Layout

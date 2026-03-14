@@ -12,6 +12,6 @@ export const transferPluginManifest: PluginManifest = {
     style: "sheet",
     closeButton: "top-right",
     enterAnimation: "slide-up",
-    exitAnimation: "slide-down",
+    exitAnimation: "slide-right",
   },
 }

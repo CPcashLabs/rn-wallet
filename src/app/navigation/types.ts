@@ -1,6 +1,6 @@
 import type { NavigatorScreenParams } from "@react-navigation/native"
 
-import type { PluginId, PluginRouteParams } from "@/shared/plugins/types"
+import type { PluginId, PluginReturnTarget, PluginRouteParams } from "@/shared/plugins/types"
 
 export type AuthStackParamList = {
   LoginScreen: { inviteCode?: string } | undefined
@@ -419,6 +419,7 @@ export type RootStackParamList = {
   PluginHost: {
     pluginId: PluginId
     pluginParams?: PluginRouteParams
+    returnTo?: PluginReturnTarget
   }
   SupportStack: NavigatorScreenParams<SupportStackParamList>
 }

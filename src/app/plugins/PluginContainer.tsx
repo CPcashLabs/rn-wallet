@@ -30,9 +30,10 @@ export function PluginContainer({
 }: Props) {
   const theme = useAppTheme()
   const insets = useSafeAreaInsets()
-  const { height } = useWindowDimensions()
+  const { height, width } = useWindowDimensions()
   const { t } = useTranslation()
   const translateY = useRef(new Animated.Value(height)).current
+  const translateX = useRef(new Animated.Value(0)).current
   const overlayOpacity = useRef(new Animated.Value(0)).current
   const hasAnimatedInRef = useRef(false)
   const hasAnimatedOutRef = useRef(false)
@@ -44,6 +45,7 @@ export function PluginContainer({
 
     hasAnimatedInRef.current = true
     translateY.setValue(height)
+    translateX.setValue(0)
     overlayOpacity.setValue(0)
 
     Animated.parallel([
@@ -58,7 +60,7 @@ export function PluginContainer({
         useNativeDriver: true,
       }),
     ]).start()
-  }, [height, overlayOpacity, presentation.enterAnimation, translateY])
+  }, [height, overlayOpacity, presentation.enterAnimation, translateX, translateY])
 
   useEffect(() => {
     if (!closing || hasAnimatedOutRef.current) {
@@ -68,9 +70,9 @@ export function PluginContainer({
     hasAnimatedOutRef.current = true
 
     Animated.parallel([
-      Animated.timing(translateY, {
-        toValue: height,
-        duration: presentation.exitAnimation === "slide-down" ? 240 : 220,
+      Animated.timing(translateX, {
+        toValue: width,
+        duration: presentation.exitAnimation === "slide-right" ? 240 : 220,
         useNativeDriver: true,
       }),
       Animated.timing(overlayOpacity, {
@@ -83,7 +85,7 @@ export function PluginContainer({
         onClosed()
       }
     })
-  }, [closing, height, onClosed, overlayOpacity, presentation.exitAnimation, translateY])
+  }, [closing, onClosed, overlayOpacity, presentation.exitAnimation, translateX, width])
 
   const closeButtonBackgroundColor = theme.isDark ? "rgba(15,23,42,0.88)" : "rgba(255,255,255,0.92)"
   const closeButtonBorderColor = theme.isDark ? "rgba(148,163,184,0.28)" : "rgba(15,23,42,0.1)"
@@ -97,7 +99,7 @@ export function PluginContainer({
           presentation.style === "sheet" ? styles.sheetSurface : styles.fullscreenSurface,
           {
             backgroundColor: theme.colors.background,
-            transform: [{ translateY }],
+            transform: [{ translateX }, { translateY }],
           },
         ]}
       >

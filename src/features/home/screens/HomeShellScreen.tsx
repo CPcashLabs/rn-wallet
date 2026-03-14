@@ -10,6 +10,7 @@ import { getInviteBindingMessage } from "@/features/auth/utils/authMessages"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { formatAddress, formatCurrency } from "@/features/home/utils/format"
 import { HomeMessagePreview } from "@/features/messages/components/HomeMessagePreview"
+import { buildPluginHostParams } from "@/shared/plugins/navigation"
 import { getBoolean, setBoolean } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 import { useAuthStore } from "@/shared/store/useAuthStore"
@@ -83,21 +84,15 @@ export function HomeShellScreen({ navigation, route }: Props) {
   }
 
   const handleOpenTransfer = () => {
-    ;(navigation.getParent()?.getParent() as any)?.navigate("PluginHost", {
-      pluginId: "transfer",
-    })
+    ;(navigation.getParent()?.getParent() as any)?.navigate("PluginHost", buildPluginHostParams({ pluginId: "transfer" }))
   }
 
   const handleOpenReceive = () => {
-    ;(navigation.getParent()?.getParent() as any)?.navigate("PluginHost", {
-      pluginId: "receive",
-    })
+    ;(navigation.getParent()?.getParent() as any)?.navigate("PluginHost", buildPluginHostParams({ pluginId: "receive" }))
   }
 
   const handleOpenCopouch = () => {
-    ;(navigation.getParent()?.getParent() as any)?.navigate("PluginHost", {
-      pluginId: "copouch",
-    })
+    ;(navigation.getParent()?.getParent() as any)?.navigate("PluginHost", buildPluginHostParams({ pluginId: "copouch" }))
   }
 
   const handleOpenOrders = () => {

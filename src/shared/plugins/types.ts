@@ -8,6 +8,11 @@ export type PluginRouteParamValue = string | number | boolean | null | undefined
 
 export type PluginRouteParams = Record<string, PluginRouteParamValue>
 
+export type PluginReturnTarget = {
+  name: string
+  params?: unknown
+}
+
 export type PluginPermission =
   | "auth.status.read"
   | "user.profile.read"
@@ -20,7 +25,7 @@ export type PluginPresentation = {
   style: "sheet" | "fullscreen"
   closeButton: "top-right"
   enterAnimation: "slide-up"
-  exitAnimation: "slide-down"
+  exitAnimation: "slide-right"
 }
 
 export type WalletAddressDescriptor = {
