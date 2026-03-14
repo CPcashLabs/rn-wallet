@@ -13,6 +13,8 @@ export type PluginReturnTarget = {
   params?: unknown
 }
 
+export type AddressBookChainType = "EVM" | "TRON"
+
 export type PluginPermission =
   | "auth.status.read"
   | "user.profile.read"
@@ -31,6 +33,38 @@ export type WalletAddressDescriptor = {
   chainId: string | null
   source: "wallet" | "profile" | "session"
 }
+
+export type PluginScannedCode = {
+  value: string
+}
+
+export type PluginPickedImage = {
+  uri: string
+  name?: string
+  mimeType?: string
+}
+
+export type PluginAddressBookEntry = {
+  id: string
+  name: string
+  walletAddress: string
+  chainType: AddressBookChainType
+  chainName?: string | null
+  createdAt?: number
+  updatedAt?: number
+}
+
+export type PluginAddressBookResult =
+  | {
+      action: "selected"
+      entry: PluginAddressBookEntry
+    }
+  | {
+      action: "cleared"
+    }
+  | {
+      action: "closed"
+    }
 
 export type SignMessageInput = {
   message: string
@@ -87,6 +121,9 @@ export interface HostApi {
   getLoginStatus(): Promise<{ loggedIn: boolean; loginType: AuthLoginType | null }>
   getUserInfo(): Promise<UserProfile | null>
   getWalletAddresses(): Promise<WalletAddressDescriptor[]>
+  scanCode(input?: { mode?: "camera" | "image" }): Promise<PluginScannedCode | null>
+  pickImage(): Promise<PluginPickedImage | null>
+  openAddressBook(input?: { chainType?: AddressBookChainType }): Promise<PluginAddressBookResult>
   signMessage(input: SignMessageInput): Promise<SignMessageResult>
   signTransaction(input: SignTransactionInput): Promise<SignTransactionResult>
   createTransferIntent(input: TransferIntent): Promise<TransferIntentResult>

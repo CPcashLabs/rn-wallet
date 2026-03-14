@@ -269,6 +269,7 @@ const home = {
       scanImageParseFailed: "所选图片解析失败。",
       scanUnrecognized: "二维码内容里没有识别出当前网络可用的地址。",
       fromAddressBook: "地址簿",
+      loadAddressBookFailed: "打开地址簿失败。",
       addToAddressBook: "加入地址簿",
       addToAddressBookHint: "现在保存该地址，后续转账时就能直接回填。",
       riskTitle: "风险提示",

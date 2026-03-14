@@ -17,6 +17,7 @@ import { NativeCapabilityUnavailableError } from "@/shared/errors"
 import { errorCodeOf, resolveErrorMessage } from "@/shared/errors/presentation"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { useDeferredValueCompat } from "@/shared/hooks/useDeferredValueCompat"
+import { usePluginRuntime } from "@/shared/plugins/PluginRuntimeProvider"
 import { scannerAdapter } from "@/shared/native"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
@@ -82,9 +83,9 @@ export function TransferAddressScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
   const { presentMessage } = useErrorPresenter()
+  const pluginRuntime = usePluginRuntime()
   const chainId = useWalletStore(state => state.chainId)
   const addressBookEntries = useAddressBookStore(state => state.entries)
-  const addressBookLoading = useAddressBookStore(state => state.loading)
   const loadEntries = useAddressBookStore(state => state.loadEntries)
   const selectedAddressBookEntry = useAddressBookStore(state => state.selectedEntry)
   const setSelectedAddressBookEntry = useAddressBookStore(state => state.setSelectedEntry)
@@ -135,12 +136,12 @@ export function TransferAddressScreen({ navigation, route }: Props) {
 
     return addressBookEntries.find(item => item.walletAddress.toLowerCase() === lookup) ?? null
   }, [addressBookEntries, deferredNormalizedAddress])
-  const addressError = useMemo(() => {
+  const addressWarning = useMemo(() => {
     if (!deferredNormalizedAddress) {
       return ""
     }
 
-    return isAddressValid ? "" : t("transfer.address.invalid")
+    return isAddressValid ? "" : t("transfer.address.helper")
   }, [deferredNormalizedAddress, isAddressValid, t])
 
   const filteredAddressBook = useMemo(() => {
@@ -239,6 +240,26 @@ export function TransferAddressScreen({ navigation, route }: Props) {
   )
 
   const handleOpenAddressBook = () => {
+    if (pluginRuntime?.host) {
+      void (async () => {
+        const result = await pluginRuntime.host.openAddressBook({
+          chainType: targetChainType,
+        })
+
+        if (result.action === "selected") {
+          syncAddress(result.entry.walletAddress, "addressBook")
+        }
+      })().catch(error => {
+        presentMessage(resolveErrorMessage(t, error, {
+          fallbackKey: "transfer.address.loadAddressBookFailed",
+          preferApiMessage: false,
+          preferErrorMessage: true,
+        }))
+      })
+
+      return
+    }
+
     navigation
       .getParent<NativeStackScreenProps<RootStackParamList>["navigation"]>()
       ?.navigate("AddressBookStack", {
@@ -263,6 +284,41 @@ export function TransferAddressScreen({ navigation, route }: Props) {
   }
 
   const handleScan = async (mode: "camera" | "image") => {
+    if (pluginRuntime?.host) {
+      try {
+        const result = await pluginRuntime.host.scanCode({ mode })
+        if (!result) {
+          return
+        }
+
+        const nextAddress = extractTransferAddress(result.value, regexes)
+        if (!nextAddress) {
+          presentMessage(t("transfer.address.scanUnrecognized"))
+          return
+        }
+
+        syncAddress(nextAddress, "scan")
+      } catch (error) {
+        if (error instanceof Error && isCancelledNativeAction(error)) {
+          return
+        }
+
+        if (error instanceof NativeCapabilityUnavailableError) {
+          presentMessage(
+            mode === "camera" ? t("transfer.address.scanUnavailable") : t("transfer.address.scanImageUnavailable"),
+            {
+              titleKey: "common.infoTitle",
+            },
+          )
+          return
+        }
+
+        presentMessage(resolveScanErrorMessage(error instanceof Error ? error : new Error("Scanning failed"), mode, t))
+      }
+
+      return
+    }
+
     const capability = scannerAdapter.getCapability(mode)
     if (!capability.supported) {
       presentMessage(
@@ -322,40 +378,12 @@ export function TransferAddressScreen({ navigation, route }: Props) {
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
       >
-        <View style={[styles.channelCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <View style={styles.channelHeader}>
-            <View style={styles.channelMeta}>
-              <View
-                style={[
-                  styles.channelDot,
-                  { backgroundColor: route.params.receiveChainColor || theme.colors.primary },
-                ]}
-              />
-              <View style={styles.channelTextGroup}>
-                <Text style={[styles.channelTitle, { color: theme.colors.text }]}>{route.params.title}</Text>
-                <Text style={[styles.channelSubtitle, { color: theme.colors.mutedText }]}>
-                  {route.params.receiveChainFullName}
-                </Text>
-              </View>
-            </View>
-            <Pressable onPress={() => navigation.navigate("SelectTokenScreen")} style={styles.linkButton}>
-              <Text style={[styles.linkButtonText, { color: theme.colors.primary }]}>{t("transfer.address.changeChannel")}</Text>
-            </Pressable>
-          </View>
-          {route.params.isRebate ? (
-            <View style={styles.rebateBadge}>
-              <Text style={styles.rebateBadgeText}>{t("transfer.address.rebateHint")}</Text>
-            </View>
-          ) : null}
-        </View>
-
         <View style={[styles.inputCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
           <AppTextField
             autoCapitalize="none"
             autoCorrect={false}
             backgroundTone="background"
-            error={addressError}
-            helperText={t("transfer.address.helper")}
+            error={addressWarning}
             label={t("transfer.address.label")}
             multiline
             onChangeText={handleAddressChange}
@@ -406,9 +434,7 @@ export function TransferAddressScreen({ navigation, route }: Props) {
 
         <View style={[styles.riskCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
           <Text style={[styles.riskTitle, { color: theme.colors.text }]}>{t("transfer.address.riskTitle")}</Text>
-          <Text style={[styles.riskBody, { color: theme.colors.mutedText }]}>
-            {addressBookMatch ? t("transfer.address.riskTrusted") : t("transfer.address.riskDefault")}
-          </Text>
+          <Text style={[styles.riskBody, { color: theme.colors.mutedText }]}>{t("transfer.address.riskDefault")}</Text>
         </View>
 
         <SectionTitle title={t("transfer.address.recent")} />
@@ -432,27 +458,6 @@ export function TransferAddressScreen({ navigation, route }: Props) {
           )}
         </AppListCard>
 
-        <SectionTitle title={t("transfer.address.addressBook")} />
-        <AppListCard>
-          {addressBookLoading && filteredAddressBook.length === 0 ? (
-            <AppEmptyState body={t("home.addressBook.loading")} title={t("common.loading")} />
-          ) : filteredAddressBook.length === 0 ? (
-            <AppEmptyState body={t("transfer.address.noAddressBook")} title={t("transfer.address.noAddressBookTitle")} />
-          ) : (
-            filteredAddressBook.map((item, index) => (
-              <AppListRow
-                key={item.id}
-                hideDivider={index === filteredAddressBook.length - 1}
-                onPress={() => syncAddress(item.walletAddress, "addressBook")}
-                subtitle={formatAddress(item.walletAddress)}
-                subtitleStyle={styles.rowSubtitle}
-                title={item.name}
-                titleStyle={styles.rowTitle}
-              />
-            ))
-          )}
-        </AppListCard>
-
         <PrimaryButton disabled={!canSubmit} label={t("transfer.address.next")} onPress={handleNext} />
       </ScrollView>
     </HomeScaffold>
@@ -469,60 +474,6 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     gap: 12,
-  },
-  channelCard: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 16,
-    padding: 14,
-    gap: 10,
-  },
-  channelHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: 12,
-  },
-  channelMeta: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    flex: 1,
-  },
-  channelTextGroup: {
-    flex: 1,
-  },
-  channelDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginTop: 2,
-  },
-  channelTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  channelSubtitle: {
-    fontSize: 13,
-    marginTop: 4,
-  },
-  linkButton: {
-    alignSelf: "flex-start",
-  },
-  linkButtonText: {
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  rebateBadge: {
-    alignSelf: "flex-start",
-    borderRadius: 999,
-    backgroundColor: "#FFF1E9",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  rebateBadgeText: {
-    fontSize: 11,
-    color: "#E37318",
-    fontWeight: "700",
   },
   inputCard: {
     borderWidth: StyleSheet.hairlineWidth,

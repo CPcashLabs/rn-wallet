@@ -1,11 +1,17 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { FlatList, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
+import { usePreventRemove } from "@react-navigation/native"
 
 import type { AddressBookEntry } from "@/features/address-book/services/addressBookApi"
 import { useAddressBookStore } from "@/features/address-book/store/useAddressBookStore"
+import {
+  clearAddressBookCapabilityRequest,
+  closeAddressBookCapabilityRequest,
+  resolveAddressBookCapabilitySelection,
+} from "@/app/plugins/addressBookCapability"
 import { HeaderTextAction, HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { formatAddress } from "@/features/home/utils/format"
 import { useDeferredValueCompat } from "@/shared/hooks/useDeferredValueCompat"
@@ -33,6 +39,9 @@ export function AddressBookListScreen({ navigation, route }: Props) {
 
   const mode = route.params?.mode ?? "manage"
   const chainType = route.params?.chainType
+  const requestId = route.params?.requestId
+  const shouldInterceptClose = mode === "select" && Boolean(requestId)
+  const skipPreventRemoveRef = useRef(false)
 
   useEffect(() => {
     void loadEntries()
@@ -66,12 +75,14 @@ export function AddressBookListScreen({ navigation, route }: Props) {
 
     if (mode === "select") {
       setSelectedEntry(entry)
+      resolveAddressBookCapabilitySelection(requestId, entry)
+      skipPreventRemoveRef.current = true
       navigation.goBack()
       return
     }
 
     navigation.navigate("AddressBookEditScreen", { id })
-  }, [entries, mode, navigation, setSelectedEntry])
+  }, [entries, mode, navigation, requestId, setSelectedEntry])
 
   const handleAddPress = useCallback(() => {
     navigation.navigate("AddressBookEditScreen", {
@@ -81,8 +92,35 @@ export function AddressBookListScreen({ navigation, route }: Props) {
 
   const handleClearSelection = useCallback(() => {
     setSelectedEntry(null)
+    clearAddressBookCapabilityRequest(requestId)
+    skipPreventRemoveRef.current = true
     navigation.goBack()
-  }, [navigation, setSelectedEntry])
+  }, [navigation, requestId, setSelectedEntry])
+
+  const handleBack = useCallback(() => {
+    closeAddressBookCapabilityRequest(requestId)
+    skipPreventRemoveRef.current = true
+    navigation.goBack()
+  }, [navigation, requestId])
+
+  usePreventRemove(shouldInterceptClose, event => {
+    if (skipPreventRemoveRef.current) {
+      skipPreventRemoveRef.current = false
+      navigation.dispatch(event.data.action)
+      return
+    }
+
+    closeAddressBookCapabilityRequest(requestId)
+    navigation.dispatch(event.data.action)
+  })
+
+  useEffect(() => {
+    return () => {
+      if (shouldInterceptClose) {
+        closeAddressBookCapabilityRequest(requestId)
+      }
+    }
+  }, [requestId, shouldInterceptClose])
 
   const renderEntry = useCallback(
     ({ item, index }: { item: AddressBookEntry; index: number }) => (
@@ -110,7 +148,7 @@ export function AddressBookListScreen({ navigation, route }: Props) {
   return (
     <HomeScaffold
       canGoBack
-      onBack={navigation.goBack}
+      onBack={handleBack}
       title={title}
       right={
         <HeaderTextAction

@@ -1,11 +1,17 @@
+import { openAddressBookCapability } from "@/app/plugins/addressBookCapability"
+import { fileAdapter, isNativeImagePickerCancelledError, scannerAdapter } from "@/shared/native"
 import { walletAdapter } from "@/shared/native/walletAdapter"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useUserStore } from "@/shared/store/useUserStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import type {
+  AddressBookChainType,
   HostApi,
+  PluginAddressBookResult,
   PluginCloseResult,
   PluginId,
+  PluginPickedImage,
+  PluginScannedCode,
   ReceiveIntent,
   ReceiveIntentResult,
   SignMessageInput,
@@ -16,6 +22,19 @@ import type {
   TransferIntentResult,
   WalletAddressDescriptor,
 } from "@/shared/plugins/types"
+
+function isCancelledNativeAction(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false
+  }
+
+  const code = Reflect.get(error, "code")
+  if (typeof code === "string" && code.toLowerCase().includes("cancel")) {
+    return true
+  }
+
+  return error.name.toLowerCase().includes("cancel")
+}
 
 function resolveWalletAddresses(): WalletAddressDescriptor[] {
   const authSession = useAuthStore.getState().session
@@ -69,6 +88,43 @@ async function signMessage(input: SignMessageInput): Promise<SignMessageResult> 
   }
 }
 
+async function scanCode(input?: { mode?: "camera" | "image" }): Promise<PluginScannedCode | null> {
+  const mode = input?.mode ?? "camera"
+  const result = mode === "camera" ? await scannerAdapter.scan() : await scannerAdapter.scanImage()
+
+  if (!result.ok) {
+    if (isCancelledNativeAction(result.error)) {
+      return null
+    }
+
+    throw result.error
+  }
+
+  return {
+    value: result.data.value,
+  }
+}
+
+async function pickImage(): Promise<PluginPickedImage | null> {
+  const result = await fileAdapter.pickImage()
+
+  if (!result.ok) {
+    if (isNativeImagePickerCancelledError(result.error)) {
+      return null
+    }
+
+    throw result.error
+  }
+
+  return result.data
+}
+
+async function openAddressBook(input?: { chainType?: AddressBookChainType }): Promise<PluginAddressBookResult> {
+  return openAddressBookCapability({
+    chainType: input?.chainType,
+  })
+}
+
 async function signTransaction(input: SignTransactionInput): Promise<SignTransactionResult> {
   void input
   return notImplemented("signTransaction")
@@ -105,6 +161,9 @@ export function createHostApi(config: {
     async getWalletAddresses() {
       return resolveWalletAddresses()
     },
+    scanCode,
+    pickImage,
+    openAddressBook,
     signMessage,
     signTransaction,
     createTransferIntent,

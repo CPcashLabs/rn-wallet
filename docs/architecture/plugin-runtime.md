@@ -86,6 +86,7 @@ The host owns:
 - login state and user session truth
 - user profile lookup
 - wallet address lookup
+- scanner, image picker, and address book capabilities
 - signing and transaction approval
 - transfer or receive intent execution
 - permission gating
@@ -204,6 +205,13 @@ export interface HostApi {
   getLoginStatus(): Promise<{ loggedIn: boolean }>
   getUserInfo(): Promise<UserInfo | null>
   getWalletAddresses(): Promise<WalletAddress[]>
+  scanCode(input?: { mode?: "camera" | "image" }): Promise<{ value: string } | null>
+  pickImage(): Promise<{ uri: string; name?: string; mimeType?: string } | null>
+  openAddressBook(input?: { chainType?: "EVM" | "TRON" }): Promise<
+    | { action: "selected"; entry: AddressBookEntry }
+    | { action: "cleared" }
+    | { action: "closed" }
+  >
 
   signMessage(input: SignMessageInput): Promise<SignMessageResult>
   signTransaction(input: SignTransactionInput): Promise<SignTransactionResult>

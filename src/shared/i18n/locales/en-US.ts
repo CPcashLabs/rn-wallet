@@ -269,6 +269,7 @@ const home = {
       scanImageParseFailed: "The selected image could not be parsed.",
       scanUnrecognized: "The QR content did not contain a valid address for the current network.",
       fromAddressBook: "Address Book",
+      loadAddressBookFailed: "Failed to open the address book.",
       addToAddressBook: "Add to Address Book",
       addToAddressBookHint: "Save this address now so the next transfer can fill it directly.",
       riskTitle: "Risk Tip",

@@ -116,6 +116,7 @@ export type AddressBookStackParamList = {
     | {
         mode?: "manage" | "select"
         chainType?: "EVM" | "TRON"
+        requestId?: string
       }
     | undefined
   AddressBookEditScreen:
