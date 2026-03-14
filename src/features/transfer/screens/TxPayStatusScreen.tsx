@@ -4,25 +4,42 @@ import { ScrollView, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
-import { FieldRow, PrimaryButton, SecondaryButton, SectionCard } from "@/features/transfer/components/TransferUi"
-import { getOrderDetail } from "@/features/transfer/services/transferApi"
-import { formatAmount, resolveCountdownStorageKey, resolveOrderProgress } from "@/features/transfer/utils/order"
+import { resetToAuthStack, resetToMainTabs, resetToSupportScreen } from "@/app/navigation/navigationRef"
+import type { TransferStackParamList } from "@/app/navigation/types"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { formatDateTime } from "@/features/home/utils/format"
-import { getNumber, removeItem, setNumber, setBoolean } from "@/shared/storage/kvStorage"
+import { FieldRow, PrimaryButton, SecondaryButton, SectionCard } from "@/features/transfer/components/TransferUi"
+import { getOrderDetail, getPublicTxStatusDetail } from "@/features/transfer/services/transferApi"
+import { formatAmount, resolveCountdownStorageKey, resolveOrderProgress } from "@/features/transfer/utils/order"
+import { getNumber, removeItem, setBoolean, setNumber } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
+import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
-import type { RootStackParamList, TransferStackParamList } from "@/app/navigation/types"
-
 type Props = NativeStackScreenProps<TransferStackParamList, "TxPayStatusScreen">
+type StatusDetail = Awaited<ReturnType<typeof getOrderDetail>> | Awaited<ReturnType<typeof getPublicTxStatusDetail>>
 
 const DEFAULT_COUNTDOWN_MS = 15_000
 
 export function TxPayStatusScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
-  const [detail, setDetail] = useState<Awaited<ReturnType<typeof getOrderDetail>> | null>(null)
+  const authenticated = Boolean(useAuthStore(state => state.session?.accessToken))
+  const params = route.params as Partial<TransferStackParamList["TxPayStatusScreen"]> | undefined
+  const orderSn = params?.orderSn
+  const publicAccess = Boolean(params?.publicAccess)
+  const publicTxid = params?.publicTxid
+  const publicBaseUrl = params?.publicBaseUrl
+  const fallbackPath = publicAccess
+    ? publicBaseUrl && publicTxid
+      ? `${publicBaseUrl}/send/detail?txid=${publicTxid}`
+      : publicTxid
+        ? `app://share?txid=${publicTxid}`
+        : "app://share"
+    : orderSn
+      ? `app://orders/${orderSn}/status`
+      : "app://orders/status"
+  const [detail, setDetail] = useState<StatusDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [countdownLeft, setCountdownLeft] = useState(0)
 
@@ -35,13 +52,34 @@ export function TxPayStatusScreen({ navigation, route }: Props) {
   }, [detail?.status, detail?.statusName, detail?.txid])
 
   const refreshOrder = useCallback(async () => {
-    const order = await getOrderDetail(route.params.orderSn)
+    if (publicAccess) {
+      if (!publicTxid) {
+        throw new Error("missingPublicTxid")
+      }
+
+      const order = await getPublicTxStatusDetail(publicTxid, publicBaseUrl)
+      setDetail(order)
+      return
+    }
+
+    if (!orderSn) {
+      throw new Error("missingOrderSn")
+    }
+
+    const order = await getOrderDetail(orderSn)
     setDetail(order)
-  }, [route.params.orderSn])
+  }, [orderSn, publicAccess, publicBaseUrl, publicTxid])
 
   useEffect(() => {
+    if ((publicAccess && !publicTxid) || (!publicAccess && !orderSn)) {
+      resetToSupportScreen("NotFoundScreen", {
+        path: fallbackPath,
+      })
+      return
+    }
+
     let mounted = true
-    const countdownKey = resolveCountdownStorageKey(route.params.orderSn)
+    const countdownKey = !publicAccess && orderSn ? resolveCountdownStorageKey(orderSn) : null
     let timer: ReturnType<typeof setInterval> | null = null
     let poller: ReturnType<typeof setInterval> | null = null
 
@@ -56,10 +94,10 @@ export function TxPayStatusScreen({ navigation, route }: Props) {
         }
       }
 
-      const existing = getNumber(countdownKey)
-      const shouldStartCountdown = route.params.pay || (existing !== null && existing > Date.now())
+      const existing = countdownKey ? getNumber(countdownKey) : null
+      const shouldStartCountdown = Boolean(!publicAccess && countdownKey && (params?.pay || (existing !== null && existing > Date.now())))
 
-      if (shouldStartCountdown) {
+      if (shouldStartCountdown && countdownKey) {
         const endAt = existing && existing > Date.now() ? existing : Date.now() + DEFAULT_COUNTDOWN_MS
         setNumber(countdownKey, endAt)
         setCountdownLeft(Math.max(0, endAt - Date.now()))
@@ -92,18 +130,16 @@ export function TxPayStatusScreen({ navigation, route }: Props) {
         clearInterval(poller)
       }
     }
-  }, [refreshOrder, route.params.orderSn, route.params.pay])
+  }, [fallbackPath, orderSn, params?.pay, publicAccess, publicTxid, refreshOrder])
 
   const handleDone = () => {
-    setBoolean(KvStorageKeys.HomePageNeedRefresh, true)
-    navigation
-      .getParent<NativeStackScreenProps<RootStackParamList>["navigation"]>()
-      ?.navigate("MainTabs", {
-        screen: "HomeTab",
-        params: {
-          screen: "HomeShellScreen",
-        },
-      })
+    if (authenticated) {
+      setBoolean(KvStorageKeys.HomePageNeedRefresh, true)
+      resetToMainTabs()
+      return
+    }
+
+    resetToAuthStack()
   }
 
   return (
@@ -142,7 +178,7 @@ export function TxPayStatusScreen({ navigation, route }: Props) {
                 : detail?.recvChainName || "-"
             }
           />
-          <FieldRow label={t("transfer.status.txid")} value={detail?.txid || "-"} />
+          <FieldRow label={t("transfer.status.txid")} value={detail?.txid || publicTxid || "-"} />
           <FieldRow label={t("transfer.status.orderType")} value={detail?.orderType || "-"} />
         </SectionCard>
 

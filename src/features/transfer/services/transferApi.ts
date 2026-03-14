@@ -1,10 +1,17 @@
+import axios from "axios"
+
 import { getCoinList, resolveChainNameById } from "@/features/home/services/homeApi"
 import { apiClient } from "@/shared/api/client"
+import { resolveApiBaseUrl } from "@/shared/config/runtime"
 
 type ApiEnvelope<T> = {
   code: number
   message: string
   data: T
+}
+
+type GuestTokenPayload = {
+  access_token: string
 }
 
 type RebatePairPayload = {
@@ -123,6 +130,21 @@ type OrderShowPayload = {
   payment_address?: string
   recv_actual_received_at?: number | string | null
 }
+
+type SendShareDetailOptions = {
+  publicAccess?: boolean
+  publicBaseUrl?: string
+}
+
+const GUEST_ACCESS_TOKEN_TTL_MS = 5 * 60 * 1000
+
+let guestAccessTokenCache:
+  | {
+      accessToken: string
+      baseUrl: string
+      createdAt: number
+    }
+  | null = null
 
 type ReceivingShowPayload = OrderShowPayload & {
   serial_number?: string
@@ -285,6 +307,75 @@ export type SendOrderLogItem = {
 
 function unwrapEnvelope<T>(payload: ApiEnvelope<T>) {
   return payload.data
+}
+
+function normalizeBaseUrl(value?: string) {
+  const baseUrl = value?.trim() || resolveApiBaseUrl()
+  return baseUrl.replace(/\/+$/, "")
+}
+
+async function requestGuestAccessToken(baseUrl?: string) {
+  const normalizedBaseUrl = normalizeBaseUrl(baseUrl)
+  if (
+    guestAccessTokenCache &&
+    guestAccessTokenCache.baseUrl === normalizedBaseUrl &&
+    Date.now() - guestAccessTokenCache.createdAt < GUEST_ACCESS_TOKEN_TTL_MS
+  ) {
+    return guestAccessTokenCache.accessToken
+  }
+
+  const body = new URLSearchParams()
+  body.append("client_id", "MEMBER")
+  body.append("client_secret", "123456")
+  body.append("grant_type", "guest")
+
+  const client = axios.create({
+    baseURL: normalizedBaseUrl,
+    timeout: 15_000,
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+  })
+  const response = await client.post<ApiEnvelope<GuestTokenPayload> | GuestTokenPayload>("/api/auth/oauth2/token", body.toString())
+  const payload = response.data
+  const accessToken = "access_token" in payload ? payload.access_token : unwrapEnvelope(payload).access_token
+
+  guestAccessTokenCache = {
+    accessToken,
+    baseUrl: normalizedBaseUrl,
+    createdAt: Date.now(),
+  }
+
+  return accessToken
+}
+
+async function createGuestClient(baseUrl?: string) {
+  const normalizedBaseUrl = normalizeBaseUrl(baseUrl)
+  const accessToken = await requestGuestAccessToken(normalizedBaseUrl)
+  return axios.create({
+    baseURL: normalizedBaseUrl,
+    timeout: 15_000,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+  })
+}
+
+async function getPublicSendSharePayload(orderSn: string, baseUrl?: string) {
+  const client = await createGuestClient(baseUrl)
+  const response = await client.get<ApiEnvelope<SendSharePayload>>(`/api/order/member/order/send-share-show-v2/${orderSn}`)
+  return unwrapEnvelope(response.data)
+}
+
+async function getPublicReceiveSharePayloadByTx(txid: string, baseUrl?: string) {
+  const client = await createGuestClient(baseUrl)
+  const response = await client.get<ApiEnvelope<SendSharePayload>>("/api/order/member/order/receive-share-show-by-tx", {
+    params: {
+      send_tx_id: txid,
+    },
+  })
+  return unwrapEnvelope(response.data)
 }
 
 function toNumber(value: unknown) {
@@ -720,14 +811,29 @@ export async function checkTransferNetwork(orderSn: string) {
   }
 }
 
-export async function getSendShareDetail(orderSn: string) {
-  const response = await apiClient.get<ApiEnvelope<SendSharePayload>>(`/api/order/member/order/send-share-show-v2/${orderSn}`)
-  const payload = unwrapEnvelope(response.data)
+export async function getSendShareDetail(orderSn: string, options?: SendShareDetailOptions) {
+  const payload = options?.publicAccess
+    ? await getPublicSendSharePayload(orderSn, options.publicBaseUrl)
+    : unwrapEnvelope((await apiClient.get<ApiEnvelope<SendSharePayload>>(`/api/order/member/order/send-share-show-v2/${orderSn}`)).data)
   const detail = toOrderDetail(payload)
 
   return {
     ...detail,
     shareUrl: String(payload.share_url ?? payload.share_link ?? (detail.payUrl || deriveShareUrl(orderSn))),
+    isPayable: Boolean(payload.is_payable ?? true),
+    orderReceiptUrl: String(payload.order_receipt_url ?? ""),
+    exchangeType: toNumber(payload.exchange_type),
+    txBrowserUrl: String(payload.tx_browser_url ?? ""),
+  } satisfies SendShareDetail
+}
+
+export async function getPublicTxStatusDetail(txid: string, baseUrl?: string) {
+  const payload = await getPublicReceiveSharePayloadByTx(txid, baseUrl)
+  const detail = toOrderDetail(payload)
+
+  return {
+    ...detail,
+    shareUrl: String(payload.share_url ?? payload.share_link ?? ""),
     isPayable: Boolean(payload.is_payable ?? true),
     orderReceiptUrl: String(payload.order_receipt_url ?? ""),
     exchangeType: toNumber(payload.exchange_type),

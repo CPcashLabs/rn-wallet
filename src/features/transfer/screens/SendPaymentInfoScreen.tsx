@@ -4,6 +4,7 @@ import { Alert, ScrollView, StyleSheet, Text, TextInput } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
+import { resetToSupportScreen } from "@/app/navigation/navigationRef"
 import { FieldRow, PrimaryButton, SectionCard } from "@/features/transfer/components/TransferUi"
 import { getSendShareDetail, updateSendReceiveAddress } from "@/features/transfer/services/transferApi"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
@@ -16,23 +17,44 @@ type Props = NativeStackScreenProps<TransferStackParamList, "SendPaymentInfoScre
 export function SendPaymentInfoScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const params = route.params as Partial<TransferStackParamList["SendPaymentInfoScreen"]> | undefined
+  const orderSn = params?.orderSn
+  const publicAccess = Boolean(params?.publicAccess)
+  const publicBaseUrl = params?.publicBaseUrl
+  const fallbackPath = publicBaseUrl && orderSn ? `${publicBaseUrl}/send?share=${orderSn}` : publicBaseUrl || "app://send"
   const [detail, setDetail] = useState<Awaited<ReturnType<typeof getSendShareDetail>> | null>(null)
   const [address, setAddress] = useState("")
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
+    if (!orderSn) {
+      resetToSupportScreen("NotFoundScreen", {
+        path: fallbackPath,
+      })
+      return
+    }
+
     let mounted = true
 
     void (async () => {
       try {
-        const result = await getSendShareDetail(route.params.orderSn)
+        const result = await getSendShareDetail(orderSn, {
+          publicAccess,
+          publicBaseUrl,
+        })
         if (mounted) {
           setDetail(result)
           setAddress(result.receiveAddress)
         }
       } catch {
         if (mounted) {
-          Alert.alert(t("common.errorTitle"), t("transfer.send.detailLoadFailed"))
+          if (publicAccess) {
+            resetToSupportScreen("NotFoundScreen", {
+              path: fallbackPath,
+            })
+          } else {
+            Alert.alert(t("common.errorTitle"), t("transfer.send.detailLoadFailed"))
+          }
         }
       }
     })()
@@ -40,13 +62,17 @@ export function SendPaymentInfoScreen({ navigation, route }: Props) {
     return () => {
       mounted = false
     }
-  }, [route.params.orderSn, t])
+  }, [fallbackPath, orderSn, publicAccess, publicBaseUrl, t])
+
+  if (!orderSn) {
+    return null
+  }
 
   return (
     <HomeScaffold canGoBack onBack={navigation.goBack} title={t("transfer.send.paymentInfoTitle")} scroll={false}>
       <ScrollView bounces={false} contentContainerStyle={styles.content}>
         <SectionCard>
-          <FieldRow label={t("transfer.send.orderSn")} value={detail?.orderSn || route.params.orderSn} />
+          <FieldRow label={t("transfer.send.orderSn")} value={detail?.orderSn || orderSn} />
           <FieldRow
             label={t("transfer.send.shareAmount")}
             value={`${detail?.sendAmount ?? 0} ${detail?.sendCoinName || detail?.sendCoinCode || ""}`.trim()}
@@ -56,49 +82,51 @@ export function SendPaymentInfoScreen({ navigation, route }: Props) {
           <FieldRow label={t("transfer.send.status")} value={detail?.statusName || String(detail?.status ?? "-")} />
         </SectionCard>
 
-        <SectionCard>
-          <Text style={[styles.label, { color: theme.colors.text }]}>{t("transfer.send.receiveAddress")}</Text>
-          <TextInput
-            autoCapitalize="none"
-            onChangeText={setAddress}
-            placeholder={t("transfer.send.receiveAddressPlaceholder")}
-            placeholderTextColor={theme.colors.mutedText}
-            style={[
-              styles.input,
-              {
-                color: theme.colors.text,
-                borderColor: theme.colors.border,
-                backgroundColor: theme.colors.background,
-              },
-            ]}
-            value={address}
-          />
-          <PrimaryButton
-            label={saving ? t("common.loading") : t("transfer.send.saveAddress")}
-            onPress={() => {
-              if (!address.trim()) {
-                Alert.alert(t("common.errorTitle"), t("transfer.send.addressRequired"))
-                return
-              }
-
-              void (async () => {
-                setSaving(true)
-                try {
-                  await updateSendReceiveAddress({
-                    orderSn: route.params.orderSn,
-                    address: address.trim(),
-                  })
-                  Alert.alert(t("common.infoTitle"), t("transfer.send.addressSaved"))
-                } catch {
-                  Alert.alert(t("common.errorTitle"), t("transfer.send.addressSaveFailed"))
-                } finally {
-                  setSaving(false)
+        {publicAccess ? null : (
+          <SectionCard>
+            <Text style={[styles.label, { color: theme.colors.text }]}>{t("transfer.send.receiveAddress")}</Text>
+            <TextInput
+              autoCapitalize="none"
+              onChangeText={setAddress}
+              placeholder={t("transfer.send.receiveAddressPlaceholder")}
+              placeholderTextColor={theme.colors.mutedText}
+              style={[
+                styles.input,
+                {
+                  color: theme.colors.text,
+                  borderColor: theme.colors.border,
+                  backgroundColor: theme.colors.background,
+                },
+              ]}
+              value={address}
+            />
+            <PrimaryButton
+              label={saving ? t("common.loading") : t("transfer.send.saveAddress")}
+              onPress={() => {
+                if (!address.trim()) {
+                  Alert.alert(t("common.errorTitle"), t("transfer.send.addressRequired"))
+                  return
                 }
-              })()
-            }}
-            disabled={saving}
-          />
-        </SectionCard>
+
+                void (async () => {
+                  setSaving(true)
+                  try {
+                    await updateSendReceiveAddress({
+                      orderSn,
+                      address: address.trim(),
+                    })
+                    Alert.alert(t("common.infoTitle"), t("transfer.send.addressSaved"))
+                  } catch {
+                    Alert.alert(t("common.errorTitle"), t("transfer.send.addressSaveFailed"))
+                  } finally {
+                    setSaving(false)
+                  }
+                })()
+              }}
+              disabled={saving}
+            />
+          </SectionCard>
+        )}
       </ScrollView>
     </HomeScaffold>
   )
