@@ -10,6 +10,7 @@ import { useCopouchStore } from "@/features/copouch/store/useCopouchStore"
 import { CopouchScaffold } from "@/features/copouch/components/CopouchScaffold"
 import { formatCurrency } from "@/features/home/utils/format"
 import { PageEmpty, PrimaryButton, SecondaryButton, SectionCard } from "@/features/transfer/components/TransferUi"
+import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { useSocketStore } from "@/shared/store/useSocketStore"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
@@ -24,6 +25,7 @@ type Props = NativeStackScreenProps<CopouchStackParamList, "CopouchHomeScreen">
 export function CopouchHomeScreen({ navigation }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
   const wallets = useCopouchStore(state => state.wallets)
   const loading = useCopouchStore(state => state.loading)
@@ -45,17 +47,21 @@ export function CopouchHomeScreen({ navigation }: Props) {
   const [cooldownUntil, setCooldownUntil] = useState<number | null>(null)
 
   useEffect(() => {
-    void loadOverview().catch(() => {
-      Alert.alert(t("common.errorTitle"), t("copouch.home.loadFailed"))
+    void loadOverview().catch(error => {
+      presentError(error, {
+        fallbackKey: "copouch.home.loadFailed",
+      })
     })
-  }, [loadOverview, t])
+  }, [loadOverview, presentError])
 
   useFocusEffect(
     React.useCallback(() => {
-      void refreshOverview().catch(() => {
-        Alert.alert(t("common.errorTitle"), t("copouch.home.refreshFailed"))
+      void refreshOverview().catch(error => {
+        presentError(error, {
+          fallbackKey: "copouch.home.refreshFailed",
+        })
       })
-    }, [refreshOverview, t]),
+    }, [presentError, refreshOverview]),
   )
 
   useEffect(() => {
@@ -153,7 +159,10 @@ export function CopouchHomeScreen({ navigation }: Props) {
           showToast({ message: t("copouch.home.ownerLimitReached"), tone: "warning" })
           break
         default:
-          showToast({ message: t("copouch.home.createFailed"), tone: "error" })
+          presentError(error, {
+            fallbackKey: "copouch.home.createFailed",
+            mode: "toast",
+          })
       }
     }
   }

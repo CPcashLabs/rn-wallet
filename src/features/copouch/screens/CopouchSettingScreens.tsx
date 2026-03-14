@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from "react"
 
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
-import { Alert, Pressable, Text, View } from "react-native"
+import { Pressable, Text, View } from "react-native"
 
 import type { CopouchStackParamList } from "@/app/navigation/types"
 import { CopouchScaffold } from "@/features/copouch/components/CopouchScaffold"
@@ -23,6 +23,7 @@ import { formatAddress } from "@/features/home/utils/format"
 import { ActionRow } from "@/features/orders/components/OrdersUi"
 import { PrimaryButton, SectionCard } from "@/features/transfer/components/TransferUi"
 import { ApiError } from "@/shared/errors"
+import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { AppTextField } from "@/shared/ui/AppTextField"
@@ -31,6 +32,7 @@ type StackProps<T extends keyof CopouchStackParamList> = NativeStackScreenProps<
 
 export function CopouchSettingScreen({ navigation, route }: StackProps<"CopouchSettingScreen">) {
   const { t } = useTranslation()
+  const { presentError } = useErrorPresenter()
   const { detail, loading, invalidAccess, reload, setDetail } = useCopouchWalletDetail(route.params.id)
   const [owners, setOwners] = useState<CopouchOwner[]>([])
   const [ownersLoading, setOwnersLoading] = useState(true)
@@ -50,10 +52,12 @@ export function CopouchSettingScreen({ navigation, route }: StackProps<"CopouchS
   }, [loadOwners, reload])
 
   useEffect(() => {
-    void loadAll().catch(() => {
-      Alert.alert(t("common.errorTitle"), t("copouch.setting.loadFailed"))
+    void loadAll().catch(error => {
+      presentError(error, {
+        fallbackKey: "copouch.setting.loadFailed",
+      })
     })
-  }, [loadAll, t])
+  }, [loadAll, presentError])
 
   return (
     <CopouchScaffold canGoBack onBack={navigation.goBack} title={t("copouch.setting.title")}>
@@ -127,6 +131,7 @@ export function CopouchSettingScreen({ navigation, route }: StackProps<"CopouchS
 export function CopouchSetNameScreen({ navigation, route }: StackProps<"CopouchSetNameScreen">) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { presentError, presentMessage } = useErrorPresenter()
   const { showToast } = useToast()
   const { detail, loading, invalidAccess, reload } = useCopouchWalletDetail(route.params.id)
   const [name, setName] = useState("")
@@ -137,10 +142,12 @@ export function CopouchSetNameScreen({ navigation, route }: StackProps<"CopouchS
       .then(wallet => {
         setName(wallet?.walletName ?? "")
       })
-      .catch(() => {
-        Alert.alert(t("common.errorTitle"), t("copouch.setting.loadFailed"))
+      .catch(error => {
+        presentError(error, {
+          fallbackKey: "copouch.setting.loadFailed",
+        })
       })
-  }, [reload, t])
+  }, [presentError, reload])
 
   const disabled = !name.trim() || name.trim() === (detail?.walletName ?? "") || saving
 
@@ -155,7 +162,9 @@ export function CopouchSetNameScreen({ navigation, route }: StackProps<"CopouchS
       navigation.goBack()
     } catch (error) {
       const message = error instanceof ApiError && String(error.code ?? "") === "40009" ? t("copouch.setting.errors.nameExists") : t("copouch.setting.errors.nameSaveFailed")
-      showToast({ message, tone: "error" })
+      presentMessage(message, {
+        mode: "toast",
+      })
     } finally {
       setSaving(false)
     }
@@ -189,6 +198,7 @@ export function CopouchSetNameScreen({ navigation, route }: StackProps<"CopouchS
 
 export function CopouchBgSettingScreen({ navigation, route }: StackProps<"CopouchBgSettingScreen">) {
   const { t } = useTranslation()
+  const { presentError, presentMessage } = useErrorPresenter()
   const { showToast } = useToast()
   const { detail, loading, invalidAccess, reload } = useCopouchWalletDetail(route.params.id)
   const [selectedColor, setSelectedColor] = useState(1)
@@ -199,10 +209,12 @@ export function CopouchBgSettingScreen({ navigation, route }: StackProps<"Copouc
       .then(wallet => {
         setSelectedColor(wallet?.walletBgColor ?? 1)
       })
-      .catch(() => {
-        Alert.alert(t("common.errorTitle"), t("copouch.setting.loadFailed"))
+      .catch(error => {
+        presentError(error, {
+          fallbackKey: "copouch.setting.loadFailed",
+        })
       })
-  }, [reload, t])
+  }, [presentError, reload])
 
   const disabled = selectedColor === (detail?.walletBgColor ?? 1) || saving
 
@@ -215,8 +227,11 @@ export function CopouchBgSettingScreen({ navigation, route }: StackProps<"Copouc
       await useCopouchStore.getState().refreshOverview().catch(() => null)
       showToast({ message: t("copouch.setting.backgroundSaved"), tone: "success" })
       navigation.goBack()
-    } catch {
-      showToast({ message: t("copouch.setting.errors.backgroundSaveFailed"), tone: "error" })
+    } catch (error) {
+      presentError(error, {
+        fallbackKey: "copouch.setting.errors.backgroundSaveFailed",
+        mode: "toast",
+      })
     } finally {
       setSaving(false)
     }

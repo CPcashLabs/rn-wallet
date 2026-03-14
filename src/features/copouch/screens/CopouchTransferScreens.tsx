@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react"
 
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
-import { Alert, Text, View } from "react-native"
+import { Text, View } from "react-native"
 
 import type { CopouchStackParamList } from "@/app/navigation/types"
 import { CopouchScaffold } from "@/features/copouch/components/CopouchScaffold"
@@ -34,6 +34,7 @@ import {
 import { FieldRow, PrimaryButton, SectionCard } from "@/features/transfer/components/TransferUi"
 import { formatAmount, parseDecimalInput } from "@/features/transfer/utils/order"
 import { resolveChainNameById } from "@/shared/api/walletAssets"
+import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { useBalanceStore } from "@/shared/store/useBalanceStore"
 import { useUserStore } from "@/shared/store/useUserStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
@@ -50,6 +51,7 @@ function CopouchTransferScreen(props: {
 }) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { presentError, presentMessage } = useErrorPresenter()
   const chainId = useWalletStore(state => state.chainId)
   const walletAddress = useWalletStore(state => state.address)
   const profile = useUserStore(state => state.profile)
@@ -91,13 +93,15 @@ function CopouchTransferScreen(props: {
       .then(response => {
         setSafeAssets(response.assets)
       })
-      .catch(() => {
-        Alert.alert(t("common.errorTitle"), t("copouch.transfer.loadFailed"))
+      .catch(error => {
+        presentError(error, {
+          fallbackKey: "copouch.transfer.loadFailed",
+        })
       })
       .finally(() => {
         setAssetLoading(false)
       })
-  }, [chainId, props.mode, props.route.params.id, t])
+  }, [chainId, presentError, props.mode, props.route.params.id])
 
   useEffect(() => {
     setChannelLoading(true)
@@ -108,13 +112,15 @@ function CopouchTransferScreen(props: {
           setSelectedChannelKey(nextChannels[0].key)
         }
       })
-      .catch(() => {
-        Alert.alert(t("common.errorTitle"), t("copouch.transfer.channelLoadFailed"))
+      .catch(error => {
+        presentError(error, {
+          fallbackKey: "copouch.transfer.channelLoadFailed",
+        })
       })
       .finally(() => {
         setChannelLoading(false)
       })
-  }, [chainId, t])
+  }, [chainId, presentError])
 
   const selectedChannel = useMemo(() => channels.find(channel => channel.key === selectedChannelKey) ?? channels[0] ?? null, [channels, selectedChannelKey])
 
@@ -134,13 +140,15 @@ function CopouchTransferScreen(props: {
         setOptions(response.options)
         setSelectedOptionCode(response.options[0]?.sendCoinCode ?? "")
       })
-      .catch(() => {
-        Alert.alert(t("common.errorTitle"), t("copouch.transfer.optionLoadFailed"))
+      .catch(error => {
+        presentError(error, {
+          fallbackKey: "copouch.transfer.optionLoadFailed",
+        })
       })
       .finally(() => {
         setOptionsLoading(false)
       })
-  }, [currentChainName, selectedChannel, t])
+  }, [currentChainName, presentError, selectedChannel])
 
   const selectedOption = useMemo(() => options.find(option => option.sendCoinCode === selectedOptionCode) ?? options[0] ?? null, [options, selectedOptionCode])
   const numericAmount = Number(amount || 0)
@@ -253,7 +261,7 @@ function CopouchTransferScreen(props: {
 
   const handleSubmit = async () => {
     if (validationMessage) {
-      Alert.alert(t("common.errorTitle"), validationMessage)
+      presentMessage(validationMessage)
       return
     }
 
@@ -288,8 +296,10 @@ function CopouchTransferScreen(props: {
           orderSn: order.orderSn,
         },
       })
-    } catch {
-      Alert.alert(t("common.errorTitle"), t("copouch.transfer.submitFailed"))
+    } catch (error) {
+      presentError(error, {
+        fallbackKey: "copouch.transfer.submitFailed",
+      })
     } finally {
       setSubmitting(false)
     }

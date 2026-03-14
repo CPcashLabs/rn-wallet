@@ -35,6 +35,7 @@ import { formatAddress } from "@/features/home/utils/format"
 import { ActionRow } from "@/features/orders/components/OrdersUi"
 import { PageEmpty, PrimaryButton, SectionCard } from "@/features/transfer/components/TransferUi"
 import { ApiError } from "@/shared/errors"
+import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { useSocketStore } from "@/shared/store/useSocketStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useToast } from "@/shared/toast/useToast"
@@ -45,6 +46,7 @@ type StackProps<T extends keyof CopouchStackParamList> = NativeStackScreenProps<
 
 export function CopouchMemberScreen({ navigation, route }: StackProps<"CopouchMemberScreen">) {
   const { t } = useTranslation()
+  const { presentError } = useErrorPresenter()
   const lastEvent = useSocketStore(state => state.lastEvent)
   const { detail, loading, invalidAccess, reload, setDetail } = useCopouchWalletDetail(route.params.id)
   const [owners, setOwners] = useState<CopouchOwner[]>([])
@@ -66,10 +68,12 @@ export function CopouchMemberScreen({ navigation, route }: StackProps<"CopouchMe
   }, [loadOwners, reload])
 
   useEffect(() => {
-    void loadAll().catch(() => {
-      Alert.alert(t("common.errorTitle"), t("copouch.member.loadFailed"))
+    void loadAll().catch(error => {
+      presentError(error, {
+        fallbackKey: "copouch.member.loadFailed",
+      })
     })
-  }, [loadAll, t])
+  }, [loadAll, presentError])
 
   useFocusEffect(
     React.useCallback(() => {
@@ -159,6 +163,7 @@ export function CopouchMemberScreen({ navigation, route }: StackProps<"CopouchMe
 
 export function CopouchDeleteMemberScreen({ navigation, route }: StackProps<"CopouchDeleteMemberScreen">) {
   const { t } = useTranslation()
+  const { presentError, presentMessage } = useErrorPresenter()
   const { showToast } = useToast()
   const { detail, loading, invalidAccess, reload, setDetail } = useCopouchWalletDetail(route.params.id)
   const [owners, setOwners] = useState<CopouchOwner[]>([])
@@ -180,10 +185,12 @@ export function CopouchDeleteMemberScreen({ navigation, route }: StackProps<"Cop
   }, [loadOwners, reload])
 
   useEffect(() => {
-    void loadAll().catch(() => {
-      Alert.alert(t("common.errorTitle"), t("copouch.member.loadFailed"))
+    void loadAll().catch(error => {
+      presentError(error, {
+        fallbackKey: "copouch.member.loadFailed",
+      })
     })
-  }, [loadAll, t])
+  }, [loadAll, presentError])
 
   const members = useMemo(() => owners.filter(owner => !owner.isCreator), [owners])
 
@@ -210,7 +217,9 @@ export function CopouchDeleteMemberScreen({ navigation, route }: StackProps<"Cop
                   // ignore sync errors and surface the original mutation error
                 }
 
-                  showToast({ message: resolveMutationMessage(t, error, "remove"), tone: "error" })
+                  presentMessage(resolveMutationMessage(t, error, "remove"), {
+                    mode: "toast",
+                  })
                 } finally {
                 setDeletingWalletAddress("")
               }
@@ -219,7 +228,7 @@ export function CopouchDeleteMemberScreen({ navigation, route }: StackProps<"Cop
         },
       ])
     },
-    [loadAll, route.params.id, t],
+    [loadAll, presentMessage, route.params.id, t],
   )
 
   return (
@@ -270,16 +279,19 @@ export function CopouchDeleteMemberScreen({ navigation, route }: StackProps<"Cop
 export function CopouchAddMemberScreen({ navigation, route }: StackProps<"CopouchAddMemberScreen">) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { presentError, presentMessage } = useErrorPresenter()
   const { showToast } = useToast()
   const { detail, loading, invalidAccess, reload } = useCopouchWalletDetail(route.params.id)
   const [walletAddress, setWalletAddress] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    void reload().catch(() => {
-      Alert.alert(t("common.errorTitle"), t("copouch.member.loadFailed"))
+    void reload().catch(error => {
+      presentError(error, {
+        fallbackKey: "copouch.member.loadFailed",
+      })
     })
-  }, [reload, t])
+  }, [presentError, reload])
 
   const normalizedAddress = normalizeWalletAddress(walletAddress)
   const validationMessage = useMemo(() => {
@@ -304,7 +316,9 @@ export function CopouchAddMemberScreen({ navigation, route }: StackProps<"Copouc
       showToast({ message: t("copouch.member.addSuccess"), tone: "success" })
       navigation.goBack()
     } catch (error) {
-      showToast({ message: resolveMutationMessage(t, error, "add"), tone: "error" })
+      presentMessage(resolveMutationMessage(t, error, "add"), {
+        mode: "toast",
+      })
     } finally {
       setSubmitting(false)
     }
@@ -358,6 +372,7 @@ export function CopouchAddMemberScreen({ navigation, route }: StackProps<"Copouc
 
 export function CopouchAddMemberForTeamScreen({ navigation, route }: StackProps<"CopouchAddMemberForTeamScreen">) {
   const { t } = useTranslation()
+  const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
   const wallets = useCopouchStore(state => state.wallets)
   const loading = useCopouchStore(state => state.loading)
@@ -367,11 +382,13 @@ export function CopouchAddMemberForTeamScreen({ navigation, route }: StackProps<
   useEffect(() => {
     void reload().catch(() => null)
     if (wallets.length === 0) {
-      void loadOverview().catch(() => {
-        Alert.alert(t("common.errorTitle"), t("copouch.member.teamLoadFailed"))
+      void loadOverview().catch(error => {
+        presentError(error, {
+          fallbackKey: "copouch.member.teamLoadFailed",
+        })
       })
     }
-  }, [loadOverview, reload, t, wallets.length])
+  }, [loadOverview, presentError, reload, wallets.length])
 
   const otherWallets = useMemo(
     () => wallets.filter(wallet => wallet.id !== route.params.id && wallet.isCreator),
@@ -416,6 +433,7 @@ export function CopouchAddMemberForTeamSelectScreen({
   route,
 }: StackProps<"CopouchAddMemberForTeamSelectScreen">) {
   const { t } = useTranslation()
+  const { presentError, presentMessage } = useErrorPresenter()
   const { showToast } = useToast()
   const currentAddress = useWalletStore(state => state.address)
   const [loading, setLoading] = useState(true)
@@ -452,10 +470,12 @@ export function CopouchAddMemberForTeamSelectScreen({
   }, [route.params.id, route.params.teamId, t])
 
   useEffect(() => {
-    void load().catch(() => {
-      Alert.alert(t("common.errorTitle"), t("copouch.member.teamLoadFailed"))
+    void load().catch(error => {
+      presentError(error, {
+        fallbackKey: "copouch.member.teamLoadFailed",
+      })
     })
-  }, [load, t])
+  }, [load, presentError])
 
   const disabledAddresses = useMemo(() => {
     const ownerSet = new Set(currentOwners.map(owner => owner.walletAddress.toLowerCase()))
@@ -478,7 +498,9 @@ export function CopouchAddMemberForTeamSelectScreen({
       showToast({ message: t("copouch.member.addSuccess"), tone: "success" })
       navigation.goBack()
     } catch (error) {
-      showToast({ message: resolveMutationMessage(t, error, "add"), tone: "error" })
+      presentMessage(resolveMutationMessage(t, error, "add"), {
+        mode: "toast",
+      })
     } finally {
       setSubmitting(false)
     }

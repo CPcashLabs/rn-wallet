@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { useFocusEffect } from "@react-navigation/native"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
-import { Alert, Pressable, Text, View } from "react-native"
+import { Pressable, Text, View } from "react-native"
 
 import type { CopouchStackParamList } from "@/app/navigation/types"
 import { CopouchScaffold } from "@/features/copouch/components/CopouchScaffold"
@@ -38,6 +38,7 @@ import { FilterChip, SummaryGrid } from "@/features/orders/components/OrdersUi"
 import { FieldRow, PageEmpty, SecondaryButton, SectionCard } from "@/features/transfer/components/TransferUi"
 import { formatAmount } from "@/features/transfer/utils/order"
 import { ApiError } from "@/shared/errors"
+import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { useSocketStore } from "@/shared/store/useSocketStore"
 import { useUserStore } from "@/shared/store/useUserStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
@@ -49,6 +50,7 @@ type StackProps<T extends keyof CopouchStackParamList> = NativeStackScreenProps<
 export function CopouchBillListScreen({ navigation, route }: StackProps<"CopouchBillListScreen">) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
   const profile = useUserStore(state => state.profile)
   const { detail, loading, invalidAccess, reload } = useCopouchWalletDetail(route.params.id)
@@ -96,10 +98,13 @@ export function CopouchBillListScreen({ navigation, route }: StackProps<"Copouch
   }, [reload])
 
   useEffect(() => {
-    void loadBills().catch(() => {
-      Alert.alert(t("common.errorTitle"), t("copouch.bill.loadFailed"))
+    void loadBills().catch(error => {
+      presentError(error, {
+        fallbackKey: "copouch.bill.loadFailed",
+        mode: "toast",
+      })
     })
-  }, [loadBills, t])
+  }, [loadBills, presentError])
 
   const memberChips = useMemo(() => {
     return [
@@ -125,8 +130,11 @@ export function CopouchBillListScreen({ navigation, route }: StackProps<"Copouch
         orderType: activeFilter.orderTypeList?.length === 1 ? activeFilter.orderTypeList[0] : undefined,
       })
       showToast({ message: t("copouch.bill.exportSuccess", { email: profile.email }), tone: "success" })
-    } catch {
-      showToast({ message: t("copouch.bill.exportFailed"), tone: "error" })
+    } catch (error) {
+      presentError(error, {
+        fallbackKey: "copouch.bill.exportFailed",
+        mode: "toast",
+      })
     } finally {
       setExporting(false)
     }
@@ -241,6 +249,7 @@ export function CopouchBillListScreen({ navigation, route }: StackProps<"Copouch
 export function CopouchRemindScreen({ navigation, route }: StackProps<"CopouchRemindScreen">) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { presentError } = useErrorPresenter()
   const lastEvent = useSocketStore(state => state.lastEvent)
   const { loading, invalidAccess, reload } = useCopouchWalletDetail(route.params.id)
   const [events, setEvents] = useState<CopouchEvent[]>([])
@@ -263,10 +272,12 @@ export function CopouchRemindScreen({ navigation, route }: StackProps<"CopouchRe
   }, [route.params.id])
 
   useEffect(() => {
-    void Promise.all([reload().catch(() => null), loadEvents()]).catch(() => {
-      Alert.alert(t("common.errorTitle"), t("copouch.remind.loadFailed"))
+    void Promise.all([reload().catch(() => null), loadEvents()]).catch(error => {
+      presentError(error, {
+        fallbackKey: "copouch.remind.loadFailed",
+      })
     })
-  }, [loadEvents, reload, t])
+  }, [loadEvents, presentError, reload])
 
   useFocusEffect(
     React.useCallback(() => {
@@ -320,6 +331,7 @@ export function CopouchRemindScreen({ navigation, route }: StackProps<"CopouchRe
 
 export function CopouchBalanceScreen({ navigation, route }: StackProps<"CopouchBalanceScreen">) {
   const { t } = useTranslation()
+  const { presentError } = useErrorPresenter()
   const chainId = useWalletStore(state => state.chainId)
   const [loading, setLoading] = useState(true)
   const [invalidAccess, setInvalidAccess] = useState(false)
@@ -360,10 +372,12 @@ export function CopouchBalanceScreen({ navigation, route }: StackProps<"CopouchB
   }, [chainId, route.params.id])
 
   useEffect(() => {
-    void load().catch(() => {
-      Alert.alert(t("common.errorTitle"), t("copouch.balance.loadFailed"))
+    void load().catch(error => {
+      presentError(error, {
+        fallbackKey: "copouch.balance.loadFailed",
+      })
     })
-  }, [load, t])
+  }, [load, presentError])
 
   return (
     <CopouchScaffold canGoBack onBack={navigation.goBack} title={t("copouch.balance.title")}>

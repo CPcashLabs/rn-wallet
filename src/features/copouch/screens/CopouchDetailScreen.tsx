@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react"
 
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native"
+import { Pressable, StyleSheet, Text, View } from "react-native"
 import { useFocusEffect } from "@react-navigation/native"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
@@ -11,6 +11,7 @@ import { useCopouchStore } from "@/features/copouch/store/useCopouchStore"
 import { formatAddress, formatCurrency } from "@/features/home/utils/format"
 import { PageEmpty, PrimaryButton, SectionCard, SecondaryButton } from "@/features/transfer/components/TransferUi"
 import { ApiError } from "@/shared/errors"
+import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { getJson, setJson } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 import { useSocketStore } from "@/shared/store/useSocketStore"
@@ -30,6 +31,7 @@ type Props = NativeStackScreenProps<CopouchStackParamList, "CopouchDetailScreen"
 export function CopouchDetailScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { presentError } = useErrorPresenter()
   const refreshOverview = useCopouchStore(state => state.refreshOverview)
   const refreshWalletValue = useCopouchStore(state => state.refreshWalletValue)
   const wallets = useCopouchStore(state => state.wallets)
@@ -62,12 +64,14 @@ export function CopouchDetailScreen({ navigation, route }: Props) {
       if (error instanceof ApiError && error.status === 403) {
         setInvalidAccess(true)
       } else {
-        Alert.alert(t("common.errorTitle"), t("copouch.detail.loadFailed"))
+        presentError(error, {
+          fallbackKey: "copouch.detail.loadFailed",
+        })
       }
     } finally {
       setLoading(false)
     }
-  }, [refreshWalletValue, route.params.id, t])
+  }, [presentError, refreshWalletValue, route.params.id])
 
   useEffect(() => {
     void loadDetail()
@@ -113,8 +117,10 @@ export function CopouchDetailScreen({ navigation, route }: Props) {
             }
           : current,
       )
-    } catch {
-      Alert.alert(t("common.errorTitle"), t("copouch.detail.guideDismissFailed"))
+    } catch (error) {
+      presentError(error, {
+        fallbackKey: "copouch.detail.guideDismissFailed",
+      })
     }
   }
 

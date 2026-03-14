@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react"
 
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
-import { Alert, Pressable, Text, View } from "react-native"
+import { Pressable, Text, View } from "react-native"
 
 import type { CopouchStackParamList } from "@/app/navigation/types"
 import { CopouchScaffold } from "@/features/copouch/components/CopouchScaffold"
@@ -24,12 +24,14 @@ import { getOrderDetail } from "@/features/orders/services/ordersApi"
 import { PrimaryButton, SectionCard } from "@/features/transfer/components/TransferUi"
 import { formatAmount } from "@/features/transfer/utils/order"
 import { ApiError } from "@/shared/errors"
+import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { useToast } from "@/shared/toast/useToast"
 
 type StackProps<T extends keyof CopouchStackParamList> = NativeStackScreenProps<CopouchStackParamList, T>
 
 export function CopouchAllocationScreen({ navigation, route }: StackProps<"CopouchAllocationScreen">) {
   const { t } = useTranslation()
+  const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
   const [loading, setLoading] = useState(true)
   const [invalidAccess, setInvalidAccess] = useState(false)
@@ -65,10 +67,12 @@ export function CopouchAllocationScreen({ navigation, route }: StackProps<"Copou
   }, [route.params.id, route.params.orderSn])
 
   useEffect(() => {
-    void load().catch(() => {
-      Alert.alert(t("common.errorTitle"), t("copouch.allocation.loadFailed"))
+    void load().catch(error => {
+      presentError(error, {
+        fallbackKey: "copouch.allocation.loadFailed",
+      })
     })
-  }, [load, t])
+  }, [load, presentError])
 
   const availableCandidates = useMemo(() => candidates.filter(candidate => candidate.deleted === 0), [candidates])
 
@@ -89,8 +93,11 @@ export function CopouchAllocationScreen({ navigation, route }: StackProps<"Copou
       })
       showToast({ message: t("copouch.allocation.saveSuccess"), tone: "success" })
       navigation.goBack()
-    } catch {
-      showToast({ message: t("copouch.allocation.saveFailed"), tone: "error" })
+    } catch (error) {
+      presentError(error, {
+        fallbackKey: "copouch.allocation.saveFailed",
+        mode: "toast",
+      })
     } finally {
       setSubmitting(false)
     }
@@ -150,6 +157,7 @@ export function CopouchAllocationScreen({ navigation, route }: StackProps<"Copou
 
 export function CopouchViewAllocationScreen({ navigation, route }: StackProps<"CopouchViewAllocationScreen">) {
   const { t } = useTranslation()
+  const { presentError } = useErrorPresenter()
   const [loading, setLoading] = useState(true)
   const [invalidAccess, setInvalidAccess] = useState(false)
   const [info, setInfo] = useState<CopouchReallocateInfo | null>(null)
@@ -165,13 +173,15 @@ export function CopouchViewAllocationScreen({ navigation, route }: StackProps<"C
         if (error instanceof ApiError && String(error.code ?? "") === "60001") {
           setInvalidAccess(true)
         } else {
-          Alert.alert(t("common.errorTitle"), t("copouch.allocation.loadFailed"))
+          presentError(error, {
+            fallbackKey: "copouch.allocation.loadFailed",
+          })
         }
       })
       .finally(() => {
         setLoading(false)
       })
-  }, [route.params.orderSn, t])
+  }, [presentError, route.params.orderSn])
 
   const title = info && (info.transactionType === 1 || info.transactionType === 2) ? t("copouch.allocation.viewExpenseTitle") : t("copouch.allocation.viewIncomeTitle")
 
