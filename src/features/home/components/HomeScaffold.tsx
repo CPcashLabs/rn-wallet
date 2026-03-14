@@ -2,9 +2,8 @@ import React from "react"
 
 import { Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native"
 import { useTranslation } from "react-i18next"
-import { SafeAreaView } from "react-native-safe-area-context"
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 
-import { usePluginRuntime } from "@/shared/plugins/PluginRuntimeProvider"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 export function HomeScaffold(props: {
@@ -22,12 +21,11 @@ export function HomeScaffold(props: {
 }) {
   const { t } = useTranslation()
   const theme = useAppTheme()
-  const pluginRuntime = usePluginRuntime()
+  const insets = useSafeAreaInsets()
   const backgroundColor = props.backgroundColor ?? theme.colors.background
   const headerBackgroundColor = props.headerBackgroundColor ?? theme.colors.surface
   const headerTintColor = props.headerTintColor ?? theme.colors.text
   const titleAlign = props.titleAlign ?? (props.canGoBack ? "center" : "left")
-  const safeAreaEdges = pluginRuntime ? (["left", "right", "bottom"] as const) : undefined
 
   const content = props.scroll === false ? (
     <View style={styles.body}>{props.children}</View>
@@ -43,57 +41,70 @@ export function HomeScaffold(props: {
     </ScrollView>
   )
 
+  const header = titleAlign === "center" ? (
+    <View
+      style={[
+        styles.header,
+        {
+          borderBottomColor: theme.colors.border,
+          backgroundColor: headerBackgroundColor,
+        },
+      ]}
+    >
+      <View style={styles.headerSide}>
+        {props.canGoBack ? (
+          <Pressable hitSlop={8} onPress={props.onBack} style={styles.backButton}>
+            <Text style={[styles.backText, { color: headerTintColor }]}>{t("common.back")}</Text>
+          </Pressable>
+        ) : null}
+      </View>
+      <View style={styles.headerCenter}>
+        <Text numberOfLines={1} style={[styles.title, styles.titleCenter, { color: headerTintColor }]}>
+          {props.title}
+        </Text>
+      </View>
+      <View style={[styles.headerSide, styles.headerSideRight]}>{props.right}</View>
+    </View>
+  ) : (
+    <View
+      style={[
+        styles.header,
+        {
+          borderBottomColor: theme.colors.border,
+          backgroundColor: headerBackgroundColor,
+        },
+      ]}
+    >
+      <View style={styles.left}>
+        {props.canGoBack ? (
+          <Pressable hitSlop={8} onPress={props.onBack} style={styles.backButton}>
+            <Text style={[styles.backText, { color: headerTintColor }]}>{t("common.back")}</Text>
+          </Pressable>
+        ) : null}
+        <Text numberOfLines={1} style={[styles.title, styles.titleLeft, { color: headerTintColor }]}>
+          {props.title}
+        </Text>
+      </View>
+      <View style={styles.right}>{props.right}</View>
+    </View>
+  )
+
   return (
-    <SafeAreaView edges={safeAreaEdges} style={[styles.safeArea, { backgroundColor }]}>
-      {titleAlign === "center" ? (
-        <View
-          style={[
-            styles.header,
-            {
-              borderBottomColor: theme.colors.border,
-              backgroundColor: headerBackgroundColor,
-            },
-          ]}
-        >
-          <View style={styles.headerSide}>
-            {props.canGoBack ? (
-              <Pressable hitSlop={8} onPress={props.onBack} style={styles.backButton}>
-                <Text style={[styles.backText, { color: headerTintColor }]}>{t("common.back")}</Text>
-              </Pressable>
-            ) : null}
-          </View>
-          <View style={styles.headerCenter}>
-            <Text numberOfLines={1} style={[styles.title, styles.titleCenter, { color: headerTintColor }]}>
-              {props.title}
-            </Text>
-          </View>
-          <View style={[styles.headerSide, styles.headerSideRight]}>{props.right}</View>
-        </View>
-      ) : (
-        <View
-          style={[
-            styles.header,
-            {
-              borderBottomColor: theme.colors.border,
-              backgroundColor: headerBackgroundColor,
-            },
-          ]}
-        >
-          <View style={styles.left}>
-            {props.canGoBack ? (
-              <Pressable hitSlop={8} onPress={props.onBack} style={styles.backButton}>
-                <Text style={[styles.backText, { color: headerTintColor }]}>{t("common.back")}</Text>
-              </Pressable>
-            ) : null}
-            <Text numberOfLines={1} style={[styles.title, styles.titleLeft, { color: headerTintColor }]}>
-              {props.title}
-            </Text>
-          </View>
-          <View style={styles.right}>{props.right}</View>
-        </View>
-      )}
-      {content}
-    </SafeAreaView>
+    <View style={[styles.root, { backgroundColor }]}>
+      <View
+        style={{
+          backgroundColor: headerBackgroundColor,
+          paddingTop: insets.top,
+          paddingLeft: insets.left,
+          paddingRight: insets.right,
+        }}
+      >
+        {header}
+      </View>
+      <SafeAreaView edges={["left", "right", "bottom"]} style={[styles.safeArea, { backgroundColor }]}>
+        {content}
+      </SafeAreaView>
+    </View>
   )
 }
 
@@ -119,6 +130,9 @@ export function HeaderTextAction(props: {
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
   safeArea: {
     flex: 1,
   },

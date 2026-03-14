@@ -33,11 +33,23 @@ export function PluginContainer({
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
   const { t } = useTranslation()
-  const translateY = useRef(new Animated.Value(0)).current
   const translateX = useRef(new Animated.Value(0)).current
   const overlayOpacity = useRef(new Animated.Value(0)).current
+  const animationRef = useRef<Animated.CompositeAnimation | null>(null)
   const hasAnimatedInRef = useRef(false)
   const hasAnimatedOutRef = useRef(false)
+
+  useEffect(() => {
+    const translateXListenerId = translateX.addListener(() => undefined)
+    const overlayOpacityListenerId = overlayOpacity.addListener(() => undefined)
+
+    return () => {
+      animationRef.current?.stop()
+      animationRef.current = null
+      translateX.removeListener(translateXListenerId)
+      overlayOpacity.removeListener(overlayOpacityListenerId)
+    }
+  }, [overlayOpacity, translateX])
 
   useEffect(() => {
     if (hasAnimatedInRef.current) {
@@ -45,11 +57,11 @@ export function PluginContainer({
     }
 
     hasAnimatedInRef.current = true
-    translateY.setValue(0)
+    animationRef.current?.stop()
     translateX.setValue(width)
     overlayOpacity.setValue(0)
 
-    Animated.parallel([
+    animationRef.current = Animated.parallel([
       Animated.timing(translateX, {
         toValue: 0,
         duration: PLUGIN_TRANSITION_SPEC.enterDurationMs,
@@ -60,8 +72,12 @@ export function PluginContainer({
         duration: PLUGIN_TRANSITION_SPEC.overlayEnterDurationMs,
         useNativeDriver: true,
       }),
-    ]).start()
-  }, [overlayOpacity, translateX, translateY, width])
+    ])
+
+    animationRef.current.start(() => {
+      animationRef.current = null
+    })
+  }, [overlayOpacity, translateX, width])
 
   useEffect(() => {
     if (!closing || hasAnimatedOutRef.current) {
@@ -69,8 +85,9 @@ export function PluginContainer({
     }
 
     hasAnimatedOutRef.current = true
+    animationRef.current?.stop()
 
-    Animated.parallel([
+    animationRef.current = Animated.parallel([
       Animated.timing(translateX, {
         toValue: width,
         duration: PLUGIN_TRANSITION_SPEC.exitDurationMs,
@@ -81,7 +98,10 @@ export function PluginContainer({
         duration: PLUGIN_TRANSITION_SPEC.overlayExitDurationMs,
         useNativeDriver: true,
       }),
-    ]).start(({ finished }) => {
+    ])
+
+    animationRef.current.start(({ finished }) => {
+      animationRef.current = null
       if (finished) {
         onClosed()
       }
@@ -100,7 +120,7 @@ export function PluginContainer({
           presentation.style === "sheet" ? styles.sheetSurface : styles.fullscreenSurface,
           {
             backgroundColor: theme.colors.background,
-            transform: [{ translateX }, { translateY }],
+            transform: [{ translateX }],
           },
         ]}
       >
@@ -124,7 +144,7 @@ export function PluginContainer({
         </View>
 
         {loading ? (
-          <View style={[styles.viewport, { paddingTop: insets.top }]}>
+          <View style={styles.viewport}>
             <View style={styles.stateContainer}>
               <ActivityIndicator color={theme.colors.primary} />
               <Text style={[styles.stateTitle, { color: theme.colors.text }]}>{pluginName}</Text>
@@ -134,7 +154,7 @@ export function PluginContainer({
         ) : null}
 
         {error ? (
-          <View style={[styles.viewport, { paddingTop: insets.top }]}>
+          <View style={styles.viewport}>
             <View style={styles.stateContainer}>
               <Text style={[styles.stateTitle, { color: theme.colors.text }]}>{t("common.errorTitle")}</Text>
               <Text style={[styles.stateBody, { color: theme.colors.mutedText }]} numberOfLines={3}>
@@ -145,7 +165,7 @@ export function PluginContainer({
         ) : null}
 
         {!loading && !error ? (
-          <View style={[styles.content, { paddingTop: insets.top }]}>
+          <View style={styles.content}>
             {children}
           </View>
         ) : null}
