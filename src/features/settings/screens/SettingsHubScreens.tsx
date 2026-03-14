@@ -34,7 +34,7 @@ import {
   updateTransferEmailNotification,
   type ExchangeRateItem,
 } from "@/features/settings/services/settingsApi"
-import { buildInviteQrDataUrl, getGuideLinks, openExternalUrl, type GuideSection } from "@/features/settings/utils/wp09"
+import { buildInviteQrDataUrl, getGuideLinks, openExternalUrl, type GuideSection } from "@/features/settings/utils/settingsHub"
 import { getCurrentLanguage, setLanguage } from "@/shared/i18n"
 import { shareAdapter } from "@/shared/native/shareAdapter"
 import { getJson, getNumber, setJson, setNumber } from "@/shared/storage/kvStorage"

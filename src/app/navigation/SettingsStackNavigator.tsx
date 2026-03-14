@@ -31,7 +31,7 @@ import {
   UserGuideScreen,
   VerifyEmailScreen,
   WalletGuideDetailScreen,
-} from "@/features/settings/screens/Wp09Screens"
+} from "@/features/settings/screens/SettingsHubScreens"
 
 import type { SettingsStackParamList } from "@/app/navigation/types"
 
