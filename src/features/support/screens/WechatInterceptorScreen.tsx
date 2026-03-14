@@ -4,9 +4,15 @@ import { Alert } from "react-native"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 
+import { resolveDeepLink } from "@/app/navigation/deepLinkRouting"
+import { resetToRootRoutes } from "@/app/navigation/navigationRef"
 import { SupportPanel, SupportScaffold } from "@/features/support/components/SupportScaffold"
 import { resetToEntryScreen } from "@/features/support/utils/supportNavigation"
 import { getSupportGuideUrl, openSupportUrl } from "@/features/support/utils/supportLinks"
+import { removeItem, setBoolean, setString } from "@/shared/storage/kvStorage"
+import { KvStorageKeys } from "@/shared/storage/sessionKeys"
+import { useAuthStore } from "@/shared/store/useAuthStore"
+import { useNavigationStateStore } from "@/shared/store/useNavigationStateStore"
 
 import type { SupportStackParamList } from "@/app/navigation/types"
 
@@ -14,6 +20,8 @@ type Props = NativeStackScreenProps<SupportStackParamList, "WechatInterceptorScr
 
 export function WechatInterceptorScreen({ navigation, route }: Props) {
   const { t } = useTranslation()
+  const authenticated = Boolean(useAuthStore(state => state.session?.accessToken))
+  const setPendingProtectedUrl = useNavigationStateStore(state => state.setPendingProtectedUrl)
 
   const openGuide = async () => {
     try {
@@ -21,6 +29,27 @@ export function WechatInterceptorScreen({ navigation, route }: Props) {
     } catch {
       Alert.alert(t("common.errorTitle"), t("support.common.openFailed"))
     }
+  }
+
+  const continueToTarget = () => {
+    const targetPath = route.params?.targetPath
+    if (!targetPath) {
+      resetToEntryScreen()
+      return
+    }
+
+    setString(KvStorageKeys.OriginalTargetPath, targetPath)
+    setBoolean(KvStorageKeys.WechatInterceptorShown, true)
+
+    const resolution = resolveDeepLink(targetPath, authenticated)
+    if (resolution.pendingProtectedUrl) {
+      setPendingProtectedUrl(resolution.pendingProtectedUrl)
+    } else {
+      removeItem(KvStorageKeys.OriginalTargetPath)
+      removeItem(KvStorageKeys.WechatInterceptorShown)
+    }
+
+    resetToRootRoutes(resolution.routes, resolution.index)
   }
 
   return (
@@ -31,11 +60,17 @@ export function WechatInterceptorScreen({ navigation, route }: Props) {
           label: t("support.common.openGuide"),
           onPress: () => void openGuide(),
         },
-        {
-          label: t("support.common.returnHome"),
-          onPress: resetToEntryScreen,
-          variant: "secondary",
-        },
+        route.params?.targetPath
+          ? {
+              label: t("support.common.continueTarget"),
+              onPress: continueToTarget,
+              variant: "secondary",
+            }
+          : {
+              label: t("support.common.returnHome"),
+              onPress: resetToEntryScreen,
+              variant: "secondary",
+            },
       ]}
       backLabel={t("support.common.back")}
       canGoBack={navigation.canGoBack()}

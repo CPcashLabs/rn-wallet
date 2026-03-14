@@ -3,6 +3,7 @@ import React from "react"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 
+import { resetToRecoverableRoute } from "@/app/navigation/navigationRef"
 import { SupportPanel, SupportScaffold } from "@/features/support/components/SupportScaffold"
 import { goBackOrReset, resetToEntryScreen } from "@/features/support/utils/supportNavigation"
 
@@ -20,7 +21,11 @@ export function NoNetworkScreen({ navigation, route }: Props) {
       actions={[
         {
           label: t("support.common.retry"),
-          onPress: () => goBackOrReset(navigation),
+          onPress: () => {
+            if (!resetToRecoverableRoute()) {
+              goBackOrReset(navigation)
+            }
+          },
         },
         isDetailed
           ? {

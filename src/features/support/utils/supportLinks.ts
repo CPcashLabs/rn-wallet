@@ -1,6 +1,5 @@
-import { Linking } from "react-native"
-
 import { getCurrentLanguage } from "@/shared/i18n"
+import { deepLinkAdapter } from "@/shared/native"
 
 const HELP_HOME_URLS = {
   "en-US": "https://cpcash-1.gitbook.io/cpcash-wallet",
@@ -14,5 +13,8 @@ export function getSupportGuideUrl() {
 }
 
 export async function openSupportUrl(url: string) {
-  await Linking.openURL(url)
+  const result = await deepLinkAdapter.open(url)
+  if (!result.ok) {
+    throw result.error
+  }
 }
