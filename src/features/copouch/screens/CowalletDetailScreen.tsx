@@ -6,8 +6,8 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 
 import { getCopouchDetail, getCopouchOwners, markCopouchFirstEnterSeen, type CopouchDetail, type CopouchOwner } from "@/features/copouch/services/copouchApi"
+import { CopouchScaffold } from "@/features/copouch/components/CopouchScaffold"
 import { useCowalletStore } from "@/features/copouch/store/useCowalletStore"
-import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { formatAddress, formatCurrency } from "@/features/home/utils/format"
 import { PageEmpty, PrimaryButton, SectionCard, SecondaryButton } from "@/features/transfer/components/TransferUi"
 import { ApiError } from "@/shared/errors"
@@ -120,22 +120,22 @@ export function CowalletDetailScreen({ navigation, route }: Props) {
 
   if (!route.params.id) {
     return (
-      <HomeScaffold canGoBack onBack={navigation.goBack} title={t("copouch.detail.title")}>
+      <CopouchScaffold canGoBack onBack={navigation.goBack} title={t("copouch.detail.title")}>
         <PageEmpty title={t("copouch.detail.invalidTitle")} body={t("copouch.detail.invalidBody")} />
-      </HomeScaffold>
+      </CopouchScaffold>
     )
   }
 
   if (invalidAccess) {
     return (
-      <HomeScaffold canGoBack onBack={navigation.goBack} title={t("copouch.detail.title")}>
+      <CopouchScaffold canGoBack onBack={navigation.goBack} title={t("copouch.detail.title")}>
         <PageEmpty title={t("copouch.detail.forbiddenTitle")} body={t("copouch.detail.forbiddenBody")} />
-      </HomeScaffold>
+      </CopouchScaffold>
     )
   }
 
   return (
-    <HomeScaffold
+    <CopouchScaffold
       canGoBack
       onBack={navigation.goBack}
       title={detail?.walletName || t("copouch.detail.title")}
@@ -230,7 +230,7 @@ export function CowalletDetailScreen({ navigation, route }: Props) {
           <SecondaryButton label={t("copouch.detail.deposit")} onPress={() => navigation.navigate("CowalletReceiveScreen", { id: route.params.id })} />
         </View>
       </View>
-    </HomeScaffold>
+    </CopouchScaffold>
   )
 }
 

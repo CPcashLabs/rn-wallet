@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from "react-native"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 
-import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { CopouchScaffold } from "@/features/copouch/components/CopouchScaffold"
 import { SectionCard } from "@/features/transfer/components/TransferUi"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
@@ -36,7 +36,7 @@ export function CowalletFaqScreen({ navigation }: Props) {
   ]
 
   return (
-    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("copouch.faq.title")}>
+    <CopouchScaffold canGoBack onBack={navigation.goBack} title={t("copouch.faq.title")}>
       {sections.map(section => (
         <SectionCard key={section.title}>
           <View style={styles.section}>
@@ -45,7 +45,7 @@ export function CowalletFaqScreen({ navigation }: Props) {
           </View>
         </SectionCard>
       ))}
-    </HomeScaffold>
+    </CopouchScaffold>
   )
 }
 

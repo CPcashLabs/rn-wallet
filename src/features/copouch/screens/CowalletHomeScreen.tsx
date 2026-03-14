@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next"
 
 import { describeCopouchEligibilityError } from "@/features/copouch/services/copouchApi"
 import { useCowalletStore } from "@/features/copouch/store/useCowalletStore"
-import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { CopouchScaffold } from "@/features/copouch/components/CopouchScaffold"
 import { formatCurrency } from "@/features/home/utils/format"
 import { PageEmpty, PrimaryButton, SecondaryButton, SectionCard } from "@/features/transfer/components/TransferUi"
 import { useSocketStore } from "@/shared/store/useSocketStore"
@@ -156,7 +156,7 @@ export function CowalletHomeScreen({ navigation }: Props) {
   }
 
   return (
-    <HomeScaffold
+    <CopouchScaffold
       title={t("copouch.home.title")}
       right={
         <View style={styles.headerActions}>
@@ -277,7 +277,7 @@ export function CowalletHomeScreen({ navigation }: Props) {
           </View>
         </View>
       </Modal>
-    </HomeScaffold>
+    </CopouchScaffold>
   )
 }
 
