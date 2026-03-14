@@ -119,7 +119,7 @@ The plugin system should be static at build time. The app bundle contains all ap
 
 Recommended discovery rule:
 
-- each plugin exposes a manifest at `src/features/<feature>/plugin/manifest.ts`
+- each plugin exposes a manifest at `src/plugins/<plugin-id>/manifest.ts`
 - a build script resolves those manifests and generates `src/app/plugins/pluginRegistry.generated.ts`
 
 The generated registry is the only place the host uses to resolve plugin entrypoints.
@@ -136,7 +136,7 @@ export const pluginRegistry: Record<string, PluginManifest> = {
     version: "1.0.0",
     hostApiVersion: "1",
     permissions: ["auth.status.read", "user.profile.read", "wallet.address.read"],
-    load: () => import("@/features/copouch/plugin/entry"),
+    load: () => import("@/plugins/copouch/entry"),
     presentation: {
       style: "sheet",
       closeButton: "top-right",
@@ -148,7 +148,7 @@ export const pluginRegistry: Record<string, PluginManifest> = {
     version: "1.0.0",
     hostApiVersion: "1",
     permissions: ["auth.status.read", "wallet.address.read", "wallet.transfer"],
-    load: () => import("@/features/transfer/plugin/entry"),
+    load: () => import("@/plugins/transfer/entry"),
     presentation: {
       style: "sheet",
       closeButton: "top-right",
@@ -349,34 +349,42 @@ src/
       PluginContainer.tsx
       pluginRegistry.generated.ts
       pluginRegistry.ts
-  features/
+  plugins/
     copouch/
-      plugin/
-        entry.tsx
-        manifest.ts
+      CopouchStackNavigator.tsx
+      components/
       screens/
       services/
       store/
+      entry.tsx
+      manifest.ts
     transfer/
-      plugin/
-        entry.tsx
-        manifest.ts
+      TransferStackNavigator.tsx
       screens/
       services/
       store/
+      utils/
+      entry.tsx
+      manifest.ts
     receive/
-      plugin/
-        entry.tsx
-        manifest.ts
+      ReceiveStackNavigator.tsx
+      components/
       screens/
       services/
       store/
+      utils/
+      entry.tsx
+      manifest.ts
+      ReceivePluginNavigator.tsx
+      ReceiveSelectNetworkScreen.tsx
   shared/
     plugins/
       hostApi.ts
       permissions.ts
       types.ts
 ```
+
+Shared presentation primitives that are reused across plugins or host-owned screens may still live outside `src/plugins/` until they are promoted into a clearer shared location.
 
 ## Navigation Implications
 
@@ -406,13 +414,24 @@ That keeps the root navigation thin and prevents each new mini-program from addi
 
 Create plugin manifests and entry files for:
 
-- `src/features/copouch`
-- `src/features/transfer`
-- `src/features/receive`
+- `src/plugins/copouch`
+- `src/plugins/transfer`
+- `src/plugins/receive`
 
-At this stage, plugin entries may still delegate to the existing screen stacks.
+At this stage, plugin entries may still delegate to plugin-owned stack navigators while preserving the existing business flow.
 
-### Phase 2: Add Host Container
+### Phase 2: Move Plugin-Owned Code
+
+Move plugin-owned code under `src/plugins/<plugin-id>/`, including:
+
+- stack navigators
+- plugin-specific screens
+- plugin-specific services and stores
+- plugin-local utilities and components
+
+Keep only shared host concerns and clearly reusable primitives outside the plugin directories.
+
+### Phase 3: Add Host Container
 
 Introduce:
 
@@ -422,7 +441,7 @@ Introduce:
 
 Move close affordance and close animation into the host container.
 
-### Phase 3: Route Through Plugin IDs
+### Phase 4: Route Through Plugin IDs
 
 Replace direct root navigation to feature stacks with calls such as:
 
@@ -433,7 +452,7 @@ navigation.navigate("PluginHost", {
 })
 ```
 
-### Phase 4: Shrink Root Navigation Surface
+### Phase 5: Shrink Root Navigation Surface
 
 Once migration stabilizes:
 
