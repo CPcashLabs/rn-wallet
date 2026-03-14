@@ -9,7 +9,8 @@ This repository accepts improvements to the React Native client, repository docu
 1. Install dependencies with `npm install`.
 2. Install iOS pods with `npm run pods:install` when working on iOS.
 3. Run `npm run typecheck`, `npm run check:wp00`, and `npm run check:repo` before opening a pull request.
-4. Run `npm test` when your change touches logic covered by unit tests.
+4. Run `npm run test:unit` for local logic changes and `npm run test:integration` for cross-module flows.
+5. Run `npm test` before opening a pull request when the change affects shared infrastructure or business workflows.
 
 ## Architecture Rules
 
@@ -21,7 +22,16 @@ These rules keep the repository aligned with the source layout described in `doc
 4. Avoid direct imports from one feature into another. Prefer shared abstractions or app-level composition.
 5. New screens and components should use one primary export per file. Avoid adding more aggregated `*Screens.tsx` files.
 6. Use `PascalCase` for screen and component files, `camelCase` for hooks and utilities, and `kebab-case` for feature directory names.
-7. Keep tests close to the code they validate with `*.test.ts` or `*.test.tsx`.
+7. Keep unit tests close to the code they validate with `*.test.ts` or `*.test.tsx`.
+8. Place integration tests in `tests/integration/` and future end-to-end suites in `e2e/`.
+
+## Testing Layout
+
+- `src/**`: co-located unit tests for functions, hooks, stores, and isolated UI behavior
+- `tests/integration/**`: external integration tests for storage, stores, API glue, app bootstrapping, and cross-module contracts
+- `e2e/**`: device or emulator black-box journeys
+
+Follow [tests/README.md](tests/README.md) when adding a new suite or directory.
 
 ## Documentation Expectations
 

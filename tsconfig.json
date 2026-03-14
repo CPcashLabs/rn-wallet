@@ -7,5 +7,5 @@
     },
     "types": ["jest", "react", "react-native"]
   },
-  "include": ["index.js", "src", "app.json"]
+  "include": ["index.js", "src", "tests", "app.json"]
 }

@@ -116,8 +116,19 @@ src/
 2. Add new business behavior under the owning feature first.
 3. Add new shared utilities only after at least two callers justify the abstraction.
 4. Prefer one screen or component per file.
-5. Keep tests next to the code they validate.
-6. Update `README`, `CONTRIBUTING`, or this document when repository boundaries change.
+5. Keep unit tests next to the code they validate.
+6. Put integration tests in `tests/integration/` and future end-to-end suites in `e2e/`.
+7. Update `README`, `CONTRIBUTING`, or this document when repository boundaries change.
+
+## Testing Layout
+
+Use a two-tier test placement rule:
+
+- `src/**`: unit tests only
+- `tests/integration/**`: cross-module integration tests
+- `e2e/**`: full app or device-driven journeys
+
+This keeps production directories small while preserving ownership for unit tests.
 
 ## Recommended Follow-up Refactors
 
@@ -125,3 +136,4 @@ src/
 2. Add feature-level `index.ts` files to define public entrypoints.
 3. Review `src/shared/store/` and move domain-owned state back into feature folders where appropriate.
 4. Add automated import-boundary checks if cross-feature imports begin to grow.
+5. Introduce E2E tooling under `e2e/` when device-level flows need release gating.

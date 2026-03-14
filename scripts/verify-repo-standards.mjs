@@ -11,6 +11,10 @@ const requiredFiles = [
   "LICENSE",
   "docs/README.md",
   "docs/architecture/source-layout.md",
+  "tests/README.md",
+  "tests/integration/README.md",
+  "e2e/README.md",
+  "jest.integration.config.js",
   ".github/pull_request_template.md",
   ".github/ISSUE_TEMPLATE/bug_report.md",
   ".github/ISSUE_TEMPLATE/feature_request.md",
@@ -20,6 +24,9 @@ const requiredFiles = [
 const requiredDirs = [
   "docs",
   "docs/architecture",
+  "tests",
+  "tests/integration",
+  "e2e",
   ".github",
   ".github/ISSUE_TEMPLATE",
 ]
@@ -38,6 +45,10 @@ const checks = [
     passed: packageJson.scripts?.["check:repo"] === "node ./scripts/verify-repo-standards.mjs",
   },
   {
+    name: "package.json exposes test:integration",
+    passed: packageJson.scripts?.["test:integration"] === "jest --config jest.integration.config.js --runInBand",
+  },
+  {
     name: "README includes Architecture section",
     passed: readme.includes("## Architecture"),
   },
@@ -52,6 +63,10 @@ const checks = [
   {
     name: "docs index links source layout",
     passed: docsIndex.includes("architecture/source-layout.md"),
+  },
+  {
+    name: "README documents test layout",
+    passed: readme.includes("## Test Layout"),
   },
 ]
 

@@ -78,16 +78,27 @@ npm run android
 
 | Command | Description |
 | --- | --- |
+| `npm run test:unit` | Run co-located unit tests under `src/**` |
+| `npm run test:integration` | Run external integration tests under `tests/integration/**` |
 | `npm run typecheck` | Validate TypeScript types |
 | `npm run check:wp00` | Validate baseline application bootstrap structure |
 | `npm run check:repo` | Validate repository governance and docs layout |
-| `npm run lint` | Run all repository checks |
-| `npm test` | Run unit tests |
+| `npm run lint` | Run repository checks |
+| `npm test` | Run unit and integration test suites |
+
+## Test Layout
+
+- Unit tests stay co-located with source code in `src/**` as `*.test.ts` or `*.test.tsx`.
+- Integration tests live outside product code in `tests/integration/**` as `*.integration.test.ts`.
+- End-to-end tests are reserved for `e2e/**` and should stay black-box and tool-specific.
+
+The repository test topology is documented in [tests/README.md](tests/README.md).
 
 ## Documentation
 
 - Architecture: [docs/architecture/source-layout.md](docs/architecture/source-layout.md)
 - Repository docs index: [docs/README.md](docs/README.md)
+- Test layout: [tests/README.md](tests/README.md)
 - Contribution guide: [CONTRIBUTING.md](CONTRIBUTING.md)
 - Security policy: [SECURITY.md](SECURITY.md)
 
