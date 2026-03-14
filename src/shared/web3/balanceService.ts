@@ -1,6 +1,6 @@
 import { AbiCoder, Interface, ethers, formatUnits } from "ethers"
 
-import type { HomeCoin } from "@/features/home/services/homeApi"
+import type { WalletCoin } from "@/shared/api/walletAssets"
 import { getNumber } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 
@@ -76,7 +76,7 @@ export function resetRpcProvider(chainId?: string | number | null) {
 export async function fetchOnChainBalances(params: {
   address?: string | null
   chainId?: string | number | null
-  coins: HomeCoin[]
+  coins: WalletCoin[]
 }) {
   const { address, chainId, coins } = params
 

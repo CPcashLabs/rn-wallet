@@ -1,6 +1,6 @@
 import { create } from "zustand"
 
-import { getCoinList, resolveChainNameById, type HomeCoin } from "@/features/home/services/homeApi"
+import { getCoinList, resolveChainNameById, type WalletCoin } from "@/shared/api/walletAssets"
 import { fetchOnChainBalances } from "@/shared/web3/balanceService"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 
@@ -10,7 +10,7 @@ type BalanceState = {
   loading: boolean
   refreshing: boolean
   lastUpdatedAt: number | null
-  coins: HomeCoin[]
+  coins: WalletCoin[]
   balances: BalanceMap
   loadCoins: (chainId?: string | number | null) => Promise<void>
   refreshCoins: (chainId?: string | number | null) => Promise<void>
@@ -18,7 +18,7 @@ type BalanceState = {
   clear: () => void
 }
 
-function withDefaultBalance(coins: HomeCoin[], previous: BalanceMap) {
+function withDefaultBalance(coins: WalletCoin[], previous: BalanceMap) {
   return coins.reduce<BalanceMap>((acc, coin) => {
     acc[coin.code] = previous[coin.code] ?? 0
     return acc
