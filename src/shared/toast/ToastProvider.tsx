@@ -61,6 +61,16 @@ export function ToastProvider({ children }: PropsWithChildren) {
   const translateY = useRef(new Animated.Value(INITIAL_OFFSET)).current
   const [current, setCurrent] = useState<ToastItem | null>(null)
 
+  useEffect(() => {
+    const opacityListenerId = opacity.addListener(() => undefined)
+    const translateYListenerId = translateY.addListener(() => undefined)
+
+    return () => {
+      opacity.removeListener(opacityListenerId)
+      translateY.removeListener(translateYListenerId)
+    }
+  }, [opacity, translateY])
+
   const clearHideTimer = useCallback(() => {
     if (hideTimerRef.current) {
       clearTimeout(hideTimerRef.current)
