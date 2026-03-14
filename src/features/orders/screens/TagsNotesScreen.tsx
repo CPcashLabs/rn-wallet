@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react"
 
-import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -14,6 +14,7 @@ import {
 } from "@/features/orders/services/ordersApi"
 import { fileAdapter, isNativeImagePickerCancelledError } from "@/shared/native"
 import { PageEmpty, PrimaryButton, SectionCard, SecondaryButton } from "@/features/transfer/components/TransferUi"
+import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { AppTextField } from "@/shared/ui/AppTextField"
@@ -25,6 +26,7 @@ type Props = NativeStackScreenProps<OrdersStackParamList, "TagsNotesScreen">
 export function TagsNotesScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
   const orderSn = route.params.orderSn
   const [labels, setLabels] = useState<CategoryLabel[]>([])
@@ -49,9 +51,11 @@ export function TagsNotesScreen({ navigation, route }: Props) {
         setSelectedIds(binding.labels.map(item => item.id))
         setNotes(binding.notes)
         setImageUrl(binding.notesImageUrl)
-      } catch {
+      } catch (error) {
         if (active) {
-          Alert.alert(t("common.errorTitle"), t("orders.tags.loadFailed"))
+          presentError(error, {
+            fallbackKey: "orders.tags.loadFailed",
+          })
         }
       } finally {
         if (active) {
@@ -63,7 +67,7 @@ export function TagsNotesScreen({ navigation, route }: Props) {
     return () => {
       active = false
     }
-  }, [orderSn, t])
+  }, [orderSn, presentError])
 
   const selectedCount = selectedIds.length
   const canAddMore = selectedCount < 3
@@ -109,7 +113,10 @@ export function TagsNotesScreen({ navigation, route }: Props) {
         return
       }
 
-      showToast({ message: t("orders.tags.imageUploadFailed"), tone: "error" })
+      presentError(error, {
+        fallbackKey: "orders.tags.imageUploadFailed",
+        mode: "toast",
+      })
     } finally {
       setUploading(false)
     }
@@ -132,8 +139,11 @@ export function TagsNotesScreen({ navigation, route }: Props) {
       })
       showToast({ message: t("orders.tags.saveSuccess"), tone: "success" })
       navigation.goBack()
-    } catch {
-      showToast({ message: t("orders.tags.saveFailed"), tone: "error" })
+    } catch (error) {
+      presentError(error, {
+        fallbackKey: "orders.tags.saveFailed",
+        mode: "toast",
+      })
     } finally {
       setSaving(false)
     }

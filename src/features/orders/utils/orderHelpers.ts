@@ -115,14 +115,22 @@ export function resolveOrderStatusLabel(t: Translator, status: number) {
 }
 
 export function resolveCounterpartyAddress(order: Pick<OrderListItem, "paymentAddress" | "receiveAddress" | "depositAddress" | "transferAddress" | "orderType">) {
-  if (isIncomingOrderType(order.orderType)) {
-    return order.paymentAddress || order.transferAddress || order.depositAddress || order.receiveAddress
-  }
-
-  return order.receiveAddress || order.transferAddress || order.depositAddress || order.paymentAddress
+  return resolveCounterpartyAddressValue(order)
 }
 
 export function resolveDetailCounterparty(order: Pick<OrderDetail, "paymentAddress" | "receiveAddress" | "depositAddress" | "transferAddress" | "orderType">) {
+  return resolveCounterpartyAddressValue(order)
+}
+
+type CounterpartyAddressSource = {
+  paymentAddress: string
+  receiveAddress: string
+  depositAddress: string
+  transferAddress: string
+  orderType: string
+}
+
+function resolveCounterpartyAddressValue(order: CounterpartyAddressSource) {
   if (isIncomingOrderType(order.orderType)) {
     return order.paymentAddress || order.transferAddress || order.depositAddress || order.receiveAddress
   }

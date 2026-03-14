@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react"
 
-import { ActivityIndicator, Alert, Image, Pressable, StyleSheet, Text, View } from "react-native"
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from "react-native"
 import QRCode from "qrcode"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
@@ -29,6 +29,7 @@ import {
 } from "@/features/orders/utils/orderHelpers"
 import { PageEmpty, PrimaryButton, SecondaryButton, SectionCard } from "@/features/transfer/components/TransferUi"
 import { openExternalUrl } from "@/features/settings/utils/settingsHub"
+import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { fileAdapter, shareAdapter } from "@/shared/native"
 import { useUserStore } from "@/shared/store/useUserStore"
 import { useToast } from "@/shared/toast/useToast"
@@ -61,6 +62,7 @@ export function ReimburseScreen(props: ReimburseProps) {
 function BillDetailScreenBase(props: BillDetailScreenBaseProps) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { presentError } = useErrorPresenter()
   const [detail, setDetail] = useState<BillDetail | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -76,9 +78,11 @@ function BillDetailScreenBase(props: BillDetailScreenBaseProps) {
         if (active) {
           setDetail(response)
         }
-      } catch {
+      } catch (error) {
         if (active) {
-          Alert.alert(t("common.errorTitle"), t("orders.split.loadFailed"))
+          presentError(error, {
+            fallbackKey: "orders.split.loadFailed",
+          })
         }
       } finally {
         if (active) {
@@ -90,7 +94,7 @@ function BillDetailScreenBase(props: BillDetailScreenBaseProps) {
     return () => {
       active = false
     }
-  }, [props.route.params.orderSn, t])
+  }, [presentError, props.route.params.orderSn])
 
   return (
     <HomeScaffold canGoBack onBack={props.navigation.goBack} title={t(props.titleKey)}>
@@ -133,6 +137,7 @@ function BillDetailScreenBase(props: BillDetailScreenBaseProps) {
 export function OrderVoucherScreen({ navigation, route }: VoucherProps) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { presentError, presentMessage } = useErrorPresenter()
   const { showToast } = useToast()
   const [voucher, setVoucher] = useState<TransferVoucherDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -147,9 +152,11 @@ export function OrderVoucherScreen({ navigation, route }: VoucherProps) {
         if (active) {
           setVoucher(response)
         }
-      } catch {
+      } catch (error) {
         if (active) {
-          Alert.alert(t("common.errorTitle"), t("orders.voucher.loadFailed"))
+          presentError(error, {
+            fallbackKey: "orders.voucher.loadFailed",
+          })
         }
       } finally {
         if (active) {
@@ -161,7 +168,7 @@ export function OrderVoucherScreen({ navigation, route }: VoucherProps) {
     return () => {
       active = false
     }
-  }, [route.params.orderSn, t])
+  }, [presentError, route.params.orderSn])
 
   useEffect(() => {
     if (!voucher?.orderReceiptUrl) {
@@ -203,7 +210,7 @@ export function OrderVoucherScreen({ navigation, route }: VoucherProps) {
     })
 
     if (!result.ok) {
-      Alert.alert(t("common.errorTitle"), t("orders.voucher.shareFailed"))
+      presentMessage(t("orders.voucher.shareFailed"))
     }
   }
 
@@ -220,7 +227,7 @@ export function OrderVoucherScreen({ navigation, route }: VoucherProps) {
     })
 
     if (!result.ok) {
-      Alert.alert(t("common.errorTitle"), t("orders.voucher.saveFailed"))
+      presentMessage(t("orders.voucher.saveFailed"))
       return
     }
 
@@ -240,8 +247,10 @@ export function OrderVoucherScreen({ navigation, route }: VoucherProps) {
 
     try {
       await openExternalUrl(url)
-    } catch {
-      Alert.alert(t("common.errorTitle"), t("orders.voucher.openFailed"))
+    } catch (error) {
+      presentError(error, {
+        fallbackKey: "orders.voucher.openFailed",
+      })
     }
   }
 
@@ -286,6 +295,7 @@ export function OrderVoucherScreen({ navigation, route }: VoucherProps) {
 
 export function DigitalReceiptScreen({ navigation, route }: ReceiptProps) {
   const { t } = useTranslation()
+  const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
   const profile = useUserStore(state => state.profile)
   const [detail, setDetail] = useState<OrderDetail | null>(null)
@@ -306,9 +316,11 @@ export function DigitalReceiptScreen({ navigation, route }: ReceiptProps) {
 
         setDetail(response)
         setEmail(profile?.email || response.buyerEmail || "")
-      } catch {
+      } catch (error) {
         if (active) {
-          Alert.alert(t("common.errorTitle"), t("orders.receipt.loadFailed"))
+          presentError(error, {
+            fallbackKey: "orders.receipt.loadFailed",
+          })
         }
       } finally {
         if (active) {
@@ -320,7 +332,7 @@ export function DigitalReceiptScreen({ navigation, route }: ReceiptProps) {
     return () => {
       active = false
     }
-  }, [profile?.email, route.params.orderSn, t])
+  }, [presentError, profile?.email, route.params.orderSn])
 
   const handleSubmit = async () => {
     if (!email.trim()) {
@@ -336,8 +348,10 @@ export function DigitalReceiptScreen({ navigation, route }: ReceiptProps) {
       })
       setSuccess(true)
       showToast({ message: t("orders.receipt.success", { email: email.trim() }), tone: "success" })
-    } catch {
-      Alert.alert(t("common.errorTitle"), t("orders.receipt.failed"))
+    } catch (error) {
+      presentError(error, {
+        fallbackKey: "orders.receipt.failed",
+      })
     } finally {
       setSubmitting(false)
     }
@@ -382,6 +396,7 @@ export function DigitalReceiptScreen({ navigation, route }: ReceiptProps) {
 
 export function FlowProofScreen({ navigation, route }: FlowProofProps) {
   const { t } = useTranslation()
+  const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
   const profile = useUserStore(state => state.profile)
   const [detail, setDetail] = useState<OrderDetail | null>(null)
@@ -405,9 +420,11 @@ export function FlowProofScreen({ navigation, route }: FlowProofProps) {
         setDetail(response)
         setEmail(profile?.email || response.buyerEmail || "")
         setAddress(resolveDetailCounterparty(response))
-      } catch {
+      } catch (error) {
         if (active) {
-          Alert.alert(t("common.errorTitle"), t("orders.flowProof.loadFailed"))
+          presentError(error, {
+            fallbackKey: "orders.flowProof.loadFailed",
+          })
         }
       } finally {
         if (active) {
@@ -419,7 +436,7 @@ export function FlowProofScreen({ navigation, route }: FlowProofProps) {
     return () => {
       active = false
     }
-  }, [profile?.email, route.params.orderSn, t])
+  }, [presentError, profile?.email, route.params.orderSn])
 
   const rangeSelection = useMemo(
     () => (detail ? buildFlowProofRange(detail, preset) : null),
@@ -447,8 +464,10 @@ export function FlowProofScreen({ navigation, route }: FlowProofProps) {
       })
       setSuccess(true)
       showToast({ message: t("orders.flowProof.success", { email: email.trim() }), tone: "success" })
-    } catch {
-      Alert.alert(t("common.errorTitle"), t("orders.flowProof.failed"))
+    } catch (error) {
+      presentError(error, {
+        fallbackKey: "orders.flowProof.failed",
+      })
     } finally {
       setSubmitting(false)
     }
@@ -519,6 +538,7 @@ export function FlowProofScreen({ navigation, route }: FlowProofProps) {
 export function RefundDetailScreen({ navigation, route }: RefundProps) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
   const [detail, setDetail] = useState<RefundDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -532,9 +552,11 @@ export function RefundDetailScreen({ navigation, route }: RefundProps) {
         if (active) {
           setDetail(response)
         }
-      } catch {
+      } catch (error) {
         if (active) {
-          Alert.alert(t("common.errorTitle"), t("orders.refund.loadFailed"))
+          presentError(error, {
+            fallbackKey: "orders.refund.loadFailed",
+          })
         }
       } finally {
         if (active) {
@@ -546,7 +568,7 @@ export function RefundDetailScreen({ navigation, route }: RefundProps) {
     return () => {
       active = false
     }
-  }, [route.params.orderSn, t])
+  }, [presentError, route.params.orderSn])
 
   const handleOpen = async () => {
     if (!detail?.refundTxidUrl) {
@@ -556,8 +578,10 @@ export function RefundDetailScreen({ navigation, route }: RefundProps) {
 
     try {
       await openExternalUrl(detail.refundTxidUrl)
-    } catch {
-      Alert.alert(t("common.errorTitle"), t("orders.refund.openFailed"))
+    } catch (error) {
+      presentError(error, {
+        fallbackKey: "orders.refund.openFailed",
+      })
     }
   }
 

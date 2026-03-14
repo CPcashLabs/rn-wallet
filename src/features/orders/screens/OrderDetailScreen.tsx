@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from "react"
 
 import { useFocusEffect } from "@react-navigation/native"
-import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, View } from "react-native"
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -24,6 +24,7 @@ import {
 } from "@/features/orders/utils/orderHelpers"
 import { PageEmpty, PrimaryButton, SecondaryButton, SectionCard } from "@/features/transfer/components/TransferUi"
 import { openExternalUrl } from "@/features/settings/utils/settingsHub"
+import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
@@ -40,6 +41,7 @@ const EMPTY_LABEL_BINDING: OrderLabelBinding = {
 export function OrderDetailScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
   const orderSn = route.params.orderSn
   const [detail, setDetail] = useState<OrderDetail | null>(null)
@@ -60,15 +62,17 @@ export function OrderDetailScreen({ navigation, route }: Props) {
             labels: [],
           },
         )
-      } catch {
+      } catch (error) {
         setDetail(null)
         setLabelBinding(EMPTY_LABEL_BINDING)
-        Alert.alert(t("common.errorTitle"), t("orders.detail.loadFailed"))
+        presentError(error, {
+          fallbackKey: "orders.detail.loadFailed",
+        })
       } finally {
         setLoading(false)
       }
     })()
-  }, [orderSn, t])
+  }, [orderSn, presentError])
 
   useFocusEffect(
     useCallback(() => {
@@ -101,8 +105,10 @@ export function OrderDetailScreen({ navigation, route }: Props) {
       const refreshed = await getOrderDetail(detail.orderSn)
       setDetail(refreshed)
       showToast({ message: t("orders.detail.confirmSuccess"), tone: "success" })
-    } catch {
-      Alert.alert(t("common.errorTitle"), t("orders.detail.confirmFailed"))
+    } catch (error) {
+      presentError(error, {
+        fallbackKey: "orders.detail.confirmFailed",
+      })
     } finally {
       setConfirming(false)
     }
@@ -116,8 +122,10 @@ export function OrderDetailScreen({ navigation, route }: Props) {
 
     try {
       await openExternalUrl(explorerUrl)
-    } catch {
-      Alert.alert(t("common.errorTitle"), t("orders.detail.openExplorerFailed"))
+    } catch (error) {
+      presentError(error, {
+        fallbackKey: "orders.detail.openExplorerFailed",
+      })
     }
   }
 

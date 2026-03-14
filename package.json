@@ -8,6 +8,9 @@
     "ios": "DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer react-native run-ios",
     "pods:install": "cd ios && DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer pod install --repo-update",
     "pods:install:mirror": "cd ios && DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer COCOAPODS_SOURCE=https://mirrors.tuna.tsinghua.edu.cn/git/CocoaPods/Specs.git pod install --repo-update",
+    "test": "npm run test:unit",
+    "test:unit": "jest --runInBand",
+    "test:unit:coverage": "jest --runInBand --coverage",
     "typecheck": "tsc --noEmit",
     "lint": "npm run typecheck && npm run check:wp00",
     "check:wp00": "node ./scripts/verify-wp00.mjs"

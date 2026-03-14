@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react"
 
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -15,6 +15,7 @@ import {
   resolveMessageTitle,
 } from "@/features/messages/utils/messagePresentation"
 import { PageEmpty, SectionCard } from "@/features/transfer/components/TransferUi"
+import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { useSocketStore } from "@/shared/store/useSocketStore"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
@@ -26,6 +27,7 @@ type Props = NativeStackScreenProps<MessageStackParamList, "MessageScreen">
 export function MessageScreen({ navigation }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { presentError, presentMessage } = useErrorPresenter()
   const { showToast } = useToast()
   const socketEvent = useSocketStore(state => state.lastEvent)
   const [items, setItems] = useState<MessageItem[]>([])
@@ -49,8 +51,10 @@ export function MessageScreen({ navigation }: Props) {
       setItems(current => (mode === "append" ? [...current, ...response.data] : response.data))
       setPage(response.page)
       setHasMore(response.data.length >= response.perPage)
-    } catch {
-      Alert.alert(t("common.errorTitle"), t("message.loadFailed"))
+    } catch (error) {
+      presentError(error, {
+        fallbackKey: "message.loadFailed",
+      })
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -76,8 +80,11 @@ export function MessageScreen({ navigation }: Props) {
         await markMessageRead(item.id)
         setItems(current => current.map(entry => (entry.id === item.id ? { ...entry, status: 1 } : entry)))
       }
-    } catch {
-      showToast({ message: t("message.readFailed"), tone: "error" })
+    } catch (error) {
+      presentError(error, {
+        fallbackKey: "message.readFailed",
+        mode: "toast",
+      })
       return
     }
 
@@ -121,8 +128,11 @@ export function MessageScreen({ navigation }: Props) {
       await markAllMessagesRead()
       setItems(current => current.map(item => ({ ...item, status: 1 })))
       showToast({ message: t("message.readAllSuccess"), tone: "success" })
-    } catch {
-      showToast({ message: t("message.readAllFailed"), tone: "error" })
+    } catch (error) {
+      presentError(error, {
+        fallbackKey: "message.readAllFailed",
+        mode: "toast",
+      })
     }
   }
 

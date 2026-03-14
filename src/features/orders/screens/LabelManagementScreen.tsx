@@ -7,6 +7,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { HeaderTextAction, HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { createCategoryLabel, deleteCategoryLabel, listUserCategoryLabels, type CategoryLabel } from "@/features/orders/services/ordersApi"
 import { PageEmpty, PrimaryButton, SectionCard, SecondaryButton } from "@/features/transfer/components/TransferUi"
+import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { AppTextField } from "@/shared/ui/AppTextField"
@@ -18,6 +19,7 @@ type Props = NativeStackScreenProps<OrdersStackParamList, "LabelManagementScreen
 export function LabelManagementScreen({ navigation }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
   const [labels, setLabels] = useState<CategoryLabel[]>([])
   const [loading, setLoading] = useState(true)
@@ -29,8 +31,10 @@ export function LabelManagementScreen({ navigation }: Props) {
     try {
       const response = await listUserCategoryLabels()
       setLabels(response)
-    } catch {
-      Alert.alert(t("common.errorTitle"), t("orders.labels.loadFailed"))
+    } catch (error) {
+      presentError(error, {
+        fallbackKey: "orders.labels.loadFailed",
+      })
     } finally {
       setLoading(false)
     }
@@ -51,8 +55,10 @@ export function LabelManagementScreen({ navigation }: Props) {
             try {
               await deleteCategoryLabel(label.id)
               setLabels(current => current.filter(item => item.id !== label.id))
-            } catch {
-              Alert.alert(t("common.errorTitle"), t("orders.labels.deleteFailed"))
+            } catch (error) {
+              presentError(error, {
+                fallbackKey: "orders.labels.deleteFailed",
+              })
             }
           })()
         },
@@ -74,8 +80,10 @@ export function LabelManagementScreen({ navigation }: Props) {
       setNewLabelName("")
       setDialogVisible(false)
       await loadLabels()
-    } catch {
-      Alert.alert(t("common.errorTitle"), t("orders.labels.createFailed"))
+    } catch (error) {
+      presentError(error, {
+        fallbackKey: "orders.labels.createFailed",
+      })
     } finally {
       setSubmitting(false)
     }

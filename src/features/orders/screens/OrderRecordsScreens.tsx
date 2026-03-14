@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react"
 
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -29,6 +29,7 @@ import {
   type RangePreset,
 } from "@/features/orders/utils/orderHelpers"
 import { PageEmpty, PrimaryButton, SectionCard } from "@/features/transfer/components/TransferUi"
+import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { useUserStore } from "@/shared/store/useUserStore"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
@@ -77,6 +78,7 @@ export function TxlogsByAddressScreen({ navigation, route }: TxlogsByAddressProp
 function OrderLogsScreenBase(props: OrderListBaseProps) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { presentError, presentMessage } = useErrorPresenter()
   const [rangePreset, setRangePreset] = useState<RangePreset>("all")
   const [orderType, setOrderType] = useState<OrderTypeFilter | undefined>(undefined)
   const [items, setItems] = useState<OrderListItem[]>([])
@@ -121,9 +123,11 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
         setStatistics(statsResponse)
         setPage(listResponse.page)
         setTotal(listResponse.total)
-      } catch {
+      } catch (error) {
         if (active) {
-          Alert.alert(t("common.errorTitle"), t("orders.list.loadFailed"))
+          presentError(error, {
+            fallbackKey: "orders.list.loadFailed",
+          })
         }
       } finally {
         if (active) {
@@ -136,7 +140,7 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
     return () => {
       active = false
     }
-  }, [orderType, props.otherAddress, rangeSelection, t])
+  }, [orderType, presentError, props.otherAddress, rangeSelection])
 
   const handleLoadMore = async () => {
     if (loadingMore || items.length >= total) {
@@ -157,8 +161,10 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
       setItems(current => [...current, ...response.data])
       setPage(response.page)
       setTotal(response.total)
-    } catch {
-      Alert.alert(t("common.errorTitle"), t("orders.list.loadMoreFailed"))
+    } catch (error) {
+      presentError(error, {
+        fallbackKey: "orders.list.loadMoreFailed",
+      })
     } finally {
       setLoadingMore(false)
     }
@@ -187,8 +193,10 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
       setStatistics(statsResponse)
       setPage(listResponse.page)
       setTotal(listResponse.total)
-    } catch {
-      Alert.alert(t("common.errorTitle"), t("orders.list.refreshFailed"))
+    } catch (error) {
+      presentError(error, {
+        fallbackKey: "orders.list.refreshFailed",
+      })
     } finally {
       setRefreshing(false)
     }
@@ -301,6 +309,7 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
 export function OrderBillScreen({ navigation, route }: OrderBillProps) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { presentError } = useErrorPresenter()
   const profile = useUserStore(state => state.profile)
   const [preset, setPreset] = useState<Exclude<RangePreset, "all">>(route.params?.preset ?? "today")
   const [statistics, setStatistics] = useState<OrderStatistics>({ receiptAmount: 0, paymentAmount: 0, fee: 0, transactions: 0 })
@@ -327,9 +336,11 @@ export function OrderBillScreen({ navigation, route }: OrderBillProps) {
 
         setStatistics(statsResponse)
         setItems(listResponse.data)
-      } catch {
+      } catch (error) {
         if (active) {
-          Alert.alert(t("common.errorTitle"), t("orders.bill.loadFailed"))
+          presentError(error, {
+            fallbackKey: "orders.bill.loadFailed",
+          })
         }
       } finally {
         if (active) {
@@ -341,7 +352,7 @@ export function OrderBillScreen({ navigation, route }: OrderBillProps) {
     return () => {
       active = false
     }
-  }, [rangeSelection, t])
+  }, [presentError, rangeSelection])
 
   return (
     <HomeScaffold
@@ -425,6 +436,7 @@ export function OrderBillScreen({ navigation, route }: OrderBillProps) {
 export function BillExportScreen({ navigation, route }: BillExportProps) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { presentError, presentMessage } = useErrorPresenter()
   const { showToast } = useToast()
   const profile = useUserStore(state => state.profile)
   const [email, setEmail] = useState(route.params.email ?? profile?.email ?? "")
@@ -461,7 +473,14 @@ export function BillExportScreen({ navigation, route }: BillExportProps) {
       const message = error instanceof Error && error.name === "NativeCapabilityUnavailableError"
         ? t("orders.export.fileUnavailable")
         : t("orders.export.failed")
-      Alert.alert(t("common.errorTitle"), message)
+      if (message === t("orders.export.failed")) {
+        presentError(error, {
+          fallbackKey: "orders.export.failed",
+        })
+        return
+      }
+
+      presentMessage(message)
     } finally {
       setLoading(false)
     }
