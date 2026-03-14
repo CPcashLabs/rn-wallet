@@ -14,15 +14,15 @@ export function HelpCenterScreen({ navigation }: StackProps<"HelpCenterScreen">)
   const { t } = useTranslation()
 
   return (
-    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("wp09.help.title")}>
+    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.help.title")}>
       <Card>
-        <Text style={styles.sectionLabel}>{t("wp09.help.needHelp")}</Text>
+        <Text style={styles.sectionLabel}>{t("settingsHub.help.needHelp")}</Text>
         <PrimaryButton label="Telegram" onPress={() => void openExternalUrl("https://t.me/CPcashWallet")} />
         <Text style={styles.emailValue}>support@cp.cash</Text>
       </Card>
       <Card>
-        <Row label={t("wp09.help.faq")} onPress={() => navigation.navigate("FAQScreen")} />
-        <Row label={t("wp09.help.userGuide")} onPress={() => navigation.navigate("UserGuideScreen")} />
+        <Row label={t("settingsHub.help.faq")} onPress={() => navigation.navigate("FAQScreen")} />
+        <Row label={t("settingsHub.help.userGuide")} onPress={() => navigation.navigate("UserGuideScreen")} />
       </Card>
     </HomeScaffold>
   )
@@ -31,21 +31,21 @@ export function HelpCenterScreen({ navigation }: StackProps<"HelpCenterScreen">)
 export function FAQScreen({ navigation }: StackProps<"FAQScreen">) {
   const { t } = useTranslation()
   const items = [
-    { title: t("wp09.faq.crossChainTitle"), body: t("wp09.faq.crossChainBody") },
-    { title: t("wp09.faq.paymentAddressTitle"), body: t("wp09.faq.paymentAddressBody") },
-    { title: t("wp09.faq.validTimeTitle"), body: t("wp09.faq.validTimeBody") },
-    { title: t("wp09.faq.expireTitle"), body: t("wp09.faq.expireBody") },
+    { title: t("settingsHub.faq.crossChainTitle"), body: t("settingsHub.faq.crossChainBody") },
+    { title: t("settingsHub.faq.paymentAddressTitle"), body: t("settingsHub.faq.paymentAddressBody") },
+    { title: t("settingsHub.faq.validTimeTitle"), body: t("settingsHub.faq.validTimeBody") },
+    { title: t("settingsHub.faq.expireTitle"), body: t("settingsHub.faq.expireBody") },
   ]
 
   return (
-    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("wp09.faq.title")}>
+    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.faq.title")}>
       {items.map(item => (
         <Card key={item.title}>
           <Text style={styles.questionTitle}>{item.title}</Text>
           <Text style={styles.answerText}>{item.body}</Text>
         </Card>
       ))}
-      <PrimaryButton label={t("wp09.faq.receiveDiff")} onPress={() => navigation.navigate("ReceiveDiffScreen")} />
+      <PrimaryButton label={t("settingsHub.faq.receiveDiff")} onPress={() => navigation.navigate("ReceiveDiffScreen")} />
     </HomeScaffold>
   )
 }
@@ -53,16 +53,16 @@ export function FAQScreen({ navigation }: StackProps<"FAQScreen">) {
 export function ReceiveDiffScreen({ navigation }: StackProps<"ReceiveDiffScreen">) {
   const { t } = useTranslation()
   const rows = [
-    [t("wp09.receiveDiff.purpose"), t("wp09.receiveDiff.individualTemporary"), t("wp09.receiveDiff.businessFixed")],
-    [t("wp09.receiveDiff.feature"), t("wp09.receiveDiff.privacy"), t("wp09.receiveDiff.public")],
-    [t("wp09.receiveDiff.validity"), t("wp09.receiveDiff.short"), t("wp09.receiveDiff.long")],
-    [t("wp09.receiveDiff.cost"), t("wp09.receiveDiff.free"), t("wp09.receiveDiff.charge")],
+    [t("settingsHub.receiveDiff.purpose"), t("settingsHub.receiveDiff.individualTemporary"), t("settingsHub.receiveDiff.businessFixed")],
+    [t("settingsHub.receiveDiff.feature"), t("settingsHub.receiveDiff.privacy"), t("settingsHub.receiveDiff.public")],
+    [t("settingsHub.receiveDiff.validity"), t("settingsHub.receiveDiff.short"), t("settingsHub.receiveDiff.long")],
+    [t("settingsHub.receiveDiff.cost"), t("settingsHub.receiveDiff.free"), t("settingsHub.receiveDiff.charge")],
   ]
 
   return (
-    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("wp09.receiveDiff.title")}>
+    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.receiveDiff.title")}>
       <Card>
-        <Text style={styles.sectionLabel}>{t("wp09.receiveDiff.subtitle")}</Text>
+        <Text style={styles.sectionLabel}>{t("settingsHub.receiveDiff.subtitle")}</Text>
         {rows.map(item => (
           <View key={item[0]} style={styles.diffRow}>
             <Text style={styles.diffCellLabel}>{item[0]}</Text>
@@ -78,14 +78,14 @@ export function ReceiveDiffScreen({ navigation }: StackProps<"ReceiveDiffScreen"
 export function AboutScreen({ navigation }: StackProps<"AboutScreen">) {
   const { t } = useTranslation()
   const links = [
-    { title: t("wp09.about.privacy"), url: "https://support-cpcash.tawk.help/article/privacy-policy-crosspay" },
-    { title: t("wp09.about.terms"), url: "https://support-cpcash.tawk.help/article/terms-of-services" },
-    { title: t("wp09.about.website"), url: "https://cp.cash/" },
-    { title: t("wp09.about.version"), url: "https://cpcash-1.gitbook.io/cpcash-wallet/announcement/version-update" },
+    { title: t("settingsHub.about.privacy"), url: "https://support-cpcash.tawk.help/article/privacy-policy-crosspay" },
+    { title: t("settingsHub.about.terms"), url: "https://support-cpcash.tawk.help/article/terms-of-services" },
+    { title: t("settingsHub.about.website"), url: "https://cp.cash/" },
+    { title: t("settingsHub.about.version"), url: "https://cpcash-1.gitbook.io/cpcash-wallet/announcement/version-update" },
   ]
 
   return (
-    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("wp09.about.title")}>
+    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.about.title")}>
       <Card>
         <Text style={styles.brandTitle}>CPcash Wallet</Text>
       </Card>
@@ -93,8 +93,8 @@ export function AboutScreen({ navigation }: StackProps<"AboutScreen">) {
         {links.map(item => (
           <Row key={item.title} label={item.title} onPress={() => void openExternalUrl(item.url)} />
         ))}
-        <Row label={t("wp09.about.feedback")} onPress={() => navigation.navigate("FeedbackScreen")} />
-        <Row label={t("wp09.about.licenses")} onPress={() => navigation.navigate("LicensesScreen")} />
+        <Row label={t("settingsHub.about.feedback")} onPress={() => navigation.navigate("FeedbackScreen")} />
+        <Row label={t("settingsHub.about.licenses")} onPress={() => navigation.navigate("LicensesScreen")} />
       </Card>
     </HomeScaffold>
   )
@@ -111,20 +111,20 @@ export function FeedbackScreen({ navigation }: StackProps<"FeedbackScreen">) {
       setLoading(true)
       await sendFeedback(content.trim())
       setContent("")
-      Alert.alert(t("common.infoTitle"), t("wp09.feedback.success"))
+      Alert.alert(t("common.infoTitle"), t("settingsHub.feedback.success"))
     } catch {
-      Alert.alert(t("common.errorTitle"), t("wp09.feedback.failed"))
+      Alert.alert(t("common.errorTitle"), t("settingsHub.feedback.failed"))
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("wp09.feedback.title")}>
+    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.feedback.title")}>
       <Card>
-        <TextInput multiline onChangeText={setContent} placeholder={t("wp09.feedback.placeholder")} placeholderTextColor={theme.colors.mutedText} style={[styles.textarea, { color: theme.colors.text, borderColor: theme.colors.border }]} value={content} />
+        <TextInput multiline onChangeText={setContent} placeholder={t("settingsHub.feedback.placeholder")} placeholderTextColor={theme.colors.mutedText} style={[styles.textarea, { color: theme.colors.text, borderColor: theme.colors.border }]} value={content} />
       </Card>
-      <PrimaryButton disabled={!content.trim()} label={t("wp09.feedback.submit")} loading={loading} onPress={() => void handleSubmit()} />
+      <PrimaryButton disabled={!content.trim()} label={t("settingsHub.feedback.submit")} loading={loading} onPress={() => void handleSubmit()} />
     </HomeScaffold>
   )
 }
@@ -133,9 +133,9 @@ export function LicensesScreen({ navigation }: StackProps<"LicensesScreen">) {
   const { t } = useTranslation()
 
   return (
-    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("wp09.about.licenses")}>
+    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.about.licenses")}>
       <Card>
-        <Text style={styles.answerText}>{t("wp09.licenses.body")}</Text>
+        <Text style={styles.answerText}>{t("settingsHub.licenses.body")}</Text>
       </Card>
     </HomeScaffold>
   )
@@ -145,14 +145,14 @@ export function UserGuideScreen({ navigation }: StackProps<"UserGuideScreen">) {
   const { t } = useTranslation()
 
   return (
-    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("wp09.guide.title")}>
+    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.guide.title")}>
       <Card>
-        <Row label={t("wp09.guide.wallet")} onPress={() => navigation.navigate("WalletGuideDetailScreen")} />
-        <Row label={t("wp09.guide.faq")} onPress={() => navigation.navigate("FAQGuideDetailScreen")} />
-        <Row label={t("wp09.guide.knowledge")} onPress={() => navigation.navigate("KnowledgeGuideDetailScreen")} />
-        <Row label={t("wp09.guide.safety")} onPress={() => navigation.navigate("SafetyGuideDetailScreen")} />
+        <Row label={t("settingsHub.guide.wallet")} onPress={() => navigation.navigate("WalletGuideDetailScreen")} />
+        <Row label={t("settingsHub.guide.faq")} onPress={() => navigation.navigate("FAQGuideDetailScreen")} />
+        <Row label={t("settingsHub.guide.knowledge")} onPress={() => navigation.navigate("KnowledgeGuideDetailScreen")} />
+        <Row label={t("settingsHub.guide.safety")} onPress={() => navigation.navigate("SafetyGuideDetailScreen")} />
       </Card>
-      <PrimaryButton label={t("wp09.help.title")} onPress={() => navigation.navigate("HelpCenterScreen")} />
+      <PrimaryButton label={t("settingsHub.help.title")} onPress={() => navigation.navigate("HelpCenterScreen")} />
     </HomeScaffold>
   )
 }
@@ -173,17 +173,17 @@ function GuideListScreen(props: GuideListScreenProps) {
 }
 
 export function WalletGuideDetailScreen(props: StackProps<"WalletGuideDetailScreen">) {
-  return <GuideListScreen {...props} section="wallet" titleKey="wp09.guide.wallet" />
+  return <GuideListScreen {...props} section="wallet" titleKey="settingsHub.guide.wallet" />
 }
 
 export function FAQGuideDetailScreen(props: StackProps<"FAQGuideDetailScreen">) {
-  return <GuideListScreen {...props} section="faq" titleKey="wp09.guide.faq" />
+  return <GuideListScreen {...props} section="faq" titleKey="settingsHub.guide.faq" />
 }
 
 export function KnowledgeGuideDetailScreen(props: StackProps<"KnowledgeGuideDetailScreen">) {
-  return <GuideListScreen {...props} section="knowledge" titleKey="wp09.guide.knowledge" />
+  return <GuideListScreen {...props} section="knowledge" titleKey="settingsHub.guide.knowledge" />
 }
 
 export function SafetyGuideDetailScreen(props: StackProps<"SafetyGuideDetailScreen">) {
-  return <GuideListScreen {...props} section="safety" titleKey="wp09.guide.safety" />
+  return <GuideListScreen {...props} section="safety" titleKey="settingsHub.guide.safety" />
 }

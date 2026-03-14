@@ -80,7 +80,7 @@ export function MeShellScreen({ navigation }: Props) {
             })
           }}
         />
-        <MenuRow label={t("wp09.invite.title")} onPress={() => navigation.navigate("InviteHomeScreen")} />
+        <MenuRow label={t("settingsHub.invite.title")} onPress={() => navigation.navigate("InviteHomeScreen")} />
         <MenuRow label={t("home.me.settings")} onPress={() => navigation.navigate("SettingsHomeScreen")} />
         {isPasskeyLogin ? (
           <MenuRow

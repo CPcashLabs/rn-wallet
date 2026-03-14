@@ -3,7 +3,7 @@ import React, { useState } from "react"
 import { Alert, Pressable, Switch, Text, TextInput } from "react-native"
 import { useTranslation } from "react-i18next"
 
-import { usePersistentCountdown } from "@/features/auth/hooks/usePersistentCountdown"
+import { usePersistentCountdown } from "@/shared/hooks/usePersistentCountdown"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import {
   bindEmail,
@@ -49,23 +49,23 @@ export function EmailNotificationScreen({ navigation }: StackProps<"EmailNotific
       patchProfile(togglePatches[field](nextValue))
       await refreshProfile()
     } catch {
-      Alert.alert(t("common.errorTitle"), t("wp09.common.saveFailed"))
+      Alert.alert(t("common.errorTitle"), t("settingsHub.common.saveFailed"))
     }
   }
 
   return (
-    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("wp09.email.notificationTitle")}>
+    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.email.notificationTitle")}>
       <Card>
-        <Row label={t("wp09.email.transferNotify")}>
+        <Row label={t("settingsHub.email.transferNotify")}>
           <Switch onValueChange={value => void handleToggle("transfer", value)} thumbColor="#FFFFFF" trackColor={{ false: "#CBD5E1", true: theme.colors.primary }} value={Boolean(profile?.transferEmailNotifyEnable)} />
         </Row>
-        <Row label={t("wp09.email.receiptNotify")}>
+        <Row label={t("settingsHub.email.receiptNotify")}>
           <Switch onValueChange={value => void handleToggle("receipt", value)} thumbColor="#FFFFFF" trackColor={{ false: "#CBD5E1", true: theme.colors.primary }} value={Boolean(profile?.receiptEmailNotifyEnable)} />
         </Row>
-        <Row label={t("wp09.email.backupNotify")}>
+        <Row label={t("settingsHub.email.backupNotify")}>
           <Switch onValueChange={value => void handleToggle("backup", value)} thumbColor="#FFFFFF" trackColor={{ false: "#CBD5E1", true: theme.colors.primary }} value={Boolean(profile?.backupWalletNotifyEnable)} />
         </Row>
-        <Row label={t("wp09.email.rewardNotify")}>
+        <Row label={t("settingsHub.email.rewardNotify")}>
           <Switch onValueChange={value => void handleToggle("reward", value)} thumbColor="#FFFFFF" trackColor={{ false: "#CBD5E1", true: theme.colors.primary }} value={Boolean(profile?.rewardEmailNotifyEnable)} />
         </Row>
       </Card>
@@ -82,12 +82,12 @@ export function EmailHomeScreen({ navigation }: StackProps<"EmailHomeScreen">) {
 
   if (profile?.email) {
     return (
-      <HomeScaffold canGoBack onBack={navigation.goBack} title={t("wp09.email.title")}>
+      <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.email.title")}>
         <Card>
-          <Text style={styles.centerMuted}>{t("wp09.email.currentBound")}</Text>
+          <Text style={styles.centerMuted}>{t("settingsHub.email.currentBound")}</Text>
           <Text style={styles.emailValue}>{profile.email}</Text>
         </Card>
-        <PrimaryButton label={t("wp09.email.unbindAction")} onPress={() => navigation.navigate("EmailUnbindScreen")} />
+        <PrimaryButton label={t("settingsHub.email.unbindAction")} onPress={() => navigation.navigate("EmailUnbindScreen")} />
       </HomeScaffold>
     )
   }
@@ -99,18 +99,18 @@ export function EmailHomeScreen({ navigation }: StackProps<"EmailHomeScreen">) {
       setNumber(KvStorageKeys.EmailBindCountdownEndAt, Date.now() + 60_000)
       navigation.navigate("VerifyEmailScreen", { email: email.trim() })
     } catch {
-      Alert.alert(t("common.errorTitle"), t("wp09.email.sendCodeFailed"))
+      Alert.alert(t("common.errorTitle"), t("settingsHub.email.sendCodeFailed"))
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("wp09.email.title")}>
+    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.email.title")}>
       <Card>
-        <Text style={styles.sectionLabel}>{t("wp09.email.inputLabel")}</Text>
-        <TextInput autoCapitalize="none" keyboardType="email-address" onChangeText={setEmail} placeholder={t("wp09.email.placeholder")} style={styles.input} value={email} />
-        {!emailValid && email.length > 0 ? <Text style={styles.errorText}>{t("wp09.email.invalid")}</Text> : null}
+        <Text style={styles.sectionLabel}>{t("settingsHub.email.inputLabel")}</Text>
+        <TextInput autoCapitalize="none" keyboardType="email-address" onChangeText={setEmail} placeholder={t("settingsHub.email.placeholder")} style={styles.input} value={email} />
+        {!emailValid && email.length > 0 ? <Text style={styles.errorText}>{t("settingsHub.email.invalid")}</Text> : null}
       </Card>
       <PrimaryButton disabled={!emailValid} label={t("common.next")} loading={loading} onPress={() => void handleNext()} />
     </HomeScaffold>
@@ -122,12 +122,12 @@ export function EmailBindedScreen({ navigation }: StackProps<"EmailBindedScreen"
   const profile = useUserStore(state => state.profile)
 
   return (
-    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("wp09.email.title")}>
+    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.email.title")}>
       <Card>
-        <Text style={styles.centerMuted}>{t("wp09.email.currentBound")}</Text>
+        <Text style={styles.centerMuted}>{t("settingsHub.email.currentBound")}</Text>
         <Text style={styles.emailValue}>{profile?.email}</Text>
       </Card>
-      <PrimaryButton label={t("wp09.email.unbindAction")} onPress={() => navigation.navigate("EmailUnbindScreen")} />
+      <PrimaryButton label={t("settingsHub.email.unbindAction")} onPress={() => navigation.navigate("EmailUnbindScreen")} />
     </HomeScaffold>
   )
 }
@@ -146,9 +146,9 @@ export function EmailUnbindScreen({ navigation }: StackProps<"EmailUnbindScreen"
       setSending(true)
       await sendUnbindEmailCaptcha(profile?.email ?? "")
       countdown.start()
-      Alert.alert(t("common.infoTitle"), t("wp09.email.codeSent"))
+      Alert.alert(t("common.infoTitle"), t("settingsHub.email.codeSent"))
     } catch {
-      Alert.alert(t("common.errorTitle"), t("wp09.email.sendCodeFailed"))
+      Alert.alert(t("common.errorTitle"), t("settingsHub.email.sendCodeFailed"))
     } finally {
       setSending(false)
     }
@@ -161,20 +161,20 @@ export function EmailUnbindScreen({ navigation }: StackProps<"EmailUnbindScreen"
       await refreshProfile()
       navigation.navigate("SettingsHomeScreen")
     } catch {
-      Alert.alert(t("common.errorTitle"), t("wp09.email.unbindFailed"))
+      Alert.alert(t("common.errorTitle"), t("settingsHub.email.unbindFailed"))
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("wp09.email.unbindTitle")}>
+    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.email.unbindTitle")}>
       <Card>
-        <Text style={styles.centerMuted}>{t("wp09.email.currentBound")}</Text>
+        <Text style={styles.centerMuted}>{t("settingsHub.email.currentBound")}</Text>
         <Text style={styles.emailValue}>{profile?.email}</Text>
-        <TextInput keyboardType="number-pad" maxLength={6} onChangeText={setCode} placeholder={t("wp09.email.codePlaceholder")} style={styles.input} value={code} />
+        <TextInput keyboardType="number-pad" maxLength={6} onChangeText={setCode} placeholder={t("settingsHub.email.codePlaceholder")} style={styles.input} value={code} />
         <Pressable disabled={countdown.isActive || sending} onPress={() => void handleSend()} style={styles.inlineTextButton}>
-          <Text style={styles.inlineTextButtonLabel}>{countdown.isActive ? t("wp09.email.resendCountdown", { sec: countdown.secondsLeft }) : t("wp09.email.sendCode")}</Text>
+          <Text style={styles.inlineTextButtonLabel}>{countdown.isActive ? t("settingsHub.email.resendCountdown", { sec: countdown.secondsLeft }) : t("settingsHub.email.sendCode")}</Text>
         </Pressable>
       </Card>
       <PrimaryButton disabled={code.length !== 6} label={t("common.confirm")} loading={submitting} onPress={() => void handleConfirm()} />
@@ -197,7 +197,7 @@ export function VerifyEmailScreen({ navigation, route }: StackProps<"VerifyEmail
       await refreshProfile()
       navigation.navigate("SettingsHomeScreen")
     } catch {
-      Alert.alert(t("common.errorTitle"), t("wp09.email.bindFailed"))
+      Alert.alert(t("common.errorTitle"), t("settingsHub.email.bindFailed"))
     } finally {
       setSubmitting(false)
     }
@@ -208,22 +208,22 @@ export function VerifyEmailScreen({ navigation, route }: StackProps<"VerifyEmail
       setSending(true)
       await sendBindEmailCaptcha(route.params.email)
       countdown.start()
-      Alert.alert(t("common.infoTitle"), t("wp09.email.codeSent"))
+      Alert.alert(t("common.infoTitle"), t("settingsHub.email.codeSent"))
     } catch {
-      Alert.alert(t("common.errorTitle"), t("wp09.email.sendCodeFailed"))
+      Alert.alert(t("common.errorTitle"), t("settingsHub.email.sendCodeFailed"))
     } finally {
       setSending(false)
     }
   }
 
   return (
-    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("wp09.email.verifyTitle")}>
+    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.email.verifyTitle")}>
       <Card>
-        <Text style={styles.sectionLabel}>{t("wp09.email.verifySentTo")}</Text>
+        <Text style={styles.sectionLabel}>{t("settingsHub.email.verifySentTo")}</Text>
         <Text style={styles.emailValue}>{route.params.email}</Text>
-        <TextInput keyboardType="number-pad" maxLength={6} onChangeText={setCode} placeholder={t("wp09.email.codePlaceholder")} style={styles.input} value={code} />
+        <TextInput keyboardType="number-pad" maxLength={6} onChangeText={setCode} placeholder={t("settingsHub.email.codePlaceholder")} style={styles.input} value={code} />
         <Pressable disabled={countdown.isActive || sending} onPress={() => void handleResend()} style={styles.inlineTextButton}>
-          <Text style={styles.inlineTextButtonLabel}>{countdown.isActive ? t("wp09.email.resendCountdown", { sec: countdown.secondsLeft }) : t("wp09.email.resend")}</Text>
+          <Text style={styles.inlineTextButtonLabel}>{countdown.isActive ? t("settingsHub.email.resendCountdown", { sec: countdown.secondsLeft }) : t("settingsHub.email.resend")}</Text>
         </Pressable>
       </Card>
       <PrimaryButton disabled={code.length !== 6} label={t("common.confirm")} loading={submitting} onPress={() => void handleSubmit()} />

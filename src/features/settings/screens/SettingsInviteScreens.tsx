@@ -73,28 +73,28 @@ export function InviteHomeScreen({ navigation }: StackProps<"InviteHomeScreen">)
 
   const handleShare = async () => {
     if (!selectedInviteCode) {
-      Alert.alert(t("common.infoTitle"), t("wp09.invite.empty"))
+      Alert.alert(t("common.infoTitle"), t("settingsHub.invite.empty"))
       return
     }
 
     const result = await shareAdapter.share({
-      title: t("wp09.invite.title"),
-      message: `${t("wp09.invite.shareMessage")} ${selectedInviteCode}`,
+      title: t("settingsHub.invite.title"),
+      message: `${t("settingsHub.invite.shareMessage")} ${selectedInviteCode}`,
       url: inviteUrl,
     })
 
     if (!result.ok) {
-      Alert.alert(t("common.errorTitle"), t("wp09.invite.shareFailed"))
+      Alert.alert(t("common.errorTitle"), t("settingsHub.invite.shareFailed"))
     }
   }
 
   return (
-    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("wp09.invite.title")}>
+    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.invite.title")}>
       <Card>
-        <Text style={styles.brandTitle}>{t("wp09.invite.hero")}</Text>
-        <Text style={styles.centerMuted}>{t("wp09.invite.levelLabel", { level: selectedLevel })}</Text>
+        <Text style={styles.brandTitle}>{t("settingsHub.invite.hero")}</Text>
+        <Text style={styles.centerMuted}>{t("settingsHub.invite.levelLabel", { level: selectedLevel })}</Text>
         {loading ? <ActivityIndicator /> : null}
-        {!loading && inviteCodes.length === 0 ? <Text style={styles.helperText}>{t("wp09.invite.empty")}</Text> : null}
+        {!loading && inviteCodes.length === 0 ? <Text style={styles.helperText}>{t("settingsHub.invite.empty")}</Text> : null}
         <View style={styles.levelRow}>
           {(inviteCodes.length > 0 ? inviteCodes.map(item => item.level) : [1, 2, 3, 4, 5]).map(level => (
             <Pressable key={level} onPress={() => handleLevel(level)} style={[styles.levelChip, selectedLevel === level && styles.levelChipActive]}>
@@ -102,16 +102,16 @@ export function InviteHomeScreen({ navigation }: StackProps<"InviteHomeScreen">)
             </Pressable>
           ))}
         </View>
-        <Text style={styles.sectionLabel}>{t("wp09.invite.code")}</Text>
+        <Text style={styles.sectionLabel}>{t("settingsHub.invite.code")}</Text>
         <Text style={styles.emailValue}>{selectedInviteCode || "--"}</Text>
         <Text style={styles.helperText}>{inviteUrl}</Text>
         {qrData ? <Image source={{ uri: qrData }} style={styles.qrImage} /> : null}
       </Card>
-      <PrimaryButton label={t("wp09.invite.share")} onPress={() => void handleShare()} />
+      <PrimaryButton label={t("settingsHub.invite.share")} onPress={() => void handleShare()} />
       <Card>
-        <Row label={t("wp09.invite.bindCode")} onPress={() => navigation.navigate("InviteCodeScreen")} />
-        <Row label={t("wp09.invite.promotion")} onPress={() => navigation.navigate("InvitePromotionScreen")} />
-        <Row label={t("wp09.invite.howItWorks")} onPress={() => navigation.navigate("InviteHowItWorksScreen")} />
+        <Row label={t("settingsHub.invite.bindCode")} onPress={() => navigation.navigate("InviteCodeScreen")} />
+        <Row label={t("settingsHub.invite.promotion")} onPress={() => navigation.navigate("InvitePromotionScreen")} />
+        <Row label={t("settingsHub.invite.howItWorks")} onPress={() => navigation.navigate("InviteHowItWorksScreen")} />
       </Card>
     </HomeScaffold>
   )
@@ -127,7 +127,7 @@ export function InviteCodeScreen({ navigation }: StackProps<"InviteCodeScreen">)
       setLoading(true)
       const valid = await validateInviteCode(code.trim())
       if (!valid) {
-        Alert.alert(t("common.errorTitle"), t("wp09.invite.invalid"))
+        Alert.alert(t("common.errorTitle"), t("settingsHub.invite.invalid"))
         return
       }
 
@@ -142,9 +142,9 @@ export function InviteCodeScreen({ navigation }: StackProps<"InviteCodeScreen">)
   }
 
   return (
-    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("wp09.invite.bindTitle")}>
+    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.invite.bindTitle")}>
       <Card>
-        <TextInput autoCapitalize="characters" maxLength={6} onChangeText={setCode} placeholder={t("wp09.invite.codePlaceholder")} style={styles.input} value={code} />
+        <TextInput autoCapitalize="characters" maxLength={6} onChangeText={setCode} placeholder={t("settingsHub.invite.codePlaceholder")} style={styles.input} value={code} />
       </Card>
       <PrimaryButton disabled={code.trim().length !== 6} label={t("common.confirm")} loading={loading} onPress={() => void handleBind()} />
     </HomeScaffold>
@@ -169,15 +169,15 @@ export function InvitePromotionScreen({ navigation }: StackProps<"InvitePromotio
   }, [])
 
   return (
-    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("wp09.invite.promotion")}>
+    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.invite.promotion")}>
       <Card>
         <View style={styles.tableHeader}>
-          <Text style={styles.tableHeadCell}>{t("wp09.invite.level")}</Text>
-          <Text style={styles.tableHeadCell}>{t("wp09.invite.memberCount")}</Text>
-          <Text style={styles.tableHeadCell}>{t("wp09.invite.orderCount")}</Text>
+          <Text style={styles.tableHeadCell}>{t("settingsHub.invite.level")}</Text>
+          <Text style={styles.tableHeadCell}>{t("settingsHub.invite.memberCount")}</Text>
+          <Text style={styles.tableHeadCell}>{t("settingsHub.invite.orderCount")}</Text>
         </View>
         {loading ? <ActivityIndicator /> : null}
-        {!loading && stats.length === 0 ? <Text style={styles.helperText}>{t("wp09.invite.promotionEmpty")}</Text> : null}
+        {!loading && stats.length === 0 ? <Text style={styles.helperText}>{t("settingsHub.invite.promotionEmpty")}</Text> : null}
         {stats.map(item => (
           <View key={item.relationLevel} style={styles.tableRow}>
             <Text style={styles.tableCell}>{item.relationLevel}</Text>
@@ -192,10 +192,10 @@ export function InvitePromotionScreen({ navigation }: StackProps<"InvitePromotio
 
 export function InviteHowItWorksScreen({ navigation }: StackProps<"InviteHowItWorksScreen">) {
   const { t } = useTranslation()
-  const bullets = [t("wp09.invite.rule1"), t("wp09.invite.rule2"), t("wp09.invite.rule3"), t("wp09.invite.rule4"), t("wp09.invite.rule5")]
+  const bullets = [t("settingsHub.invite.rule1"), t("settingsHub.invite.rule2"), t("settingsHub.invite.rule3"), t("settingsHub.invite.rule4"), t("settingsHub.invite.rule5")]
 
   return (
-    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("wp09.invite.howItWorks")}>
+    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.invite.howItWorks")}>
       <Card>
         {bullets.map(item => (
           <View key={item} style={styles.bulletRow}>

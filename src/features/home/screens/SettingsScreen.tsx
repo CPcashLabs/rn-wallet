@@ -114,7 +114,7 @@ export function SettingsScreen({ navigation }: Props) {
       <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
         <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("home.settings.preferenceSection")}</Text>
         <SettingsRow
-          detail={profile?.email || t("wp09.email.unbound")}
+          detail={profile?.email || t("settingsHub.email.unbound")}
           label={t("home.settings.email")}
           onPress={() => navigation.navigate(profile?.email ? "EmailBindedScreen" : "EmailHomeScreen")}
         />
@@ -124,13 +124,13 @@ export function SettingsScreen({ navigation }: Props) {
           onPress={() => navigation.navigate("UnitScreen")}
         />
         <SettingsRow
-          detail={t("wp09.node.nodeDetail", { index: rpcIndex + 1 })}
+          detail={t("settingsHub.node.nodeDetail", { index: rpcIndex + 1 })}
           label={t("home.settings.node")}
           onPress={() => navigation.navigate("NodeSetupScreen")}
         />
-        <SettingsRow label={t("wp09.email.notificationTitle")} onPress={() => navigation.navigate("EmailNotificationScreen")} />
-        <SettingsRow label={t("wp09.help.title")} onPress={() => navigation.navigate("HelpCenterScreen")} />
-        <SettingsRow label={t("wp09.about.title")} onPress={() => navigation.navigate("AboutScreen")} />
+        <SettingsRow label={t("settingsHub.email.notificationTitle")} onPress={() => navigation.navigate("EmailNotificationScreen")} />
+        <SettingsRow label={t("settingsHub.help.title")} onPress={() => navigation.navigate("HelpCenterScreen")} />
+        <SettingsRow label={t("settingsHub.about.title")} onPress={() => navigation.navigate("AboutScreen")} />
       </View>
 
       <Pressable onPress={() => void logout()} style={[styles.logoutButton, { backgroundColor: "#DC2626" }]}>

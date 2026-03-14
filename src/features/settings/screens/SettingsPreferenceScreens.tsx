@@ -29,10 +29,10 @@ export function LanguageScreen({ navigation }: StackProps<"LanguageScreen">) {
   }
 
   return (
-    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("wp09.language.title")}>
+    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.language.title")}>
       <Card>
-        <Row detail={currentLanguage === "zh-CN" ? t("wp09.language.selected") : undefined} label={t("wp09.language.zhCN")} onPress={() => void handleSelect("zh-CN")} />
-        <Row detail={currentLanguage === "en-US" ? t("wp09.language.selected") : undefined} label={t("wp09.language.enUS")} onPress={() => void handleSelect("en-US")} />
+        <Row detail={currentLanguage === "zh-CN" ? t("settingsHub.language.selected") : undefined} label={t("settingsHub.language.zhCN")} onPress={() => void handleSelect("zh-CN")} />
+        <Row detail={currentLanguage === "en-US" ? t("settingsHub.language.selected") : undefined} label={t("settingsHub.language.enUS")} onPress={() => void handleSelect("en-US")} />
       </Card>
     </HomeScaffold>
   )
@@ -65,11 +65,11 @@ export function UnitScreen({ navigation }: StackProps<"UnitScreen">) {
   }
 
   return (
-    <HomeScaffold canGoBack onBack={navigation.goBack} right={<Pressable onPress={handleSave}><Text style={styles.headerLink}>{t("wp09.common.save")}</Text></Pressable>} title={t("wp09.unit.title")}>
+    <HomeScaffold canGoBack onBack={navigation.goBack} right={<Pressable onPress={handleSave}><Text style={styles.headerLink}>{t("settingsHub.common.save")}</Text></Pressable>} title={t("settingsHub.unit.title")}>
       {loading ? <ActivityIndicator /> : null}
       <Card>
         {rates.map(item => (
-          <Row detail={selectedCurrency.currency === item.currency ? t("wp09.language.selected") : undefined} key={item.currency} label={`${item.currency} (${item.symbol})`} onPress={() => setSelectedCurrency(item)} />
+          <Row detail={selectedCurrency.currency === item.currency ? t("settingsHub.language.selected") : undefined} key={item.currency} label={`${item.currency} (${item.symbol})`} onPress={() => setSelectedCurrency(item)} />
         ))}
       </Card>
     </HomeScaffold>
@@ -107,11 +107,11 @@ export function NodeSetupScreen({ navigation }: StackProps<"NodeSetupScreen">) {
   }
 
   return (
-    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("wp09.node.title")}>
+    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.node.title")}>
       <Card>
-        <Text style={styles.sectionLabel}>{t("wp09.node.description")}</Text>
+        <Text style={styles.sectionLabel}>{t("settingsHub.node.description")}</Text>
         {nodes.map((node, index) => (
-          <Row detail={selectedIndex === index ? t("wp09.language.selected") : t("wp09.node.nodeDetail", { index: index + 1 })} key={node} label={node} onPress={() => handleSelect(index)} />
+          <Row detail={selectedIndex === index ? t("settingsHub.language.selected") : t("settingsHub.node.nodeDetail", { index: index + 1 })} key={node} label={node} onPress={() => handleSelect(index)} />
         ))}
       </Card>
     </HomeScaffold>
