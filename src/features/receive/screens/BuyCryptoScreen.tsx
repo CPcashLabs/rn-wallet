@@ -6,9 +6,9 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import type { TransferStackParamList } from "@/app/navigation/types"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
-import { getCoinList, resolveChainNameById, type HomeCoin } from "@/features/home/services/homeApi"
 import { createNativeOrder, getReceiveConfig } from "@/features/receive/services/receiveApi"
 import { FieldRow, SectionCard } from "@/features/transfer/components/TransferUi"
+import { getCoinList, resolveChainNameById, type WalletChainName, type WalletCoin } from "@/shared/api/walletAssets"
 import { useBalanceStore } from "@/shared/store/useBalanceStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
@@ -26,7 +26,7 @@ export function BuyCryptoScreen({ navigation, route }: Props) {
   const [submitting, setSubmitting] = useState(false)
   const [loading, setLoading] = useState(true)
   const [sellerId, setSellerId] = useState(route.params?.sellerId ?? "")
-  const [coins, setCoins] = useState<HomeCoin[]>([])
+  const [coins, setCoins] = useState<WalletCoin[]>([])
   const [sendCoinCode, setSendCoinCode] = useState(route.params?.sendCoinCode ?? "")
   const [recvCoinCode, setRecvCoinCode] = useState(route.params?.recvCoinCode ?? "")
   const quickAmounts = [10, 50, 100]
@@ -43,7 +43,7 @@ export function BuyCryptoScreen({ navigation, route }: Props) {
             payChain,
             chainId,
           }),
-          getCoinList(payChain as "BTT" | "BTT_TEST"),
+          getCoinList(payChain as WalletChainName),
         ])
 
         if (!active) {

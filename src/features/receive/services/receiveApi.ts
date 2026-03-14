@@ -1,5 +1,5 @@
 import { apiClient } from "@/shared/api/client"
-import { getCoinList, resolveChainNameById } from "@/features/home/services/homeApi"
+import { getCoinList, resolveChainNameById, type WalletChainName } from "@/shared/api/walletAssets"
 import { resolveRuntimeEnv } from "@/shared/config/runtime"
 import { DEFAULT_WALLET_CHAIN_ID } from "@/shared/store/useWalletStore"
 
@@ -302,7 +302,7 @@ export async function getReceiveConfig(input: { payChain?: string; chainId?: str
     throw new Error(`receive_config_missing: ${sendCandidates.join(",")}`)
   }
 
-  const sendCoins = await getCoinList(selectedSendChainName as "BTT" | "BTT_TEST")
+  const sendCoins = await getCoinList(selectedSendChainName as WalletChainName)
 
   const exchangeShowResponse = await apiClient.get<ApiEnvelope<ReceiveExchangePayload>>("/api/seller/member/exchange/cp-cash-show", {
     params: {
