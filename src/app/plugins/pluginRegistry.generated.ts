@@ -1,6 +1,6 @@
-import { copouchPluginManifest } from "@/features/copouch/plugin/manifest"
-import { receivePluginManifest } from "@/features/receive/plugin/manifest"
-import { transferPluginManifest } from "@/features/transfer/plugin/manifest"
+import { copouchPluginManifest } from "@/plugins/copouch/manifest"
+import { receivePluginManifest } from "@/plugins/receive/manifest"
+import { transferPluginManifest } from "@/plugins/transfer/manifest"
 import type { PluginId, PluginManifest } from "@/shared/plugins/types"
 
 export const pluginRegistry = {
