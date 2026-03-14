@@ -276,7 +276,7 @@ export function EmailUnbindScreen({ navigation }: StackProps<"EmailUnbindScreen"
       setSubmitting(true)
       await unbindEmail({ email: profile?.email ?? "", captcha: code.trim() })
       await refreshProfile()
-      navigation.popToTop()
+      navigation.navigate("SettingsHomeScreen")
     } catch {
       Alert.alert(t("common.errorTitle"), t("wp09.email.unbindFailed"))
     } finally {
@@ -312,7 +312,7 @@ export function VerifyEmailScreen({ navigation, route }: StackProps<"VerifyEmail
       setSubmitting(true)
       await bindEmail({ email: route.params.email, captcha: code.trim() })
       await refreshProfile()
-      navigation.popToTop()
+      navigation.navigate("SettingsHomeScreen")
     } catch {
       Alert.alert(t("common.errorTitle"), t("wp09.email.bindFailed"))
     } finally {
@@ -645,6 +645,20 @@ export function InviteHomeScreen({ navigation }: StackProps<"InviteHomeScreen">)
     })()
   }, [])
 
+  useEffect(() => {
+    if (inviteCodes.length === 0) {
+      return
+    }
+
+    if (inviteCodes.some(item => item.level === selectedLevel)) {
+      return
+    }
+
+    const nextLevel = inviteCodes[0]?.level ?? 1
+    setSelectedLevel(nextLevel)
+    setNumber(KvStorageKeys.SelectedInviteLevel, nextLevel)
+  }, [inviteCodes, selectedLevel])
+
   const selectedInviteCode = useMemo(() => {
     return inviteCodes.find(item => item.level === selectedLevel)?.inviteCode ?? inviteCodes[0]?.inviteCode ?? ""
   }, [inviteCodes, selectedLevel])
@@ -668,6 +682,11 @@ export function InviteHomeScreen({ navigation }: StackProps<"InviteHomeScreen">)
   }
 
   const handleShare = async () => {
+    if (!selectedInviteCode) {
+      Alert.alert(t("common.infoTitle"), t("wp09.invite.empty"))
+      return
+    }
+
     const result = await shareAdapter.share({
       title: t("wp09.invite.title"),
       message: `${t("wp09.invite.shareMessage")} ${selectedInviteCode}`,
@@ -685,8 +704,9 @@ export function InviteHomeScreen({ navigation }: StackProps<"InviteHomeScreen">)
         <Text style={styles.brandTitle}>{t("wp09.invite.hero")}</Text>
         <Text style={styles.centerMuted}>{t("wp09.invite.levelLabel", { level: selectedLevel })}</Text>
         {loading ? <ActivityIndicator /> : null}
+        {!loading && inviteCodes.length === 0 ? <Text style={styles.helperText}>{t("wp09.invite.empty")}</Text> : null}
         <View style={styles.levelRow}>
-          {[1, 2, 3, 4, 5].map(level => (
+          {(inviteCodes.length > 0 ? inviteCodes.map(item => item.level) : [1, 2, 3, 4, 5]).map(level => (
             <Pressable key={level} onPress={() => handleLevel(level)} style={[styles.levelChip, selectedLevel === level && styles.levelChipActive]}>
               <Text style={[styles.levelChipText, selectedLevel === level && styles.levelChipTextActive]}>{level}</Text>
             </Pressable>
@@ -767,6 +787,7 @@ export function InvitePromotionScreen({ navigation }: StackProps<"InvitePromotio
           <Text style={styles.tableHeadCell}>{t("wp09.invite.orderCount")}</Text>
         </View>
         {loading ? <ActivityIndicator /> : null}
+        {!loading && stats.length === 0 ? <Text style={styles.helperText}>{t("wp09.invite.promotionEmpty")}</Text> : null}
         {stats.map(item => (
           <View key={item.relationLevel} style={styles.tableRow}>
             <Text style={styles.tableCell}>{item.relationLevel}</Text>

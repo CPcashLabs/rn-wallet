@@ -80,6 +80,14 @@ export function SettingsScreen({ navigation }: Props) {
       <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
         <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("home.settings.accountSection")}</Text>
         <SettingsRow label={t("home.settings.personal")} onPress={() => navigation.navigate("PersonalScreen")} />
+        <SettingsRow
+          label={t("home.settings.changePassword")}
+          onPress={() => {
+            ;(navigation.getParent()?.getParent() as any)?.navigate("AuthStack", {
+              screen: "LoggedInSetPasswordScreen",
+            })
+          }}
+        />
         {isPasskeyLogin ? (
           <SettingsRow label={t("home.settings.exportPasskey")} onPress={() => navigation.navigate("ExportPasskeyScreen")} />
         ) : null}
@@ -108,7 +116,7 @@ export function SettingsScreen({ navigation }: Props) {
         <SettingsRow
           detail={profile?.email || t("wp09.email.unbound")}
           label={t("home.settings.email")}
-          onPress={() => navigation.navigate("EmailHomeScreen")}
+          onPress={() => navigation.navigate(profile?.email ? "EmailBindedScreen" : "EmailHomeScreen")}
         />
         <SettingsRow
           detail={selectedCurrency?.currency ?? "USD"}
