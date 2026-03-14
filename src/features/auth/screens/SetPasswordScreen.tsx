@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react"
 
-import { Alert, Text } from "react-native"
+import { Text } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -15,11 +15,13 @@ import { validatePasswordAgainstRules } from "@/features/auth/utils/passwordVali
 import { resetToMainTabs } from "@/app/navigation/navigationRef"
 import type { AuthStackParamList } from "@/app/navigation/types"
 import type { PasswordRules } from "@/features/auth/types"
+import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 
 type Props = NativeStackScreenProps<AuthStackParamList, "SetPasswordScreen">
 
 export function SetPasswordScreen({ navigation, route }: Props) {
   const { t } = useTranslation()
+  const { presentMessage } = useErrorPresenter()
   const address = route.params?.address?.trim() ?? ""
   const randomString = route.params?.randomString
   const [rules, setRules] = useState<PasswordRules | null>(null)
@@ -53,12 +55,12 @@ export function SetPasswordScreen({ navigation, route }: Props) {
 
   const submit = async () => {
     if (!address) {
-      Alert.alert(t("common.errorTitle"), t("auth.errors.addressRequired"))
+      presentMessage(t("auth.errors.addressRequired"))
       return
     }
 
     if (!rules) {
-      Alert.alert(t("common.errorTitle"), t("auth.errors.loadPasswordRulesFailed"))
+      presentMessage(t("auth.errors.loadPasswordRulesFailed"))
       return
     }
 
@@ -101,7 +103,7 @@ export function SetPasswordScreen({ navigation, route }: Props) {
     } catch (error) {
       const message = getAuthErrorMessage(error, "auth.errors.resetPasswordFailed")
       setErrorMessage(message)
-      Alert.alert(t("common.errorTitle"), message)
+      presentMessage(message)
     } finally {
       setSubmitting(false)
     }

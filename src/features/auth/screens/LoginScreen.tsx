@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react"
 
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native"
+import { Pressable, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -12,6 +12,7 @@ import { persistAuthenticatedSession } from "@/features/auth/services/authSessio
 import { getAuthErrorMessage, getInviteBindingMessage } from "@/features/auth/utils/authMessages"
 import { resetToMainTabs } from "@/app/navigation/navigationRef"
 import type { AuthStackParamList } from "@/app/navigation/types"
+import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { passkeyAdapter, walletAdapter } from "@/shared/native"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
@@ -23,6 +24,7 @@ type Props = NativeStackScreenProps<AuthStackParamList, "LoginScreen">
 export function LoginScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { presentError, presentMessage } = useErrorPresenter()
   const inviteCode = route.params?.inviteCode
   const recentPasskeys = useAuthStore(state => state.recentPasskeys)
   const setWalletState = useWalletStore(state => state.setWalletState)
@@ -40,7 +42,9 @@ export function LoginScreen({ navigation, route }: Props) {
     try {
       await bindInviteCode(inviteCode)
     } catch (error) {
-      Alert.alert(t("common.infoTitle"), getInviteBindingMessage(error))
+      presentMessage(getInviteBindingMessage(error), {
+        titleKey: "common.infoTitle",
+      })
     }
   }
 
@@ -91,7 +95,9 @@ export function LoginScreen({ navigation, route }: Props) {
 
       await finishPasskeySignIn(result.data)
     } catch (error) {
-      Alert.alert(t("common.errorTitle"), getAuthErrorMessage(error, "auth.errors.passkeyAuthFailed"))
+      presentError(error, {
+        fallbackKey: "auth.errors.passkeyAuthFailed",
+      })
     } finally {
       setLoadingType(null)
       setHistoryVisible(false)
@@ -100,7 +106,7 @@ export function LoginScreen({ navigation, route }: Props) {
 
   const handlePasskeyLogin = async () => {
     if (!passkeyCapability.supported) {
-      Alert.alert(t("common.errorTitle"), getAuthErrorMessage(new Error(passkeyCapability.reason), "auth.errors.passkeyUnsupported"))
+      presentMessage(getAuthErrorMessage(new Error(passkeyCapability.reason), "auth.errors.passkeyUnsupported"))
       return
     }
 
@@ -142,7 +148,9 @@ export function LoginScreen({ navigation, route }: Props) {
         address: connection.data.address,
       })
     } catch (error) {
-      Alert.alert(t("common.errorTitle"), getAuthErrorMessage(error, walletCapability.supported ? "auth.errors.generic" : "auth.errors.walletUnavailable"))
+      presentError(error, {
+        fallbackKey: walletCapability.supported ? "auth.errors.generic" : "auth.errors.walletUnavailable",
+      })
     } finally {
       setLoadingType(null)
     }

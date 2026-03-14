@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react"
 
-import { Alert, Pressable, StyleSheet, Text } from "react-native"
+import { Pressable, StyleSheet, Text } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -13,6 +13,7 @@ import { getAuthErrorMessage, getInviteBindingMessage } from "@/features/auth/ut
 import { resetToMainTabs } from "@/app/navigation/navigationRef"
 import type { AuthStackParamList } from "@/app/navigation/types"
 import { ApiError } from "@/shared/errors"
+import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
@@ -21,6 +22,7 @@ type Props = NativeStackScreenProps<AuthStackParamList, "PasswordLoginScreen">
 export function PasswordLoginScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { presentMessage } = useErrorPresenter()
   const walletState = useWalletStore()
   const inviteCode = route.params?.inviteCode
   const defaultAddress = route.params?.address ?? walletState.address ?? ""
@@ -57,7 +59,7 @@ export function PasswordLoginScreen({ navigation, route }: Props) {
 
   const submit = async () => {
     if (!address.trim()) {
-      Alert.alert(t("common.errorTitle"), t("auth.errors.addressRequired"))
+      presentMessage(t("auth.errors.addressRequired"))
       return
     }
 
@@ -70,14 +72,14 @@ export function PasswordLoginScreen({ navigation, route }: Props) {
       if (!validation.accountExists) {
         const message = t("auth.errors.addressNotFound")
         setPasswordError(message)
-        Alert.alert(t("common.errorTitle"), message)
+        presentMessage(message)
         return
       }
 
       if (!validation.passwordSet) {
         const message = t("auth.errors.passwordNotSet")
         setPasswordError(message)
-        Alert.alert(t("common.errorTitle"), message)
+        presentMessage(message)
         return
       }
 
@@ -94,7 +96,9 @@ export function PasswordLoginScreen({ navigation, route }: Props) {
         try {
           await bindInviteCode(inviteCode)
         } catch (error) {
-          Alert.alert(t("common.infoTitle"), getInviteBindingMessage(error))
+          presentMessage(getInviteBindingMessage(error), {
+            titleKey: "common.infoTitle",
+          })
         }
       }
 
@@ -106,7 +110,7 @@ export function PasswordLoginScreen({ navigation, route }: Props) {
         message = `${message}\n${suffix}`
       }
       setPasswordError(message)
-      Alert.alert(t("common.errorTitle"), message)
+      presentMessage(message)
     } finally {
       setSubmitting(false)
     }

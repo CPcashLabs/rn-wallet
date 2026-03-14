@@ -8,6 +8,13 @@ const common = {
   cancel: "取消",
   confirm: "确认",
   close: "关闭",
+  errors: {
+    generic: "请求失败，请稍后重试。",
+    network: "网络不可用，请稍后重试。",
+    capabilityUnavailable: "原生能力暂未接入。",
+    unexpectedTitle: "发生意外错误",
+    unexpectedBody: "应用遇到了不可恢复的问题，请重新打开后再试。",
+  },
 }
 
 const auth = {

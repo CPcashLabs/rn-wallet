@@ -14,6 +14,7 @@ import {
 import { PageEmpty, SectionCard } from "@/features/transfer/components/TransferUi"
 import { formatAmount } from "@/features/transfer/utils/order"
 import { ApiError } from "@/shared/errors"
+import { resolveErrorMessage } from "@/shared/errors/presentation"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 export const bgPalette: Record<number, { card: string; page: string }> = {
@@ -67,26 +68,23 @@ export function resolveMutationMessage(
   error: unknown,
   mode: "add" | "remove",
 ) {
-  if (error instanceof ApiError) {
-    switch (String(error.code ?? "")) {
-      case "40005":
-        return mode === "add" ? t("copouch.member.errors.alreadyOwner") : t("copouch.member.errors.notOwner")
-      case "40004":
+  return resolveErrorMessage(t, error, {
+    fallbackKey: mode === "add" ? "copouch.member.errors.addFailed" : "copouch.member.errors.removeFailed",
+    codeMap: {
+      "40004": "copouch.member.errors.ownerLimit",
+      "40005": mode === "add" ? "copouch.member.errors.alreadyOwner" : "copouch.member.errors.notOwner",
+      "40006": "copouch.member.errors.notOwner",
+      "404": "copouch.member.errors.addressMissing",
+    },
+    preferApiMessage: false,
+    customResolver: currentError => {
+      if (currentError instanceof Error && /wallet limit/i.test(currentError.message)) {
         return t("copouch.member.errors.ownerLimit")
-      case "40006":
-        return t("copouch.member.errors.notOwner")
-      case "404":
-        return t("copouch.member.errors.addressMissing")
-      default:
-        return mode === "add" ? t("copouch.member.errors.addFailed") : t("copouch.member.errors.removeFailed")
-    }
-  }
+      }
 
-  if (error instanceof Error && /wallet limit/i.test(error.message)) {
-    return t("copouch.member.errors.ownerLimit")
-  }
-
-  return mode === "add" ? t("copouch.member.errors.addFailed") : t("copouch.member.errors.removeFailed")
+      return undefined
+    },
+  })
 }
 
 export function resolveEventMessage(t: ReturnType<typeof useTranslation>["t"], item: CopouchEvent) {

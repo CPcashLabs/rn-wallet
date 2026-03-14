@@ -1,7 +1,7 @@
-import React, { startTransition, useCallback, useDeferredValue, useEffect, useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 
 import { useFocusEffect } from "@react-navigation/native"
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -14,6 +14,9 @@ import { useTransferDraftStore, type TransferAddressSource } from "@/features/tr
 import { buildAddressRegexes, extractTransferAddress, resolveTransferChainType } from "@/features/transfer/utils/address"
 import { resolveChainNameById } from "@/shared/api/walletAssets"
 import { NativeCapabilityUnavailableError } from "@/shared/errors"
+import { errorCodeOf, resolveErrorMessage } from "@/shared/errors/presentation"
+import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
+import { useDeferredValueCompat } from "@/shared/hooks/useDeferredValueCompat"
 import { scannerAdapter } from "@/shared/native"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
@@ -55,30 +58,30 @@ function toDraftChannel(route: Props["route"]): TransferChannel {
 }
 
 function resolveScanErrorMessage(error: Error, mode: "camera" | "image", t: (key: string) => string) {
-  const code = Reflect.get(error, "code")
+  return resolveErrorMessage(t, error, {
+    fallbackKey: "transfer.address.scanFailed",
+    codeMap: {
+      permission_denied: "transfer.address.scanPermissionDenied",
+      multiple_codes: "transfer.address.scanMultiple",
+      image_parse_failed: "transfer.address.scanImageParseFailed",
+    },
+    preferApiMessage: false,
+    preferErrorMessage: false,
+    customResolver: currentError => {
+      const code = errorCodeOf(currentError)
+      if (code === "no_code") {
+        return mode === "image" ? t("transfer.address.scanImageNoCode") : t("transfer.address.scanNoCode")
+      }
 
-  if (code === "permission_denied") {
-    return t("transfer.address.scanPermissionDenied")
-  }
-
-  if (code === "multiple_codes") {
-    return t("transfer.address.scanMultiple")
-  }
-
-  if (code === "no_code") {
-    return mode === "image" ? t("transfer.address.scanImageNoCode") : t("transfer.address.scanNoCode")
-  }
-
-  if (code === "image_parse_failed") {
-    return t("transfer.address.scanImageParseFailed")
-  }
-
-  return t("transfer.address.scanFailed")
+      return undefined
+    },
+  })
 }
 
 export function TransferAddressScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { presentMessage } = useErrorPresenter()
   const chainId = useWalletStore(state => state.chainId)
   const addressBookEntries = useAddressBookStore(state => state.entries)
   const addressBookLoading = useAddressBookStore(state => state.loading)
@@ -94,7 +97,7 @@ export function TransferAddressScreen({ navigation, route }: Props) {
     selectedChannel?.channelType === route.params.channelType &&
     selectedChannel?.receiveChainName === route.params.receiveChainName
   const [address, setAddress] = useState(route.params.initialAddress ?? (shouldReuseDraftAddress ? draftRecipientAddress : ""))
-  const deferredAddress = useDeferredValue(address)
+  const deferredAddress = useDeferredValueCompat(address, 100)
   const [recentEntries, setRecentEntries] = useState<RecentEntry[]>([])
   const [loadingRecent, setLoadingRecent] = useState(true)
 
@@ -189,15 +192,11 @@ export function TransferAddressScreen({ navigation, route }: Props) {
         })
 
         if (mounted) {
-          startTransition(() => {
-            setRecentEntries(result)
-          })
+          setRecentEntries(result)
         }
       } catch {
         if (mounted) {
-          startTransition(() => {
-            setRecentEntries([])
-          })
+          setRecentEntries([])
         }
       } finally {
         if (mounted) {
@@ -266,9 +265,11 @@ export function TransferAddressScreen({ navigation, route }: Props) {
   const handleScan = async (mode: "camera" | "image") => {
     const capability = scannerAdapter.getCapability(mode)
     if (!capability.supported) {
-      Alert.alert(
-        t("common.infoTitle"),
+      presentMessage(
         mode === "camera" ? t("transfer.address.scanUnavailable") : t("transfer.address.scanImageUnavailable"),
+        {
+          titleKey: "common.infoTitle",
+        },
       )
       return
     }
@@ -281,20 +282,22 @@ export function TransferAddressScreen({ navigation, route }: Props) {
       }
 
       if (result.error instanceof NativeCapabilityUnavailableError) {
-        Alert.alert(
-          t("common.infoTitle"),
+        presentMessage(
           mode === "camera" ? t("transfer.address.scanUnavailable") : t("transfer.address.scanImageUnavailable"),
+          {
+            titleKey: "common.infoTitle",
+          },
         )
         return
       }
 
-      Alert.alert(t("common.errorTitle"), resolveScanErrorMessage(result.error, mode, t))
+      presentMessage(resolveScanErrorMessage(result.error, mode, t))
       return
     }
 
     const nextAddress = extractTransferAddress(result.data.value, regexes)
     if (!nextAddress) {
-      Alert.alert(t("common.errorTitle"), t("transfer.address.scanUnrecognized"))
+      presentMessage(t("transfer.address.scanUnrecognized"))
       return
     }
 
@@ -303,7 +306,7 @@ export function TransferAddressScreen({ navigation, route }: Props) {
 
   const handleNext = () => {
     if (!canSubmit) {
-      Alert.alert(t("common.errorTitle"), t("transfer.address.invalid"))
+      presentMessage(t("transfer.address.invalid"))
       return
     }
 

@@ -1,6 +1,6 @@
 import React, { useState } from "react"
 
-import { Alert, StyleSheet, Text, View } from "react-native"
+import { StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -10,6 +10,7 @@ import { AuthTextField } from "@/features/auth/components/AuthTextField"
 import { getEmailByAddress } from "@/features/auth/services/authApi"
 import { getAuthErrorMessage } from "@/features/auth/utils/authMessages"
 import type { AuthStackParamList } from "@/app/navigation/types"
+import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 type Props = NativeStackScreenProps<AuthStackParamList, "ForgotPasswordAddressScreen">
@@ -17,13 +18,14 @@ type Props = NativeStackScreenProps<AuthStackParamList, "ForgotPasswordAddressSc
 export function ForgotPasswordAddressScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { presentError, presentMessage } = useErrorPresenter()
   const [address, setAddress] = useState(route.params?.address ?? "")
   const [email, setEmail] = useState("")
   const [loading, setLoading] = useState(false)
 
   const lookupEmail = async () => {
     if (!address.trim()) {
-      Alert.alert(t("common.errorTitle"), t("auth.errors.addressRequired"))
+      presentMessage(t("auth.errors.addressRequired"))
       return
     }
 
@@ -33,7 +35,9 @@ export function ForgotPasswordAddressScreen({ navigation, route }: Props) {
       const nextEmail = await getEmailByAddress(address.trim())
       setEmail(nextEmail)
     } catch (error) {
-      Alert.alert(t("common.errorTitle"), getAuthErrorMessage(error, "auth.errors.lookupEmailFailed"))
+      presentError(error, {
+        fallbackKey: "auth.errors.lookupEmailFailed",
+      })
     } finally {
       setLoading(false)
     }

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react"
 
-import { Alert, Pressable, Text } from "react-native"
+import { Pressable, Text } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -11,12 +11,14 @@ import { usePersistentCountdown } from "@/shared/hooks/usePersistentCountdown"
 import { getEmailByAddress, sendPasswordResetEmail, validatePasswordResetCaptcha } from "@/features/auth/services/authApi"
 import { getAuthErrorMessage } from "@/features/auth/utils/authMessages"
 import type { AuthStackParamList } from "@/app/navigation/types"
+import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 
 type Props = NativeStackScreenProps<AuthStackParamList, "ForgotPasswordEmailScreen">
 
 export function ForgotPasswordEmailScreen({ navigation, route }: Props) {
   const { t } = useTranslation()
+  const { presentError, presentMessage } = useErrorPresenter()
   const [email, setEmail] = useState(route.params?.email ?? "")
   const [code, setCode] = useState("")
   const [submitting, setSubmitting] = useState(false)
@@ -51,7 +53,7 @@ export function ForgotPasswordEmailScreen({ navigation, route }: Props) {
 
   const sendCaptcha = async () => {
     if (!address) {
-      Alert.alert(t("common.errorTitle"), t("auth.errors.addressRequired"))
+      presentMessage(t("auth.errors.addressRequired"))
       return
     }
 
@@ -61,7 +63,9 @@ export function ForgotPasswordEmailScreen({ navigation, route }: Props) {
       await sendPasswordResetEmail(address)
       countdown.start()
     } catch (error) {
-      Alert.alert(t("common.errorTitle"), getAuthErrorMessage(error, "auth.errors.sendCaptchaFailed"))
+      presentError(error, {
+        fallbackKey: "auth.errors.sendCaptchaFailed",
+      })
     } finally {
       setSending(false)
     }
@@ -69,7 +73,7 @@ export function ForgotPasswordEmailScreen({ navigation, route }: Props) {
 
   const verifyCode = async () => {
     if (!address) {
-      Alert.alert(t("common.errorTitle"), t("auth.errors.addressRequired"))
+      presentMessage(t("auth.errors.addressRequired"))
       return
     }
 
@@ -87,7 +91,9 @@ export function ForgotPasswordEmailScreen({ navigation, route }: Props) {
         randomString,
       })
     } catch (error) {
-      Alert.alert(t("common.errorTitle"), getAuthErrorMessage(error, "auth.errors.invalidEmailCaptcha"))
+      presentError(error, {
+        fallbackKey: "auth.errors.invalidEmailCaptcha",
+      })
     } finally {
       setSubmitting(false)
     }

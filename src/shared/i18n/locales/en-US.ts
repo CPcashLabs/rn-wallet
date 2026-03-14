@@ -8,6 +8,13 @@ const common = {
   cancel: "Cancel",
   confirm: "Confirm",
   close: "Close",
+  errors: {
+    generic: "Request failed, please try again.",
+    network: "Network unavailable, please retry later.",
+    capabilityUnavailable: "This native capability is not connected yet.",
+    unexpectedTitle: "Unexpected error",
+    unexpectedBody: "The app hit an unrecoverable issue. Please reopen it and try again.",
+  },
 }
 
 const auth = {

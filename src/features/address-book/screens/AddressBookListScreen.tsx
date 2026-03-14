@@ -1,4 +1,4 @@
-import React, { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 
 import { FlatList, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
@@ -8,6 +8,7 @@ import type { AddressBookEntry } from "@/features/address-book/services/addressB
 import { useAddressBookStore } from "@/features/address-book/store/useAddressBookStore"
 import { HeaderTextAction, HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { formatAddress } from "@/features/home/utils/format"
+import { useDeferredValueCompat } from "@/shared/hooks/useDeferredValueCompat"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { AppButton } from "@/shared/ui/AppButton"
 import { AppEmptyState } from "@/shared/ui/AppEmptyState"
@@ -28,7 +29,7 @@ export function AddressBookListScreen({ navigation, route }: Props) {
   const refreshEntries = useAddressBookStore(state => state.refreshEntries)
   const setSelectedEntry = useAddressBookStore(state => state.setSelectedEntry)
   const [keyword, setKeyword] = useState("")
-  const deferredKeyword = useDeferredValue(keyword)
+  const deferredKeyword = useDeferredValueCompat(keyword)
 
   const mode = route.params?.mode ?? "manage"
   const chainType = route.params?.chainType

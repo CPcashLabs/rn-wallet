@@ -1,6 +1,6 @@
 import React, { useState } from "react"
 
-import { Alert, StyleSheet, Text } from "react-native"
+import { StyleSheet, Text } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -12,19 +12,21 @@ import { persistAuthenticatedSession } from "@/features/auth/services/authSessio
 import { getAuthErrorMessage, getInviteBindingMessage } from "@/features/auth/utils/authMessages"
 import { resetToMainTabs } from "@/app/navigation/navigationRef"
 import type { AuthStackParamList } from "@/app/navigation/types"
+import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { passkeyAdapter } from "@/shared/native"
 
 type Props = NativeStackScreenProps<AuthStackParamList, "PasskeySignupScreen">
 
 export function PasskeySignupScreen({ navigation, route }: Props) {
   const { t } = useTranslation()
+  const { presentError, presentMessage } = useErrorPresenter()
   const inviteCode = route.params?.inviteCode
   const [nickname, setNickname] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
   const handleSubmit = async () => {
     if (!nickname.trim()) {
-      Alert.alert(t("common.errorTitle"), t("auth.errors.nicknameRequired"))
+      presentMessage(t("auth.errors.nicknameRequired"))
       return
     }
 
@@ -70,13 +72,17 @@ export function PasskeySignupScreen({ navigation, route }: Props) {
         try {
           await bindInviteCode(inviteCode)
         } catch (error) {
-          Alert.alert(t("common.infoTitle"), getInviteBindingMessage(error))
+          presentMessage(getInviteBindingMessage(error), {
+            titleKey: "common.infoTitle",
+          })
         }
       }
 
       resetToMainTabs()
     } catch (error) {
-      Alert.alert(t("common.errorTitle"), getAuthErrorMessage(error, "auth.errors.passkeyRegisterFailed"))
+      presentError(error, {
+        fallbackKey: "auth.errors.passkeyRegisterFailed",
+      })
     } finally {
       setSubmitting(false)
     }

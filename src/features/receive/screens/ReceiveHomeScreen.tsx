@@ -3,12 +3,14 @@ import React, { useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Alert,
-  Animated,
   Clipboard,
-  Easing,
+  LayoutAnimation,
+  type LayoutAnimationConfig,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
+  UIManager,
   View,
 } from "react-native"
 import { useTranslation } from "react-i18next"
@@ -19,6 +21,7 @@ import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { useReceiveStore } from "@/features/receive/store/useReceiveStore"
 import { buildQrCodeDataUrl, buildQrMatrix, stripDataUrlPrefix, type QrMatrix } from "@/features/receive/utils/qrcode"
 import { resolveChainNameById } from "@/shared/api/walletAssets"
+import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { fileAdapter, shareAdapter } from "@/shared/native"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useUserStore } from "@/shared/store/useUserStore"
@@ -47,9 +50,29 @@ const SPACE = {
   xl: 24,
 } as const
 
+const COLLAPSE_LAYOUT_ANIMATION: LayoutAnimationConfig = {
+  duration: 220,
+  create: {
+    type: LayoutAnimation.Types.easeInEaseOut,
+    property: LayoutAnimation.Properties.opacity,
+  },
+  update: {
+    type: LayoutAnimation.Types.easeInEaseOut,
+  },
+  delete: {
+    type: LayoutAnimation.Types.easeInEaseOut,
+    property: LayoutAnimation.Properties.opacity,
+  },
+}
+
+if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true)
+}
+
 export function ReceiveHomeScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
   const session = useAuthStore(state => state.session)
   const profile = useUserStore(state => state.profile)
@@ -74,26 +97,6 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
   const dynamicColor = config?.payChainColor || route.params?.chainColor || theme.colors.primary
   const surfaceColor = "#F4F4F1"
   const qrSource = isNormalReceive ? receiveAddress : currentOrder?.address || receiveAddress
-
-  function resolveLoadHomeMessage(error: unknown) {
-    if (!(error instanceof Error) || !error.message) {
-      return t("receive.home.loadFailed")
-    }
-
-    if (error.message.startsWith("receive_config_missing")) {
-      return t("receive.home.configMissing")
-    }
-
-    return `${t("receive.home.loadFailed")}\n${error.message}`
-  }
-
-  function resolveCreateOrderMessage(error: unknown) {
-    if (!(error instanceof Error) || !error.message) {
-      return t("receive.home.createFailed")
-    }
-
-    return `${t("receive.home.createFailed")}\n${error.message}`
-  }
 
   const subtitle = useMemo(() => {
     if (isNormalReceive) {
@@ -136,9 +139,18 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
       walletAddress: receiveAddress,
       multisigWalletId: route.params?.multisigWalletId,
     }).catch(error => {
-      Alert.alert(t("common.errorTitle"), resolveLoadHomeMessage(error))
+      presentError(error, {
+        fallbackKey: "receive.home.loadFailed",
+        customResolver: currentError => {
+          if (currentError instanceof Error && currentError.message.startsWith("receive_config_missing")) {
+            return t("receive.home.configMissing")
+          }
+
+          return undefined
+        },
+      })
     })
-  }, [chainId, isNormalReceive, loadHome, receiveAddress, route.params?.multisigWalletId, route.params?.payChain, t])
+  }, [chainId, isNormalReceive, loadHome, presentError, receiveAddress, route.params?.multisigWalletId, route.params?.payChain, t])
 
   useEffect(() => {
     if (!qrSource) {
@@ -171,9 +183,11 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
       multisigWalletId: route.params?.multisigWalletId,
     }).catch(error => {
       autoCreateAttemptedRef.current = false
-      Alert.alert(t("common.errorTitle"), resolveCreateOrderMessage(error))
+      presentError(error, {
+        fallbackKey: "receive.home.createFailed",
+      })
     })
-  }, [config, createOrder, creating, isNormalReceive, loading, personalOrder, receiveAddress, route.params?.multisigWalletId, t])
+  }, [config, createOrder, creating, isNormalReceive, loading, personalOrder, presentError, receiveAddress, route.params?.multisigWalletId])
 
   useEffect(() => {
     const expiredAt = currentOrder?.expiredAt
@@ -364,7 +378,9 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
         }
       })
       .catch(error => {
-        Alert.alert(t("common.errorTitle"), resolveCreateOrderMessage(error))
+        presentError(error, {
+          fallbackKey: "receive.home.createFailed",
+        })
       })
   }
 
@@ -373,6 +389,7 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
       return
     }
 
+    LayoutAnimation.configureNext(COLLAPSE_LAYOUT_ANIMATION)
     setExpandedCard(kind)
   }
 
@@ -504,66 +521,6 @@ function CollapseCard(props: {
   onPress: () => void
   children?: React.ReactNode
 }) {
-  const rotate = useRef(new Animated.Value(props.expanded ? 1 : 0)).current
-  const progress = useRef(new Animated.Value(props.expanded ? 1 : 0)).current
-  const [shouldRenderBody, setShouldRenderBody] = useState(props.expanded)
-  const [cachedChildren, setCachedChildren] = useState<React.ReactNode>(props.children)
-
-  useEffect(() => {
-    if (props.expanded && props.children != null) {
-      setCachedChildren(props.children)
-    }
-  }, [props.children, props.expanded])
-
-  useEffect(() => {
-    if (props.expanded) {
-      setShouldRenderBody(true)
-    }
-
-    const animation = Animated.parallel([
-      Animated.timing(rotate, {
-        toValue: props.expanded ? 1 : 0,
-        duration: 260,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(progress, {
-        toValue: props.expanded ? 1 : 0,
-        duration: props.expanded ? 320 : 220,
-        easing: props.expanded ? Easing.out(Easing.cubic) : Easing.inOut(Easing.quad),
-        useNativeDriver: true,
-      }),
-    ])
-
-    animation.start(({ finished }) => {
-      if (finished && !props.expanded) {
-        setShouldRenderBody(false)
-      }
-    })
-
-    return () => {
-      animation.stop()
-    }
-  }, [progress, props.expanded, rotate])
-
-  const arrowRotate = rotate.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0deg", "180deg"],
-  })
-  const drawerOpacity = progress.interpolate({
-    inputRange: [0, 0.2, 1],
-    outputRange: [0, 0.35, 1],
-  })
-  const drawerScaleY = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.92, 1],
-  })
-  const drawerTranslateY = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-14, 0],
-  })
-  const bodyContent = props.expanded ? props.children : cachedChildren
-
   return (
     <View style={[styles.collapseCard, props.expanded ? styles.collapseCardExpanded : null]}>
       <Pressable onPress={props.onPress} style={styles.collapseHeader}>
@@ -571,21 +528,12 @@ function CollapseCard(props: {
           <Text style={styles.collapseIcon}>{props.expanded ? "▣" : "◫"}</Text>
           <Text style={styles.collapseTitle}>{props.title}</Text>
         </View>
-        <Animated.Text style={[styles.collapseArrow, { transform: [{ rotate: arrowRotate }] }]}>⌃</Animated.Text>
+        <Text style={[styles.collapseArrow, props.expanded ? styles.collapseArrowExpanded : null]}>⌃</Text>
       </Pressable>
-      {shouldRenderBody ? (
-        <Animated.View
-          style={[
-            styles.drawerFrame,
-            {
-              opacity: drawerOpacity,
-              transform: [{ translateY: drawerTranslateY }, { scaleY: drawerScaleY }],
-            },
-          ]}
-          pointerEvents={props.expanded ? "auto" : "none"}
-        >
-          <View style={styles.collapseBody}>{bodyContent}</View>
-        </Animated.View>
+      {props.expanded ? (
+        <View style={styles.drawerFrame}>
+          <View style={styles.collapseBody}>{props.children}</View>
+        </View>
       ) : null}
     </View>
   )
@@ -619,41 +567,23 @@ function QrPreview(props: { matrix: QrMatrix }) {
 
 function ActionButton(props: { label: string; onPress: () => void }) {
   const theme = useAppTheme()
-  const scale = useRef(new Animated.Value(1)).current
 
   return (
     <Pressable
-      style={styles.actionButtonPressable}
-      onPressIn={() => {
-        Animated.spring(scale, {
-          toValue: 0.97,
-          friction: 8,
-          tension: 120,
-          useNativeDriver: true,
-        }).start()
-      }}
-      onPressOut={() => {
-        Animated.spring(scale, {
-          toValue: 1,
-          friction: 8,
-          tension: 120,
-          useNativeDriver: true,
-        }).start()
-      }}
+      style={({ pressed }) => [styles.actionButtonPressable, pressed ? styles.actionButtonPressablePressed : null]}
       onPress={props.onPress}
     >
-      <Animated.View
+      <View
         style={[
           styles.actionButton,
           {
             borderColor: theme.colors.border,
             backgroundColor: theme.colors.surface,
-            transform: [{ scale }],
           },
         ]}
       >
         <Text style={styles.actionButtonText}>{props.label}</Text>
-      </Animated.View>
+      </View>
     </Pressable>
   )
 }
@@ -736,6 +666,10 @@ const styles = StyleSheet.create({
   collapseArrow: {
     fontSize: FONT.title,
     color: "#8B9098",
+    transform: [{ rotate: "0deg" }],
+  },
+  collapseArrowExpanded: {
+    transform: [{ rotate: "180deg" }],
   },
   collapseBody: {
     marginTop: SPACE.sm,
@@ -825,6 +759,10 @@ const styles = StyleSheet.create({
   },
   actionButtonPressable: {
     flex: 1,
+  },
+  actionButtonPressablePressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.985 }],
   },
   actionButton: {
     minHeight: 44,

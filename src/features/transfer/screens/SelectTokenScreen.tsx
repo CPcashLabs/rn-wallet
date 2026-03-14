@@ -1,4 +1,4 @@
-import React, { startTransition, useCallback, useDeferredValue, useMemo, useState } from "react"
+import React, { useCallback, useMemo, useState } from "react"
 
 import { useFocusEffect } from "@react-navigation/native"
 import { Alert, FlatList, StyleSheet, Text, View } from "react-native"
@@ -8,6 +8,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { getTransferChannels } from "@/features/transfer/services/transferApi"
 import { useTransferDraftStore } from "@/features/transfer/store/useTransferDraftStore"
+import { useDeferredValueCompat } from "@/shared/hooks/useDeferredValueCompat"
 import { getBoolean, setBoolean } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 import { useWalletStore } from "@/shared/store/useWalletStore"
@@ -31,7 +32,7 @@ export function SelectTokenScreen({ navigation, route }: Props) {
   const recipientAddress = useTransferDraftStore(state => state.recipientAddress)
   const setSelectedChannel = useTransferDraftStore(state => state.setSelectedChannel)
   const [keyword, setKeyword] = useState("")
-  const deferredKeyword = useDeferredValue(keyword)
+  const deferredKeyword = useDeferredValueCompat(keyword)
   const [channels, setChannels] = useState<ChannelItem[]>([])
   const [loading, setLoading] = useState(true)
   const copouchAddress = route.params?.copouch ?? route.params?.cowallet
@@ -41,15 +42,11 @@ export function SelectTokenScreen({ navigation, route }: Props) {
 
     try {
       const result = await getTransferChannels(chainId, intent)
-      startTransition(() => {
-        setChannels(result)
-      })
+      setChannels(result)
       setBoolean(KvStorageKeys.SelectTokenPageReload, false)
     } catch (error) {
       console.error("[select-token][loadChannels]", error)
-      startTransition(() => {
-        setChannels([])
-      })
+      setChannels([])
       Alert.alert(t("common.errorTitle"), t("transfer.selectToken.loadFailed"))
     } finally {
       setLoading(false)

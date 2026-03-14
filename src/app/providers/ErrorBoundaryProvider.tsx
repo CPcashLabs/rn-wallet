@@ -1,5 +1,6 @@
 import React, { Component, type ErrorInfo, type PropsWithChildren, type ReactNode } from "react"
 
+import { i18n } from "@/shared/i18n"
 import { PlaceholderScreen } from "@/shared/ui/PlaceholderScreen"
 
 type State = {
@@ -21,7 +22,12 @@ class Boundary extends Component<PropsWithChildren, State> {
 
   render(): ReactNode {
     if (this.state.hasError) {
-      return <PlaceholderScreen title="Unexpected error" description="The shell hit an unrecoverable error." />
+      return (
+        <PlaceholderScreen
+          title={i18n.t("common.errors.unexpectedTitle")}
+          description={i18n.t("common.errors.unexpectedBody")}
+        />
+      )
     }
 
     return this.props.children
@@ -31,4 +37,3 @@ class Boundary extends Component<PropsWithChildren, State> {
 export function ErrorBoundaryProvider({ children }: PropsWithChildren) {
   return <Boundary>{children}</Boundary>
 }
-
