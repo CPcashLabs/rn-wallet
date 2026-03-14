@@ -135,6 +135,7 @@ RCT_EXPORT_METHOD(authenticate:(NSDictionary *)options
 - (void)authorizationController:(ASAuthorizationController *)controller didCompleteWithAuthorization:(ASAuthorization *)authorization
 {
   RCTPromiseResolveBlock resolve = self.pendingResolve;
+  RCTPromiseRejectBlock reject = self.pendingReject;
   NSString *operation = self.pendingOperation;
   NSString *userID = self.pendingUserID;
   [self clearPendingCallbacks];
@@ -144,7 +145,16 @@ RCT_EXPORT_METHOD(authenticate:(NSDictionary *)options
   }
 
   if ([operation isEqualToString:@"register"]) {
-    id<ASAuthorizationPublicKeyCredentialRegistration> credential = authorization.credential;
+    id<ASAuthorizationCredential> authorizationCredential = authorization.credential;
+    if (![authorizationCredential conformsToProtocol:@protocol(ASAuthorizationPublicKeyCredentialRegistration)]) {
+      if (reject != nil) {
+        reject(@"invalid_credential", @"Unexpected passkey registration credential.", nil);
+      }
+      return;
+    }
+
+    id<ASAuthorizationPublicKeyCredentialRegistration> credential =
+      (id<ASAuthorizationPublicKeyCredentialRegistration>)authorizationCredential;
     resolve(@{
       @"credentialId": [self base64URLStringFromData:credential.credentialID],
       @"rawId": [self base64URLStringFromData:credential.credentialID],
@@ -155,7 +165,16 @@ RCT_EXPORT_METHOD(authenticate:(NSDictionary *)options
     return;
   }
 
-  id<ASAuthorizationPublicKeyCredentialAssertion> credential = authorization.credential;
+  id<ASAuthorizationCredential> authorizationCredential = authorization.credential;
+  if (![authorizationCredential conformsToProtocol:@protocol(ASAuthorizationPublicKeyCredentialAssertion)]) {
+    if (reject != nil) {
+      reject(@"invalid_credential", @"Unexpected passkey assertion credential.", nil);
+    }
+    return;
+  }
+
+  id<ASAuthorizationPublicKeyCredentialAssertion> credential =
+    (id<ASAuthorizationPublicKeyCredentialAssertion>)authorizationCredential;
   NSString *assertedUserID = [[NSString alloc] initWithData:credential.userID encoding:NSUTF8StringEncoding] ?: @"";
   resolve(@{
     @"credentialId": [self base64URLStringFromData:credential.credentialID],
@@ -204,7 +223,7 @@ RCT_EXPORT_METHOD(authenticate:(NSDictionary *)options
     }
   }
 
-  return UIApplication.sharedApplication.windows.firstObject;
+  return presented.view.window ?: RCTKeyWindow();
 }
 
 - (void)clearPendingCallbacks

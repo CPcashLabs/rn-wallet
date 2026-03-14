@@ -24,6 +24,26 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent-filter>
+        <intent-filter>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="app" />
+            <data android:scheme="cpcash" />
+        </intent-filter>
+        <intent-filter>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" android:host="cp.cash" />
+            <data android:scheme="https" android:host="charprotocol.com" />
+            <data android:scheme="https" android:host="wallet.cp.cash" />
+            <data android:scheme="https" android:host="wallet-preview.cp.cash" />
+            <data android:scheme="https" android:host="charprotocol.dev" />
+            <data android:scheme="https" android:host="wallet.charprotocol.com" />
+            <data android:scheme="https" android:host="wallet.charprotocol.dev" />
+            <data android:scheme="https" android:host="share.cpcash.app" />
+        </intent-filter>
       </activity>
     </application>
 </manifest>

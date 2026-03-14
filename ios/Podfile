@@ -9,6 +9,7 @@ source ENV.fetch('COCOAPODS_SOURCE', 'https://cdn.cocoapods.org/')
 
 platform :ios, min_ios_version_supported
 prepare_react_native_project!
+inhibit_all_warnings!
 
 linkage = ENV['USE_FRAMEWORKS']
 if linkage != nil
@@ -39,5 +40,13 @@ target 'CPCashRN' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    installer.pods_project.targets.each do |target|
+      target.shell_script_build_phases.each do |phase|
+        next unless phase.name == "[CP-User] [RN]Check rncore"
+
+        phase.always_out_of_date = "1"
+      end
+    end
   end
 end

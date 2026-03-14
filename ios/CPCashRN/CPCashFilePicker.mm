@@ -458,7 +458,9 @@ RCT_EXPORT_METHOD(exportFile:(NSString *)filename
 
     (void)mimeType;
     UIActivityViewController *activityViewController = [[UIActivityViewController alloc] initWithActivityItems:@[temporaryURL] applicationActivities:nil];
-    activityViewController.completionWithItemsHandler = ^(UIActivityType * _Nullable activityType, BOOL completed, NSArray * _Nullable returnedItems, NSError * _Nullable activityError) {
+    activityViewController.completionWithItemsHandler = ^(UIActivityType _Nullable activityType, BOOL completed, NSArray * _Nullable returnedItems, NSError * _Nullable activityError) {
+      (void)activityType;
+      (void)returnedItems;
       dispatch_async(dispatch_get_main_queue(), ^{
         if (activityError != nil) {
           [self rejectPendingExportWithCode:@"export_failed"
