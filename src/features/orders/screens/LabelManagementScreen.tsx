@@ -6,7 +6,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import { HeaderTextAction, HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { createCategoryLabel, deleteCategoryLabel, listUserCategoryLabels, type CategoryLabel } from "@/features/orders/services/ordersApi"
-import { PageEmpty, PrimaryButton, SectionCard, SecondaryButton } from "@/features/transfer/components/TransferUi"
+import { PageEmpty, PrimaryButton, SectionCard, SecondaryButton } from "@/shared/ui/AppFlowUi"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"

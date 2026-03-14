@@ -14,7 +14,7 @@ import {
   resolveMessageTarget,
   resolveMessageTitle,
 } from "@/features/messages/utils/messagePresentation"
-import { PageEmpty, SectionCard } from "@/features/transfer/components/TransferUi"
+import { PageEmpty, SectionCard } from "@/shared/ui/AppFlowUi"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { useSocketStore } from "@/shared/store/useSocketStore"
 import { useToast } from "@/shared/toast/useToast"

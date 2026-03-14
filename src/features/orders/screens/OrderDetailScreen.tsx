@@ -22,7 +22,7 @@ import {
   shouldShowRefund,
   shouldShowVoucherAction,
 } from "@/features/orders/utils/orderHelpers"
-import { PageEmpty, PrimaryButton, SecondaryButton, SectionCard } from "@/features/transfer/components/TransferUi"
+import { PageEmpty, PrimaryButton, SecondaryButton, SectionCard } from "@/shared/ui/AppFlowUi"
 import { openExternalUrl } from "@/features/settings/utils/settingsHub"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { useToast } from "@/shared/toast/useToast"

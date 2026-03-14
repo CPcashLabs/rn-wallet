@@ -2,7 +2,7 @@ import React from "react"
 
 import { Pressable, StyleSheet, Text, View } from "react-native"
 
-import { SectionCard } from "@/features/transfer/components/TransferUi"
+import { SectionCard } from "@/shared/ui/AppFlowUi"
 import { formatAddress } from "@/features/home/utils/format"
 import type { OrderListItem } from "@/features/orders/services/ordersApi"
 import { formatMonthKey, formatSignedTokenAmount, formatTimestamp, resolveCounterpartyAddress, resolveOrderStatusLabel, resolveOrderTypeLabel } from "@/features/orders/utils/orderHelpers"

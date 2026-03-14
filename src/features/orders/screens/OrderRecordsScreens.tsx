@@ -28,7 +28,7 @@ import {
   summarizeStatistics,
   type RangePreset,
 } from "@/features/orders/utils/orderHelpers"
-import { PageEmpty, PrimaryButton, SectionCard } from "@/features/transfer/components/TransferUi"
+import { PageEmpty, PrimaryButton, SectionCard } from "@/shared/ui/AppFlowUi"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { useUserStore } from "@/shared/store/useUserStore"
 import { useToast } from "@/shared/toast/useToast"

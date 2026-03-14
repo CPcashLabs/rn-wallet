@@ -12,7 +12,7 @@ import {
   resolveMessageCoin,
   resolveMessageTitle,
 } from "@/features/messages/utils/messagePresentation"
-import { SectionCard } from "@/features/transfer/components/TransferUi"
+import { SectionCard } from "@/shared/ui/AppFlowUi"
 import { useSocketStore } from "@/shared/store/useSocketStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
