@@ -13,9 +13,10 @@ import {
   updateAddressBookEntry,
 } from "@/features/address-book/services/addressBookApi"
 import { useAddressBookStore } from "@/features/address-book/store/useAddressBookStore"
-import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { HeaderTextAction, HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { ApiError } from "@/shared/errors"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppButton } from "@/shared/ui/AppButton"
 
 import type { AddressBookStackParamList } from "@/app/navigation/types"
 
@@ -180,8 +181,9 @@ export function AddressBookEditScreen({ navigation, route }: Props) {
       title={isEdit ? t("home.addressBook.editTitle") : t("home.addressBook.addTitle")}
       right={
         isEdit ? (
-          <Pressable
+          <HeaderTextAction
             disabled={deleting || submitting}
+            label={deleting ? t("common.loading") : t("home.addressBook.delete")}
             onPress={() =>
               Alert.alert(t("home.addressBook.deleteTitle"), t("home.addressBook.deleteBody"), [
                 {
@@ -197,12 +199,8 @@ export function AddressBookEditScreen({ navigation, route }: Props) {
                 },
               ])
             }
-            style={styles.headerButton}
-          >
-            <Text style={[styles.headerButtonText, { color: "#DC2626" }]}>
-              {deleting ? t("common.loading") : t("home.addressBook.delete")}
-            </Text>
-          </Pressable>
+            tone="danger"
+          />
         ) : null
       }
     >
@@ -260,17 +258,13 @@ export function AddressBookEditScreen({ navigation, route }: Props) {
         </View>
       </View>
 
-      <Pressable
+      <AppButton
         disabled={saveDisabled}
+        label={submitting || loading ? t("common.loading") : t("home.addressBook.save")}
         onPress={() => {
           void save()
         }}
-        style={[styles.primaryButton, { backgroundColor: theme.colors.primary, opacity: saveDisabled ? 0.65 : 1 }]}
-      >
-        <Text style={styles.primaryButtonText}>
-          {submitting || loading ? t("common.loading") : t("home.addressBook.save")}
-        </Text>
-      </Pressable>
+      />
     </HomeScaffold>
   )
 }
@@ -315,13 +309,6 @@ function resolveAddressBookSaveError(error: unknown, t: (key: string) => string)
 }
 
 const styles = StyleSheet.create({
-  headerButton: {
-    paddingVertical: 8,
-  },
-  headerButtonText: {
-    fontSize: 13,
-    fontWeight: "700",
-  },
   card: {
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 16,
@@ -356,17 +343,6 @@ const styles = StyleSheet.create({
   },
   networkBadgeText: {
     fontSize: 13,
-    fontWeight: "700",
-  },
-  primaryButton: {
-    minHeight: 48,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  primaryButtonText: {
-    color: "#FFFFFF",
-    fontSize: 15,
     fontWeight: "700",
   },
 })

@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react"
 import { ActivityIndicator, Pressable, Text } from "react-native"
 import { useTranslation } from "react-i18next"
 
-import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { HeaderTextAction, HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { getChainList, getExchangeRates, type ExchangeRateItem } from "@/features/settings/services/settingsApi"
 import { getCurrentLanguage, setLanguage } from "@/shared/i18n"
 import { getJson, getNumber, setJson, setNumber } from "@/shared/storage/kvStorage"
@@ -65,7 +65,12 @@ export function UnitScreen({ navigation }: StackProps<"UnitScreen">) {
   }
 
   return (
-    <HomeScaffold canGoBack onBack={navigation.goBack} right={<Pressable onPress={handleSave}><Text style={styles.headerLink}>{t("settingsHub.common.save")}</Text></Pressable>} title={t("settingsHub.unit.title")}>
+    <HomeScaffold
+      canGoBack
+      onBack={navigation.goBack}
+      right={<HeaderTextAction label={t("settingsHub.common.save")} onPress={handleSave} />}
+      title={t("settingsHub.unit.title")}
+    >
       {loading ? <ActivityIndicator /> : null}
       <Card>
         {rates.map(item => (

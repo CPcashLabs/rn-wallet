@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native"
 
 import { SectionCard } from "@/features/transfer/components/TransferUi"
 import type { QrMatrix } from "@/features/receive/utils/qrcode"
+import { AppButton } from "@/shared/ui/AppButton"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 export function SegmentedTabs<T extends string>(props: {
@@ -83,14 +84,10 @@ export function ReceiveOrderCard(props: {
 
       <View style={styles.buttonRow}>
         {props.secondaryLabel && props.onSecondaryPress ? (
-          <Pressable style={[styles.secondaryButton, { borderColor: theme.colors.border }]} onPress={props.onSecondaryPress}>
-            <Text style={[styles.secondaryText, { color: theme.colors.text }]}>{props.secondaryLabel}</Text>
-          </Pressable>
+          <AppButton label={props.secondaryLabel} onPress={props.onSecondaryPress} style={styles.flexButton} variant="secondary" />
         ) : null}
         {props.primaryLabel && props.onPrimaryPress ? (
-          <Pressable style={[styles.primaryButton, { backgroundColor: theme.colors.primary }]} onPress={props.onPrimaryPress}>
-            <Text style={styles.primaryText}>{props.primaryLabel}</Text>
-          </Pressable>
+          <AppButton label={props.primaryLabel} onPress={props.onPrimaryPress} style={styles.flexButton} />
         ) : null}
       </View>
     </SectionCard>
@@ -228,30 +225,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 10,
   },
-  primaryButton: {
+  flexButton: {
     flex: 1,
-    minHeight: 44,
-    borderRadius: 999,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 14,
-  },
-  secondaryButton: {
-    flex: 1,
-    minHeight: 44,
-    borderRadius: 999,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  primaryText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  secondaryText: {
-    fontSize: 14,
-    fontWeight: "700",
   },
 })

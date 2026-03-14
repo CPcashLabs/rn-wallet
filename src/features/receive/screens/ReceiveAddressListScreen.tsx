@@ -8,7 +8,7 @@ import type { ReceiveStackParamList } from "@/app/navigation/types"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { InfoRow, SegmentedTabs } from "@/features/receive/components/ReceiveUi"
 import { createReceiveOrder, getReceiveAddressLimit, getRecentReceiveOrders, type ReceiveOrder } from "@/features/receive/services/receiveApi"
-import { SectionCard } from "@/features/transfer/components/TransferUi"
+import { PrimaryButton, SecondaryButton, SectionCard } from "@/features/transfer/components/TransferUi"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
@@ -110,14 +110,10 @@ export function ReceiveAddressListScreen({ navigation, route }: Props) {
         </ScrollView>
 
         <View style={[styles.footer, { borderTopColor: theme.colors.border, backgroundColor: theme.colors.background }]}>
-          <Pressable
-            onPress={() => navigation.navigate("ReceiveAddressDeleteScreen", params)}
-            style={[styles.lightButton, { borderColor: theme.colors.border }]}
-          >
-            <Text style={[styles.lightText, { color: theme.colors.text }]}>{t("receive.addressList.delete")}</Text>
-          </Pressable>
-          <Pressable
+          <SecondaryButton label={t("receive.addressList.delete")} onPress={() => navigation.navigate("ReceiveAddressDeleteScreen", params)} />
+          <PrimaryButton
             disabled={creating || !walletAddress || !params?.sendCoinCode || !params?.recvCoinCode}
+            label={creating ? t("common.loading") : t("receive.addressList.addNew")}
             onPress={() => {
               if (!walletAddress || !params?.sendCoinCode || !params?.recvCoinCode) {
                 return
@@ -153,10 +149,8 @@ export function ReceiveAddressListScreen({ navigation, route }: Props) {
                 }
               })()
             }}
-            style={[styles.primaryButton, { backgroundColor: theme.colors.primary, opacity: creating ? 0.6 : 1 }]}
-          >
-            <Text style={styles.primaryText}>{creating ? t("common.loading") : t("receive.addressList.addNew")}</Text>
-          </Pressable>
+            style={styles.flexButton}
+          />
         </View>
       </View>
     </HomeScaffold>
@@ -202,28 +196,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 10,
   },
-  lightButton: {
+  flexButton: {
     flex: 1,
-    minHeight: 46,
-    borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  lightText: {
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  primaryButton: {
-    flex: 1,
-    minHeight: 46,
-    borderRadius: 999,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  primaryText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "700",
   },
 })

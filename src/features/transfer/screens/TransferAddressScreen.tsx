@@ -7,6 +7,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import { useAddressBookStore } from "@/features/address-book/store/useAddressBookStore"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { PrimaryButton } from "@/features/transfer/components/TransferUi"
 import { formatAddress, formatDateTime } from "@/features/home/utils/format"
 import { getRecentTransferEntries, type TransferChannel } from "@/features/transfer/services/transferApi"
 import { useTransferDraftStore, type TransferAddressSource } from "@/features/transfer/store/useTransferDraftStore"
@@ -429,13 +430,7 @@ export function TransferAddressScreen({ navigation, route }: Props) {
           )}
         </View>
 
-        <Pressable
-          disabled={!isAddressValid}
-          onPress={handleNext}
-          style={[styles.primaryButton, { backgroundColor: theme.colors.primary, opacity: isAddressValid ? 1 : 0.65 }]}
-        >
-          <Text style={styles.primaryButtonText}>{t("transfer.address.next")}</Text>
-        </Pressable>
+        <PrimaryButton disabled={!isAddressValid} label={t("transfer.address.next")} onPress={handleNext} />
       </ScrollView>
     </HomeScaffold>
   )
@@ -612,18 +607,6 @@ const styles = StyleSheet.create({
   },
   rowArrow: {
     fontSize: 18,
-  },
-  primaryButton: {
-    minHeight: 48,
-    borderRadius: 999,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 8,
-  },
-  primaryButtonText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "700",
   },
   emptyState: {
     minHeight: 140,

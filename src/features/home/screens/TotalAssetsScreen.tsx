@@ -4,7 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
-import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { HeaderTextAction, HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { formatCurrency, formatDateTime, formatTokenAmount } from "@/features/home/utils/format"
 import { getBoolean, setBoolean } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
@@ -68,11 +68,11 @@ export function TotalAssetsScreen({ navigation }: Props) {
       onBack={navigation.goBack}
       title={t("home.totalAssets.title")}
       right={
-        <Pressable onPress={() => void refreshCoins(chainId)} style={styles.refreshButton}>
-          <Text style={[styles.refreshText, { color: theme.colors.primary }]}>
-            {refreshing ? t("common.loading") : t("home.totalAssets.refresh")}
-          </Text>
-        </Pressable>
+        <HeaderTextAction
+          disabled={refreshing}
+          label={refreshing ? t("common.loading") : t("home.totalAssets.refresh")}
+          onPress={() => void refreshCoins(chainId)}
+        />
       }
       scroll={false}
     >
@@ -126,14 +126,6 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     gap: 12,
-  },
-  refreshButton: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  refreshText: {
-    fontSize: 13,
-    fontWeight: "700",
   },
   totalCard: {
     borderRadius: 20,

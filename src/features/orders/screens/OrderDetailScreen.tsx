@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useCallback, useMemo, useState } from "react"
 
+import { useFocusEffect } from "@react-navigation/native"
 import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
@@ -7,7 +8,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { formatDateTime } from "@/features/home/utils/format"
 import { ActionRow, StatusHero } from "@/features/orders/components/OrdersUi"
-import { confirmOrder, getOrderDetail, type OrderDetail } from "@/features/orders/services/ordersApi"
+import { confirmOrder, findOrderLabels, getOrderDetail, type OrderDetail, type OrderLabelBinding } from "@/features/orders/services/ordersApi"
 import {
   formatAddressLabel,
   resolveCounterpartyLabel,
@@ -30,42 +31,64 @@ import type { OrdersStackParamList } from "@/app/navigation/types"
 
 type Props = NativeStackScreenProps<OrdersStackParamList, "OrderDetailScreen">
 
+const EMPTY_LABEL_BINDING: OrderLabelBinding = {
+  notes: "",
+  notesImageUrl: "",
+  labels: [],
+}
+
 export function OrderDetailScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
   const { showToast } = useToast()
   const orderSn = route.params.orderSn
   const [detail, setDetail] = useState<OrderDetail | null>(null)
+  const [labelBinding, setLabelBinding] = useState<OrderLabelBinding>(EMPTY_LABEL_BINDING)
   const [loading, setLoading] = useState(true)
   const [confirming, setConfirming] = useState(false)
 
-  useEffect(() => {
-    let active = true
-
+  const loadOrderDetail = useCallback(async () => {
+    setLoading(true)
     void (async () => {
       try {
-        const response = await getOrderDetail(orderSn)
-        if (active) {
-          setDetail(response)
-        }
+        const [response, binding] = await Promise.all([getOrderDetail(orderSn), findOrderLabels(orderSn).catch(() => null)])
+        setDetail(response)
+        setLabelBinding(
+          binding ?? {
+            notes: response.note,
+            notesImageUrl: response.notesImageUrl,
+            labels: [],
+          },
+        )
       } catch {
-        if (active) {
-          Alert.alert(t("common.errorTitle"), t("orders.detail.loadFailed"))
-        }
+        setDetail(null)
+        setLabelBinding(EMPTY_LABEL_BINDING)
+        Alert.alert(t("common.errorTitle"), t("orders.detail.loadFailed"))
       } finally {
-        if (active) {
-          setLoading(false)
-        }
+        setLoading(false)
       }
     })()
-
-    return () => {
-      active = false
-    }
   }, [orderSn, t])
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadOrderDetail()
+    }, [loadOrderDetail]),
+  )
 
   const counterpartyAddress = useMemo(() => (detail ? resolveDetailCounterparty(detail) : ""), [detail])
   const explorerUrl = useMemo(() => (detail ? resolveOrderExplorerUrl(detail) : ""), [detail])
+  const previewLabels = useMemo(() => labelBinding.labels.slice(0, 3), [labelBinding.labels])
+  const notePreview = useMemo(() => {
+    const next = labelBinding.notes.trim() || detail?.note.trim() || ""
+    return next || t("orders.detail.notesSummaryEmpty")
+  }, [detail?.note, labelBinding.notes, t])
+  const noteImageUrl = labelBinding.notesImageUrl || detail?.notesImageUrl || ""
+  const hasTagsNotesContent = Boolean(previewLabels.length || labelBinding.notes.trim() || noteImageUrl)
+  const showVoucherAction = detail ? shouldShowVoucherAction(detail.orderType, detail.status) : false
+  const showBillActions = detail ? shouldShowBillAction(detail.status) : false
+  const showHistoryAction = detail ? shouldShowHistoryAction(detail.status) && Boolean(counterpartyAddress) : false
+  const showRefundAction = detail ? shouldShowRefund(detail) : false
 
   const handleConfirm = async () => {
     if (!detail) {
@@ -140,82 +163,110 @@ export function OrderDetailScreen({ navigation, route }: Props) {
             </SectionCard>
 
             <SectionCard>
-              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("orders.detail.notes")}</Text>
-              <Text style={[styles.body, { color: theme.colors.text }]}>{detail.note || t("orders.detail.noNotes")}</Text>
-              {detail.notesImageUrl ? <Image source={{ uri: detail.notesImageUrl }} style={styles.previewImage} /> : null}
-              <View style={styles.noteActions}>
-                <SecondaryButton
+              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("orders.detail.notesSectionTitle")}</Text>
+              {previewLabels.length > 0 ? (
+                <View style={styles.tagWrap}>
+                  {previewLabels.map(label => (
+                    <View key={label.id} style={styles.tagChip}>
+                      <Text style={styles.tagChipText}>{label.name}</Text>
+                    </View>
+                  ))}
+                  {labelBinding.labels.length > previewLabels.length ? (
+                    <Text style={[styles.tagMoreText, { color: theme.colors.mutedText }]}>+{labelBinding.labels.length - previewLabels.length}</Text>
+                  ) : null}
+                </View>
+              ) : null}
+              <Text style={[styles.body, { color: hasTagsNotesContent ? theme.colors.text : theme.colors.mutedText }]}>{notePreview}</Text>
+              {noteImageUrl ? <Image source={{ uri: noteImageUrl }} style={styles.previewImage} /> : null}
+              <View style={styles.actionGroup}>
+                <ActionRow
                   label={t("orders.detail.editTags")}
+                  body={t("orders.detail.editTagsBody")}
                   onPress={() =>
                     navigation.navigate("TagsNotesScreen", {
                       orderSn,
                     })
                   }
                 />
-                <SecondaryButton label={t("orders.detail.manageLabels")} onPress={() => navigation.navigate("LabelManagementScreen")} />
+                <ActionRow
+                  label={t("orders.detail.manageLabels")}
+                  body={t("orders.detail.manageLabelsBody")}
+                  onPress={() => navigation.navigate("LabelManagementScreen")}
+                />
               </View>
             </SectionCard>
 
-            <SectionCard>
-              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("orders.detail.actionsTitle")}</Text>
+            {showVoucherAction || showBillActions || showRefundAction ? (
+              <SectionCard>
+                <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("orders.detail.billManagementTitle")}</Text>
+                <View style={styles.actionGroup}>
+                  {showVoucherAction ? (
+                    <ActionRow
+                      label={t("orders.detail.transferVoucher")}
+                      body={t("orders.detail.transferVoucherBody")}
+                      onPress={() => navigation.navigate("OrderVoucherScreen", { orderSn })}
+                    />
+                  ) : null}
+                  {showBillActions ? (
+                    <ActionRow
+                      label={t("orders.detail.reimburse")}
+                      body={t("orders.detail.reimburseBody")}
+                      onPress={() => navigation.navigate("ReimburseScreen", { orderSn })}
+                    />
+                  ) : null}
+                  {showBillActions ? (
+                    <ActionRow
+                      label={t("orders.detail.flowProof")}
+                      body={t("orders.detail.flowProofBody")}
+                      onPress={() => navigation.navigate("FlowProofScreen", { orderSn })}
+                    />
+                  ) : null}
+                  {showBillActions ? (
+                    <ActionRow
+                      label={t("orders.detail.digitalReceipt")}
+                      body={t("orders.detail.digitalReceiptBody")}
+                      onPress={() => navigation.navigate("DigitalReceiptScreen", { orderSn })}
+                    />
+                  ) : null}
+                  {showRefundAction ? (
+                    <ActionRow
+                      label={t("orders.detail.refundDetail")}
+                      body={t("orders.detail.refundDetailBody")}
+                      onPress={() => navigation.navigate("RefundDetailScreen", { orderSn })}
+                    />
+                  ) : null}
+                </View>
+              </SectionCard>
+            ) : null}
 
-              {shouldShowHistoryAction(detail.status) && counterpartyAddress ? (
-                <ActionRow
-                  label={t("orders.detail.viewRecords")}
-                  body={t("orders.detail.viewRecordsBody")}
-                  onPress={() => navigation.navigate("TxlogsByAddressScreen", { address: counterpartyAddress })}
-                />
-              ) : null}
-
-              {shouldShowVoucherAction(detail.orderType, detail.status) ? (
-                <ActionRow
-                  label={t("orders.detail.transferVoucher")}
-                  body={t("orders.detail.transferVoucherBody")}
-                  onPress={() => navigation.navigate("OrderVoucherScreen", { orderSn })}
-                />
-              ) : null}
-
-              {shouldShowBillAction(detail.status) ? (
-                <>
-                  <ActionRow
-                    label={t("orders.detail.reimburse")}
-                    body={t("orders.detail.reimburseBody")}
-                    onPress={() => navigation.navigate("ReimburseScreen", { orderSn })}
-                  />
-                  <ActionRow
-                    label={t("orders.detail.flowProof")}
-                    body={t("orders.detail.flowProofBody")}
-                    onPress={() => navigation.navigate("FlowProofScreen", { orderSn })}
-                  />
-                  <ActionRow
-                    label={t("orders.detail.digitalReceipt")}
-                    body={t("orders.detail.digitalReceiptBody")}
-                    onPress={() => navigation.navigate("DigitalReceiptScreen", { orderSn })}
-                  />
-                  <ActionRow
-                    label={t("orders.detail.splitDetail")}
-                    body={t("orders.detail.splitDetailBody")}
-                    onPress={() => navigation.navigate("SplitDetailScreen", { orderSn })}
-                  />
-                </>
-              ) : null}
-
-              {shouldShowRefund(detail) ? (
-                <ActionRow
-                  label={t("orders.detail.refundDetail")}
-                  body={t("orders.detail.refundDetailBody")}
-                  onPress={() => navigation.navigate("RefundDetailScreen", { orderSn })}
-                />
-              ) : null}
-
-              {shouldShowBillAction(detail.status) ? (
-                <ActionRow
-                  label={t("orders.detail.openExplorer")}
-                  body={t("orders.detail.openExplorerBody")}
-                  onPress={() => void handleOpenExplorer()}
-                />
-              ) : null}
-            </SectionCard>
+            {showHistoryAction || showBillActions ? (
+              <SectionCard>
+                <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("orders.detail.relatedTitle")}</Text>
+                <View style={styles.actionGroup}>
+                  {showHistoryAction ? (
+                    <ActionRow
+                      label={t("orders.detail.viewRecords")}
+                      body={t("orders.detail.viewRecordsBody")}
+                      onPress={() => navigation.navigate("TxlogsByAddressScreen", { address: counterpartyAddress })}
+                    />
+                  ) : null}
+                  {showBillActions ? (
+                    <ActionRow
+                      label={t("orders.detail.splitDetail")}
+                      body={t("orders.detail.splitDetailBody")}
+                      onPress={() => navigation.navigate("SplitDetailScreen", { orderSn })}
+                    />
+                  ) : null}
+                  {showBillActions ? (
+                    <ActionRow
+                      label={t("orders.detail.openExplorer")}
+                      body={t("orders.detail.openExplorerBody")}
+                      onPress={() => void handleOpenExplorer()}
+                    />
+                  ) : null}
+                </View>
+              </SectionCard>
+            ) : null}
 
             {shouldShowConfirm(detail) ? (
               <PrimaryButton
@@ -267,6 +318,27 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: "#E2E8F0",
   },
+  tagWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 8,
+  },
+  tagChip: {
+    borderRadius: 999,
+    backgroundColor: "#DFF7F3",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  tagChipText: {
+    color: "#0F766E",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  tagMoreText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
   fieldRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -281,7 +353,7 @@ const styles = StyleSheet.create({
     textAlign: "right",
     fontSize: 14,
   },
-  noteActions: {
-    gap: 10,
+  actionGroup: {
+    gap: 2,
   },
 })

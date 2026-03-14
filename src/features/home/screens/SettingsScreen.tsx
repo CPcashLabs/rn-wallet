@@ -18,6 +18,7 @@ import { DEFAULT_WALLET_CHAIN_ID, useWalletStore } from "@/shared/store/useWalle
 import { useThemeStore, type ThemeMode } from "@/shared/store/useThemeStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { persistThemePreference } from "@/shared/theme/themePersistence"
+import { AppButton } from "@/shared/ui/AppButton"
 
 import type { SettingsStackParamList } from "@/app/navigation/types"
 
@@ -132,9 +133,7 @@ export function SettingsScreen({ navigation }: Props) {
         <SettingsRow label={t("settingsHub.about.title")} onPress={() => navigation.navigate("AboutScreen")} />
       </View>
 
-      <Pressable onPress={() => void logout()} style={[styles.logoutButton, { backgroundColor: "#DC2626" }]}>
-        <Text style={styles.logoutText}>{t("home.settings.logout")}</Text>
-      </Pressable>
+      <AppButton label={t("home.settings.logout")} onPress={() => void logout()} tone="danger" />
     </HomeScaffold>
   )
 }
@@ -189,16 +188,5 @@ const styles = StyleSheet.create({
   },
   rowArrow: {
     fontSize: 18,
-  },
-  logoutButton: {
-    minHeight: 48,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  logoutText: {
-    color: "#FFFFFF",
-    fontWeight: "700",
-    fontSize: 15,
   },
 })

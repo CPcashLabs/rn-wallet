@@ -4,7 +4,7 @@ import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Tex
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
-import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { HeaderTextAction, HomeScaffold } from "@/features/home/components/HomeScaffold"
 import {
   bindCategoryLabel,
   findOrderLabels,
@@ -144,11 +144,7 @@ export function TagsNotesScreen({ navigation, route }: Props) {
       onBack={navigation.goBack}
       title={t("orders.tags.title")}
       scroll={false}
-      right={
-        <Pressable onPress={() => navigation.navigate("TagsNotesEditScreen")} style={styles.headerButton}>
-          <Text style={[styles.headerButtonText, { color: theme.colors.primary }]}>{t("orders.tags.manage")}</Text>
-        </Pressable>
-      }
+      right={<HeaderTextAction label={t("orders.tags.manage")} onPress={() => navigation.navigate("TagsNotesEditScreen")} />}
     >
       <ScrollView contentContainerStyle={styles.content}>
         {loading ? (
@@ -229,14 +225,6 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     gap: 12,
-  },
-  headerButton: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  headerButtonText: {
-    fontSize: 13,
-    fontWeight: "700",
   },
   loadingWrap: {
     minHeight: 120,

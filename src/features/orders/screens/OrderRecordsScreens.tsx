@@ -4,7 +4,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, Text
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
-import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { HeaderTextAction, HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { formatAddress } from "@/features/home/utils/format"
 import { ActionRow, FilterChip, MonthHeader, OrderListCard, SummaryGrid, SuccessStateCard } from "@/features/orders/components/OrdersUi"
 import { exportOrderBillFile } from "@/features/orders/services/orderExport"
@@ -201,9 +201,7 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
       scroll={false}
       right={
         props.openStatistics ? (
-          <Pressable onPress={() => props.navigation.navigate("OrderBillScreen")} style={styles.headerButton}>
-            <Text style={[styles.headerButtonText, { color: theme.colors.primary }]}>{t("orders.list.statistics")}</Text>
-          </Pressable>
+          <HeaderTextAction label={t("orders.list.statistics")} onPress={() => props.navigation.navigate("OrderBillScreen")} />
         ) : null
       }
     >
@@ -352,7 +350,8 @@ export function OrderBillScreen({ navigation, route }: OrderBillProps) {
       scroll={false}
       right={
         !loading && rangeSelection.startedAt && rangeSelection.endedAt ? (
-          <Pressable
+          <HeaderTextAction
+            label={t("orders.bill.export")}
             onPress={() =>
               navigation.navigate("BillExportScreen", {
                 startedAt: rangeSelection.startedAt as string,
@@ -362,10 +361,7 @@ export function OrderBillScreen({ navigation, route }: OrderBillProps) {
                 email: profile?.email,
               })
             }
-            style={styles.headerButton}
-          >
-            <Text style={[styles.headerButtonText, { color: theme.colors.primary }]}>{t("orders.bill.export")}</Text>
-          </Pressable>
+          />
         ) : null
       }
     >
@@ -510,14 +506,6 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     gap: 12,
-  },
-  headerButton: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  headerButtonText: {
-    fontSize: 13,
-    fontWeight: "700",
   },
   sectionTitle: {
     fontSize: 15,

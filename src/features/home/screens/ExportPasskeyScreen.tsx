@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react"
 
-import { Pressable, StyleSheet, Text, View } from "react-native"
+import { StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -10,6 +10,7 @@ import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useUserStore } from "@/shared/store/useUserStore"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppButton } from "@/shared/ui/AppButton"
 
 import type { SettingsStackParamList } from "@/app/navigation/types"
 
@@ -107,40 +108,25 @@ export function ExportPasskeyScreen({ navigation }: Props) {
       </View>
 
       <View style={styles.footer}>
-        <Pressable
+        <AppButton
           disabled={!isPasskeyLogin || isStepLocked || finishing}
-          onPress={proceed}
-          style={[
-            styles.primaryButton,
-            {
-              backgroundColor: theme.colors.primary,
-              opacity: !isPasskeyLogin || isStepLocked || finishing ? 0.65 : 1,
-            },
-          ]}
-        >
-          <Text style={styles.primaryButtonText}>
-            {step < FINAL_STEP
+          label={
+            step < FINAL_STEP
               ? isStepLocked
                 ? t("home.export.nextLocked", { sec: secondsLeft })
                 : t("home.export.next")
               : finishing
                 ? t("common.loading")
-                : t("home.export.done")}
-          </Text>
-        </Pressable>
+                : t("home.export.done")
+          }
+          onPress={proceed}
+        />
 
-        <Pressable
+        <AppButton
+          label={t("home.export.maybeLater")}
           onPress={() => navigation.goBack()}
-          style={[
-            styles.secondaryButton,
-            {
-              borderColor: theme.colors.border,
-              backgroundColor: theme.colors.surface,
-            },
-          ]}
-        >
-          <Text style={[styles.secondaryButtonText, { color: theme.colors.text }]}>{t("home.export.maybeLater")}</Text>
-        </Pressable>
+          variant="secondary"
+        />
       </View>
     </HomeScaffold>
   )
@@ -177,27 +163,5 @@ const styles = StyleSheet.create({
   },
   footer: {
     gap: 10,
-  },
-  primaryButton: {
-    minHeight: 48,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  primaryButtonText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  secondaryButton: {
-    minHeight: 48,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  secondaryButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
   },
 })

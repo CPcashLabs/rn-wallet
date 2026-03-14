@@ -4,7 +4,7 @@ import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Tex
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
-import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { HeaderTextAction, HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { createCategoryLabel, deleteCategoryLabel, listUserCategoryLabels, type CategoryLabel } from "@/features/orders/services/ordersApi"
 import { PageEmpty, PrimaryButton, SectionCard, SecondaryButton } from "@/features/transfer/components/TransferUi"
 import { useToast } from "@/shared/toast/useToast"
@@ -86,11 +86,7 @@ export function LabelManagementScreen({ navigation }: Props) {
       onBack={navigation.goBack}
       title={t("orders.labels.title")}
       scroll={false}
-      right={
-        <Pressable onPress={() => setDialogVisible(true)} style={styles.headerButton}>
-          <Text style={[styles.headerButtonText, { color: theme.colors.primary }]}>{t("orders.labels.add")}</Text>
-        </Pressable>
-      }
+      right={<HeaderTextAction label={t("orders.labels.add")} onPress={() => setDialogVisible(true)} />}
     >
       <ScrollView contentContainerStyle={styles.content}>
         {loading ? (
@@ -139,14 +135,6 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     gap: 12,
-  },
-  headerButton: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  headerButtonText: {
-    fontSize: 13,
-    fontWeight: "700",
   },
   loadingWrap: {
     minHeight: 120,

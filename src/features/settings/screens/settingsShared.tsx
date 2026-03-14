@@ -1,6 +1,6 @@
 import React from "react"
 
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native"
+import { Pressable, StyleSheet, Text, View } from "react-native"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import type { SettingsStackParamList } from "@/app/navigation/types"
@@ -9,6 +9,7 @@ import type { ExchangeRateItem } from "@/features/settings/services/settingsApi"
 import type { GuideSection } from "@/features/settings/utils/settingsHub"
 import { useUserStore } from "@/shared/store/useUserStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppButton } from "@/shared/ui/AppButton"
 
 export type StackProps<T extends keyof SettingsStackParamList> = NativeStackScreenProps<SettingsStackParamList, T>
 
@@ -54,11 +55,7 @@ export function Row(props: { label: string; detail?: string; onPress?: () => voi
 }
 
 export function PrimaryButton(props: { label: string; disabled?: boolean; loading?: boolean; onPress: () => void }) {
-  return (
-    <Pressable disabled={props.disabled || props.loading} onPress={props.onPress} style={[styles.primaryButton, (props.disabled || props.loading) && styles.buttonDisabled]}>
-      {props.loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryButtonText}>{props.label}</Text>}
-    </Pressable>
-  )
+  return <AppButton disabled={props.disabled} label={props.label} loading={props.loading} onPress={props.onPress} />
 }
 
 export function useProfileRefresh() {
@@ -98,21 +95,6 @@ export const styles = StyleSheet.create({
   },
   rowArrow: {
     fontSize: 18,
-  },
-  primaryButton: {
-    minHeight: 48,
-    borderRadius: 14,
-    backgroundColor: "#0F766E",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  primaryButtonText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  buttonDisabled: {
-    opacity: 0.4,
   },
   sectionLabel: {
     fontSize: 14,

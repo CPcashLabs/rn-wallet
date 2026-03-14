@@ -4,7 +4,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
-import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { HeaderTextAction, HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { getMessageList, markAllMessagesRead, markMessageRead, type MessageItem } from "@/features/messages/services/messageApi"
 import {
   formatRelativeTime,
@@ -132,11 +132,7 @@ export function MessageScreen({ navigation }: Props) {
       onBack={navigation.goBack}
       title={t("message.title")}
       scroll={false}
-      right={
-        <Pressable onPress={handleReadAll} style={styles.headerButton}>
-          <Text style={[styles.headerButtonText, { color: theme.colors.primary }]}>{t("message.readAll")}</Text>
-        </Pressable>
-      }
+      right={<HeaderTextAction label={t("message.readAll")} onPress={handleReadAll} />}
     >
       <ScrollView contentContainerStyle={styles.content}>
         {loading ? (
@@ -194,14 +190,6 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     gap: 12,
-  },
-  headerButton: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  headerButtonText: {
-    fontSize: 13,
-    fontWeight: "700",
   },
   loadingWrap: {
     minHeight: 120,
