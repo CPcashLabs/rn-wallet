@@ -7,6 +7,7 @@ import { ErrorBoundaryProvider } from "@/app/providers/ErrorBoundaryProvider"
 import { I18nProvider } from "@/app/providers/I18nProvider"
 import { NavigationProvider } from "@/app/providers/NavigationProvider"
 import { QueryProvider } from "@/app/providers/QueryProvider"
+import { SocketProvider } from "@/app/providers/SocketProvider"
 import { StoreProvider } from "@/app/providers/StoreProvider"
 import { ThemeProvider } from "@/app/providers/ThemeProvider"
 
@@ -17,11 +18,13 @@ export function AppProviders({ children }: PropsWithChildren) {
         <ErrorBoundaryProvider>
           <I18nProvider>
             <StoreProvider>
-              <QueryProvider>
-                <ThemeProvider>
-                  <NavigationProvider>{children}</NavigationProvider>
-                </ThemeProvider>
-              </QueryProvider>
+              <SocketProvider>
+                <QueryProvider>
+                  <ThemeProvider>
+                    <NavigationProvider>{children}</NavigationProvider>
+                  </ThemeProvider>
+                </QueryProvider>
+              </SocketProvider>
             </StoreProvider>
           </I18nProvider>
         </ErrorBoundaryProvider>
@@ -29,4 +32,3 @@ export function AppProviders({ children }: PropsWithChildren) {
     </GestureHandlerRootView>
   )
 }
-

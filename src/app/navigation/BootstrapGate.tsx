@@ -13,6 +13,7 @@ import { DEFAULT_WALLET_CHAIN_ID, useWalletStore } from "@/shared/store/useWalle
 
 import type { RootStackParamList } from "@/app/navigation/types"
 import { BootScreen } from "@/app/screens/BootScreen"
+import { resolveSupportRoute } from "@/features/support/utils/supportRoutes"
 
 type Navigation = NativeStackNavigationProp<RootStackParamList, "BootstrapGate">
 
@@ -63,9 +64,10 @@ export function BootstrapGate() {
           address: null,
           chainId: getString(KvStorageKeys.WalletChainId) ?? DEFAULT_WALLET_CHAIN_ID,
         })
+        const supportRoute = resolveSupportRoute("bootstrap_failed")
         navigation.reset({
           index: 0,
-          routes: [{ name: "SupportStack", params: { screen: "SupportPlaceholder", params: { reason: "bootstrap_failed" } } }],
+          routes: [{ name: "SupportStack", params: supportRoute }],
         })
       } finally {
         if (mounted) {

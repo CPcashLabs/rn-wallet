@@ -6,6 +6,7 @@ type SocketState = {
   lastEvent: { type?: string; payload?: unknown; at: number } | null
   setConnected: (connected: boolean) => void
   touchEvent: (event?: { type?: string; payload?: unknown }) => void
+  reset: () => void
 }
 
 export const useSocketStore = create<SocketState>(set => ({
@@ -20,5 +21,11 @@ export const useSocketStore = create<SocketState>(set => ({
         ...event,
         at: Date.now(),
       },
+    }),
+  reset: () =>
+    set({
+      connected: false,
+      lastEventAt: null,
+      lastEvent: null,
     }),
 }))

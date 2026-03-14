@@ -132,3 +132,14 @@ export function resolvePasskeyRpId() {
 
   return __DEV__ ? DEFAULT_DEBUG_PASSKEY_RP_ID : DEFAULT_RELEASE_PASSKEY_RP_ID
 }
+
+export function resolveWebSocketUrl(accessToken?: string) {
+  const url = new URL("/ws", resolveAuthBaseUrl())
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:"
+
+  if (accessToken) {
+    url.searchParams.set("access_token", accessToken)
+  }
+
+  return url.toString()
+}

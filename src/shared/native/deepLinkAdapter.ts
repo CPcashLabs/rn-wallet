@@ -1,5 +1,6 @@
+import { Linking } from "react-native"
+
 import type { AdapterResult, CapabilityDescriptor } from "@/shared/native/types"
-import { unavailableResult } from "@/shared/native/types"
 
 export type ParsedDeepLink = {
   raw: string | null
@@ -57,8 +58,18 @@ export const deepLinkAdapter: DeepLinkAdapter = {
       }
     }
   },
-  async open() {
-    return unavailableResult("deepLink.open")
+  async open(url) {
+    try {
+      await Linking.openURL(url)
+      return {
+        ok: true,
+        data: undefined,
+      }
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof Error ? error : new Error("Failed to open URL"),
+      }
+    }
   },
 }
-

@@ -260,7 +260,37 @@ export type MainTabParamList = {
 }
 
 export type SupportStackParamList = {
-  SupportPlaceholder: { reason?: string } | undefined
+  NoNetworkScreen:
+    | {
+        mode?: "summary" | "details"
+        failedPath?: string
+      }
+    | undefined
+  NoWechatScreen:
+    | {
+        target?: string
+      }
+    | undefined
+  MaintenanceScreen:
+    | {
+        reason?: string
+      }
+    | undefined
+  NotFoundScreen:
+    | {
+        path?: string
+      }
+    | undefined
+  AddDesktopGuideScreen:
+    | {
+        source?: "login" | "manual"
+      }
+    | undefined
+  WechatInterceptorScreen:
+    | {
+        targetPath?: string
+      }
+    | undefined
 }
 
 export type RootStackParamList = {
