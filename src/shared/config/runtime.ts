@@ -28,11 +28,10 @@ function normalizeHost(value: string) {
     return ""
   }
 
-  try {
-    return new URL(trimmed).hostname
-  } catch {
-    return trimmed.replace(/^https?:\/\//, "").replace(/\/+$/, "")
-  }
+  return trimmed
+    .replace(/^[a-z][a-z0-9+.-]*:\/\//i, "")
+    .split(/[/?#]/, 1)[0]
+    .replace(/\/+$/, "")
 }
 
 function readPasskeyRpIdOverride() {
@@ -133,13 +132,30 @@ export function resolvePasskeyRpId() {
   return __DEV__ ? DEFAULT_DEBUG_PASSKEY_RP_ID : DEFAULT_RELEASE_PASSKEY_RP_ID
 }
 
-export function resolveWebSocketUrl(accessToken?: string) {
-  const url = new URL("/ws", resolveAuthBaseUrl())
-  url.protocol = url.protocol === "https:" ? "wss:" : "ws:"
+function toWebSocketOrigin(value: string) {
+  const normalized = normalizeBaseUrl(value)
 
-  if (accessToken) {
-    url.searchParams.set("access_token", accessToken)
+  if (normalized.startsWith("https://")) {
+    return `wss://${normalized.slice("https://".length)}`
   }
 
-  return url.toString()
+  if (normalized.startsWith("http://")) {
+    return `ws://${normalized.slice("http://".length)}`
+  }
+
+  if (normalized.startsWith("wss://") || normalized.startsWith("ws://")) {
+    return normalized
+  }
+
+  return `wss://${normalized.replace(/^\/+/, "")}`
+}
+
+export function resolveWebSocketUrl(accessToken?: string) {
+  const base = `${toWebSocketOrigin(resolveAuthBaseUrl())}/ws`
+
+  if (!accessToken) {
+    return base
+  }
+
+  return `${base}?access_token=${encodeURIComponent(accessToken)}`
 }

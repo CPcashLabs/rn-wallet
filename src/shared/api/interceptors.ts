@@ -3,12 +3,14 @@ import type { AxiosInstance, InternalAxiosRequestConfig } from "axios"
 import { clearAuthSession, readTokenPair } from "@/shared/api/auth-session"
 import { mapApiError } from "@/shared/api/error-mapping"
 import { resolveAcceptLanguage } from "@/shared/api/language-header"
-import { ApiError, AuthExpiredError } from "@/shared/errors"
+import { ApiError, AuthExpiredError, NetworkUnavailableError } from "@/shared/errors"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 
 type UnauthorizedHandler = (() => void) | null
+type NetworkUnavailableHandler = (() => void) | null
 
 let unauthorizedHandler: UnauthorizedHandler = null
+let networkUnavailableHandler: NetworkUnavailableHandler = null
 
 function isAuthTokenEndpoint(url?: string) {
   return typeof url === "string" && url.includes("/api/auth/oauth2/token")
@@ -16,6 +18,10 @@ function isAuthTokenEndpoint(url?: string) {
 
 export function setUnauthorizedHandler(handler: UnauthorizedHandler) {
   unauthorizedHandler = handler
+}
+
+export function setNetworkUnavailableHandler(handler: NetworkUnavailableHandler) {
+  networkUnavailableHandler = handler
 }
 
 export function registerInterceptors(client: AxiosInstance) {
@@ -43,6 +49,10 @@ export function registerInterceptors(client: AxiosInstance) {
         await clearAuthSession()
         useAuthStore.getState().clearSession()
         unauthorizedHandler?.()
+      }
+
+      if (mappedError instanceof NetworkUnavailableError) {
+        networkUnavailableHandler?.()
       }
 
       return Promise.reject(mappedError)
