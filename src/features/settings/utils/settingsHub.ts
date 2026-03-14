@@ -1,7 +1,7 @@
-import { Linking } from "react-native"
 import QRCode from "qrcode"
 
 import { getCurrentLanguage } from "@/shared/i18n"
+import { deepLinkAdapter } from "@/shared/native"
 
 export type GuideSection = "wallet" | "faq" | "knowledge" | "safety"
 
@@ -71,7 +71,10 @@ export function getGuideLinks(section: GuideSection) {
 }
 
 export async function openExternalUrl(url: string) {
-  await Linking.openURL(url)
+  const result = await deepLinkAdapter.open(url)
+  if (!result.ok) {
+    throw result.error
+  }
 }
 
 export async function buildInviteQrDataUrl(url: string) {

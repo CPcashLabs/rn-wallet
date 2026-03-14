@@ -1,11 +1,12 @@
 import React from "react"
 
-import { Alert, Linking, Text } from "react-native"
+import { Alert, Text } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import { AuthButton } from "@/features/auth/components/AuthButton"
 import { AuthScaffold } from "@/features/auth/components/AuthScaffold"
+import { deepLinkAdapter } from "@/shared/native"
 import type { AuthStackParamList } from "@/app/navigation/types"
 
 type Props = NativeStackScreenProps<AuthStackParamList, "PasskeyIntroScreen">
@@ -17,7 +18,10 @@ export function PasskeyIntroScreen({ navigation }: Props) {
 
   const openGuide = async () => {
     try {
-      await Linking.openURL(PASSKEY_GUIDE_URL)
+      const result = await deepLinkAdapter.open(PASSKEY_GUIDE_URL)
+      if (!result.ok) {
+        throw result.error
+      }
     } catch {
       Alert.alert(t("common.errorTitle"), t("auth.errors.openExternalFailed"))
     }
