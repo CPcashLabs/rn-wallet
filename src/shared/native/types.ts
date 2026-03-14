@@ -12,7 +12,7 @@ export type CapabilityDescriptor = {
 export function unsupportedCapability(capability: string): CapabilityDescriptor {
   return {
     supported: false,
-    reason: `${capability} is not implemented in WP-00`,
+    reason: `${capability} is not available in the current app version`,
   }
 }
 

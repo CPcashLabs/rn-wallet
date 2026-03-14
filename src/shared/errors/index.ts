@@ -30,7 +30,7 @@ export class NativeCapabilityUnavailableError extends Error {
   capability: string
 
   constructor(capability: string, message?: string) {
-    super(message ?? `${capability} is not available in WP-00`)
+    super(message ?? `${capability} is not available in the current app version`)
     this.name = "NativeCapabilityUnavailableError"
     this.capability = capability
   }
