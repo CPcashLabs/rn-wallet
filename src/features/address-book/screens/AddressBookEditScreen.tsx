@@ -12,9 +12,9 @@ import {
   type AddressBookEntry,
   updateAddressBookEntry,
 } from "@/features/address-book/services/addressBookApi"
+import { useAddressBookStore } from "@/features/address-book/store/useAddressBookStore"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { ApiError } from "@/shared/errors"
-import { useUserAddressBookStore } from "@/shared/store/useUserAddressBookStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 import type { AddressBookStackParamList } from "@/app/navigation/types"
@@ -27,9 +27,9 @@ const MAX_NAME_LENGTH = 20
 export function AddressBookEditScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
-  const refreshEntries = useUserAddressBookStore(state => state.refreshEntries)
-  const upsertEntry = useUserAddressBookStore(state => state.upsertEntry)
-  const removeEntry = useUserAddressBookStore(state => state.removeEntry)
+  const refreshEntries = useAddressBookStore(state => state.refreshEntries)
+  const upsertEntry = useAddressBookStore(state => state.upsertEntry)
+  const removeEntry = useAddressBookStore(state => state.removeEntry)
   const [name, setName] = useState("")
   const [walletAddress, setWalletAddress] = useState(route.params?.initialAddress ?? "")
   const [chainType, setChainType] = useState<AddressBookChainType | null>(route.params?.chainType ?? null)
@@ -128,7 +128,7 @@ export function AddressBookEditScreen({ navigation, route }: Props) {
 
       await refreshEntries()
 
-      const latestEntry = useUserAddressBookStore.getState().findByAddress(draft.walletAddress)
+      const latestEntry = useAddressBookStore.getState().findByAddress(draft.walletAddress)
       if (latestEntry) {
         upsertEntry(latestEntry)
       }

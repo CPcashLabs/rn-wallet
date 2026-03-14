@@ -4,9 +4,9 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
+import { useAddressBookStore } from "@/features/address-book/store/useAddressBookStore"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { formatAddress } from "@/features/home/utils/format"
-import { useUserAddressBookStore } from "@/shared/store/useUserAddressBookStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 import type { AddressBookStackParamList } from "@/app/navigation/types"
@@ -16,12 +16,12 @@ type Props = NativeStackScreenProps<AddressBookStackParamList, "AddressBookListS
 export function AddressBookListScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
-  const entries = useUserAddressBookStore(state => state.entries)
-  const loading = useUserAddressBookStore(state => state.loading)
-  const refreshing = useUserAddressBookStore(state => state.refreshing)
-  const loadEntries = useUserAddressBookStore(state => state.loadEntries)
-  const refreshEntries = useUserAddressBookStore(state => state.refreshEntries)
-  const setSelectedEntry = useUserAddressBookStore(state => state.setSelectedEntry)
+  const entries = useAddressBookStore(state => state.entries)
+  const loading = useAddressBookStore(state => state.loading)
+  const refreshing = useAddressBookStore(state => state.refreshing)
+  const loadEntries = useAddressBookStore(state => state.loadEntries)
+  const refreshEntries = useAddressBookStore(state => state.refreshEntries)
+  const setSelectedEntry = useAddressBookStore(state => state.setSelectedEntry)
   const [keyword, setKeyword] = useState("")
 
   const mode = route.params?.mode ?? "manage"

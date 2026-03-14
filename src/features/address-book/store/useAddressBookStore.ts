@@ -2,7 +2,7 @@ import { create } from "zustand"
 
 import { getAddressBookList, type AddressBookEntry } from "@/features/address-book/services/addressBookApi"
 
-type UserAddressBookState = {
+type AddressBookState = {
   entries: AddressBookEntry[]
   loading: boolean
   refreshing: boolean
@@ -24,7 +24,7 @@ function sortEntries(entries: AddressBookEntry[]) {
   })
 }
 
-export const useUserAddressBookStore = create<UserAddressBookState>((set, get) => ({
+export const useAddressBookStore = create<AddressBookState>((set, get) => ({
   entries: [],
   loading: false,
   refreshing: false,
