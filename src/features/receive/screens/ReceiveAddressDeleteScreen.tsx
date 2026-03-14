@@ -8,6 +8,7 @@ import type { ReceiveStackParamList } from "@/app/navigation/types"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { batchExpireReceiveOrders, getRecentReceiveOrders, type ReceiveOrder } from "@/features/receive/services/receiveApi"
 import { SectionCard } from "@/features/transfer/components/TransferUi"
+import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 type Props = NativeStackScreenProps<ReceiveStackParamList, "ReceiveAddressDeleteScreen">
@@ -15,6 +16,7 @@ type Props = NativeStackScreenProps<ReceiveStackParamList, "ReceiveAddressDelete
 export function ReceiveAddressDeleteScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const params = route.params
   const [items, setItems] = useState<ReceiveOrder[]>([])
   const [selected, setSelected] = useState<string[]>([])
@@ -81,10 +83,10 @@ export function ReceiveAddressDeleteScreen({ navigation, route }: Props) {
                   await batchExpireReceiveOrders({
                     orderSnList: selected,
                   })
-                  Alert.alert(t("common.infoTitle"), t("receive.addressDelete.deleteSuccess"))
+                  showToast({ message: t("receive.addressDelete.deleteSuccess"), tone: "success" })
                   navigation.goBack()
                 } catch {
-                  Alert.alert(t("common.errorTitle"), t("receive.addressDelete.deleteFailed"))
+                  showToast({ message: t("receive.addressDelete.deleteFailed"), tone: "error" })
                 } finally {
                   setSubmitting(false)
                 }

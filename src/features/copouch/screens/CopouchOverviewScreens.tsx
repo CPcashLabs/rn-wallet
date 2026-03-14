@@ -5,7 +5,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 import { Alert, Pressable, Text, View } from "react-native"
 
-import type { CowalletStackParamList } from "@/app/navigation/types"
+import type { CopouchStackParamList } from "@/app/navigation/types"
 import { CopouchScaffold } from "@/features/copouch/components/CopouchScaffold"
 import {
   LoadingCard,
@@ -41,13 +41,15 @@ import { ApiError } from "@/shared/errors"
 import { useSocketStore } from "@/shared/store/useSocketStore"
 import { useUserStore } from "@/shared/store/useUserStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
+import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
-type StackProps<T extends keyof CowalletStackParamList> = NativeStackScreenProps<CowalletStackParamList, T>
+type StackProps<T extends keyof CopouchStackParamList> = NativeStackScreenProps<CopouchStackParamList, T>
 
-export function CowalletBillListScreen({ navigation, route }: StackProps<"CowalletBillListScreen">) {
+export function CopouchBillListScreen({ navigation, route }: StackProps<"CopouchBillListScreen">) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const profile = useUserStore(state => state.profile)
   const { detail, loading, invalidAccess, reload } = useCopouchWalletDetail(route.params.id)
   const [billLoading, setBillLoading] = useState(true)
@@ -111,7 +113,7 @@ export function CowalletBillListScreen({ navigation, route }: StackProps<"Cowall
 
   const handleExport = async () => {
     if (!profile?.email) {
-      Alert.alert(t("common.infoTitle"), t("copouch.bill.exportNeedEmail"))
+      showToast({ message: t("copouch.bill.exportNeedEmail"), tone: "warning" })
       return
     }
 
@@ -122,9 +124,9 @@ export function CowalletBillListScreen({ navigation, route }: StackProps<"Cowall
         email: profile.email,
         orderType: activeFilter.orderTypeList?.length === 1 ? activeFilter.orderTypeList[0] : undefined,
       })
-      Alert.alert(t("common.infoTitle"), t("copouch.bill.exportSuccess", { email: profile.email }))
+      showToast({ message: t("copouch.bill.exportSuccess", { email: profile.email }), tone: "success" })
     } catch {
-      Alert.alert(t("common.errorTitle"), t("copouch.bill.exportFailed"))
+      showToast({ message: t("copouch.bill.exportFailed"), tone: "error" })
     } finally {
       setExporting(false)
     }
@@ -169,10 +171,10 @@ export function CowalletBillListScreen({ navigation, route }: StackProps<"Cowall
             ))}
           </View>
           <View style={styles.inlineLinks}>
-            <Pressable onPress={() => navigation.navigate("CowalletBalanceScreen", { id: route.params.id })}>
+            <Pressable onPress={() => navigation.navigate("CopouchBalanceScreen", { id: route.params.id })}>
               <Text style={[styles.linkText, { color: theme.colors.primary }]}>{t("copouch.bill.openBalance")}</Text>
             </Pressable>
-            <Pressable onPress={() => navigation.navigate("CowalletRemindScreen", { id: route.params.id })}>
+            <Pressable onPress={() => navigation.navigate("CopouchRemindScreen", { id: route.params.id })}>
               <Text style={[styles.linkText, { color: theme.colors.primary }]}>{t("copouch.bill.openRemind")}</Text>
             </Pressable>
           </View>
@@ -210,7 +212,7 @@ export function CowalletBillListScreen({ navigation, route }: StackProps<"Cowall
                   <SecondaryButton
                     label={t("copouch.bill.reallocate")}
                     onPress={() =>
-                      navigation.navigate("CowalletAllocationScreen", {
+                      navigation.navigate("CopouchAllocationScreen", {
                         id: route.params.id,
                         orderSn: item.orderSn,
                       })
@@ -220,7 +222,7 @@ export function CowalletBillListScreen({ navigation, route }: StackProps<"Cowall
                   <SecondaryButton
                     label={t("copouch.bill.viewAllocation")}
                     onPress={() =>
-                      navigation.navigate("CowalletViewAllocationScreen", {
+                      navigation.navigate("CopouchViewAllocationScreen", {
                         id: route.params.id,
                         orderSn: item.orderSn,
                       })
@@ -236,7 +238,7 @@ export function CowalletBillListScreen({ navigation, route }: StackProps<"Cowall
   )
 }
 
-export function CowalletRemindScreen({ navigation, route }: StackProps<"CowalletRemindScreen">) {
+export function CopouchRemindScreen({ navigation, route }: StackProps<"CopouchRemindScreen">) {
   const theme = useAppTheme()
   const { t } = useTranslation()
   const lastEvent = useSocketStore(state => state.lastEvent)
@@ -316,7 +318,7 @@ export function CowalletRemindScreen({ navigation, route }: StackProps<"Cowallet
   )
 }
 
-export function CowalletBalanceScreen({ navigation, route }: StackProps<"CowalletBalanceScreen">) {
+export function CopouchBalanceScreen({ navigation, route }: StackProps<"CopouchBalanceScreen">) {
   const { t } = useTranslation()
   const chainId = useWalletStore(state => state.chainId)
   const [loading, setLoading] = useState(true)

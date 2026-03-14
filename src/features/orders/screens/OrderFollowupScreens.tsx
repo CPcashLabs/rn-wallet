@@ -31,6 +31,7 @@ import { PageEmpty, PrimaryButton, SecondaryButton, SectionCard } from "@/featur
 import { openExternalUrl } from "@/features/settings/utils/settingsHub"
 import { fileAdapter, shareAdapter } from "@/shared/native"
 import { useUserStore } from "@/shared/store/useUserStore"
+import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 import type { OrdersStackParamList } from "@/app/navigation/types"
@@ -132,6 +133,7 @@ function BillDetailScreenBase(props: BillDetailScreenBaseProps) {
 export function OrderVoucherScreen({ navigation, route }: VoucherProps) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const [voucher, setVoucher] = useState<TransferVoucherDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [qrCodeUrl, setQrCodeUrl] = useState("")
@@ -190,7 +192,7 @@ export function OrderVoucherScreen({ navigation, route }: VoucherProps) {
 
     const url = resolveVoucherExternalUrl(voucher)
     if (!url) {
-      Alert.alert(t("common.infoTitle"), t("orders.voucher.linkUnavailable"))
+      showToast({ message: t("orders.voucher.linkUnavailable"), tone: "warning" })
       return
     }
 
@@ -207,7 +209,7 @@ export function OrderVoucherScreen({ navigation, route }: VoucherProps) {
 
   const handleSave = async () => {
     if (!qrCodeUrl) {
-      Alert.alert(t("common.infoTitle"), t("orders.voucher.imageUnavailable"))
+      showToast({ message: t("orders.voucher.imageUnavailable"), tone: "warning" })
       return
     }
 
@@ -222,7 +224,7 @@ export function OrderVoucherScreen({ navigation, route }: VoucherProps) {
       return
     }
 
-    Alert.alert(t("common.infoTitle"), t("orders.voucher.saveSuccess"))
+    showToast({ message: t("orders.voucher.saveSuccess"), tone: "success" })
   }
 
   const handleOpen = async () => {
@@ -232,7 +234,7 @@ export function OrderVoucherScreen({ navigation, route }: VoucherProps) {
 
     const url = resolveVoucherExternalUrl(voucher)
     if (!url) {
-      Alert.alert(t("common.infoTitle"), t("orders.voucher.linkUnavailable"))
+      showToast({ message: t("orders.voucher.linkUnavailable"), tone: "warning" })
       return
     }
 
@@ -284,6 +286,7 @@ export function OrderVoucherScreen({ navigation, route }: VoucherProps) {
 
 export function DigitalReceiptScreen({ navigation, route }: ReceiptProps) {
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const profile = useUserStore(state => state.profile)
   const [detail, setDetail] = useState<OrderDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -321,7 +324,7 @@ export function DigitalReceiptScreen({ navigation, route }: ReceiptProps) {
 
   const handleSubmit = async () => {
     if (!email.trim()) {
-      Alert.alert(t("common.infoTitle"), t("orders.receipt.emailRequired"))
+      showToast({ message: t("orders.receipt.emailRequired"), tone: "warning" })
       return
     }
 
@@ -332,7 +335,7 @@ export function DigitalReceiptScreen({ navigation, route }: ReceiptProps) {
         email: email.trim(),
       })
       setSuccess(true)
-      Alert.alert(t("common.infoTitle"), t("orders.receipt.success", { email: email.trim() }))
+      showToast({ message: t("orders.receipt.success", { email: email.trim() }), tone: "success" })
     } catch {
       Alert.alert(t("common.errorTitle"), t("orders.receipt.failed"))
     } finally {
@@ -379,6 +382,7 @@ export function DigitalReceiptScreen({ navigation, route }: ReceiptProps) {
 
 export function FlowProofScreen({ navigation, route }: FlowProofProps) {
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const profile = useUserStore(state => state.profile)
   const [detail, setDetail] = useState<OrderDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -424,12 +428,12 @@ export function FlowProofScreen({ navigation, route }: FlowProofProps) {
 
   const handleSubmit = async () => {
     if (!email.trim()) {
-      Alert.alert(t("common.infoTitle"), t("orders.flowProof.emailRequired"))
+      showToast({ message: t("orders.flowProof.emailRequired"), tone: "warning" })
       return
     }
 
     if (!address.trim() || !rangeSelection) {
-      Alert.alert(t("common.infoTitle"), t("orders.flowProof.addressRequired"))
+      showToast({ message: t("orders.flowProof.addressRequired"), tone: "warning" })
       return
     }
 
@@ -442,7 +446,7 @@ export function FlowProofScreen({ navigation, route }: FlowProofProps) {
         endedAt: rangeSelection.endedAt,
       })
       setSuccess(true)
-      Alert.alert(t("common.infoTitle"), t("orders.flowProof.success", { email: email.trim() }))
+      showToast({ message: t("orders.flowProof.success", { email: email.trim() }), tone: "success" })
     } catch {
       Alert.alert(t("common.errorTitle"), t("orders.flowProof.failed"))
     } finally {
@@ -515,6 +519,7 @@ export function FlowProofScreen({ navigation, route }: FlowProofProps) {
 export function RefundDetailScreen({ navigation, route }: RefundProps) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const [detail, setDetail] = useState<RefundDetail | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -545,7 +550,7 @@ export function RefundDetailScreen({ navigation, route }: RefundProps) {
 
   const handleOpen = async () => {
     if (!detail?.refundTxidUrl) {
-      Alert.alert(t("common.infoTitle"), t("orders.refund.linkUnavailable"))
+      showToast({ message: t("orders.refund.linkUnavailable"), tone: "warning" })
       return
     }
 

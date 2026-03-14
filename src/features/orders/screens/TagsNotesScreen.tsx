@@ -14,6 +14,7 @@ import {
 } from "@/features/orders/services/ordersApi"
 import { fileAdapter, isNativeImagePickerCancelledError } from "@/shared/native"
 import { PageEmpty, PrimaryButton, SectionCard, SecondaryButton } from "@/features/transfer/components/TransferUi"
+import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 import type { OrdersStackParamList } from "@/app/navigation/types"
@@ -23,6 +24,7 @@ type Props = NativeStackScreenProps<OrdersStackParamList, "TagsNotesScreen">
 export function TagsNotesScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const orderSn = route.params.orderSn
   const [labels, setLabels] = useState<CategoryLabel[]>([])
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -73,7 +75,7 @@ export function TagsNotesScreen({ navigation, route }: Props) {
       }
 
       if (current.length >= 3) {
-        Alert.alert(t("common.infoTitle"), t("orders.tags.limit"))
+        showToast({ message: t("orders.tags.limit"), tone: "warning" })
         return current
       }
 
@@ -84,7 +86,7 @@ export function TagsNotesScreen({ navigation, route }: Props) {
   const handleSelectImage = async () => {
     const capability = fileAdapter.getCapability()
     if (!capability.supported) {
-      Alert.alert(t("common.infoTitle"), t("orders.tags.imageUnavailable"))
+      showToast({ message: t("orders.tags.imageUnavailable"), tone: "warning" })
       return
     }
 
@@ -106,7 +108,7 @@ export function TagsNotesScreen({ navigation, route }: Props) {
         return
       }
 
-      Alert.alert(t("common.errorTitle"), t("orders.tags.imageUploadFailed"))
+      showToast({ message: t("orders.tags.imageUploadFailed"), tone: "error" })
     } finally {
       setUploading(false)
     }
@@ -114,7 +116,7 @@ export function TagsNotesScreen({ navigation, route }: Props) {
 
   const handleSave = async () => {
     if (notes.trim() !== notes && notes.trim().length === 0 && notes.length > 0) {
-      Alert.alert(t("common.infoTitle"), t("orders.tags.notesRequired"))
+      showToast({ message: t("orders.tags.notesRequired"), tone: "warning" })
       return
     }
 
@@ -127,10 +129,10 @@ export function TagsNotesScreen({ navigation, route }: Props) {
         notes: notes.trim(),
         notesImageUrl: imageUrl || undefined,
       })
-      Alert.alert(t("common.infoTitle"), t("orders.tags.saveSuccess"))
+      showToast({ message: t("orders.tags.saveSuccess"), tone: "success" })
       navigation.goBack()
     } catch {
-      Alert.alert(t("common.errorTitle"), t("orders.tags.saveFailed"))
+      showToast({ message: t("orders.tags.saveFailed"), tone: "error" })
     } finally {
       setSaving(false)
     }

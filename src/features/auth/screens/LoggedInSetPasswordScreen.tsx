@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react"
 
-import { Alert, Text } from "react-native"
+import { Text } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -13,11 +13,13 @@ import { encryptByPublicKey } from "@/features/auth/utils/passwordCrypto"
 import { validatePasswordAgainstRules } from "@/features/auth/utils/passwordValidation"
 import type { AuthStackParamList } from "@/app/navigation/types"
 import type { PasswordRules } from "@/features/auth/types"
+import { useToast } from "@/shared/toast/useToast"
 
 type Props = NativeStackScreenProps<AuthStackParamList, "LoggedInSetPasswordScreen">
 
 export function LoggedInSetPasswordScreen({ navigation }: Props) {
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const [rules, setRules] = useState<PasswordRules | null>(null)
   const [step, setStep] = useState<0 | 1>(0)
   const [originPassword, setOriginPassword] = useState("")
@@ -63,7 +65,7 @@ export function LoggedInSetPasswordScreen({ navigation }: Props) {
     } catch (error) {
       const message = getAuthErrorMessage(error, "auth.errors.incorrectPassword")
       setErrorMessage(message)
-      Alert.alert(t("common.errorTitle"), message)
+      showToast({ message, tone: "error" })
     } finally {
       setSubmitting(false)
     }
@@ -95,12 +97,12 @@ export function LoggedInSetPasswordScreen({ navigation }: Props) {
         confirmPasswordEncrypted: encryptByPublicKey(rules.rsaPublicKey, confirmPassword),
       })
 
-      Alert.alert(t("common.infoTitle"), t("auth.loggedInSetPassword.success"))
+      showToast({ message: t("auth.loggedInSetPassword.success"), tone: "success" })
       navigation.goBack()
     } catch (error) {
       const message = getAuthErrorMessage(error, "auth.errors.resetPasswordFailed")
       setErrorMessage(message)
-      Alert.alert(t("common.errorTitle"), message)
+      showToast({ message, tone: "error" })
     } finally {
       setSubmitting(false)
     }

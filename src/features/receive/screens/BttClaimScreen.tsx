@@ -9,6 +9,7 @@ import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { checkBttClaim, claimBtt, type BttClaimStatus } from "@/features/receive/services/receiveApi"
 import { SectionCard } from "@/features/transfer/components/TransferUi"
 import { useWalletStore } from "@/shared/store/useWalletStore"
+import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 type Props = NativeStackScreenProps<TransferStackParamList, "BttClaimScreen">
@@ -16,6 +17,7 @@ type Props = NativeStackScreenProps<TransferStackParamList, "BttClaimScreen">
 export function BttClaimScreen({ navigation }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const chainId = useWalletStore(state => state.chainId)
   const walletAddress = useWalletStore(state => state.address)
   const [status, setStatus] = useState<BttClaimStatus | null>(null)
@@ -56,9 +58,9 @@ export function BttClaimScreen({ navigation }: Props) {
               try {
                 await claimBtt(chainId, walletAddress)
                 await refresh()
-                Alert.alert(t("common.infoTitle"), t("receive.btt.claimSuccess"))
+                showToast({ message: t("receive.btt.claimSuccess"), tone: "success" })
               } catch {
-                Alert.alert(t("common.errorTitle"), t("receive.btt.claimFailed"))
+                showToast({ message: t("receive.btt.claimFailed"), tone: "error" })
               } finally {
                 setClaiming(false)
               }

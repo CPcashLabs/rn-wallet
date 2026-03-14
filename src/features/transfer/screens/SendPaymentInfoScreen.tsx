@@ -8,6 +8,7 @@ import { resetToSupportScreen } from "@/app/navigation/navigationRef"
 import { FieldRow, PrimaryButton, SectionCard } from "@/features/transfer/components/TransferUi"
 import { getSendShareDetail, updateSendReceiveAddress } from "@/features/transfer/services/transferApi"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 import type { TransferStackParamList } from "@/app/navigation/types"
@@ -17,6 +18,7 @@ type Props = NativeStackScreenProps<TransferStackParamList, "SendPaymentInfoScre
 export function SendPaymentInfoScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const params = route.params as Partial<TransferStackParamList["SendPaymentInfoScreen"]> | undefined
   const orderSn = params?.orderSn
   const publicAccess = Boolean(params?.publicAccess)
@@ -104,7 +106,7 @@ export function SendPaymentInfoScreen({ navigation, route }: Props) {
               label={saving ? t("common.loading") : t("transfer.send.saveAddress")}
               onPress={() => {
                 if (!address.trim()) {
-                  Alert.alert(t("common.errorTitle"), t("transfer.send.addressRequired"))
+                  showToast({ message: t("transfer.send.addressRequired"), tone: "warning" })
                   return
                 }
 
@@ -115,9 +117,9 @@ export function SendPaymentInfoScreen({ navigation, route }: Props) {
                       orderSn,
                       address: address.trim(),
                     })
-                    Alert.alert(t("common.infoTitle"), t("transfer.send.addressSaved"))
+                    showToast({ message: t("transfer.send.addressSaved"), tone: "success" })
                   } catch {
-                    Alert.alert(t("common.errorTitle"), t("transfer.send.addressSaveFailed"))
+                    showToast({ message: t("transfer.send.addressSaveFailed"), tone: "error" })
                   } finally {
                     setSaving(false)
                   }

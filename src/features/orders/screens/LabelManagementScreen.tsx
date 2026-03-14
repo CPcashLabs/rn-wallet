@@ -7,6 +7,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { createCategoryLabel, deleteCategoryLabel, listUserCategoryLabels, type CategoryLabel } from "@/features/orders/services/ordersApi"
 import { PageEmpty, PrimaryButton, SectionCard, SecondaryButton } from "@/features/transfer/components/TransferUi"
+import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 import type { OrdersStackParamList } from "@/app/navigation/types"
@@ -16,6 +17,7 @@ type Props = NativeStackScreenProps<OrdersStackParamList, "LabelManagementScreen
 export function LabelManagementScreen({ navigation }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const [labels, setLabels] = useState<CategoryLabel[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -60,7 +62,7 @@ export function LabelManagementScreen({ navigation }: Props) {
   const handleCreate = async () => {
     const trimmed = newLabelName.trim()
     if (!trimmed) {
-      Alert.alert(t("common.infoTitle"), t("orders.labels.empty"))
+      showToast({ message: t("orders.labels.empty"), tone: "warning" })
       return
     }
 

@@ -13,7 +13,7 @@ import { useWalletStore } from "@/shared/store/useWalletStore"
 
 const MIN_BTT_OPERATION_BALANCE = 1800
 
-type CowalletState = {
+type CopouchState = {
   loading: boolean
   refreshing: boolean
   creating: boolean
@@ -42,7 +42,7 @@ function sortWallets(wallets: CopouchWallet[], sortByAmount: boolean) {
   })
 }
 
-export const useCowalletStore = create<CowalletState>((set, get) => ({
+export const useCopouchStore = create<CopouchState>((set, get) => ({
   loading: false,
   refreshing: false,
   creating: false,

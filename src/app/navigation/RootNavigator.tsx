@@ -5,7 +5,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack"
 import { AddressBookStackNavigator } from "@/app/navigation/AddressBookStackNavigator"
 import { AuthNavigator } from "@/app/navigation/AuthNavigator"
 import { BootstrapGate } from "@/app/navigation/BootstrapGate"
-import { CowalletStackNavigator } from "@/app/navigation/CowalletStackNavigator"
+import { CopouchStackNavigator } from "@/app/navigation/CopouchStackNavigator"
 import { MainTabNavigator } from "@/app/navigation/MainTabNavigator"
 import { MessageStackNavigator } from "@/app/navigation/MessageStackNavigator"
 import { OrdersStackNavigator } from "@/app/navigation/OrdersStackNavigator"
@@ -28,7 +28,8 @@ export function RootNavigator() {
       <Stack.Screen name="AddressBookStack" component={AddressBookStackNavigator} />
       <Stack.Screen name="TransferStack" component={TransferStackNavigator} />
       <Stack.Screen name="ReceiveStack" component={ReceiveStackNavigator} />
-      <Stack.Screen name="CowalletStack" component={CowalletStackNavigator} />
+      <Stack.Screen name="CopouchStack" component={CopouchStackNavigator} />
+      <Stack.Screen name="CowalletStack" component={CopouchStackNavigator} />
       <Stack.Screen name="SupportStack" component={SupportNavigator} />
     </Stack.Navigator>
   )

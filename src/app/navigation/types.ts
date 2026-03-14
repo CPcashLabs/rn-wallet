@@ -125,14 +125,16 @@ export type AddressBookStackParamList = {
     | undefined
 }
 
+type CopouchNavigationContext =
+  | {
+      copouch?: string
+      cowallet?: string
+      multisigWalletId?: string
+    }
+  | undefined
+
 export type TransferStackParamList = {
-  SelectTokenScreen:
-    | {
-        intent?: "transfer" | "receive"
-        cowallet?: string
-        multisigWalletId?: string
-      }
-    | undefined
+  SelectTokenScreen: (CopouchNavigationContext & { intent?: "transfer" | "receive" }) | undefined
   TransferAddressScreen: {
     receiveChainName: string
     receiveChainFullName: string
@@ -146,6 +148,11 @@ export type TransferStackParamList = {
   }
   TransferOrderScreen: undefined
   TransferOrderNormalScreen: undefined
+  TransferOrderCopouchScreen:
+    | {
+        multisigWalletId?: string
+      }
+    | undefined
   TransferOrderCowalletScreen:
     | {
         multisigWalletId?: string
@@ -201,6 +208,7 @@ export type ReceiveStackParamList = {
   ReceiveHomeScreen:
     | {
         payChain?: string
+        copouch?: string
         cowallet?: string
         multisigWalletId?: string
         collapse?: "individuals" | "business"
@@ -274,62 +282,85 @@ export type ReceiveStackParamList = {
   }
 }
 
-export type CowalletStackParamList = {
-  CowalletHomeScreen: undefined
-  CowalletFaqScreen: undefined
-  CowalletDetailScreen: {
+type CopouchStackScreenParamList = {
+  CopouchHomeScreen: undefined
+  CopouchFaqScreen: undefined
+  CopouchDetailScreen: {
     id: string
     walletBgColor?: number
   }
-  CowalletMemberScreen: {
+  CopouchMemberScreen: {
     id: string
   }
-  CowalletDeleteMemberScreen: {
+  CopouchDeleteMemberScreen: {
     id: string
   }
-  CowalletAddMemberScreen: {
+  CopouchAddMemberScreen: {
     id: string
   }
-  CowalletAddMemberForTeamScreen: {
+  CopouchAddMemberForTeamScreen: {
     id: string
   }
-  CowalletAddMemberForTeamSelectScreen: {
+  CopouchAddMemberForTeamSelectScreen: {
     id: string
     teamId: string
   }
-  CowalletSettingScreen: {
+  CopouchSettingScreen: {
     id: string
   }
-  CowalletSetNameScreen: {
+  CopouchSetNameScreen: {
     id: string
   }
-  CowalletBgSettingScreen: {
+  CopouchBgSettingScreen: {
     id: string
   }
-  CowalletBillListScreen: {
+  CopouchBillListScreen: {
     id: string
   }
-  CowalletRemindScreen: {
+  CopouchRemindScreen: {
     id: string
   }
-  CowalletBalanceScreen: {
+  CopouchBalanceScreen: {
     id: string
   }
-  CowalletSendSelfScreen: {
+  CopouchSendSelfScreen: {
     id: string
   }
-  CowalletReceiveScreen: {
+  CopouchReceiveScreen: {
     id: string
   }
-  CowalletAllocationScreen: {
+  CopouchAllocationScreen: {
     id: string
     orderSn: string
   }
-  CowalletViewAllocationScreen: {
+  CopouchViewAllocationScreen: {
     id: string
     orderSn: string
   }
 }
+
+type LegacyCowalletStackScreenParamList = {
+  CowalletHomeScreen: CopouchStackScreenParamList["CopouchHomeScreen"]
+  CowalletFaqScreen: CopouchStackScreenParamList["CopouchFaqScreen"]
+  CowalletDetailScreen: CopouchStackScreenParamList["CopouchDetailScreen"]
+  CowalletMemberScreen: CopouchStackScreenParamList["CopouchMemberScreen"]
+  CowalletDeleteMemberScreen: CopouchStackScreenParamList["CopouchDeleteMemberScreen"]
+  CowalletAddMemberScreen: CopouchStackScreenParamList["CopouchAddMemberScreen"]
+  CowalletAddMemberForTeamScreen: CopouchStackScreenParamList["CopouchAddMemberForTeamScreen"]
+  CowalletAddMemberForTeamSelectScreen: CopouchStackScreenParamList["CopouchAddMemberForTeamSelectScreen"]
+  CowalletSettingScreen: CopouchStackScreenParamList["CopouchSettingScreen"]
+  CowalletSetNameScreen: CopouchStackScreenParamList["CopouchSetNameScreen"]
+  CowalletBgSettingScreen: CopouchStackScreenParamList["CopouchBgSettingScreen"]
+  CowalletBillListScreen: CopouchStackScreenParamList["CopouchBillListScreen"]
+  CowalletRemindScreen: CopouchStackScreenParamList["CopouchRemindScreen"]
+  CowalletBalanceScreen: CopouchStackScreenParamList["CopouchBalanceScreen"]
+  CowalletSendSelfScreen: CopouchStackScreenParamList["CopouchSendSelfScreen"]
+  CowalletReceiveScreen: CopouchStackScreenParamList["CopouchReceiveScreen"]
+  CowalletAllocationScreen: CopouchStackScreenParamList["CopouchAllocationScreen"]
+  CowalletViewAllocationScreen: CopouchStackScreenParamList["CopouchViewAllocationScreen"]
+}
+
+export type CopouchStackParamList = CopouchStackScreenParamList & LegacyCowalletStackScreenParamList
 
 export type MainTabParamList = {
   HomeTab: NavigatorScreenParams<HomeTabStackParamList> | undefined
@@ -379,6 +410,7 @@ export type RootStackParamList = {
   AddressBookStack: NavigatorScreenParams<AddressBookStackParamList>
   TransferStack: NavigatorScreenParams<TransferStackParamList>
   ReceiveStack: NavigatorScreenParams<ReceiveStackParamList>
-  CowalletStack: NavigatorScreenParams<CowalletStackParamList>
+  CopouchStack: NavigatorScreenParams<CopouchStackParamList>
+  CowalletStack: NavigatorScreenParams<CopouchStackParamList>
   SupportStack: NavigatorScreenParams<SupportStackParamList>
 }

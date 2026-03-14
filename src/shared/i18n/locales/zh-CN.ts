@@ -134,6 +134,7 @@ const home = {
   actions: {
     transfer: "转账",
     receive: "收款",
+    records: "交易记录",
     invite: "邀请",
     copouch: "CoPouch",
     bill: "统计",
@@ -461,6 +462,8 @@ const home = {
       minimumDeposit: "最小收款额",
       share: "分享",
       copy: "复制",
+      copySuccess: "收款地址已复制到剪贴板。",
+      copyFailed: "复制收款地址失败。",
       addresses: "地址管理",
       logs: "交易记录",
       emptyTitle: "暂未生成收款单",
@@ -1125,6 +1128,12 @@ const message = {
     minutesAgo: "{{count}} 分钟前",
     hoursAgo: "{{count}} 小时前",
     daysAgo: "{{count}} 天前",
+  },
+  preview: {
+    title: "最近消息",
+    openAll: "查看全部",
+    loadFailedTitle: "消息预览加载失败",
+    loadFailedBody: "稍后重试，或进入消息中心查看最新通知。",
   },
 }
 

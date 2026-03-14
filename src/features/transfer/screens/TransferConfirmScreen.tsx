@@ -10,6 +10,7 @@ import { isCancelledAction, makeMockTxid } from "@/features/transfer/utils/order
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { walletAdapter } from "@/shared/native/walletAdapter"
 import { useWalletStore } from "@/shared/store/useWalletStore"
+import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 import type { TransferStackParamList } from "@/app/navigation/types"
@@ -22,6 +23,7 @@ type Props = NativeStackScreenProps<
 export function TransferConfirmScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const walletAddress = useWalletStore(state => state.address)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -100,7 +102,7 @@ export function TransferConfirmScreen({ navigation, route }: Props) {
       })
     } catch (error) {
       if (isCancelledAction(error)) {
-        Alert.alert(t("common.infoTitle"), t("transfer.confirm.userRejected"))
+        showToast({ message: t("transfer.confirm.userRejected"), tone: "warning" })
       } else {
         Alert.alert(t("common.errorTitle"), t("transfer.confirm.submitFailed"))
       }

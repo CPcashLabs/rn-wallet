@@ -134,6 +134,7 @@ const home = {
   actions: {
     transfer: "Transfer",
     receive: "Receive",
+    records: "Records",
     invite: "Invite",
     copouch: "CoPouch",
     bill: "Statistics",
@@ -461,6 +462,8 @@ const home = {
       minimumDeposit: "Minimum Deposit",
       share: "Share",
       copy: "Copy",
+      copySuccess: "Receive address copied to clipboard.",
+      copyFailed: "Failed to copy the receive address.",
       addresses: "Addresses",
       logs: "Logs",
       emptyTitle: "No receive order yet",
@@ -1127,6 +1130,12 @@ const message = {
     minutesAgo: "{{count}}m ago",
     hoursAgo: "{{count}}h ago",
     daysAgo: "{{count}}d ago",
+  },
+  preview: {
+    title: "Recent Messages",
+    openAll: "View All",
+    loadFailedTitle: "Failed to load message preview",
+    loadFailedBody: "Try again later, or open Messages to check the latest notifications.",
   },
 }
 

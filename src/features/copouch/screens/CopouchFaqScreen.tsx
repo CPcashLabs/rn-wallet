@@ -8,11 +8,11 @@ import { CopouchScaffold } from "@/features/copouch/components/CopouchScaffold"
 import { SectionCard } from "@/features/transfer/components/TransferUi"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
-import type { CowalletStackParamList } from "@/app/navigation/types"
+import type { CopouchStackParamList } from "@/app/navigation/types"
 
-type Props = NativeStackScreenProps<CowalletStackParamList, "CowalletFaqScreen">
+type Props = NativeStackScreenProps<CopouchStackParamList, "CopouchFaqScreen">
 
-export function CowalletFaqScreen({ navigation }: Props) {
+export function CopouchFaqScreen({ navigation }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
 

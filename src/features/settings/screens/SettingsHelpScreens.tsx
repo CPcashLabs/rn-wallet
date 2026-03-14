@@ -1,11 +1,12 @@
 import React, { useState } from "react"
 
-import { Alert, Text, TextInput, View } from "react-native"
+import { Text, TextInput, View } from "react-native"
 import { useTranslation } from "react-i18next"
 
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { sendFeedback } from "@/features/settings/services/settingsApi"
 import { getGuideLinks, openExternalUrl } from "@/features/settings/utils/settingsHub"
+import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 import { Card, type GuideListScreenProps, PrimaryButton, Row, type StackProps, styles } from "@/features/settings/screens/settingsShared"
@@ -103,6 +104,7 @@ export function AboutScreen({ navigation }: StackProps<"AboutScreen">) {
 export function FeedbackScreen({ navigation }: StackProps<"FeedbackScreen">) {
   const { t } = useTranslation()
   const theme = useAppTheme()
+  const { showToast } = useToast()
   const [content, setContent] = useState("")
   const [loading, setLoading] = useState(false)
 
@@ -111,9 +113,9 @@ export function FeedbackScreen({ navigation }: StackProps<"FeedbackScreen">) {
       setLoading(true)
       await sendFeedback(content.trim())
       setContent("")
-      Alert.alert(t("common.infoTitle"), t("settingsHub.feedback.success"))
+      showToast({ message: t("settingsHub.feedback.success"), tone: "success" })
     } catch {
-      Alert.alert(t("common.errorTitle"), t("settingsHub.feedback.failed"))
+      showToast({ message: t("settingsHub.feedback.failed"), tone: "error" })
     } finally {
       setLoading(false)
     }

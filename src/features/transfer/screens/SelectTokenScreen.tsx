@@ -30,6 +30,7 @@ export function SelectTokenScreen({ navigation, route }: Props) {
   const [keyword, setKeyword] = useState("")
   const [channels, setChannels] = useState<ChannelItem[]>([])
   const [loading, setLoading] = useState(true)
+  const copouchAddress = route.params?.copouch ?? route.params?.cowallet
 
   const loadChannels = useCallback(async () => {
     setLoading(true)
@@ -86,7 +87,7 @@ export function SelectTokenScreen({ navigation, route }: Props) {
           params: {
             payChain: item.receiveChainName,
             chainColor: item.receiveChainColor,
-            cowallet: route.params?.cowallet,
+            copouch: copouchAddress,
             multisigWalletId: route.params?.multisigWalletId,
             receiveMode: item.channelType === "normal" ? "normal" : "trace",
           },
@@ -110,7 +111,7 @@ export function SelectTokenScreen({ navigation, route }: Props) {
         initialAddress,
       })
     },
-    [intent, navigation, recipientAddress, route.params?.cowallet, route.params?.multisigWalletId, selectedChannel?.key, setSelectedChannel],
+    [copouchAddress, intent, navigation, recipientAddress, route.params?.multisigWalletId, selectedChannel?.key, setSelectedChannel],
   )
 
   return (

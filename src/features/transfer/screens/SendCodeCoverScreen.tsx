@@ -8,6 +8,7 @@ import { FieldRow, PrimaryButton, SectionCard } from "@/features/transfer/compon
 import { getSendShareDetail } from "@/features/transfer/services/transferApi"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { shareAdapter } from "@/shared/native/shareAdapter"
+import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 import type { TransferStackParamList } from "@/app/navigation/types"
@@ -17,6 +18,7 @@ type Props = NativeStackScreenProps<TransferStackParamList, "SendCodeCoverScreen
 export function SendCodeCoverScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const [detail, setDetail] = useState<Awaited<ReturnType<typeof getSendShareDetail>> | null>(null)
   const [sharing, setSharing] = useState(false)
 
@@ -69,7 +71,7 @@ export function SendCodeCoverScreen({ navigation, route }: Props) {
                 })
 
                 if (!result.ok) {
-                  Alert.alert(t("common.infoTitle"), t("transfer.send.shareUnavailable"))
+                  showToast({ message: t("transfer.send.shareUnavailable"), tone: "warning" })
                 }
               } finally {
                 setSharing(false)

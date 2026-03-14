@@ -11,6 +11,12 @@ platform :ios, min_ios_version_supported
 prepare_react_native_project!
 inhibit_all_warnings!
 
+CURRENT_XCODE_UPGRADE_CHECK = '2620'.freeze
+
+def merge_unique_paths(existing_paths, new_paths)
+  (Array(existing_paths) + Array(new_paths)).compact.reject(&:empty?).uniq
+end
+
 def strip_duplicate_cpp_stdlib_linker_flag(installer)
   # Aggregate Pods xcconfig files already inherit libc++ from Xcode settings.
   Dir.glob(File.join(installer.sandbox.target_support_files_root, 'Pods-*', '*.xcconfig')).each do |xcconfig_path|
@@ -21,6 +27,96 @@ def strip_duplicate_cpp_stdlib_linker_flag(installer)
     next if updated == contents
 
     File.write(xcconfig_path, updated)
+  end
+end
+
+def patch_cocoapods_resource_scripts_for_user_script_sandbox(installer)
+  Dir.glob(File.join(installer.sandbox.target_support_files_root, 'Pods-*', '*-resources.sh')).each do |script_path|
+    contents = File.read(script_path)
+    updated = contents
+      .gsub(
+        'echo "$(realpath -mq "${0}"):$1: error: Unexpected failure"',
+        'echo "${0}:$1: error: Unexpected failure"'
+      )
+      .gsub(
+        "RESOURCES_TO_COPY=${PODS_ROOT}/resources-to-copy-${TARGETNAME}.txt\n> \"$RESOURCES_TO_COPY\"",
+        "RESOURCES_TO_COPY=${TARGET_TEMP_DIR}/resources-to-copy-${TARGETNAME}.txt\nmkdir -p \"$(dirname \"$RESOURCES_TO_COPY\")\"\n> \"$RESOURCES_TO_COPY\""
+      )
+      .gsub(
+        "rsync -avr --copy-links --no-relative --exclude '*/.svn/*' --files-from=\"$RESOURCES_TO_COPY\" / \"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}\"",
+        "rsync -avr --inplace --copy-links --no-relative --exclude '*/.svn/*' --files-from=\"$RESOURCES_TO_COPY\" / \"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}\""
+      )
+      .gsub(
+        "rsync -avr --copy-links --no-relative --exclude '*/.svn/*' --files-from=\"$RESOURCES_TO_COPY\" / \"${INSTALL_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}\"",
+        "rsync -avr --inplace --copy-links --no-relative --exclude '*/.svn/*' --files-from=\"$RESOURCES_TO_COPY\" / \"${INSTALL_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}\""
+      )
+    next if updated == contents
+
+    File.write(script_path, updated)
+  end
+end
+
+def expand_cocoapods_resource_output_file_lists_for_user_script_sandbox(installer)
+  privacy_manifest_bundle_names = %w[
+    React-Core_privacy.bundle
+    React-cxxreact_privacy.bundle
+  ].freeze
+
+  Dir.glob(File.join(installer.sandbox.target_support_files_root, 'Pods-*', '*-resources-*-output-files.xcfilelist')).each do |filelist_path|
+    lines = File.readlines(filelist_path, chomp: true)
+    expanded = lines.flat_map do |line|
+      next [line] unless line.end_with?('.bundle')
+
+      entries = [line, "#{line}/Info.plist"]
+      if privacy_manifest_bundle_names.include?(File.basename(line))
+        entries << "#{line}/PrivacyInfo.xcprivacy"
+      end
+      entries
+    end.uniq
+    next if expanded == lines
+
+    File.write(filelist_path, "#{expanded.join("\n")}\n")
+  end
+end
+
+def configure_bundle_phase_for_user_script_sandbox(project)
+  project.targets.each do |target|
+    target.shell_script_build_phases.each do |phase|
+      next unless phase.name == 'Bundle React Native code and images'
+
+      phase.input_paths = merge_unique_paths(
+        phase.input_paths,
+        [
+          '$(SRCROOT)/.xcode.env',
+          '$(SRCROOT)/.xcode.env.local',
+          '$(SRCROOT)/..',
+          '$(PODS_ROOT)',
+          '$(REACT_NATIVE_PATH)',
+        ]
+      )
+      phase.output_paths = [
+        '$(CONFIGURATION_BUILD_DIR)/main.jsbundle',
+        '$(CONFIGURATION_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/main.jsbundle',
+        '$(CONFIGURATION_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/ip.txt',
+        '$(CONFIGURATION_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/assets',
+      ]
+    end
+  end
+end
+
+def apply_recommended_settings_to_user_projects(installer)
+  installer.aggregate_targets.map(&:user_project).compact.uniq.each do |project|
+    project.root_object.attributes['BuildIndependentTargetsInParallel'] = 'YES'
+    project.root_object.attributes['LastUpgradeCheck'] = CURRENT_XCODE_UPGRADE_CHECK
+
+    project.build_configurations.each do |config|
+      config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'YES'
+      config.build_settings['STRING_CATALOG_GENERATE_SYMBOLS'] = 'YES'
+      config.build_settings['USE_RECURSIVE_SCRIPT_INPUTS_IN_SCRIPT_PHASES'] = 'YES'
+    end
+
+    configure_bundle_phase_for_user_script_sandbox(project)
+    project.save
   end
 end
 
@@ -54,6 +150,9 @@ target 'CPCashRN' do
       # :ccache_enabled => true
     )
     strip_duplicate_cpp_stdlib_linker_flag(installer)
+    patch_cocoapods_resource_scripts_for_user_script_sandbox(installer)
+    expand_cocoapods_resource_output_file_lists_for_user_script_sandbox(installer)
+    apply_recommended_settings_to_user_projects(installer)
 
     installer.pods_project.targets.each do |target|
       target.shell_script_build_phases.each do |phase|
@@ -63,4 +162,9 @@ target 'CPCashRN' do
       end
     end
   end
+end
+
+post_integrate do |installer|
+  patch_cocoapods_resource_scripts_for_user_script_sandbox(installer)
+  expand_cocoapods_resource_output_file_lists_for_user_script_sandbox(installer)
 end

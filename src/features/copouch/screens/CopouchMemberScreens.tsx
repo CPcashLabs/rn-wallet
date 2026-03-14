@@ -5,7 +5,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 import { Alert, Pressable, Text, TextInput, View } from "react-native"
 
-import type { CowalletStackParamList } from "@/app/navigation/types"
+import type { CopouchStackParamList } from "@/app/navigation/types"
 import { CopouchScaffold } from "@/features/copouch/components/CopouchScaffold"
 import {
   AvatarBadge,
@@ -30,18 +30,19 @@ import {
   syncCopouchOwners,
   type CopouchOwner,
 } from "@/features/copouch/services/copouchApi"
-import { useCowalletStore } from "@/features/copouch/store/useCowalletStore"
+import { useCopouchStore } from "@/features/copouch/store/useCopouchStore"
 import { formatAddress } from "@/features/home/utils/format"
 import { ActionRow } from "@/features/orders/components/OrdersUi"
 import { PageEmpty, PrimaryButton, SectionCard } from "@/features/transfer/components/TransferUi"
 import { ApiError } from "@/shared/errors"
 import { useSocketStore } from "@/shared/store/useSocketStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
+import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
-type StackProps<T extends keyof CowalletStackParamList> = NativeStackScreenProps<CowalletStackParamList, T>
+type StackProps<T extends keyof CopouchStackParamList> = NativeStackScreenProps<CopouchStackParamList, T>
 
-export function CowalletMemberScreen({ navigation, route }: StackProps<"CowalletMemberScreen">) {
+export function CopouchMemberScreen({ navigation, route }: StackProps<"CopouchMemberScreen">) {
   const { t } = useTranslation()
   const lastEvent = useSocketStore(state => state.lastEvent)
   const { detail, loading, invalidAccess, reload, setDetail } = useCopouchWalletDetail(route.params.id)
@@ -99,11 +100,11 @@ export function CowalletMemberScreen({ navigation, route }: StackProps<"Cowallet
         {detail?.isCreator ? (
           <SectionCard>
             <View style={styles.quickRow}>
-              <Pressable style={styles.quickCell} onPress={() => navigation.navigate("CowalletAddMemberScreen", { id: route.params.id })}>
+              <Pressable style={styles.quickCell} onPress={() => navigation.navigate("CopouchAddMemberScreen", { id: route.params.id })}>
                 <Text style={styles.quickEmoji}>+</Text>
                 <Text style={styles.quickLabel}>{t("copouch.member.addAction")}</Text>
               </Pressable>
-              <Pressable style={styles.quickCell} onPress={() => navigation.navigate("CowalletDeleteMemberScreen", { id: route.params.id })}>
+              <Pressable style={styles.quickCell} onPress={() => navigation.navigate("CopouchDeleteMemberScreen", { id: route.params.id })}>
                 <Text style={styles.quickEmoji}>-</Text>
                 <Text style={styles.quickLabel}>{t("copouch.member.deleteAction")}</Text>
               </Pressable>
@@ -155,8 +156,9 @@ export function CowalletMemberScreen({ navigation, route }: StackProps<"Cowallet
   )
 }
 
-export function CowalletDeleteMemberScreen({ navigation, route }: StackProps<"CowalletDeleteMemberScreen">) {
+export function CopouchDeleteMemberScreen({ navigation, route }: StackProps<"CopouchDeleteMemberScreen">) {
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const { detail, loading, invalidAccess, reload, setDetail } = useCopouchWalletDetail(route.params.id)
   const [owners, setOwners] = useState<CopouchOwner[]>([])
   const [ownersLoading, setOwnersLoading] = useState(true)
@@ -194,12 +196,12 @@ export function CowalletDeleteMemberScreen({ navigation, route }: StackProps<"Co
           onPress: () => {
             void (async () => {
               setDeletingWalletAddress(owner.walletAddress)
-              try {
-                await preValidateCopouchRemoveOwner(route.params.id, owner.walletAddress)
-                await removeCopouchOwner(route.params.id, { walletAddress: owner.walletAddress })
-                await loadAll()
-                Alert.alert(t("common.infoTitle"), t("copouch.member.removeSuccess"))
-              } catch (error) {
+                try {
+                  await preValidateCopouchRemoveOwner(route.params.id, owner.walletAddress)
+                  await removeCopouchOwner(route.params.id, { walletAddress: owner.walletAddress })
+                  await loadAll()
+                  showToast({ message: t("copouch.member.removeSuccess"), tone: "success" })
+                } catch (error) {
                 try {
                   await syncCopouchOwners(route.params.id)
                   await loadAll()
@@ -207,8 +209,8 @@ export function CowalletDeleteMemberScreen({ navigation, route }: StackProps<"Co
                   // ignore sync errors and surface the original mutation error
                 }
 
-                Alert.alert(t("common.errorTitle"), resolveMutationMessage(t, error, "remove"))
-              } finally {
+                  showToast({ message: resolveMutationMessage(t, error, "remove"), tone: "error" })
+                } finally {
                 setDeletingWalletAddress("")
               }
             })()
@@ -264,9 +266,10 @@ export function CowalletDeleteMemberScreen({ navigation, route }: StackProps<"Co
   )
 }
 
-export function CowalletAddMemberScreen({ navigation, route }: StackProps<"CowalletAddMemberScreen">) {
+export function CopouchAddMemberScreen({ navigation, route }: StackProps<"CopouchAddMemberScreen">) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const { detail, loading, invalidAccess, reload } = useCopouchWalletDetail(route.params.id)
   const [walletAddress, setWalletAddress] = useState("")
   const [submitting, setSubmitting] = useState(false)
@@ -288,7 +291,7 @@ export function CowalletAddMemberScreen({ navigation, route }: StackProps<"Cowal
 
   const handleSubmit = async (address: string) => {
     if (validationMessage) {
-      Alert.alert(t("common.infoTitle"), validationMessage)
+      showToast({ message: validationMessage, tone: "warning" })
       return
     }
 
@@ -297,10 +300,10 @@ export function CowalletAddMemberScreen({ navigation, route }: StackProps<"Cowal
     try {
       await preValidateCopouchAddOwner(route.params.id, address)
       await addCopouchOwner(route.params.id, { walletAddress: address })
-      Alert.alert(t("common.infoTitle"), t("copouch.member.addSuccess"))
+      showToast({ message: t("copouch.member.addSuccess"), tone: "success" })
       navigation.goBack()
     } catch (error) {
-      Alert.alert(t("common.errorTitle"), resolveMutationMessage(t, error, "add"))
+      showToast({ message: resolveMutationMessage(t, error, "add"), tone: "error" })
     } finally {
       setSubmitting(false)
     }
@@ -338,7 +341,7 @@ export function CowalletAddMemberScreen({ navigation, route }: StackProps<"Cowal
               <ActionRow
                 body={t("copouch.member.teamImportBody")}
                 label={t("copouch.member.teamImportTitle")}
-                onPress={() => navigation.navigate("CowalletAddMemberForTeamScreen", { id: route.params.id })}
+                onPress={() => navigation.navigate("CopouchAddMemberForTeamScreen", { id: route.params.id })}
               />
             </SectionCard>
 
@@ -354,11 +357,12 @@ export function CowalletAddMemberScreen({ navigation, route }: StackProps<"Cowal
   )
 }
 
-export function CowalletAddMemberForTeamScreen({ navigation, route }: StackProps<"CowalletAddMemberForTeamScreen">) {
+export function CopouchAddMemberForTeamScreen({ navigation, route }: StackProps<"CopouchAddMemberForTeamScreen">) {
   const { t } = useTranslation()
-  const wallets = useCowalletStore(state => state.wallets)
-  const loading = useCowalletStore(state => state.loading)
-  const loadOverview = useCowalletStore(state => state.loadOverview)
+  const { showToast } = useToast()
+  const wallets = useCopouchStore(state => state.wallets)
+  const loading = useCopouchStore(state => state.loading)
+  const loadOverview = useCopouchStore(state => state.loadOverview)
   const { invalidAccess, loading: detailLoading, reload } = useCopouchWalletDetail(route.params.id)
 
   useEffect(() => {
@@ -394,7 +398,7 @@ export function CowalletAddMemberForTeamScreen({ navigation, route }: StackProps
                 body={t("copouch.setting.memberCount", { count: wallet.ownerCount })}
                 label={wallet.walletName || t("copouch.home.unnamedWallet")}
                 onPress={() =>
-                  navigation.navigate("CowalletAddMemberForTeamSelectScreen", {
+                  navigation.navigate("CopouchAddMemberForTeamSelectScreen", {
                     id: route.params.id,
                     teamId: wallet.id,
                   })
@@ -408,11 +412,12 @@ export function CowalletAddMemberForTeamScreen({ navigation, route }: StackProps
   )
 }
 
-export function CowalletAddMemberForTeamSelectScreen({
+export function CopouchAddMemberForTeamSelectScreen({
   navigation,
   route,
-}: StackProps<"CowalletAddMemberForTeamSelectScreen">) {
+}: StackProps<"CopouchAddMemberForTeamSelectScreen">) {
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const currentAddress = useWalletStore(state => state.address)
   const [loading, setLoading] = useState(true)
   const [invalidAccess, setInvalidAccess] = useState(false)
@@ -471,10 +476,10 @@ export function CowalletAddMemberForTeamSelectScreen({
     try {
       await preValidateCopouchAddOwner(route.params.id, selectedAddress)
       await addCopouchOwner(route.params.id, { walletAddress: selectedAddress })
-      Alert.alert(t("common.infoTitle"), t("copouch.member.addSuccess"))
+      showToast({ message: t("copouch.member.addSuccess"), tone: "success" })
       navigation.goBack()
     } catch (error) {
-      Alert.alert(t("common.errorTitle"), resolveMutationMessage(t, error, "add"))
+      showToast({ message: resolveMutationMessage(t, error, "add"), tone: "error" })
     } finally {
       setSubmitting(false)
     }

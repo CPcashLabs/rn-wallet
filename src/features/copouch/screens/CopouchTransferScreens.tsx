@@ -4,7 +4,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 import { Alert, Text, TextInput, View } from "react-native"
 
-import type { CowalletStackParamList } from "@/app/navigation/types"
+import type { CopouchStackParamList } from "@/app/navigation/types"
 import { CopouchScaffold } from "@/features/copouch/components/CopouchScaffold"
 import {
   AvatarBadge,
@@ -39,13 +39,13 @@ import { useUserStore } from "@/shared/store/useUserStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
-type StackProps<T extends keyof CowalletStackParamList> = NativeStackScreenProps<CowalletStackParamList, T>
+type StackProps<T extends keyof CopouchStackParamList> = NativeStackScreenProps<CopouchStackParamList, T>
 type TransferMode = "withdraw" | "deposit"
 
 function CopouchTransferScreen(props: {
   mode: TransferMode
-  navigation: StackProps<"CowalletSendSelfScreen">["navigation"] | StackProps<"CowalletReceiveScreen">["navigation"]
-  route: StackProps<"CowalletSendSelfScreen">["route"] | StackProps<"CowalletReceiveScreen">["route"]
+  navigation: StackProps<"CopouchSendSelfScreen">["navigation"] | StackProps<"CopouchReceiveScreen">["navigation"]
+  route: StackProps<"CopouchSendSelfScreen">["route"] | StackProps<"CopouchReceiveScreen">["route"]
 }) {
   const theme = useAppTheme()
   const { t } = useTranslation()
@@ -378,10 +378,10 @@ function CopouchTransferScreen(props: {
   )
 }
 
-export function CowalletSendSelfScreen(props: StackProps<"CowalletSendSelfScreen">) {
+export function CopouchSendSelfScreen(props: StackProps<"CopouchSendSelfScreen">) {
   return <CopouchTransferScreen mode="withdraw" navigation={props.navigation} route={props.route} />
 }
 
-export function CowalletReceiveScreen(props: StackProps<"CowalletReceiveScreen">) {
+export function CopouchReceiveScreen(props: StackProps<"CopouchReceiveScreen">) {
   return <CopouchTransferScreen mode="deposit" navigation={props.navigation} route={props.route} />
 }

@@ -4,13 +4,11 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  Clipboard,
   Easing,
-  LayoutAnimation,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
-  UIManager,
   View,
 } from "react-native"
 import { useTranslation } from "react-i18next"
@@ -25,6 +23,7 @@ import { fileAdapter, shareAdapter } from "@/shared/native"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useUserStore } from "@/shared/store/useUserStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
+import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 type Props = NativeStackScreenProps<ReceiveStackParamList, "ReceiveHomeScreen">
@@ -51,6 +50,7 @@ const SPACE = {
 export function ReceiveHomeScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const session = useAuthStore(state => state.session)
   const profile = useUserStore(state => state.profile)
   const walletAddress = useWalletStore(state => state.address)
@@ -66,7 +66,7 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
   const [qrMatrix, setQrMatrix] = useState<QrMatrix | null>(null)
   const [countdownText, setCountdownText] = useState("--:--:--")
   const autoCreateAttemptedRef = useRef(false)
-  const receiveAddress = route.params?.cowallet || profile?.address || session?.address || walletAddress || ""
+  const receiveAddress = route.params?.copouch || route.params?.cowallet || profile?.address || session?.address || walletAddress || ""
   const isNormalReceive = route.params?.receiveMode === "normal"
   const currentOrder = expandedCard === "individuals" ? personalOrder : businessOrder
   const currentVariant = expandedCard === "individuals" ? "short" : "long"
@@ -74,12 +74,6 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
   const dynamicColor = config?.payChainColor || route.params?.chainColor || theme.colors.primary
   const surfaceColor = "#F4F4F1"
   const qrSource = isNormalReceive ? receiveAddress : currentOrder?.address || receiveAddress
-
-  useEffect(() => {
-    if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
-      UIManager.setLayoutAnimationEnabledExperimental(true)
-    }
-  }, [])
 
   function resolveLoadHomeMessage(error: unknown) {
     if (!(error instanceof Error) || !error.message) {
@@ -210,14 +204,14 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
       })
 
       if (!result.ok) {
-        Alert.alert(t("common.errorTitle"), t("receive.home.saveQrFailed"))
+        showToast({ message: t("receive.home.saveQrFailed"), tone: "error" })
         return
       }
 
-      Alert.alert(t("common.infoTitle"), t("receive.home.saveQrSuccess"))
+      showToast({ message: t("receive.home.saveQrSuccess"), tone: "success" })
     } catch (error) {
       console.error("[receive][qr][save]", error)
-      Alert.alert(t("common.errorTitle"), t("receive.home.saveQrFailed"))
+      showToast({ message: t("receive.home.saveQrFailed"), tone: "error" })
     }
   }
 
@@ -227,7 +221,7 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
         label: t("receive.home.logs"),
         action: () => {
           if (!currentOrder?.orderSn) {
-            Alert.alert(t("common.infoTitle"), t("receive.home.emptyBody"))
+            showToast({ message: t("receive.home.emptyBody"), tone: "warning" })
             return
           }
 
@@ -241,7 +235,7 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
         label: t("receive.home.addresses"),
         action: () => {
           if (!config) {
-            Alert.alert(t("common.infoTitle"), t("receive.home.emptyBody"))
+            showToast({ message: t("receive.home.emptyBody"), tone: "warning" })
             return
           }
 
@@ -271,7 +265,7 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
         label: t("receive.home.saveQr"),
         action: () => {
           if (!qrSource) {
-            Alert.alert(t("common.infoTitle"), t("receive.home.qrUnavailable"))
+            showToast({ message: t("receive.home.qrUnavailable"), tone: "warning" })
             return
           }
 
@@ -315,7 +309,7 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
   function handleShare() {
     if (isNormalReceive) {
       if (!qrSource) {
-        Alert.alert(t("common.infoTitle"), t("receive.home.qrUnavailable"))
+        showToast({ message: t("receive.home.qrUnavailable"), tone: "warning" })
         return
       }
 
@@ -327,7 +321,7 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
     }
 
     if (!currentOrder?.orderSn) {
-      Alert.alert(t("common.infoTitle"), t("receive.home.emptyBody"))
+      showToast({ message: t("receive.home.emptyBody"), tone: "warning" })
       return
     }
 
@@ -338,10 +332,16 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
 
   function handleCopy() {
     if (!qrSource) {
+      showToast({ message: t("receive.home.qrUnavailable"), tone: "warning" })
       return
     }
 
-    Alert.alert(t("common.infoTitle"), qrSource)
+    try {
+      Clipboard.setString(qrSource)
+      showToast({ message: t("receive.home.copySuccess"), tone: "success" })
+    } catch {
+      showToast({ message: t("receive.home.copyFailed"), tone: "error" })
+    }
   }
 
   function handleRefreshCurrent() {
@@ -356,7 +356,7 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
     })
       .then(result => {
         if (result?.orderSn) {
-          Alert.alert(t("common.infoTitle"), t("receive.home.createSuccess"))
+          showToast({ message: t("receive.home.createSuccess"), tone: "success" })
         }
       })
       .catch(error => {
@@ -440,7 +440,7 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
           style={styles.recordRow}
           onPress={() => {
             if (!cardOrder?.orderSn) {
-              Alert.alert(t("common.infoTitle"), t("receive.home.emptyBody"))
+              showToast({ message: t("receive.home.emptyBody"), tone: "warning" })
               return
             }
 
@@ -513,16 +513,6 @@ function CollapseCard(props: {
 
   useEffect(() => {
     if (props.expanded) {
-      LayoutAnimation.configureNext({
-        duration: 220,
-        create: {
-          type: LayoutAnimation.Types.easeInEaseOut,
-          property: LayoutAnimation.Properties.opacity,
-        },
-        update: {
-          type: LayoutAnimation.Types.easeInEaseOut,
-        },
-      })
       setShouldRenderBody(true)
     }
 
@@ -543,16 +533,6 @@ function CollapseCard(props: {
 
     animation.start(({ finished }) => {
       if (finished && !props.expanded) {
-        LayoutAnimation.configureNext({
-          duration: 180,
-          update: {
-            type: LayoutAnimation.Types.easeInEaseOut,
-          },
-          delete: {
-            type: LayoutAnimation.Types.easeInEaseOut,
-            property: LayoutAnimation.Properties.opacity,
-          },
-        })
         setShouldRenderBody(false)
       }
     })

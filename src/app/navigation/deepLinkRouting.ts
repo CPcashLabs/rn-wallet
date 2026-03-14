@@ -134,11 +134,11 @@ function toTxPayStatus(orderSn: string): RootRouteDescriptor<"TransferStack"> {
   }
 }
 
-function toCowalletDetail(id: string): RootRouteDescriptor<"CowalletStack"> {
+function toCopouchDetail(id: string): RootRouteDescriptor<"CopouchStack"> {
   return {
-    name: "CowalletStack",
+    name: "CopouchStack",
     params: {
-      screen: "CowalletDetailScreen",
+      screen: "CopouchDetailScreen",
       params: {
         id,
       },
@@ -148,6 +148,7 @@ function toCowalletDetail(id: string): RootRouteDescriptor<"CowalletStack"> {
 
 function toReceiveHome(params: {
   payChain?: string
+  copouch?: string
   cowallet?: string
   multisigWalletId?: string
   collapse?: "individuals" | "business"
@@ -160,6 +161,7 @@ function toReceiveHome(params: {
       screen: "ReceiveHomeScreen",
       params: {
         payChain: params.payChain,
+        copouch: params.copouch ?? params.cowallet,
         cowallet: params.cowallet,
         multisigWalletId: params.multisigWalletId,
         collapse: params.collapse,
@@ -368,6 +370,7 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
       return toNotFound(url)
     }
 
+    case "copouch":
     case "cowallet": {
       const isDirectDetail = segments.length === 2
       const isDetailPath = segments.length === 3 && segments[1]?.toLowerCase() === "detail"
@@ -376,7 +379,7 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
         return toNotFound(url)
       }
 
-      return withAuth([toMeTab(), toCowalletDetail(id)], url, authenticated, 1)
+      return withAuth([toMeTab(), toCopouchDetail(id)], url, authenticated, 1)
     }
 
     case "invite": {
@@ -424,6 +427,7 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
           toHomeTab(),
           toReceiveHome({
             payChain: readString(parsed.query.payChain),
+            copouch: readString(parsed.query.copouch) ?? readString(parsed.query.cowallet),
             cowallet: readString(parsed.query.cowallet),
             multisigWalletId: readString(parsed.query.multisig_wallet_id) ?? readString(parsed.query.multisigWalletId),
             collapse: readReceiveCollapse(parsed.query.collapse),

@@ -9,6 +9,7 @@ import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { SegmentedTabs } from "@/features/receive/components/ReceiveUi"
 import { createReceiveOrder, getRareAddressPage, type RareAddressItem } from "@/features/receive/services/receiveApi"
 import { SectionCard } from "@/features/transfer/components/TransferUi"
+import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 type Props = NativeStackScreenProps<ReceiveStackParamList, "RareAddressScreen">
@@ -16,6 +17,7 @@ type Props = NativeStackScreenProps<ReceiveStackParamList, "RareAddressScreen">
 export function RareAddressScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const params = route.params
   const [tab, setTab] = useState<"digit" | "letter">("digit")
   const [digit, setDigit] = useState(4)
@@ -136,7 +138,7 @@ export function RareAddressScreen({ navigation, route }: Props) {
                     recvCoinCode,
                     multisigWalletId,
                   })
-                  Alert.alert(t("common.infoTitle"), t("receive.rare.createSuccess"))
+                  showToast({ message: t("receive.rare.createSuccess"), tone: "success" })
                 } catch {
                   Alert.alert(t("common.errorTitle"), t("receive.rare.createFailed"))
                 } finally {

@@ -10,6 +10,7 @@ import { getReceiveExpireOptions, markReceiveExpireDuration, type ReceiveExpireO
 import { useReceiveStore } from "@/features/receive/store/useReceiveStore"
 import { SectionCard } from "@/features/transfer/components/TransferUi"
 import { useWalletStore } from "@/shared/store/useWalletStore"
+import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 type Props = NativeStackScreenProps<ReceiveStackParamList, "ReceiveExpiryScreen">
@@ -31,6 +32,7 @@ function formatExpireLabel(seconds: number, t: ReturnType<typeof useTranslation>
 export function ReceiveExpiryScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const walletAddress = useWalletStore(state => state.address)
   const createOrder = useReceiveStore(state => state.createOrder)
   const [items, setItems] = useState<ReceiveExpireOption[]>([])
@@ -101,10 +103,10 @@ export function ReceiveExpiryScreen({ navigation, route }: Props) {
                     })
                   }
 
-                  Alert.alert(t("common.infoTitle"), t("receive.expiry.saveSuccess"))
+                  showToast({ message: t("receive.expiry.saveSuccess"), tone: "success" })
                   navigation.goBack()
                 } catch {
-                  Alert.alert(t("common.errorTitle"), t("receive.expiry.saveFailed"))
+                  showToast({ message: t("receive.expiry.saveFailed"), tone: "error" })
                 } finally {
                   setSubmitting(false)
                 }

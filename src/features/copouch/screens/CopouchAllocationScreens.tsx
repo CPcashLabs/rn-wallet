@@ -4,7 +4,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 import { Alert, Pressable, Text, View } from "react-native"
 
-import type { CowalletStackParamList } from "@/app/navigation/types"
+import type { CopouchStackParamList } from "@/app/navigation/types"
 import { CopouchScaffold } from "@/features/copouch/components/CopouchScaffold"
 import {
   AvatarBadge,
@@ -24,11 +24,13 @@ import { getOrderDetail } from "@/features/orders/services/ordersApi"
 import { PrimaryButton, SectionCard } from "@/features/transfer/components/TransferUi"
 import { formatAmount } from "@/features/transfer/utils/order"
 import { ApiError } from "@/shared/errors"
+import { useToast } from "@/shared/toast/useToast"
 
-type StackProps<T extends keyof CowalletStackParamList> = NativeStackScreenProps<CowalletStackParamList, T>
+type StackProps<T extends keyof CopouchStackParamList> = NativeStackScreenProps<CopouchStackParamList, T>
 
-export function CowalletAllocationScreen({ navigation, route }: StackProps<"CowalletAllocationScreen">) {
+export function CopouchAllocationScreen({ navigation, route }: StackProps<"CopouchAllocationScreen">) {
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const [loading, setLoading] = useState(true)
   const [invalidAccess, setInvalidAccess] = useState(false)
   const [candidates, setCandidates] = useState<CopouchReallocateCandidate[]>([])
@@ -85,10 +87,10 @@ export function CowalletAllocationScreen({ navigation, route }: StackProps<"Cowa
         walletId: route.params.id,
         reallocateWalletAddress: selectedCandidate.walletAddress,
       })
-      Alert.alert(t("common.infoTitle"), t("copouch.allocation.saveSuccess"))
+      showToast({ message: t("copouch.allocation.saveSuccess"), tone: "success" })
       navigation.goBack()
     } catch {
-      Alert.alert(t("common.errorTitle"), t("copouch.allocation.saveFailed"))
+      showToast({ message: t("copouch.allocation.saveFailed"), tone: "error" })
     } finally {
       setSubmitting(false)
     }
@@ -146,7 +148,7 @@ export function CowalletAllocationScreen({ navigation, route }: StackProps<"Cowa
   )
 }
 
-export function CowalletViewAllocationScreen({ navigation, route }: StackProps<"CowalletViewAllocationScreen">) {
+export function CopouchViewAllocationScreen({ navigation, route }: StackProps<"CopouchViewAllocationScreen">) {
   const { t } = useTranslation()
   const [loading, setLoading] = useState(true)
   const [invalidAccess, setInvalidAccess] = useState(false)

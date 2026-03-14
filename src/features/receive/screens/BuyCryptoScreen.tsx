@@ -11,6 +11,7 @@ import { FieldRow, SectionCard } from "@/features/transfer/components/TransferUi
 import { getCoinList, resolveChainNameById, type WalletChainName, type WalletCoin } from "@/shared/api/walletAssets"
 import { useBalanceStore } from "@/shared/store/useBalanceStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
+import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 type Props = NativeStackScreenProps<TransferStackParamList, "BuyCryptoScreen">
@@ -18,6 +19,7 @@ type Props = NativeStackScreenProps<TransferStackParamList, "BuyCryptoScreen">
 export function BuyCryptoScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const chainId = useWalletStore(state => state.chainId)
   const walletAddress = useWalletStore(state => state.address)
   const balances = useBalanceStore(state => state.balances)
@@ -180,9 +182,9 @@ export function BuyCryptoScreen({ navigation, route }: Props) {
                   sendCoinCode,
                   sellerId,
                 })
-                Alert.alert(t("common.infoTitle"), t("receive.buy.createSuccess", { orderSn: result.orderSn || "-" }))
+                showToast({ message: t("receive.buy.createSuccess", { orderSn: result.orderSn || "-" }), tone: "success" })
               } catch {
-                Alert.alert(t("common.errorTitle"), t("receive.buy.createFailed"))
+                showToast({ message: t("receive.buy.createFailed"), tone: "error" })
               } finally {
                 setSubmitting(false)
               }

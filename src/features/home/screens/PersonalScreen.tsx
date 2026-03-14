@@ -13,6 +13,7 @@ import { fileAdapter, isNativeImagePickerCancelledError } from "@/shared/native"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useUserStore } from "@/shared/store/useUserStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
+import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 import type { SettingsStackParamList } from "@/app/navigation/types"
@@ -22,6 +23,7 @@ type Props = NativeStackScreenProps<SettingsStackParamList, "PersonalScreen">
 export function PersonalScreen({ navigation }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const { profile, refresh } = useProfileSync()
   const avatarVersion = useUserStore(state => state.avatarVersion)
   const session = useAuthStore(state => state.session)
@@ -31,14 +33,15 @@ export function PersonalScreen({ navigation }: Props) {
 
   const address = walletAddress ?? profile?.address ?? session?.address ?? ""
   const nickname = profile?.nickname || t("home.shell.defaultNickname")
-  const email = profile?.email || "--"
+  const hasEmail = Boolean(profile?.email)
+  const email = profile?.email || t("settingsHub.email.unbound")
   const avatar = profile?.avatar
 
   const handleAvatarPress = async () => {
     const capability = fileAdapter.getCapability()
 
     if (!capability.supported) {
-      Alert.alert(t("common.infoTitle"), t("home.personal.avatarPending"))
+      showToast({ message: t("home.personal.avatarPending"), tone: "warning" })
       return
     }
 
@@ -62,13 +65,13 @@ export function PersonalScreen({ navigation }: Props) {
       patchProfile({ avatar: avatarUrl })
       void refresh()
 
-      Alert.alert(t("common.infoTitle"), t("home.personal.avatarUpdated"))
+      showToast({ message: t("home.personal.avatarUpdated"), tone: "success" })
     } catch (error) {
       if (isNativeImagePickerCancelledError(error)) {
         return
       }
 
-      Alert.alert(t("common.errorTitle"), t("home.personal.avatarUploadFailed"))
+      showToast({ message: t("home.personal.avatarUploadFailed"), tone: "error" })
     } finally {
       setUploading(false)
     }
@@ -103,10 +106,16 @@ export function PersonalScreen({ navigation }: Props) {
           </View>
         </Pressable>
 
-        <View style={styles.row}>
+        <Pressable
+          onPress={() => navigation.navigate(hasEmail ? "EmailBindedScreen" : "EmailHomeScreen")}
+          style={styles.row}
+        >
           <Text style={[styles.rowLabel, { color: theme.colors.text }]}>{t("home.personal.email")}</Text>
-          <Text style={[styles.rowValue, { color: theme.colors.mutedText }]}>{email}</Text>
-        </View>
+          <View style={styles.rowRight}>
+            <Text style={[styles.rowValue, { color: theme.colors.mutedText }]}>{email}</Text>
+            <Text style={[styles.rowValue, { color: theme.colors.mutedText }]}>›</Text>
+          </View>
+        </Pressable>
       </View>
     </HomeScaffold>
   )

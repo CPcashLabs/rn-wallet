@@ -11,6 +11,7 @@ import { getReceiveShareDetail } from "@/features/receive/services/receiveApi"
 import { buildQrCodeDataUrl, buildQrMatrix, stripDataUrlPrefix, type QrMatrix } from "@/features/receive/utils/qrcode"
 import { FieldRow, SectionCard } from "@/features/transfer/components/TransferUi"
 import { fileAdapter, shareAdapter } from "@/shared/native"
+import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 type Props = NativeStackScreenProps<ReceiveStackParamList, "ReceiveShareScreen">
@@ -18,6 +19,7 @@ type Props = NativeStackScreenProps<ReceiveStackParamList, "ReceiveShareScreen">
 export function ReceiveShareScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const [detail, setDetail] = useState<Awaited<ReturnType<typeof getReceiveShareDetail>> | null>(null)
   const [sharing, setSharing] = useState(false)
   const [qrMatrix, setQrMatrix] = useState<QrMatrix | null>(null)
@@ -49,14 +51,14 @@ export function ReceiveShareScreen({ navigation, route }: Props) {
       })
 
       if (!result.ok) {
-        Alert.alert(t("common.errorTitle"), t("receive.share.saveFailed"))
+        showToast({ message: t("receive.share.saveFailed"), tone: "error" })
         return
       }
 
-      Alert.alert(t("common.infoTitle"), t("receive.share.saveSuccess"))
+      showToast({ message: t("receive.share.saveSuccess"), tone: "success" })
     } catch (error) {
       console.error("[receive][share][qr][save]", error)
-      Alert.alert(t("common.errorTitle"), t("receive.share.saveFailed"))
+      showToast({ message: t("receive.share.saveFailed"), tone: "error" })
     }
   }
 
@@ -113,7 +115,7 @@ export function ReceiveShareScreen({ navigation, route }: Props) {
                   })
 
                   if (!result.ok) {
-                    Alert.alert(t("common.errorTitle"), t("receive.share.shareFailed"))
+                    showToast({ message: t("receive.share.shareFailed"), tone: "error" })
                   }
                 } finally {
                   setSharing(false)

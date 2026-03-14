@@ -28,7 +28,8 @@ export function TransferStackNavigator() {
       <Stack.Screen name="TransferAddressScreen" component={TransferAddressScreen} />
       <Stack.Screen name="TransferOrderScreen" component={TransferOrderScreen} />
       <Stack.Screen name="TransferOrderNormalScreen" component={TransferOrderScreen} />
-      <Stack.Screen name="TransferOrderCowalletScreen" component={TransferOrderScreen} />
+      <Stack.Screen name="TransferOrderCopouchScreen" component={TransferOrderScreen} />
+      <Stack.Screen name="TransferOrderCowalletScreen" component={TransferOrderScreen as React.ComponentType<any>} />
       <Stack.Screen name="TransferConfirmScreen" component={TransferConfirmScreen} />
       <Stack.Screen name="TransferConfirmNormalScreen" component={TransferConfirmScreen} />
       <Stack.Screen name="TxPayStatusScreen" component={TxPayStatusScreen} />

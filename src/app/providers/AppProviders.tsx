@@ -10,6 +10,7 @@ import { QueryProvider } from "@/app/providers/QueryProvider"
 import { SocketProvider } from "@/app/providers/SocketProvider"
 import { StoreProvider } from "@/app/providers/StoreProvider"
 import { ThemeProvider } from "@/app/providers/ThemeProvider"
+import { ToastProvider } from "@/shared/toast/ToastProvider"
 
 export function AppProviders({ children }: PropsWithChildren) {
   return (
@@ -21,7 +22,9 @@ export function AppProviders({ children }: PropsWithChildren) {
               <SocketProvider>
                 <QueryProvider>
                   <ThemeProvider>
-                    <NavigationProvider>{children}</NavigationProvider>
+                    <ToastProvider>
+                      <NavigationProvider>{children}</NavigationProvider>
+                    </ToastProvider>
                   </ThemeProvider>
                 </QueryProvider>
               </SocketProvider>

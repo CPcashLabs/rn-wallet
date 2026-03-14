@@ -6,34 +6,36 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 
 import { describeCopouchEligibilityError } from "@/features/copouch/services/copouchApi"
-import { useCowalletStore } from "@/features/copouch/store/useCowalletStore"
+import { useCopouchStore } from "@/features/copouch/store/useCopouchStore"
 import { CopouchScaffold } from "@/features/copouch/components/CopouchScaffold"
 import { formatCurrency } from "@/features/home/utils/format"
 import { PageEmpty, PrimaryButton, SecondaryButton, SectionCard } from "@/features/transfer/components/TransferUi"
 import { useSocketStore } from "@/shared/store/useSocketStore"
+import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
-import type { CowalletStackParamList } from "@/app/navigation/types"
+import type { CopouchStackParamList } from "@/app/navigation/types"
 
 const bgPalette = ["#DFF6F4", "#FFF1D6", "#E8EEFF", "#FCE7F3"]
 
-type Props = NativeStackScreenProps<CowalletStackParamList, "CowalletHomeScreen">
+type Props = NativeStackScreenProps<CopouchStackParamList, "CopouchHomeScreen">
 
-export function CowalletHomeScreen({ navigation }: Props) {
+export function CopouchHomeScreen({ navigation }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
-  const wallets = useCowalletStore(state => state.wallets)
-  const loading = useCowalletStore(state => state.loading)
-  const refreshing = useCowalletStore(state => state.refreshing)
-  const creating = useCowalletStore(state => state.creating)
-  const sortByAmount = useCowalletStore(state => state.sortByAmount)
-  const bttBalance = useCowalletStore(state => state.bttBalance)
-  const walletLimit = useCowalletStore(state => state.walletLimit)
-  const finishedCount = useCowalletStore(state => state.finishedCount)
-  const loadOverview = useCowalletStore(state => state.loadOverview)
-  const refreshOverview = useCowalletStore(state => state.refreshOverview)
-  const toggleSortByAmount = useCowalletStore(state => state.toggleSortByAmount)
-  const createWallet = useCowalletStore(state => state.createWallet)
+  const { showToast } = useToast()
+  const wallets = useCopouchStore(state => state.wallets)
+  const loading = useCopouchStore(state => state.loading)
+  const refreshing = useCopouchStore(state => state.refreshing)
+  const creating = useCopouchStore(state => state.creating)
+  const sortByAmount = useCopouchStore(state => state.sortByAmount)
+  const bttBalance = useCopouchStore(state => state.bttBalance)
+  const walletLimit = useCopouchStore(state => state.walletLimit)
+  const finishedCount = useCopouchStore(state => state.finishedCount)
+  const loadOverview = useCopouchStore(state => state.loadOverview)
+  const refreshOverview = useCopouchStore(state => state.refreshOverview)
+  const toggleSortByAmount = useCopouchStore(state => state.toggleSortByAmount)
+  const createWallet = useCopouchStore(state => state.createWallet)
   const lastEvent = useSocketStore(state => state.lastEvent)
 
   const [modalVisible, setModalVisible] = useState(false)
@@ -75,12 +77,12 @@ export function CowalletHomeScreen({ navigation }: Props) {
 
   const handleOpenCreate = () => {
     if (cooldownUntil && cooldownUntil > Date.now()) {
-      Alert.alert(t("common.infoTitle"), t("copouch.home.cooldown"))
+      showToast({ message: t("copouch.home.cooldown"), tone: "warning" })
       return
     }
 
     if (wallets.length === 0 && finishedCount <= 0) {
-      Alert.alert(t("common.infoTitle"), t("copouch.home.needFinishedOrder"))
+      showToast({ message: t("copouch.home.needFinishedOrder"), tone: "warning" })
       return
     }
 
@@ -112,45 +114,45 @@ export function CowalletHomeScreen({ navigation }: Props) {
       })
       setModalVisible(false)
       setCooldownUntil(Date.now() + 3_000)
-      Alert.alert(t("common.infoTitle"), t("copouch.home.createSubmitted", { txHash: result.txHash.slice(0, 10) }))
+      showToast({ message: t("copouch.home.createSubmitted", { txHash: result.txHash.slice(0, 10) }), tone: "success" })
     } catch (error) {
       if (error instanceof Error && error.message === "finishedCount") {
-        Alert.alert(t("common.infoTitle"), t("copouch.home.needFinishedOrder"))
+        showToast({ message: t("copouch.home.needFinishedOrder"), tone: "warning" })
         return
       }
 
       if (error instanceof Error && error.message === "walletLimit") {
-        Alert.alert(t("common.infoTitle"), t("copouch.home.walletLimitReached"))
+        showToast({ message: t("copouch.home.walletLimitReached"), tone: "warning" })
         return
       }
 
       if (error instanceof Error && error.message === "bttBalance") {
-        Alert.alert(t("common.infoTitle"), t("copouch.home.needBtt"))
+        showToast({ message: t("copouch.home.needBtt"), tone: "warning" })
         return
       }
 
       if (error instanceof Error && error.message === "unsupportedLoginType") {
-        Alert.alert(t("common.infoTitle"), t("copouch.home.needWalletLogin"))
+        showToast({ message: t("copouch.home.needWalletLogin"), tone: "warning" })
         return
       }
 
       if (error instanceof Error && error.message === "walletMismatch") {
-        Alert.alert(t("common.infoTitle"), t("copouch.home.walletMismatch"))
+        showToast({ message: t("copouch.home.walletMismatch"), tone: "warning" })
         return
       }
 
       switch (describeCopouchEligibilityError(error)) {
         case "finishedCount":
-          Alert.alert(t("common.infoTitle"), t("copouch.home.needFinishedOrder"))
+          showToast({ message: t("copouch.home.needFinishedOrder"), tone: "warning" })
           break
         case "walletLimit":
-          Alert.alert(t("common.infoTitle"), t("copouch.home.walletLimitReached"))
+          showToast({ message: t("copouch.home.walletLimitReached"), tone: "warning" })
           break
         case "ownerLimit":
-          Alert.alert(t("common.infoTitle"), t("copouch.home.ownerLimitReached"))
+          showToast({ message: t("copouch.home.ownerLimitReached"), tone: "warning" })
           break
         default:
-          Alert.alert(t("common.errorTitle"), t("copouch.home.createFailed"))
+          showToast({ message: t("copouch.home.createFailed"), tone: "error" })
       }
     }
   }
@@ -169,7 +171,7 @@ export function CowalletHomeScreen({ navigation }: Props) {
           >
             <Text style={[styles.headerActionText, { color: theme.colors.primary }]}>{t("copouch.home.claimBtt")}</Text>
           </Pressable>
-          <Pressable onPress={() => navigation.navigate("CowalletFaqScreen")}>
+          <Pressable onPress={() => navigation.navigate("CopouchFaqScreen")}>
             <Text style={[styles.headerActionText, { color: theme.colors.primary }]}>{t("copouch.home.faq")}</Text>
           </Pressable>
         </View>
@@ -199,7 +201,7 @@ export function CowalletHomeScreen({ navigation }: Props) {
           <Pressable
             key={wallet.id}
             onPress={() =>
-              navigation.navigate("CowalletDetailScreen", {
+              navigation.navigate("CopouchDetailScreen", {
                 id: wallet.id,
                 walletBgColor: wallet.walletBgColor,
               })

@@ -1,6 +1,6 @@
 import React, { useState } from "react"
 
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native"
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -8,6 +8,7 @@ import type { ReceiveStackParamList } from "@/app/navigation/types"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { editReceiveAddressRemark } from "@/features/receive/services/receiveApi"
 import { SectionCard } from "@/features/transfer/components/TransferUi"
+import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 type Props = NativeStackScreenProps<ReceiveStackParamList, "ReceiveAddressCreateScreen">
@@ -15,6 +16,7 @@ type Props = NativeStackScreenProps<ReceiveStackParamList, "ReceiveAddressCreate
 export function ReceiveAddressCreateScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const params = route.params
   const [remarkName, setRemarkName] = useState(route.params?.remarkName ?? "")
   const [submitting, setSubmitting] = useState(false)
@@ -61,10 +63,10 @@ export function ReceiveAddressCreateScreen({ navigation, route }: Props) {
                     address,
                     multisigWalletId,
                   })
-                  Alert.alert(t("common.infoTitle"), t("receive.addressEdit.saveSuccess"))
+                  showToast({ message: t("receive.addressEdit.saveSuccess"), tone: "success" })
                   navigation.goBack()
                 } catch {
-                  Alert.alert(t("common.errorTitle"), t("receive.addressEdit.saveFailed"))
+                  showToast({ message: t("receive.addressEdit.saveFailed"), tone: "error" })
                 } finally {
                   setSubmitting(false)
                 }

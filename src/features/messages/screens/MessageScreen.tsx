@@ -6,9 +6,17 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { getMessageList, markAllMessagesRead, markMessageRead, type MessageItem } from "@/features/messages/services/messageApi"
+import {
+  formatRelativeTime,
+  resolveMessageAmount,
+  resolveMessageBody,
+  resolveMessageCoin,
+  resolveMessageTarget,
+  resolveMessageTitle,
+} from "@/features/messages/utils/messagePresentation"
 import { PageEmpty, SectionCard } from "@/features/transfer/components/TransferUi"
-import { formatAddress } from "@/features/home/utils/format"
 import { useSocketStore } from "@/shared/store/useSocketStore"
+import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 import type { MessageStackParamList } from "@/app/navigation/types"
@@ -18,6 +26,7 @@ type Props = NativeStackScreenProps<MessageStackParamList, "MessageScreen">
 export function MessageScreen({ navigation }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const socketEvent = useSocketStore(state => state.lastEvent)
   const [items, setItems] = useState<MessageItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -68,26 +77,40 @@ export function MessageScreen({ navigation }: Props) {
         setItems(current => current.map(entry => (entry.id === item.id ? { ...entry, status: 1 } : entry)))
       }
     } catch {
-      Alert.alert(t("common.errorTitle"), t("message.readFailed"))
+      showToast({ message: t("message.readFailed"), tone: "error" })
       return
     }
 
-    const rootNavigation = navigation.getParent()?.getParent() as any
+    const rootNavigation = navigation.getParent() as any
+    const target = resolveMessageTarget(item)
 
-    if (item.type === "OWNER_REMOVED" || item.type === "RE_ALLOCATE") {
-      Alert.alert(t("common.infoTitle"), t("message.copouchPending"))
+    if (target.kind === "missingOrder") {
+      showToast({ message: t("message.orderMissing"), tone: "warning" })
       return
     }
 
-    if (!item.orderSn) {
-      Alert.alert(t("common.infoTitle"), t("message.orderMissing"))
+    if (target.kind === "copouchHome") {
+      rootNavigation?.navigate("CopouchStack", {
+        screen: "CopouchHomeScreen",
+      })
+      return
+    }
+
+    if (target.kind === "copouchAllocation") {
+      rootNavigation?.navigate("CopouchStack", {
+        screen: "CopouchViewAllocationScreen",
+        params: {
+          id: target.walletId,
+          orderSn: target.orderSn,
+        },
+      })
       return
     }
 
     rootNavigation?.navigate("OrdersStack", {
       screen: "OrderDetailScreen",
       params: {
-        orderSn: item.orderSn,
+        orderSn: target.orderSn,
         source: "message",
       },
     })
@@ -97,9 +120,9 @@ export function MessageScreen({ navigation }: Props) {
     try {
       await markAllMessagesRead()
       setItems(current => current.map(item => ({ ...item, status: 1 })))
-      Alert.alert(t("common.infoTitle"), t("message.readAllSuccess"))
+      showToast({ message: t("message.readAllSuccess"), tone: "success" })
     } catch {
-      Alert.alert(t("common.errorTitle"), t("message.readAllFailed"))
+      showToast({ message: t("message.readAllFailed"), tone: "error" })
     }
   }
 
@@ -140,7 +163,7 @@ export function MessageScreen({ navigation }: Props) {
 
             <View style={styles.amountRow}>
               <Text style={[styles.amount, { color: theme.colors.text }]}>
-                {resolveAmount(item)} {resolveCoin(item)}
+                {resolveMessageAmount(item)} {resolveMessageCoin(item)}
               </Text>
               {item.status === 0 ? <View style={[styles.unreadDot, { backgroundColor: "#DC2626" }]} /> : null}
             </View>
@@ -165,86 +188,6 @@ export function MessageScreen({ navigation }: Props) {
       </ScrollView>
     </HomeScaffold>
   )
-}
-
-function resolveMessageTitle(item: MessageItem, t: (key: string, options?: Record<string, unknown>) => string) {
-  if (item.type === "OWNER_REMOVED") {
-    return t("message.types.ownerRemoved")
-  }
-
-  if (item.type === "RE_ALLOCATE") {
-    return t("message.types.reallocate")
-  }
-
-  const map: Record<string, string> = {
-    RECEIPT: "message.types.receipt",
-    RECEIPT_FIXED: "message.types.receipt",
-    RECEIPT_NORMAL: "message.types.receipt",
-    TRACE: "message.types.receipt",
-    TRACE_LONG_TERM: "message.types.receipt",
-    TRACE_CHILD: "message.types.receipt",
-    PAYMENT: "message.types.payment",
-    PAYMENT_NORMAL: "message.types.payment",
-    SEND: "message.types.send",
-    SEND_RECEIVE: "message.types.sendReceive",
-    NATIVE: "message.types.native",
-  }
-
-  return t(map[item.orderType] ?? "message.types.default")
-}
-
-function resolveMessageBody(item: MessageItem, t: (key: string, options?: Record<string, unknown>) => string) {
-  if (item.type === "OWNER_REMOVED") {
-    return t("message.ownerRemovedBody", {
-      walletName: item.multisigWalletName || "CoPouch",
-    })
-  }
-
-  if (item.type === "RE_ALLOCATE") {
-    return t("message.reallocateBody", {
-      operator: item.operatorNickname || "--",
-      walletName: item.multisigWalletName || "CoPouch",
-    })
-  }
-
-  const isReceive = ["RECEIPT", "RECEIPT_FIXED", "RECEIPT_NORMAL", "TRACE", "TRACE_LONG_TERM", "TRACE_CHILD", "SEND_RECEIVE"].includes(
-    item.orderType,
-  )
-  const targetAddress = isReceive ? item.paymentAddress || item.receiveAddress : item.receiveAddress || item.transferAddress
-
-  return t(isReceive ? "message.fromAddress" : "message.toAddress", {
-    address: targetAddress ? formatAddress(targetAddress) : "--",
-  })
-}
-
-function resolveAmount(item: MessageItem) {
-  const amount = item.sendAmount || item.recvAmount || item.sendActualAmount || item.recvActualAmount
-  return Number.isFinite(amount) ? String(amount) : "0"
-}
-
-function resolveCoin(item: MessageItem) {
-  return item.sendCoinName || item.recvCoinName || "USDT"
-}
-
-function formatRelativeTime(timestamp: number | null, t: (key: string, options?: Record<string, unknown>) => string) {
-  if (!timestamp) {
-    return "--"
-  }
-
-  const diff = Math.max(0, Date.now() - timestamp)
-  const minute = 60_000
-  const hour = 60 * minute
-  const day = 24 * hour
-
-  if (diff < hour) {
-    return t("message.time.minutesAgo", { count: Math.max(1, Math.floor(diff / minute) || 1) })
-  }
-
-  if (diff < day) {
-    return t("message.time.hoursAgo", { count: Math.floor(diff / hour) })
-  }
-
-  return t("message.time.daysAgo", { count: Math.floor(diff / day) })
 }
 
 const styles = StyleSheet.create({

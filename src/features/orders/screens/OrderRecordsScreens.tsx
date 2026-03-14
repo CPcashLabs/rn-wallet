@@ -30,6 +30,7 @@ import {
 } from "@/features/orders/utils/orderHelpers"
 import { PageEmpty, PrimaryButton, SectionCard } from "@/features/transfer/components/TransferUi"
 import { useUserStore } from "@/shared/store/useUserStore"
+import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 import type { OrdersStackParamList } from "@/app/navigation/types"
@@ -427,6 +428,7 @@ export function OrderBillScreen({ navigation, route }: OrderBillProps) {
 export function BillExportScreen({ navigation, route }: BillExportProps) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const profile = useUserStore(state => state.profile)
   const [email, setEmail] = useState(route.params.email ?? profile?.email ?? "")
   const [loading, setLoading] = useState(false)
@@ -434,7 +436,7 @@ export function BillExportScreen({ navigation, route }: BillExportProps) {
 
   const handleExport = async () => {
     if (!email.trim()) {
-      Alert.alert(t("common.infoTitle"), t("orders.export.emailRequired"))
+      showToast({ message: t("orders.export.emailRequired"), tone: "warning" })
       return
     }
 
@@ -457,7 +459,7 @@ export function BillExportScreen({ navigation, route }: BillExportProps) {
         : t("orders.export.successSent", { email: email.trim() })
 
       setResultMessage(message)
-      Alert.alert(t("common.infoTitle"), message)
+      showToast({ message, tone: "success" })
     } catch (error) {
       const message = error instanceof Error && error.name === "NativeCapabilityUnavailableError"
         ? t("orders.export.fileUnavailable")

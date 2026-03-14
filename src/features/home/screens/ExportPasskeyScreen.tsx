@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react"
 
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native"
+import { Pressable, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -8,6 +8,7 @@ import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { markWalletBackup } from "@/features/home/services/homeApi"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useUserStore } from "@/shared/store/useUserStore"
+import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 import type { SettingsStackParamList } from "@/app/navigation/types"
@@ -20,6 +21,7 @@ const FIRST_STEP_COUNTDOWN_SECONDS = 3
 export function ExportPasskeyScreen({ navigation }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const loginType = useAuthStore(state => state.loginType)
   const profile = useUserStore(state => state.profile)
   const patchProfile = useUserStore(state => state.patchProfile)
@@ -73,10 +75,10 @@ export function ExportPasskeyScreen({ navigation }: Props) {
       patchProfile({
         walletIsBackup: true,
       })
-      Alert.alert(t("common.infoTitle"), t("home.export.doneSuccess"))
+      showToast({ message: t("home.export.doneSuccess"), tone: "success" })
       navigation.goBack()
     } catch {
-      Alert.alert(t("common.errorTitle"), t("home.export.doneFailed"))
+      showToast({ message: t("home.export.doneFailed"), tone: "error" })
     } finally {
       setFinishing(false)
     }

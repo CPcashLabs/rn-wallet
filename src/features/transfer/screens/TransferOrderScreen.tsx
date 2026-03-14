@@ -24,7 +24,7 @@ import type { TransferStackParamList } from "@/app/navigation/types"
 
 type Props = NativeStackScreenProps<
   TransferStackParamList,
-  "TransferOrderScreen" | "TransferOrderNormalScreen" | "TransferOrderCowalletScreen"
+  "TransferOrderScreen" | "TransferOrderNormalScreen" | "TransferOrderCopouchScreen"
 >
 
 export function TransferOrderScreen({ navigation, route }: Props) {

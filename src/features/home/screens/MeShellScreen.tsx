@@ -20,7 +20,6 @@ type Props = NativeStackScreenProps<SettingsStackParamList, "MeShellScreen">
 export function MeShellScreen({ navigation }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
-  const loginType = useAuthStore(state => state.loginType)
   const session = useAuthStore(state => state.session)
   const walletAddress = useWalletStore(state => state.address)
   const { profile } = useProfileSync()
@@ -30,8 +29,6 @@ export function MeShellScreen({ navigation }: Props) {
   const address = walletAddress ?? profile?.address ?? session?.address ?? ""
   const avatar = profile?.avatar
   const inviteBound = Boolean(profile?.inviteBound)
-  const passkeyExported = Boolean(profile?.walletIsBackup)
-  const isPasskeyLogin = loginType === "passkey"
 
   return (
     <HomeScaffold title={t("home.tabs.me")}>
@@ -56,6 +53,11 @@ export function MeShellScreen({ navigation }: Props) {
             })
           }}
         />
+        <MenuRow label={t("settingsHub.invite.title")} onPress={() => navigation.navigate("InviteHomeScreen")} />
+        <MenuRow label={t("home.me.settings")} onPress={() => navigation.navigate("SettingsHomeScreen")} />
+      </View>
+
+      <View style={[styles.listCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
         <MenuRow
           label={t("home.me.messages")}
           onPress={() => {
@@ -64,31 +66,6 @@ export function MeShellScreen({ navigation }: Props) {
             })
           }}
         />
-        <MenuRow
-          label={t("home.me.tags")}
-          onPress={() => {
-            ;(navigation.getParent()?.getParent() as any)?.navigate("OrdersStack", {
-              screen: "LabelManagementScreen",
-            })
-          }}
-        />
-        <MenuRow
-          label={t("home.me.totalAssets")}
-          onPress={() => {
-            ;(navigation.getParent() as any)?.navigate("HomeTab", {
-              screen: "TotalAssetsScreen",
-            })
-          }}
-        />
-        <MenuRow label={t("settingsHub.invite.title")} onPress={() => navigation.navigate("InviteHomeScreen")} />
-        <MenuRow label={t("home.me.settings")} onPress={() => navigation.navigate("SettingsHomeScreen")} />
-        {isPasskeyLogin ? (
-          <MenuRow
-            badge={passkeyExported ? t("home.me.exportedBadge") : undefined}
-            label={t("home.me.exportPasskey")}
-            onPress={() => navigation.navigate("ExportPasskeyScreen")}
-          />
-        ) : null}
       </View>
     </HomeScaffold>
   )
@@ -98,7 +75,7 @@ function MenuRow(props: { label: string; badge?: string; onPress: () => void }) 
   const theme = useAppTheme()
 
   return (
-    <Pressable onPress={props.onPress} style={styles.row}>
+    <Pressable onPress={props.onPress} style={[styles.row, { borderBottomColor: theme.colors.border }]}>
       <Text style={[styles.rowLabel, { color: theme.colors.text }]}>{props.label}</Text>
       <View style={styles.rowRight}>
         {props.badge ? (
@@ -148,7 +125,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#CBD5E133",
   },
   rowLabel: {
     fontSize: 15,

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react"
 
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native"
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -8,6 +8,7 @@ import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { useProfileSync } from "@/features/home/hooks/useProfileSync"
 import { updateProfileNickname } from "@/features/home/services/homeApi"
 import { useUserStore } from "@/shared/store/useUserStore"
+import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 import type { SettingsStackParamList } from "@/app/navigation/types"
@@ -19,6 +20,7 @@ const MAX_NAME_LENGTH = 20
 export function UpdateNameScreen({ navigation }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const { profile, refresh } = useProfileSync()
   const patchProfile = useUserStore(state => state.patchProfile)
   const [name, setName] = useState("")
@@ -31,7 +33,7 @@ export function UpdateNameScreen({ navigation }: Props) {
   const save = async () => {
     const trimmed = name.trim()
     if (!trimmed) {
-      Alert.alert(t("common.errorTitle"), t("home.updateName.empty"))
+      showToast({ message: t("home.updateName.empty"), tone: "warning" })
       return
     }
 
@@ -44,10 +46,10 @@ export function UpdateNameScreen({ navigation }: Props) {
       })
       void refresh()
 
-      Alert.alert(t("common.infoTitle"), t("home.updateName.success"))
+      showToast({ message: t("home.updateName.success"), tone: "success" })
       navigation.goBack()
     } catch {
-      Alert.alert(t("common.errorTitle"), t("home.updateName.failed"))
+      showToast({ message: t("home.updateName.failed"), tone: "error" })
     } finally {
       setSubmitting(false)
     }

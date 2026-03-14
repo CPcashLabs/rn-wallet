@@ -9,11 +9,13 @@ import { useProfileSync } from "@/features/home/hooks/useProfileSync"
 import { getInviteBindingMessage } from "@/features/auth/utils/authMessages"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { formatAddress, formatCurrency } from "@/features/home/utils/format"
+import { HomeMessagePreview } from "@/features/messages/components/HomeMessagePreview"
 import { getBoolean, setBoolean } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useBalanceStore } from "@/shared/store/useBalanceStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
+import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 import type { HomeTabStackParamList } from "@/app/navigation/types"
@@ -23,6 +25,7 @@ type Props = NativeStackScreenProps<HomeTabStackParamList, "HomeShellScreen">
 export function HomeShellScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const session = useAuthStore(state => state.session)
   const walletAddress = useWalletStore(state => state.address)
   const walletChainId = useWalletStore(state => state.chainId)
@@ -65,7 +68,7 @@ export function HomeShellScreen({ navigation, route }: Props) {
     void (async () => {
       try {
         await bindInviteCode(route.params?.inviteCode as string)
-        Alert.alert(t("common.infoTitle"), t("home.shell.inviteBound"))
+        showToast({ message: t("home.shell.inviteBound"), tone: "success" })
       } catch (error) {
         Alert.alert(t("common.errorTitle"), getInviteBindingMessage(error))
       }
@@ -93,21 +96,21 @@ export function HomeShellScreen({ navigation, route }: Props) {
     })
   }
 
-  const handleOpenInvite = () => {
-    ;(navigation.getParent() as any)?.navigate("MeTab", {
-      screen: "InviteHomeScreen",
-    })
-  }
-
   const handleOpenCopouch = () => {
-    ;(navigation.getParent()?.getParent() as any)?.navigate("CowalletStack", {
-      screen: "CowalletHomeScreen",
+    ;(navigation.getParent()?.getParent() as any)?.navigate("CopouchStack", {
+      screen: "CopouchHomeScreen",
     })
   }
 
   const handleOpenOrders = () => {
     ;(navigation.getParent()?.getParent() as any)?.navigate("OrdersStack", {
       screen: "TxlogsScreen",
+    })
+  }
+
+  const handleOpenMessages = () => {
+    ;(navigation.getParent()?.getParent() as any)?.navigate("MessageStack", {
+      screen: "MessageScreen",
     })
   }
 
@@ -142,10 +145,11 @@ export function HomeShellScreen({ navigation, route }: Props) {
       <View style={styles.actionGrid}>
         <ActionButton label={t("home.actions.transfer")} onPress={handleOpenTransfer} />
         <ActionButton label={t("home.actions.receive")} onPress={handleOpenReceive} />
-        <ActionButton label={t("home.actions.invite")} onPress={handleOpenInvite} />
+        <ActionButton label={t("home.actions.records")} onPress={handleOpenOrders} />
         <ActionButton label={t("home.actions.copouch")} onPress={handleOpenCopouch} />
-        <ActionButton label={t("home.actions.bill")} onPress={handleOpenOrders} />
       </View>
+
+      <HomeMessagePreview onPress={handleOpenMessages} />
 
       <View style={[styles.tipsCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
         <Text style={[styles.tipTitle, { color: theme.colors.text }]}>{t("home.shell.statusTitle")}</Text>
@@ -244,7 +248,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   actionButton: {
-    width: "31%",
+    width: "48%",
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 14,
     minHeight: 72,

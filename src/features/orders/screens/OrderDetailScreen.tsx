@@ -23,6 +23,7 @@ import {
 } from "@/features/orders/utils/orderHelpers"
 import { PageEmpty, PrimaryButton, SecondaryButton, SectionCard } from "@/features/transfer/components/TransferUi"
 import { openExternalUrl } from "@/features/settings/utils/settingsHub"
+import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 import type { OrdersStackParamList } from "@/app/navigation/types"
@@ -32,6 +33,7 @@ type Props = NativeStackScreenProps<OrdersStackParamList, "OrderDetailScreen">
 export function OrderDetailScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const orderSn = route.params.orderSn
   const [detail, setDetail] = useState<OrderDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -75,7 +77,7 @@ export function OrderDetailScreen({ navigation, route }: Props) {
       await confirmOrder(detail.orderSn)
       const refreshed = await getOrderDetail(detail.orderSn)
       setDetail(refreshed)
-      Alert.alert(t("common.infoTitle"), t("orders.detail.confirmSuccess"))
+      showToast({ message: t("orders.detail.confirmSuccess"), tone: "success" })
     } catch {
       Alert.alert(t("common.errorTitle"), t("orders.detail.confirmFailed"))
     } finally {
@@ -85,7 +87,7 @@ export function OrderDetailScreen({ navigation, route }: Props) {
 
   const handleOpenExplorer = async () => {
     if (!explorerUrl) {
-      Alert.alert(t("common.infoTitle"), t("orders.detail.explorerUnavailable"))
+      showToast({ message: t("orders.detail.explorerUnavailable"), tone: "warning" })
       return
     }
 

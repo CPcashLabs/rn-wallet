@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next"
 
 import { getCopouchDetail, getCopouchOwners, markCopouchFirstEnterSeen, type CopouchDetail, type CopouchOwner } from "@/features/copouch/services/copouchApi"
 import { CopouchScaffold } from "@/features/copouch/components/CopouchScaffold"
-import { useCowalletStore } from "@/features/copouch/store/useCowalletStore"
+import { useCopouchStore } from "@/features/copouch/store/useCopouchStore"
 import { formatAddress, formatCurrency } from "@/features/home/utils/format"
 import { PageEmpty, PrimaryButton, SectionCard, SecondaryButton } from "@/features/transfer/components/TransferUi"
 import { ApiError } from "@/shared/errors"
@@ -16,7 +16,7 @@ import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 import { useSocketStore } from "@/shared/store/useSocketStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
-import type { CowalletStackParamList } from "@/app/navigation/types"
+import type { CopouchStackParamList } from "@/app/navigation/types"
 
 const bgPalette: Record<number, { card: string; page: string }> = {
   1: { card: "#DFF6F4", page: "#F4FBFA" },
@@ -25,14 +25,14 @@ const bgPalette: Record<number, { card: string; page: string }> = {
   4: { card: "#FCE7F3", page: "#FFF5FA" },
 }
 
-type Props = NativeStackScreenProps<CowalletStackParamList, "CowalletDetailScreen">
+type Props = NativeStackScreenProps<CopouchStackParamList, "CopouchDetailScreen">
 
-export function CowalletDetailScreen({ navigation, route }: Props) {
+export function CopouchDetailScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
-  const refreshOverview = useCowalletStore(state => state.refreshOverview)
-  const refreshWalletValue = useCowalletStore(state => state.refreshWalletValue)
-  const wallets = useCowalletStore(state => state.wallets)
+  const refreshOverview = useCopouchStore(state => state.refreshOverview)
+  const refreshWalletValue = useCopouchStore(state => state.refreshWalletValue)
+  const wallets = useCopouchStore(state => state.wallets)
   const lastEvent = useSocketStore(state => state.lastEvent)
   const [loading, setLoading] = useState(true)
   const [detail, setDetail] = useState<CopouchDetail | null>(null)
@@ -165,7 +165,7 @@ export function CowalletDetailScreen({ navigation, route }: Props) {
         <SectionCard>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("copouch.detail.membersTitle")}</Text>
-            <Pressable onPress={() => navigation.navigate("CowalletMemberScreen", { id: route.params.id })}>
+            <Pressable onPress={() => navigation.navigate("CopouchMemberScreen", { id: route.params.id })}>
               <Text style={[styles.linkText, { color: theme.colors.primary }]}>{t("copouch.detail.viewAll")}</Text>
             </Pressable>
           </View>
@@ -198,7 +198,7 @@ export function CowalletDetailScreen({ navigation, route }: Props) {
                   screen: "SelectTokenScreen",
                   params: {
                     intent: "transfer",
-                    cowallet: detail?.walletAddress,
+                    copouch: detail?.walletAddress,
                     multisigWalletId: route.params.id,
                   },
                 })
@@ -211,23 +211,23 @@ export function CowalletDetailScreen({ navigation, route }: Props) {
                   screen: "SelectTokenScreen",
                   params: {
                     intent: "receive",
-                    cowallet: detail?.walletAddress,
+                    copouch: detail?.walletAddress,
                     multisigWalletId: route.params.id,
                   },
                 })
               }
             />
-            <ActionButton label={t("copouch.detail.bill")} onPress={() => navigation.navigate("CowalletBillListScreen", { id: route.params.id })} />
+            <ActionButton label={t("copouch.detail.bill")} onPress={() => navigation.navigate("CopouchBillListScreen", { id: route.params.id })} />
             <ActionButton
               label={t("copouch.detail.setting")}
-              onPress={() => navigation.navigate("CowalletSettingScreen", { id: route.params.id })}
+              onPress={() => navigation.navigate("CopouchSettingScreen", { id: route.params.id })}
             />
           </View>
         </SectionCard>
 
         <View style={styles.footer}>
-          <PrimaryButton label={t("copouch.detail.withdraw")} onPress={() => navigation.navigate("CowalletSendSelfScreen", { id: route.params.id })} />
-          <SecondaryButton label={t("copouch.detail.deposit")} onPress={() => navigation.navigate("CowalletReceiveScreen", { id: route.params.id })} />
+          <PrimaryButton label={t("copouch.detail.withdraw")} onPress={() => navigation.navigate("CopouchSendSelfScreen", { id: route.params.id })} />
+          <SecondaryButton label={t("copouch.detail.deposit")} onPress={() => navigation.navigate("CopouchReceiveScreen", { id: route.params.id })} />
         </View>
       </View>
     </CopouchScaffold>

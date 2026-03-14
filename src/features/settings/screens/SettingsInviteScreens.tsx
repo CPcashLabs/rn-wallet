@@ -12,11 +12,13 @@ import { shareAdapter } from "@/shared/native/shareAdapter"
 import { getNumber, setNumber } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 import { useUserStore } from "@/shared/store/useUserStore"
+import { useToast } from "@/shared/toast/useToast"
 
 import { Card, PrimaryButton, Row, type StackProps, styles } from "@/features/settings/screens/settingsShared"
 
 export function InviteHomeScreen({ navigation }: StackProps<"InviteHomeScreen">) {
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const profile = useUserStore(state => state.profile)
   const [inviteCodes, setInviteCodes] = useState<Array<{ inviteCode: string; level: number }>>([])
   const [loading, setLoading] = useState(true)
@@ -73,7 +75,7 @@ export function InviteHomeScreen({ navigation }: StackProps<"InviteHomeScreen">)
 
   const handleShare = async () => {
     if (!selectedInviteCode) {
-      Alert.alert(t("common.infoTitle"), t("settingsHub.invite.empty"))
+      showToast({ message: t("settingsHub.invite.empty"), tone: "warning" })
       return
     }
 
