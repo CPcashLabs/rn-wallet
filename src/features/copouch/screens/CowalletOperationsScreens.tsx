@@ -16,7 +16,6 @@ import {
 
 import type { CowalletStackParamList } from "@/app/navigation/types"
 import { CopouchScaffold } from "@/features/copouch/components/CopouchScaffold"
-import { resolveChainNameById } from "@/features/home/services/homeApi"
 import { formatAddress, formatCurrency, formatDateTime, formatTokenAmount } from "@/features/home/utils/format"
 import { ActionRow, FilterChip, SummaryGrid } from "@/features/orders/components/OrdersUi"
 import { getOrderDetail } from "@/features/orders/services/ordersApi"
@@ -64,6 +63,7 @@ import {
 } from "@/features/transfer/services/transferApi"
 import { FieldRow, PageEmpty, PrimaryButton, SecondaryButton, SectionCard } from "@/features/transfer/components/TransferUi"
 import { formatAmount, parseDecimalInput } from "@/features/transfer/utils/order"
+import { resolveChainNameById } from "@/shared/api/walletAssets"
 import { ApiError } from "@/shared/errors"
 import { useBalanceStore } from "@/shared/store/useBalanceStore"
 import { useSocketStore } from "@/shared/store/useSocketStore"

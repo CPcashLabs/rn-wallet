@@ -1,7 +1,7 @@
 import { Contract, Interface, Wallet, ZeroAddress, formatUnits } from "ethers"
 
-import { getCoinList, resolveChainNameById, type HomeCoin } from "@/features/home/services/homeApi"
 import { apiClient } from "@/shared/api/client"
+import { getCoinList, resolveChainNameById, type WalletCoin } from "@/shared/api/walletAssets"
 import { ApiError } from "@/shared/errors"
 import { getLocalPasskeyWallet, getOrCreateLocalWallet } from "@/shared/native/localAuthVault"
 import { useAuthStore } from "@/shared/store/useAuthStore"
@@ -439,7 +439,7 @@ function toCopouchReallocateInfo(payload: CopouchReallocateInfoPayload): Copouch
   }
 }
 
-function sumWalletValue(coins: HomeCoin[], balances: Record<string, number>) {
+function sumWalletValue(coins: WalletCoin[], balances: Record<string, number>) {
   return coins.reduce((sum, coin) => {
     return sum + (balances[coin.code] ?? 0) * coin.price
   }, 0)
