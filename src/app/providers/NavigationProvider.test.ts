@@ -1,4 +1,4 @@
-import { drainQueuedNavigationUrls } from "@/app/providers/navigationQueue"
+import { MAX_QUEUED_NAVIGATION_DRAIN_ITERATIONS, drainQueuedNavigationUrls } from "@/app/providers/navigationQueue"
 
 describe("drainQueuedNavigationUrls", () => {
   it("keeps pendingProtectedUrl untouched until navigation can process", () => {
@@ -75,5 +75,47 @@ describe("drainQueuedNavigationUrls", () => {
     expect(didProcess).toBe(false)
     expect(processUrl).not.toHaveBeenCalled()
     expect(pendingProtectedUrl).toBe("/orders/ORDER_123")
+  })
+
+  it("breaks when the same protected url is re-queued during the same drain pass", () => {
+    let pendingProtectedUrl: string | null = "/orders/ORDER_123"
+    const processUrl = jest.fn(() => true)
+
+    const didProcess = drainQueuedNavigationUrls({
+      canProcess: () => true,
+      clearPendingIncomingUrl: () => undefined,
+      getPendingIncomingUrl: () => null,
+      getPendingProtectedUrl: () => pendingProtectedUrl,
+      isAuthenticated: () => true,
+      processUrl,
+    })
+
+    expect(didProcess).toBe(true)
+    expect(processUrl).toHaveBeenCalledTimes(1)
+    expect(processUrl).toHaveBeenCalledWith("/orders/ORDER_123", "protected")
+    expect(pendingProtectedUrl).toBe("/orders/ORDER_123")
+  })
+
+  it("caps drain iterations when protected urls keep mutating", () => {
+    let sequence = 0
+    let pendingProtectedUrl: string | null = `/orders/ORDER_${sequence}`
+    const processUrl = jest.fn(() => {
+      sequence += 1
+      pendingProtectedUrl = `/orders/ORDER_${sequence}`
+      return true
+    })
+
+    const didProcess = drainQueuedNavigationUrls({
+      canProcess: () => true,
+      clearPendingIncomingUrl: () => undefined,
+      getPendingIncomingUrl: () => null,
+      getPendingProtectedUrl: () => pendingProtectedUrl,
+      isAuthenticated: () => true,
+      processUrl,
+    })
+
+    expect(didProcess).toBe(true)
+    expect(processUrl).toHaveBeenCalledTimes(MAX_QUEUED_NAVIGATION_DRAIN_ITERATIONS)
+    expect(pendingProtectedUrl).toBe(`/orders/ORDER_${MAX_QUEUED_NAVIGATION_DRAIN_ITERATIONS}`)
   })
 })

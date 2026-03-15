@@ -1,4 +1,5 @@
 export type QueuedUrlSource = "incoming" | "protected"
+export const MAX_QUEUED_NAVIGATION_DRAIN_ITERATIONS = 20
 
 type DrainQueuedNavigationUrlsParams = {
   canProcess: () => boolean
@@ -18,14 +19,23 @@ export function drainQueuedNavigationUrls({
   processUrl,
 }: DrainQueuedNavigationUrlsParams) {
   let didProcess = false
+  let iterations = 0
+  const seenProtectedUrls = new Set<string>()
 
-  while (canProcess()) {
+  while (canProcess() && iterations < MAX_QUEUED_NAVIGATION_DRAIN_ITERATIONS) {
+    iterations += 1
+
     const protectedUrl = isAuthenticated() ? getPendingProtectedUrl() : null
     if (protectedUrl) {
+      if (seenProtectedUrls.has(protectedUrl)) {
+        break
+      }
+
       if (!processUrl(protectedUrl, "protected")) {
         break
       }
 
+      seenProtectedUrls.add(protectedUrl)
       didProcess = true
       continue
     }
