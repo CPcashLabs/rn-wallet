@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { useFocusEffect } from "@react-navigation/native"
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
@@ -8,7 +8,9 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { navigateRoot } from "@/app/navigation/navigationRef"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { useTransferDraftStore } from "@/plugins/transfer/store/useTransferDraftStore"
+import { resolveTransferChainType } from "@/plugins/transfer/utils/address"
 import { getTransferChannels } from "@/shared/exchange/services/exchangeApi"
+import { useHomeBackAction } from "@/shared/navigation/useHomeBackAction"
 import { getBoolean, setBoolean } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 import { useWalletStore } from "@/shared/store/useWalletStore"
@@ -39,9 +41,17 @@ export function SelectTokenScreen({ navigation, route }: Props) {
   const selectedChannel = useTransferDraftStore(state => state.selectedChannel)
   const recipientAddress = useTransferDraftStore(state => state.recipientAddress)
   const setSelectedChannel = useTransferDraftStore(state => state.setSelectedChannel)
+  const setRecipientAddress = useTransferDraftStore(state => state.setRecipientAddress)
+  const clearOrderDraft = useTransferDraftStore(state => state.clearOrderDraft)
+  const handleBack = useHomeBackAction(navigation)
   const [channels, setChannels] = useState<ChannelItem[]>([])
   const [loading, setLoading] = useState(true)
   const copouchAddress = route.params?.copouch ?? route.params?.cowallet
+  const preferredChainType = route.params?.preferredChainType
+  const prefilledRecipientAddress = route.params?.prefilledRecipientAddress?.trim() ?? ""
+  const autoAdvanceToOrder = intent === "transfer" && route.params?.autoAdvanceToOrder === true && Boolean(prefilledRecipientAddress)
+  const autoSelectFirstMatching = route.params?.autoSelectFirstMatching === true
+  const autoSelectedRef = useRef(false)
 
   const loadChannels = useCallback(async () => {
     setLoading(true)
@@ -75,9 +85,17 @@ export function SelectTokenScreen({ navigation, route }: Props) {
     }, [channels.length, loadChannels]),
   )
 
+  const visibleChannels = useMemo(() => {
+    if (!preferredChainType) {
+      return channels
+    }
+
+    return channels.filter(item => resolveTransferChainType(item.receiveChainName) === preferredChainType)
+  }, [channels, preferredChainType])
+
   const sections = useMemo<ChannelSection[]>(() => {
-    const normalChannels = channels.filter(item => item.channelType === "normal")
-    const bridgeChannels = channels.filter(item => item.channelType === "bridge")
+    const normalChannels = visibleChannels.filter(item => item.channelType === "normal")
+    const bridgeChannels = visibleChannels.filter(item => item.channelType === "bridge")
     const result: ChannelSection[] = []
     const titlePrefix = intent === "receive" ? "receive.select" : "transfer.selectToken"
 
@@ -100,7 +118,9 @@ export function SelectTokenScreen({ navigation, route }: Props) {
     }
 
     return result
-  }, [channels, intent, t])
+  }, [intent, t, visibleChannels])
+
+  const flatVisibleChannels = useMemo(() => sections.flatMap(section => section.items), [sections])
 
   const handleSelectChannel = useCallback(
     (item: ChannelItem) => {
@@ -118,9 +138,16 @@ export function SelectTokenScreen({ navigation, route }: Props) {
         return
       }
 
-      const initialAddress = selectedChannel?.key === item.key ? recipientAddress : ""
-
       setSelectedChannel(item)
+
+      if (autoAdvanceToOrder) {
+        clearOrderDraft()
+        setRecipientAddress(prefilledRecipientAddress, "scan")
+        navigation.navigate(item.channelType === "normal" ? "TransferOrderNormalScreen" : "TransferOrderScreen")
+        return
+      }
+
+      const initialAddress = prefilledRecipientAddress || (selectedChannel?.key === item.key ? recipientAddress : "")
 
       navigation.navigate("TransferAddressScreen", {
         receiveChainName: item.receiveChainName,
@@ -134,8 +161,29 @@ export function SelectTokenScreen({ navigation, route }: Props) {
         initialAddress,
       })
     },
-    [copouchAddress, intent, navigation, recipientAddress, route.params?.multisigWalletId, selectedChannel?.key, setSelectedChannel],
+    [
+      autoAdvanceToOrder,
+      clearOrderDraft,
+      copouchAddress,
+      intent,
+      navigation,
+      prefilledRecipientAddress,
+      recipientAddress,
+      route.params?.multisigWalletId,
+      selectedChannel?.key,
+      setRecipientAddress,
+      setSelectedChannel,
+    ],
   )
+
+  useEffect(() => {
+    if (!autoSelectFirstMatching || autoSelectedRef.current || loading || flatVisibleChannels.length === 0) {
+      return
+    }
+
+    autoSelectedRef.current = true
+    handleSelectChannel(flatVisibleChannels[0] as ChannelItem)
+  }, [autoSelectFirstMatching, flatVisibleChannels, handleSelectChannel, loading])
 
   const handleShowInfo = useCallback(
     (message: string) => {
@@ -156,7 +204,7 @@ export function SelectTokenScreen({ navigation, route }: Props) {
     >
       <View style={styles.page}>
         <View style={styles.header}>
-          <Pressable hitSlop={10} onPress={navigation.goBack} style={styles.backButton}>
+          <Pressable hitSlop={10} onPress={handleBack} style={styles.backButton}>
             <Text style={[styles.backButtonText, { color: theme.colors.text }]}>‹</Text>
           </Pressable>
           <Text style={[styles.headerTitle, { color: theme.colors.text }]}>

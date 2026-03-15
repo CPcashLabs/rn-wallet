@@ -21,10 +21,13 @@ import type { TransferStackParamList } from "@/app/navigation/types"
 
 const Stack = createNativeStackNavigator<TransferStackParamList>()
 
-export function TransferStackNavigator() {
+export function TransferStackNavigator(props: {
+  initialRouteName?: keyof TransferStackParamList
+  selectTokenParams?: TransferStackParamList["SelectTokenScreen"]
+}) {
   return (
-    <Stack.Navigator initialRouteName="SelectTokenScreen" screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="SelectTokenScreen" component={SelectTokenScreen} />
+    <Stack.Navigator initialRouteName={props.initialRouteName ?? "SelectTokenScreen"} screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="SelectTokenScreen" component={SelectTokenScreen} initialParams={props.selectTokenParams} />
       <Stack.Screen name="TransferAddressScreen" component={TransferAddressScreen} />
       <Stack.Screen name="TransferOrderScreen" component={TransferOrderScreen} />
       <Stack.Screen name="TransferOrderNormalScreen" component={TransferOrderScreen} />

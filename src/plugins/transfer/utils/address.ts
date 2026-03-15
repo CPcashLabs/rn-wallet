@@ -1,5 +1,13 @@
 const EVM_ADDRESS_PATTERN = /(?:0x|0X)?[a-fA-F0-9]{40}/
 const TRON_ADDRESS_PATTERN = /T[a-zA-Z0-9]{33}/
+const EXACT_EVM_ADDRESS_PATTERN = /^(0x|0X)?[a-fA-F0-9]{40}$/
+const EXACT_TRON_ADDRESS_PATTERN = /^T[a-zA-Z0-9]{33}$/
+
+export type TransferAddressChainType = "TRON" | "EVM"
+export type ResolvedTransferAddress = {
+  address: string
+  chainType: TransferAddressChainType
+}
 
 function withGlobalFlag(regex: RegExp) {
   const flags = regex.flags.includes("g") ? regex.flags : `${regex.flags}g`
@@ -122,4 +130,28 @@ export function extractTransferAddress(input: string, regexes: RegExp[]) {
   }
 
   return ""
+}
+
+export function extractTransferAddressByChainType(input: string, chainType: TransferAddressChainType) {
+  return extractTransferAddress(input, [chainType === "TRON" ? EXACT_TRON_ADDRESS_PATTERN : EXACT_EVM_ADDRESS_PATTERN])
+}
+
+export function resolveTransferAddressFromUnknownChain(input: string): ResolvedTransferAddress | null {
+  const tronAddress = extractTransferAddressByChainType(input, "TRON")
+  if (tronAddress) {
+    return {
+      address: tronAddress,
+      chainType: "TRON",
+    }
+  }
+
+  const evmAddress = extractTransferAddressByChainType(input, "EVM")
+  if (evmAddress) {
+    return {
+      address: evmAddress,
+      chainType: "EVM",
+    }
+  }
+
+  return null
 }
