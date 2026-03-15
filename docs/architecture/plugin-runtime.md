@@ -378,13 +378,18 @@ src/
       ReceivePluginNavigator.tsx
       ReceiveSelectNetworkScreen.tsx
   shared/
+    exchange/
+      services/
+      utils/
     plugins/
       hostApi.ts
       permissions.ts
+    receive/
+      services/
       types.ts
 ```
 
-Shared presentation primitives that are reused across plugins or host-owned screens may still live outside `src/plugins/` until they are promoted into a clearer shared location.
+Shared presentation primitives and cross-plugin domain logic must live outside `src/plugins/` once they are used by more than one plugin or by both host and plugin flows.
 
 ## Navigation Implications
 
