@@ -6,6 +6,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { useTranslation } from "react-i18next"
 
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { useHomeBackAction } from "@/shared/navigation/useHomeBackAction"
 import { getTransferChannels } from "@/shared/exchange/services/exchangeApi"
 import { getBoolean, setBoolean } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
@@ -32,6 +33,7 @@ export function ReceiveSelectNetworkScreen({ navigation, route }: Props) {
   const { t } = useTranslation()
   const toast = useToast()
   const chainId = useWalletStore(state => state.chainId)
+  const handleBack = useHomeBackAction(navigation)
   const [channels, setChannels] = useState<ChannelItem[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -126,11 +128,9 @@ export function ReceiveSelectNetworkScreen({ navigation, route }: Props) {
     >
       <View style={styles.page}>
         <View style={styles.header}>
-          {navigation.canGoBack() ? (
-            <Pressable hitSlop={10} onPress={navigation.goBack} style={styles.backButton}>
-              <Text style={[styles.backButtonText, { color: theme.colors.text }]}>‹</Text>
-            </Pressable>
-          ) : null}
+          <Pressable hitSlop={10} onPress={handleBack} style={styles.backButton}>
+            <Text style={[styles.backButtonText, { color: theme.colors.text }]}>‹</Text>
+          </Pressable>
           <Text style={[styles.headerTitle, { color: theme.colors.text }]}>{t("receive.select.title")}</Text>
         </View>
 

@@ -1,11 +1,10 @@
-import React, { useCallback, useMemo, useState } from "react"
+import React, { useCallback, useMemo, useRef, useState } from "react"
 
 import { useFocusEffect } from "@react-navigation/native"
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
-import { navigateRoot } from "@/app/navigation/navigationRef"
 import type { OrdersStackParamList } from "@/app/navigation/types"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { confirmOrder, findOrderLabels, getOrderDetail, type OrderDetail, type OrderLabelBinding } from "@/features/orders/services/ordersApi"
@@ -66,9 +65,15 @@ export function OrderDetailScreen({ navigation, route }: Props) {
   const [labelBinding, setLabelBinding] = useState<OrderLabelBinding>(EMPTY_LABEL_BINDING)
   const [loading, setLoading] = useState(true)
   const [confirming, setConfirming] = useState(false)
+  const hasLoadedDetailRef = useRef(false)
 
-  const loadOrderDetail = useCallback(async () => {
-    setLoading(true)
+  const loadOrderDetail = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = Boolean(options?.silent && hasLoadedDetailRef.current)
+
+    if (!silent) {
+      setLoading(true)
+    }
+
     try {
       const [response, binding] = await Promise.all([getOrderDetail(orderSn), findOrderLabels(orderSn).catch(() => null)])
       setDetail(response)
@@ -79,20 +84,25 @@ export function OrderDetailScreen({ navigation, route }: Props) {
           labels: [],
         },
       )
+      hasLoadedDetailRef.current = true
     } catch (error) {
-      setDetail(null)
-      setLabelBinding(EMPTY_LABEL_BINDING)
-      presentError(error, {
-        fallbackKey: "orders.detail.loadFailed",
-      })
+      if (!hasLoadedDetailRef.current) {
+        setDetail(null)
+        setLabelBinding(EMPTY_LABEL_BINDING)
+        presentError(error, {
+          fallbackKey: "orders.detail.loadFailed",
+        })
+      }
     } finally {
-      setLoading(false)
+      if (!silent) {
+        setLoading(false)
+      }
     }
   }, [orderSn, presentError])
 
   useFocusEffect(
     useCallback(() => {
-      void loadOrderDetail()
+      void loadOrderDetail({ silent: true })
     }, [loadOrderDetail]),
   )
 
@@ -149,13 +159,8 @@ export function OrderDetailScreen({ navigation, route }: Props) {
   }
 
   const handleOpenHelp = useCallback(() => {
-    navigateRoot("MainTabs", {
-      screen: "MeTab",
-      params: {
-        screen: "HelpCenterScreen",
-      },
-    })
-  }, [])
+    navigation.navigate("HelpCenterScreen")
+  }, [navigation])
 
   const handleCopyOrderNumber = useCallback(async () => {
     const value = detail?.orderSn || orderSn

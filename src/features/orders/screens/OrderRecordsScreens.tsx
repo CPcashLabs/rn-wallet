@@ -316,13 +316,6 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
               </ScrollView>
             </SectionCard>
 
-            <SummaryGrid
-              items={summarizeStatistics(statistics).map(item => ({
-                label: t(`orders.summary.${item.key}`),
-                value: item.value,
-              }))}
-            />
-
             {props.otherAddress ? (
               <SectionCard>
                 <Text style={[styles.addressTitle, { color: theme.colors.text }]}>{t("orders.list.currentAddress")}</Text>

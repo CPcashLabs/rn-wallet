@@ -46,14 +46,14 @@ function parsePackageTransform(transform: string) {
 }
 
 describe("jazzicon", () => {
-  const originalDocument = global.document
+  const originalDocument = (globalThis as { document?: unknown }).document
 
   afterEach(() => {
-    global.document = originalDocument
+    ;(globalThis as { document?: unknown }).document = originalDocument
   })
 
   it("matches the MetaMask jazzicon palette and transform algorithm", () => {
-    global.document = installFakeDocument() as typeof document
+    ;(globalThis as { document?: unknown }).document = installFakeDocument()
 
     const diameter = 44
     const seed = 0x12345678
