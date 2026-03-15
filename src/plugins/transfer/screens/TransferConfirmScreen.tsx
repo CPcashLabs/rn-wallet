@@ -6,7 +6,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import { FieldRow, PageEmpty, PrimaryButton, SecondaryButton, SectionCard } from "@/shared/ui/AppFlowUi"
 import { checkTransferNetwork, getOrderDetail, getReceivingOrder, submitShipOrder } from "@/plugins/transfer/services/transferApi"
-import { isCancelledAction, makeMockTxid } from "@/plugins/transfer/utils/order"
+import { isCancelledAction } from "@/plugins/transfer/utils/order"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { walletAdapter } from "@/shared/native/walletAdapter"
 import { useWalletStore } from "@/shared/store/useWalletStore"
@@ -77,80 +77,47 @@ export function TransferConfirmScreen({ navigation, route }: Props) {
     }
 
     setSubmitting(true)
-    // #region agent log
-    let __dbgStep = "init"
-    // #endregion
 
     try {
-      // #region agent log
-      __dbgStep = "checkTransferNetwork"
-      console.log("[DBG] handleSubmit start", JSON.stringify({orderSn:detail.orderSn,sendAmount:detail.sendAmount,sendCoinCode:detail.sendCoinCode,receiveAddress:detail.receiveAddress,depositAddress:detail.depositAddress}))
-      // #endregion
-
-      // #region agent log
-      const __walletAddr = useWalletStore.getState().address
-      const __walletChainId = useWalletStore.getState().chainId
-      // #endregion
+      const walletState = useWalletStore.getState()
+      const walletAddress = walletState.address ?? ""
 
       const network = await checkTransferNetwork({
         chainName: detail.sendChainName,
-        address: __walletAddr || detail.depositAddress || detail.receiveAddress,
+        address: walletAddress || detail.depositAddress || detail.receiveAddress,
       })
 
-      // #region agent log
-      __dbgStep = "afterNetworkCheck"
-      console.log("[DBG] network check result", JSON.stringify({matched:network.matched,chainName:network.chainName}))
-      // #endregion
-
       if (!network.matched) {
-        // #region agent log
-        Alert.alert(t("common.errorTitle"), `${t("transfer.confirm.networkMismatch", { chain: network.chainName || detail.sendChainName })}\n\n[DBG] chainName=${detail.sendChainName}\nwalletAddr=${__walletAddr}\nwalletChainId=${__walletChainId}\ndepositAddr=${detail.depositAddress}\nrecvAddr=${detail.receiveAddress}\nmatched=${network.matched}\nnetChainName=${network.chainName}`)
-        // #endregion
+        Alert.alert(
+          t("common.errorTitle"),
+          t("transfer.confirm.networkMismatch", { chain: network.chainName || detail.sendChainName }),
+        )
         return
       }
 
-      // #region agent log
-      __dbgStep = "signMessage"
-      // #endregion
+      const toAddress = detail.depositAddress || detail.receiveAddress
+      const broadcastResult = await walletAdapter.signAndBroadcastTransfer({
+        toAddress,
+        amount: detail.sendAmount,
+        coinPrecision: detail.sendCoinPrecision,
+        contractAddress: detail.sendCoinContract,
+        chainId: walletState.chainId,
+      })
 
-      const signResult = await walletAdapter.signMessage(
-        JSON.stringify({
-          orderSn: detail.orderSn,
-          amount: detail.sendAmount,
-          sendCoinCode: detail.sendCoinCode,
-          receiveAddress: detail.receiveAddress || detail.depositAddress,
-        }),
-      )
-
-      // #region agent log
-      __dbgStep = "afterSign"
-      console.log("[DBG] sign result", JSON.stringify({ok:signResult.ok,hasSig:signResult.ok?!!signResult.data.signature:false,err:!signResult.ok?String(signResult.error):null}))
-      // #endregion
-
-      if (!signResult.ok) {
-        throw signResult.error
+      if (!broadcastResult.ok) {
+        throw broadcastResult.error
       }
 
-      const txid = makeMockTxid(signResult.data.signature)
-
-      // #region agent log
-      const __isNormalRoute = route.name === "TransferConfirmNormalScreen"
-      const __shipAddr = __walletAddr || detail.paymentAddress || detail.transferAddress || ""
-      __dbgStep = "submitShipOrder"
-      console.log("[DBG] before submitShipOrder", JSON.stringify({orderSn:detail.orderSn,txid,address:__shipAddr,variant:__isNormalRoute?"normal":"default",routeName:route.name}))
-      // #endregion
+      const txid = broadcastResult.data.txHash
+      const isNormalRoute = route.name === "TransferConfirmNormalScreen"
+      const shipAddress = walletAddress || detail.paymentAddress || detail.transferAddress || ""
 
       await submitShipOrder({
         orderSn: detail.orderSn,
         txid,
-        address: __shipAddr,
-        variant: __isNormalRoute ? "normal" : "default",
+        address: shipAddress,
+        variant: isNormalRoute ? "normal" : "default",
       })
-
-      // #region agent log
-      __dbgStep = "afterShip"
-      console.log("[DBG] submitShipOrder succeeded")
-      // #endregion
 
       navigation.replace("TxPayStatusScreen", {
         orderSn: detail.orderSn,
@@ -158,24 +125,15 @@ export function TransferConfirmScreen({ navigation, route }: Props) {
         walletId: detail.multisigWalletId ?? undefined,
       })
     } catch (error) {
-      // #region agent log
-      const errMsg = error instanceof Error ? error.message : String(error)
-      const errStatus = error && typeof error === 'object' && 'response' in error ? (error as any).response?.status : undefined
-      const errData = error && typeof error === 'object' && 'response' in error ? JSON.stringify((error as any).response?.data) : undefined
-      console.log("[DBG] handleSubmit CAUGHT error", JSON.stringify({step:__dbgStep,errMsg,errStatus,errData}))
-      // #endregion
-
       if (isCancelledAction(error)) {
         showToast({ message: t("transfer.confirm.userRejected"), tone: "warning" })
       } else {
-        // #region agent log
-        Alert.alert(t("common.errorTitle"), `${t("transfer.confirm.submitFailed")}\n\n[DBG] step=${__dbgStep}\nerr=${errMsg}\nstatus=${errStatus}\ndata=${errData?.slice(0, 200)}`)
-        // #endregion
+        Alert.alert(t("common.errorTitle"), t("transfer.confirm.submitFailed"))
       }
     } finally {
       setSubmitting(false)
     }
-  }, [detail, navigation, t])
+  }, [detail, navigation, route.name, showToast, t])
 
   if (!loading && !detail) {
     return (
