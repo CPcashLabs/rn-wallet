@@ -12,7 +12,7 @@ import {
   type CopouchOwner,
 } from "@/plugins/copouch/services/copouchApi"
 import { PageEmpty, SectionCard } from "@/shared/ui/AppFlowUi"
-import { formatAmount } from "@/plugins/transfer/utils/order"
+import { formatAmount } from "@/shared/exchange/utils/order"
 import { ApiError } from "@/shared/errors"
 import { resolveErrorMessage } from "@/shared/errors/presentation"
 import { useAppTheme } from "@/shared/theme/useAppTheme"

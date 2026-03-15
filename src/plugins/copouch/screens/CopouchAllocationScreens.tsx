@@ -22,7 +22,7 @@ import {
 import { formatAddress } from "@/features/home/utils/format"
 import { getOrderDetail } from "@/features/orders/services/ordersApi"
 import { PrimaryButton, SectionCard } from "@/shared/ui/AppFlowUi"
-import { formatAmount } from "@/plugins/transfer/utils/order"
+import { formatAmount } from "@/shared/exchange/utils/order"
 import { ApiError } from "@/shared/errors"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { useToast } from "@/shared/toast/useToast"

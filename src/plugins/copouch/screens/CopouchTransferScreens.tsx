@@ -22,7 +22,7 @@ import { FilterChip } from "@/features/orders/components/OrdersUi"
 import {
   createBridgeTransferOrder,
   createNormalTransferOrder,
-} from "@/plugins/transfer/services/transferOrderApi"
+} from "@/shared/exchange/services/orderCreationApi"
 import {
   getTransferChannels,
   getTransferGasEstimate,
@@ -30,9 +30,9 @@ import {
   getTransferQuote,
   type TransferChannel,
   type TransferOrderOption,
-} from "@/plugins/transfer/services/transferApi"
+} from "@/shared/exchange/services/exchangeApi"
 import { FieldRow, PrimaryButton, SectionCard } from "@/shared/ui/AppFlowUi"
-import { formatAmount, parseDecimalInput } from "@/plugins/transfer/utils/order"
+import { formatAmount, parseDecimalInput } from "@/shared/exchange/utils/order"
 import { resolveChainNameById } from "@/shared/api/walletAssets"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { useBalanceStore } from "@/shared/store/useBalanceStore"

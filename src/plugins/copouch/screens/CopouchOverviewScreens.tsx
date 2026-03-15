@@ -36,7 +36,7 @@ import {
 import { formatAddress, formatCurrency, formatDateTime, formatTokenAmount } from "@/features/home/utils/format"
 import { FilterChip, SummaryGrid } from "@/features/orders/components/OrdersUi"
 import { FieldRow, PageEmpty, SecondaryButton, SectionCard } from "@/shared/ui/AppFlowUi"
-import { formatAmount } from "@/plugins/transfer/utils/order"
+import { formatAmount } from "@/shared/exchange/utils/order"
 import { ApiError } from "@/shared/errors"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { useSocketStore } from "@/shared/store/useSocketStore"

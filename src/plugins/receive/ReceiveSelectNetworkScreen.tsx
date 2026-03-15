@@ -6,7 +6,7 @@ import { Alert, FlatList, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
-import { getTransferChannels } from "@/plugins/transfer/services/transferApi"
+import { getTransferChannels } from "@/shared/exchange/services/exchangeApi"
 import { useDeferredValueCompat } from "@/shared/hooks/useDeferredValueCompat"
 import { getBoolean, setBoolean } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
