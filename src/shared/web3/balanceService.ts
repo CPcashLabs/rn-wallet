@@ -47,21 +47,17 @@ function createRpcTimeoutError(label: string) {
 }
 
 async function withRpcTimeout<T>(request: Promise<T>, label: string) {
-  let timer: ReturnType<typeof setTimeout> | null = null
+  let timer!: ReturnType<typeof setTimeout>
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timer = setTimeout(() => {
+      reject(createRpcTimeoutError(label))
+    }, RPC_REQUEST_TIMEOUT_MS)
+  })
 
   try {
-    return await Promise.race([
-      request,
-      new Promise<T>((_, reject) => {
-        timer = setTimeout(() => {
-          reject(createRpcTimeoutError(label))
-        }, RPC_REQUEST_TIMEOUT_MS)
-      }),
-    ])
+    return await Promise.race([request, timeoutPromise])
   } finally {
-    if (timer) {
-      clearTimeout(timer)
-    }
+    clearTimeout(timer)
   }
 }
 
@@ -74,8 +70,8 @@ export function getRpcProvider(chainId?: string | number | null) {
   }
 
   const persistedRpcIndex = getNumber(KvStorageKeys.WalletRpcIndex) ?? 0
-  const rpcUrl = rpcList[resolvedChainId]?.[persistedRpcIndex] ?? rpcList[resolvedChainId]?.[0] ?? rpcList[199][0]
-  const network = new ethers.Network(networkNames[resolvedChainId] ?? networkNames[199], BigInt(resolvedChainId))
+  const rpcUrl = rpcList[resolvedChainId][persistedRpcIndex] ?? rpcList[resolvedChainId][0]
+  const network = new ethers.Network(networkNames[resolvedChainId], BigInt(resolvedChainId))
   const provider = new ethers.JsonRpcProvider(
     rpcUrl,
     {
@@ -128,10 +124,7 @@ export async function fetchOnChainBalances(params: {
   )
 
   return results.reduce<Record<string, number>>((acc, result, index) => {
-    const fallbackCode = coins[index]?.code
-    if (!fallbackCode) {
-      return acc
-    }
+    const fallbackCode = coins[index].code
 
     if (result.status === "fulfilled") {
       const [code, balance] = result.value

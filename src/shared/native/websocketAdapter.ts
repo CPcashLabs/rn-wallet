@@ -53,12 +53,7 @@ function startHeartbeat(socket: WebSocket) {
   }, 10_000)
 }
 
-function clearSocket(socket: WebSocket | null) {
-  if (!socket) {
-    stopHeartbeat()
-    return
-  }
-
+function clearSocket(socket: WebSocket) {
   socket.onopen = null
   socket.onclose = null
   socket.onerror = null

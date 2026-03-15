@@ -240,9 +240,7 @@ async function requestGuestAccessToken(baseUrl?: string) {
   try {
     return await requestPromise
   } finally {
-    if (guestAccessTokenPendingRequests.get(normalizedBaseUrl) === requestPromise) {
-      guestAccessTokenPendingRequests.delete(normalizedBaseUrl)
-    }
+    guestAccessTokenPendingRequests.delete(normalizedBaseUrl)
   }
 }
 

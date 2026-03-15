@@ -67,20 +67,13 @@ function sanitizeUploadUri(uri: string) {
 
 function isTrustedLocalFileUri(uri: string) {
   const pathname = decodeFileUriPath(uri)
-  if (!pathname) {
-    return false
-  }
-
   return TRUSTED_FILE_URI_PATH_PATTERNS.some(pattern => pattern.test(pathname))
 }
 
 function decodeFileUriPath(uri: string) {
-  const withoutFragment = uri.split("#", 1)[0] ?? uri
-  const withoutQuery = withoutFragment.split("?", 1)[0] ?? withoutFragment
+  const withoutFragment = uri.split("#", 1)[0]
+  const withoutQuery = withoutFragment.split("?", 1)[0]
   const encodedPath = withoutQuery.slice("file://".length)
-  if (!encodedPath.startsWith("/")) {
-    return ""
-  }
 
   try {
     return decodeURIComponent(encodedPath).replace(/\\/g, "/")
@@ -136,10 +129,10 @@ function inferMimeTypeFromValue(value: string | undefined) {
 }
 
 function sanitizeUploadFilename(name: string | undefined, fallbackName: string, mimeType: string) {
-  const preferredExtension = EXTENSION_BY_MIME_TYPE[mimeType] ?? EXTENSION_BY_MIME_TYPE[DEFAULT_IMAGE_MIME_TYPE]
+  const preferredExtension = EXTENSION_BY_MIME_TYPE[mimeType]
   const fallbackBaseName = readSanitizedBaseName(fallbackName) || DEFAULT_IMAGE_BASENAME
   const candidateBaseName = readSanitizedBaseName(name) || fallbackBaseName
-  const limitedBaseName = candidateBaseName.slice(0, 80) || DEFAULT_IMAGE_BASENAME
+  const limitedBaseName = candidateBaseName.slice(0, 80)
 
   return `${limitedBaseName}.${preferredExtension}`
 }
@@ -170,9 +163,9 @@ function readBasename(value: string | undefined) {
     return ""
   }
 
-  const normalized = trimmed.split("#", 1)[0]?.split("?", 1)[0] ?? trimmed
+  const normalized = trimmed.split("#", 1)[0].split("?", 1)[0]
   const segments = normalized.split(/[\\/]/)
-  return segments[segments.length - 1]?.trim() ?? ""
+  return segments[segments.length - 1].trim()
 }
 
 function readFileExtension(value: string | undefined) {
