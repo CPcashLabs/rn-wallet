@@ -6,6 +6,7 @@ import { AddressBookStackNavigator } from "@/app/navigation/AddressBookStackNavi
 import { AuthNavigator } from "@/app/navigation/AuthNavigator"
 import { BootstrapGate } from "@/app/navigation/BootstrapGate"
 import { CopouchStackNavigator } from "@/plugins/copouch/CopouchStackNavigator"
+import { HelpStackNavigator } from "@/app/navigation/HelpStackNavigator"
 import { MainTabNavigator } from "@/app/navigation/MainTabNavigator"
 import { MessageStackNavigator } from "@/app/navigation/MessageStackNavigator"
 import { OrdersStackNavigator } from "@/app/navigation/OrdersStackNavigator"
@@ -26,6 +27,7 @@ export function RootNavigator() {
       <Stack.Screen name="MainTabs" component={MainTabNavigator} />
       <Stack.Screen name="MessageStack" component={MessageStackNavigator} />
       <Stack.Screen name="OrdersStack" component={OrdersStackNavigator} />
+      <Stack.Screen name="HelpStack" component={HelpStackNavigator} />
       <Stack.Screen name="AddressBookStack" component={AddressBookStackNavigator} />
       <Stack.Screen name="TransferStack" component={TransferStackNavigator} />
       <Stack.Screen name="ReceiveStack" component={ReceiveStackNavigator} />

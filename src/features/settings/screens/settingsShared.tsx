@@ -3,7 +3,7 @@ import React from "react"
 import { Pressable, StyleSheet, Text, View } from "react-native"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
-import type { SettingsStackParamList } from "@/app/navigation/types"
+import type { HelpStackParamList, SettingsStackParamList } from "@/app/navigation/types"
 import { getCurrentUserProfile } from "@/features/home/services/homeApi"
 import type { ExchangeRateItem } from "@/features/settings/services/settingsApi"
 import type { GuideSection } from "@/features/settings/utils/settingsHub"
@@ -15,6 +15,7 @@ import { AppGlyph, type AppGlyphName } from "@/shared/ui/AppGlyph"
 import { AppListCard, AppListRow } from "@/shared/ui/AppList"
 
 export type StackProps<T extends keyof SettingsStackParamList> = NativeStackScreenProps<SettingsStackParamList, T>
+export type HelpStackProps<T extends keyof HelpStackParamList> = NativeStackScreenProps<HelpStackParamList, T>
 
 export type GuideScreenName =
   | "WalletGuideDetailScreen"
@@ -22,7 +23,7 @@ export type GuideScreenName =
   | "KnowledgeGuideDetailScreen"
   | "SafetyGuideDetailScreen"
 
-export type GuideListScreenProps = NativeStackScreenProps<SettingsStackParamList, GuideScreenName> & {
+export type GuideListScreenProps = NativeStackScreenProps<HelpStackParamList, GuideScreenName> & {
   section: GuideSection
   titleKey: string
 }

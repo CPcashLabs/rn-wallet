@@ -34,12 +34,17 @@ export function MeShellScreen({ navigation }: Props) {
   const address = walletAddress ?? profile?.address ?? session?.address ?? ""
   const avatar = profile?.avatar
   const inviteBound = Boolean(profile?.inviteBound)
+  const handleOpenHelp = () => {
+    navigateRoot("HelpStack", {
+      screen: "HelpCenterScreen",
+    })
+  }
 
   return (
     <HomeScaffold backgroundColor={theme.colors.background} hideHeader title={t("home.tabs.me")}>
       <View style={styles.page}>
         <View style={styles.topActions}>
-          <TopActionButton icon="help" onPress={() => navigation.navigate("HelpCenterScreen")} />
+          <TopActionButton icon="help" onPress={handleOpenHelp} />
           <TopActionButton icon="gear" onPress={() => navigation.navigate("SettingsHomeScreen")} />
         </View>
 
@@ -109,7 +114,7 @@ export function MeShellScreen({ navigation }: Props) {
 
         <AppListCard style={styles.listCard}>
           <MenuRow icon="gear" label={t("home.me.settings")} onPress={() => navigation.navigate("SettingsHomeScreen")} />
-          <MenuRow icon="help" label={t("settingsHub.help.title")} onPress={() => navigation.navigate("HelpCenterScreen")} />
+          <MenuRow icon="help" label={t("settingsHub.help.title")} onPress={handleOpenHelp} />
           <MenuRow icon="info" label={t("settingsHub.about.title")} last onPress={() => navigation.navigate("AboutScreen")} />
         </AppListCard>
       </View>

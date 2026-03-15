@@ -34,17 +34,9 @@ export type SettingsStackParamList = {
   LanguageScreen: undefined
   UnitScreen: undefined
   NodeSetupScreen: undefined
-  HelpCenterScreen: undefined
-  FAQScreen: undefined
-  ReceiveDiffScreen: undefined
   AboutScreen: undefined
   FeedbackScreen: undefined
   LicensesScreen: undefined
-  UserGuideScreen: undefined
-  WalletGuideDetailScreen: undefined
-  FAQGuideDetailScreen: undefined
-  KnowledgeGuideDetailScreen: undefined
-  SafetyGuideDetailScreen: undefined
   InviteHomeScreen: undefined
   InviteCodeScreen: undefined
   InvitePromotionScreen: undefined
@@ -60,14 +52,6 @@ export type OrdersStackParamList = {
   TxlogsByAddressScreen: {
     address: string
   }
-  HelpCenterScreen: undefined
-  FAQScreen: undefined
-  ReceiveDiffScreen: undefined
-  UserGuideScreen: undefined
-  WalletGuideDetailScreen: undefined
-  FAQGuideDetailScreen: undefined
-  KnowledgeGuideDetailScreen: undefined
-  SafetyGuideDetailScreen: undefined
   OrderDetailScreen: {
     orderSn: string
     source?: "message" | "manual"
@@ -118,6 +102,17 @@ export type OrdersStackParamList = {
   }
   TagsNotesEditScreen: undefined
   LabelManagementScreen: undefined
+}
+
+export type HelpStackParamList = {
+  HelpCenterScreen: undefined
+  FAQScreen: undefined
+  ReceiveDiffScreen: undefined
+  UserGuideScreen: undefined
+  WalletGuideDetailScreen: undefined
+  FAQGuideDetailScreen: undefined
+  KnowledgeGuideDetailScreen: undefined
+  SafetyGuideDetailScreen: undefined
 }
 
 export type AddressBookStackParamList = {
@@ -415,6 +410,7 @@ export type RootStackParamList = {
   MainTabs: NavigatorScreenParams<MainTabParamList>
   MessageStack: NavigatorScreenParams<MessageStackParamList>
   OrdersStack: NavigatorScreenParams<OrdersStackParamList>
+  HelpStack: NavigatorScreenParams<HelpStackParamList>
   AddressBookStack: NavigatorScreenParams<AddressBookStackParamList>
   TransferStack: NavigatorScreenParams<TransferStackParamList>
   ReceiveStack: NavigatorScreenParams<ReceiveStackParamList>

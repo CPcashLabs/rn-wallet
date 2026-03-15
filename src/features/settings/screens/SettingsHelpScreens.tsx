@@ -12,9 +12,18 @@ import { useToast } from "@/shared/toast/useToast"
 import { AppleBrandMark } from "@/shared/ui/AppleBrandMark"
 import { AppTextField } from "@/shared/ui/AppTextField"
 
-import { Card, type GuideListScreenProps, ListCard, PrimaryButton, Row, type StackProps, styles } from "@/features/settings/screens/settingsShared"
+import {
+  Card,
+  type GuideListScreenProps,
+  type HelpStackProps,
+  ListCard,
+  PrimaryButton,
+  Row,
+  type StackProps,
+  styles,
+} from "@/features/settings/screens/settingsShared"
 
-export function HelpCenterScreen({ navigation }: StackProps<"HelpCenterScreen">) {
+export function HelpCenterScreen({ navigation }: HelpStackProps<"HelpCenterScreen">) {
   const { t } = useTranslation()
   const theme = useAppTheme()
 
@@ -33,7 +42,7 @@ export function HelpCenterScreen({ navigation }: StackProps<"HelpCenterScreen">)
   )
 }
 
-export function FAQScreen({ navigation }: StackProps<"FAQScreen">) {
+export function FAQScreen({ navigation }: HelpStackProps<"FAQScreen">) {
   const { t } = useTranslation()
   const theme = useAppTheme()
   const items = [
@@ -56,7 +65,7 @@ export function FAQScreen({ navigation }: StackProps<"FAQScreen">) {
   )
 }
 
-export function ReceiveDiffScreen({ navigation }: StackProps<"ReceiveDiffScreen">) {
+export function ReceiveDiffScreen({ navigation }: HelpStackProps<"ReceiveDiffScreen">) {
   const { t } = useTranslation()
   const theme = useAppTheme()
   const rows = [
@@ -166,7 +175,7 @@ export function LicensesScreen({ navigation }: StackProps<"LicensesScreen">) {
   )
 }
 
-export function UserGuideScreen({ navigation }: StackProps<"UserGuideScreen">) {
+export function UserGuideScreen({ navigation }: HelpStackProps<"UserGuideScreen">) {
   const { t } = useTranslation()
 
   return (
@@ -197,19 +206,19 @@ function GuideListScreen(props: GuideListScreenProps) {
   )
 }
 
-export function WalletGuideDetailScreen(props: StackProps<"WalletGuideDetailScreen">) {
+export function WalletGuideDetailScreen(props: HelpStackProps<"WalletGuideDetailScreen">) {
   return <GuideListScreen {...props} section="wallet" titleKey="settingsHub.guide.wallet" />
 }
 
-export function FAQGuideDetailScreen(props: StackProps<"FAQGuideDetailScreen">) {
+export function FAQGuideDetailScreen(props: HelpStackProps<"FAQGuideDetailScreen">) {
   return <GuideListScreen {...props} section="faq" titleKey="settingsHub.guide.faq" />
 }
 
-export function KnowledgeGuideDetailScreen(props: StackProps<"KnowledgeGuideDetailScreen">) {
+export function KnowledgeGuideDetailScreen(props: HelpStackProps<"KnowledgeGuideDetailScreen">) {
   return <GuideListScreen {...props} section="knowledge" titleKey="settingsHub.guide.knowledge" />
 }
 
-export function SafetyGuideDetailScreen(props: StackProps<"SafetyGuideDetailScreen">) {
+export function SafetyGuideDetailScreen(props: HelpStackProps<"SafetyGuideDetailScreen">) {
   return <GuideListScreen {...props} section="safety" titleKey="settingsHub.guide.safety" />
 }
 

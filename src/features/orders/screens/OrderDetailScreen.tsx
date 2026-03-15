@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
+import { navigateRoot } from "@/app/navigation/navigationRef"
 import type { OrdersStackParamList } from "@/app/navigation/types"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import {
@@ -193,8 +194,10 @@ export function OrderDetailScreen({ navigation, route }: Props) {
   }
 
   const handleOpenHelp = useCallback(() => {
-    navigation.navigate("HelpCenterScreen")
-  }, [navigation])
+    navigateRoot("HelpStack", {
+      screen: "HelpCenterScreen",
+    })
+  }, [])
 
   const handleCopyOrderNumber = useCallback(async () => {
     const value = detail?.orderSn || orderSn

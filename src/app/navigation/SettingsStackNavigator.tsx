@@ -16,16 +16,8 @@ import {
 } from "@/features/settings/screens/SettingsEmailScreens"
 import {
   AboutScreen,
-  FAQGuideDetailScreen,
-  FAQScreen,
   FeedbackScreen,
-  HelpCenterScreen,
-  KnowledgeGuideDetailScreen,
   LicensesScreen,
-  ReceiveDiffScreen,
-  SafetyGuideDetailScreen,
-  UserGuideScreen,
-  WalletGuideDetailScreen,
 } from "@/features/settings/screens/SettingsHelpScreens"
 import {
   InviteCodeScreen,
@@ -59,17 +51,9 @@ export function SettingsStackNavigator() {
       <Stack.Screen name="LanguageScreen" component={LanguageScreen} />
       <Stack.Screen name="UnitScreen" component={UnitScreen} />
       <Stack.Screen name="NodeSetupScreen" component={NodeSetupScreen} />
-      <Stack.Screen name="HelpCenterScreen" component={HelpCenterScreen} />
-      <Stack.Screen name="FAQScreen" component={FAQScreen} />
-      <Stack.Screen name="ReceiveDiffScreen" component={ReceiveDiffScreen} />
       <Stack.Screen name="AboutScreen" component={AboutScreen} />
       <Stack.Screen name="FeedbackScreen" component={FeedbackScreen} />
       <Stack.Screen name="LicensesScreen" component={LicensesScreen} />
-      <Stack.Screen name="UserGuideScreen" component={UserGuideScreen} />
-      <Stack.Screen name="WalletGuideDetailScreen" component={WalletGuideDetailScreen} />
-      <Stack.Screen name="FAQGuideDetailScreen" component={FAQGuideDetailScreen} />
-      <Stack.Screen name="KnowledgeGuideDetailScreen" component={KnowledgeGuideDetailScreen} />
-      <Stack.Screen name="SafetyGuideDetailScreen" component={SafetyGuideDetailScreen} />
       <Stack.Screen name="InviteHomeScreen" component={InviteHomeScreen} />
       <Stack.Screen name="InviteCodeScreen" component={InviteCodeScreen} />
       <Stack.Screen name="InvitePromotionScreen" component={InvitePromotionScreen} />
