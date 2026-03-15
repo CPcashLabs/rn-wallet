@@ -2,6 +2,7 @@ import React from "react"
 
 import { createNativeStackNavigator } from "@react-navigation/native-stack"
 
+import { CreateMnemonicScreen } from "@/features/auth/screens/CreateMnemonicScreen"
 import { FirstSetPasswordScreen } from "@/features/auth/screens/FirstSetPasswordScreen"
 import { ForgotPasswordAddressScreen } from "@/features/auth/screens/ForgotPasswordAddressScreen"
 import { ForgotPasswordEmailScreen } from "@/features/auth/screens/ForgotPasswordEmailScreen"
@@ -21,6 +22,7 @@ export function AuthNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="LoginScreen" component={LoginScreen} />
+      <Stack.Screen name="CreateMnemonicScreen" component={CreateMnemonicScreen} />
       <Stack.Screen name="ImportWalletLoginScreen" component={ImportWalletLoginScreen} />
       <Stack.Screen name="PasskeySignupScreen" component={PasskeySignupScreen} />
       <Stack.Screen name="PasskeyIntroScreen" component={PasskeyIntroScreen} />

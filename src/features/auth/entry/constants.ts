@@ -1,0 +1,25 @@
+export const ENTRY_BACKGROUND = "#06070A"
+export const ENTRY_CORE_PRIMARY = "#7C8CFF"
+export const ENTRY_CORE_SECONDARY = "#6A54FF"
+export const ENTRY_CORE_RING = "rgba(169, 181, 255, 0.22)"
+export const ENTRY_TRAJECTORY_COLOR = "rgba(139, 160, 255, 0.22)"
+export const ENTRY_TRAJECTORY_SIGNAL = "rgba(207, 217, 255, 0.82)"
+export const ENTRY_TEXT_PRIMARY = "#FFFFFF"
+export const ENTRY_TEXT_SECONDARY = "rgba(255,255,255,0.72)"
+export const ENTRY_BUTTON_BACKGROUND = "rgba(12, 16, 28, 0.7)"
+export const ENTRY_BUTTON_BORDER = "rgba(152, 166, 255, 0.2)"
+export const ENTRY_BUTTON_GLOW = "rgba(106, 84, 255, 0.18)"
+
+export const ENTRY_TRAJECTORY_COUNT = 24
+export const ENTRY_IDLE_BREATH_DURATION_MS = 4_500
+export const ENTRY_COLLAPSE_DURATION_MS = 760
+export const ENTRY_STATEMENT_FADE_MS = 620
+export const ENTRY_SECOND_LINE_DELAY_MS = 540
+export const ENTRY_REVEAL_DELAY_MS = 400
+export const ENTRY_BUTTON_REVEAL_MS = 720
+export const ENTRY_BUTTON_STAGGER_MS = 110
+export const ENTRY_WAVE_DURATION_MS = 920
+
+export const ENTRY_TEXT_MAX_WIDTH = 320
+export const ENTRY_BUTTON_MAX_WIDTH = 268
+export const ENTRY_BUTTON_HEIGHT = 56

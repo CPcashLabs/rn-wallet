@@ -6,16 +6,14 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { AuthButton } from "@/features/auth/components/AuthButton"
 import { AuthScaffold } from "@/features/auth/components/AuthScaffold"
 import { AuthTextField } from "@/features/auth/components/AuthTextField"
-import { bindInviteCode, signInWithMessageSignature, validateAddressExists } from "@/features/auth/services/authApi"
-import { persistAuthenticatedSession } from "@/features/auth/services/authSessionOrchestrator"
-import { getInviteBindingMessage } from "@/features/auth/utils/authMessages"
-import { resetToMainTabs } from "@/app/navigation/navigationRef"
+import { createWalletLoginMessage, finalizeWalletLogin } from "@/features/auth/services/walletLogin"
 import type { AuthStackParamList } from "@/app/navigation/types"
 import { ApiError } from "@/shared/errors"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { walletAdapter } from "@/shared/native"
 import { signMessageWithWalletImport, tryParseWalletImportInput, WalletImportInputError } from "@/shared/native/walletImport"
 import { useWalletStore } from "@/shared/store/useWalletStore"
+import { validateAddressExists } from "@/features/auth/services/authApi"
 
 type Props = NativeStackScreenProps<AuthStackParamList, "ImportWalletLoginScreen">
 
@@ -50,20 +48,6 @@ export function ImportWalletLoginScreen({ navigation, route }: Props) {
     })
   }, [detectedImport, t])
 
-  const handleInviteCode = async () => {
-    if (!inviteCode) {
-      return
-    }
-
-    try {
-      await bindInviteCode(inviteCode)
-    } catch (error) {
-      presentMessage(getInviteBindingMessage(error), {
-        titleKey: "common.infoTitle",
-      })
-    }
-  }
-
   const maybeFallbackToPasswordFlow = async (address: string, error: unknown) => {
     if (!(error instanceof ApiError) || error.status !== 401) {
       return false
@@ -97,9 +81,10 @@ export function ImportWalletLoginScreen({ navigation, route }: Props) {
     setInputError(null)
 
     try {
-      let importedAddress = detectedImport?.address ?? ""
+      let importedAddress = ""
       let importedChainId: string | null = null
       let signature = ""
+      let message = createWalletLoginMessage(importedAddress)
 
       if (walletCapability.supported) {
         const imported = await walletAdapter.importSecret(secret)
@@ -110,11 +95,7 @@ export function ImportWalletLoginScreen({ navigation, route }: Props) {
 
         importedChainId = imported.data.chainId ?? null
         importedAddress = imported.data.address
-      }
-
-      const message = {
-        address: importedAddress,
-        login_time: Date.now().toString(),
+        message = createWalletLoginMessage(importedAddress)
       }
 
       if (walletCapability.supported) {
@@ -126,6 +107,15 @@ export function ImportWalletLoginScreen({ navigation, route }: Props) {
 
         signature = signatureResult.data.signature
       } else {
+        const parsedImport = detectedImport ?? tryParseWalletImportInput(secret)
+
+        if (!parsedImport) {
+          throw new WalletImportInputError("invalid")
+        }
+
+        importedAddress = parsedImport.address
+        message = createWalletLoginMessage(importedAddress)
+
         const imported = await signMessageWithWalletImport(secret, JSON.stringify(message))
         importedAddress = imported.address
         signature = imported.signature
@@ -138,20 +128,17 @@ export function ImportWalletLoginScreen({ navigation, route }: Props) {
       })
 
       try {
-        const tokens = await signInWithMessageSignature({
+        await finalizeWalletLogin({
+          address: importedAddress,
           signature,
-          address: importedAddress,
-          message: JSON.stringify(message),
+          message,
+          inviteCode,
+          onInviteBindingMessage: messageText => {
+            presentMessage(messageText, {
+              titleKey: "common.infoTitle",
+            })
+          },
         })
-
-        await persistAuthenticatedSession({
-          ...tokens,
-          address: importedAddress,
-          loginType: "wallet",
-        })
-
-        await handleInviteCode()
-        resetToMainTabs()
       } catch (error) {
         const handled = await maybeFallbackToPasswordFlow(importedAddress, error)
 

@@ -4,6 +4,7 @@ import type { PluginId, PluginReturnTarget, PluginRouteParams } from "@/shared/p
 
 export type AuthStackParamList = {
   LoginScreen: { inviteCode?: string } | undefined
+  CreateMnemonicScreen: { inviteCode?: string } | undefined
   ImportWalletLoginScreen: { inviteCode?: string } | undefined
   PasskeySignupScreen: { inviteCode?: string } | undefined
   PasskeyIntroScreen: undefined
