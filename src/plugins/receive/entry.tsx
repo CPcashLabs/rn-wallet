@@ -1,6 +1,6 @@
 import React from "react"
 
-import { ReceivePluginNavigator } from "@/plugins/receive/ReceivePluginNavigator"
+import { ReceiveStackNavigator } from "@/plugins/receive/ReceiveStackNavigator"
 import type { PluginEntryProps } from "@/shared/plugins/types"
 
 export default function ReceivePluginEntry(props: PluginEntryProps) {
@@ -17,7 +17,7 @@ export default function ReceivePluginEntry(props: PluginEntryProps) {
 
   if (payChain) {
     return (
-      <ReceivePluginNavigator
+      <ReceiveStackNavigator
         initialRouteName="ReceiveHomeScreen"
         receiveHomeParams={{
           payChain,
@@ -32,8 +32,9 @@ export default function ReceivePluginEntry(props: PluginEntryProps) {
   }
 
   return (
-    <ReceivePluginNavigator
-      initialParams={{
+    <ReceiveStackNavigator
+      initialRouteName="ReceiveSelectNetworkScreen"
+      selectNetworkParams={{
         copouch,
         cowallet,
         multisigWalletId,

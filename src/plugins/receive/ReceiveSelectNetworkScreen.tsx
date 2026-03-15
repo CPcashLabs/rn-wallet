@@ -16,9 +16,9 @@ import { AppEmptyState } from "@/shared/ui/AppEmptyState"
 import { AppListRow } from "@/shared/ui/AppList"
 import { AppTextField } from "@/shared/ui/AppTextField"
 
-import type { ReceivePluginParamList } from "@/plugins/receive/ReceivePluginNavigator"
+import type { ReceiveStackParamList } from "@/app/navigation/types"
 
-type Props = NativeStackScreenProps<ReceivePluginParamList, "ReceiveSelectNetworkScreen">
+type Props = NativeStackScreenProps<ReceiveStackParamList, "ReceiveSelectNetworkScreen">
 type ChannelItem = Awaited<ReturnType<typeof getTransferChannels>>[number]
 
 export function ReceiveSelectNetworkScreen({ navigation, route }: Props) {

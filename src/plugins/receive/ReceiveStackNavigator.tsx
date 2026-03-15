@@ -12,15 +12,25 @@ import { ReceiveFaqDiffScreen, ReceiveFaqScreen } from "@/plugins/receive/screen
 import { ReceiveHomeScreen } from "@/plugins/receive/screens/ReceiveHomeScreen"
 import { ReceiveShareScreen } from "@/plugins/receive/screens/ReceiveShareScreen"
 import { ReceiveTxlogsScreen } from "@/plugins/receive/screens/ReceiveTxlogsScreen"
+import { ReceiveSelectNetworkScreen } from "@/plugins/receive/ReceiveSelectNetworkScreen"
 
 import type { ReceiveStackParamList } from "@/app/navigation/types"
 
 const Stack = createNativeStackNavigator<ReceiveStackParamList>()
 
-export function ReceiveStackNavigator() {
+export function ReceiveStackNavigator(props: {
+  initialRouteName?: keyof ReceiveStackParamList
+  selectNetworkParams?: ReceiveStackParamList["ReceiveSelectNetworkScreen"]
+  receiveHomeParams?: ReceiveStackParamList["ReceiveHomeScreen"]
+}) {
   return (
-    <Stack.Navigator initialRouteName="ReceiveHomeScreen" screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="ReceiveHomeScreen" component={ReceiveHomeScreen} />
+    <Stack.Navigator initialRouteName={props.initialRouteName ?? "ReceiveHomeScreen"} screenOptions={{ headerShown: false }}>
+      <Stack.Screen
+        name="ReceiveSelectNetworkScreen"
+        component={ReceiveSelectNetworkScreen}
+        initialParams={props.selectNetworkParams}
+      />
+      <Stack.Screen name="ReceiveHomeScreen" component={ReceiveHomeScreen} initialParams={props.receiveHomeParams} />
       <Stack.Screen name="ReceiveAddressListScreen" component={ReceiveAddressListScreen} />
       <Stack.Screen name="ReceiveAddressCreateScreen" component={ReceiveAddressCreateScreen} />
       <Stack.Screen name="ReceiveAddressDeleteScreen" component={ReceiveAddressDeleteScreen} />
