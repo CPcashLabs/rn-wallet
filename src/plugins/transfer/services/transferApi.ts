@@ -82,6 +82,7 @@ let guestAccessTokenCache:
       createdAt: number
     }
   | null = null
+const guestAccessTokenPendingRequests = new Map<string, Promise<string>>()
 
 type ReceivingShowPayload = OrderShowPayload & {
   serial_number?: string
@@ -206,26 +207,48 @@ async function requestGuestAccessToken(baseUrl?: string) {
     return guestAccessTokenCache.accessToken
   }
 
-  const body = buildOAuthTokenRequestBody("guest")
-
-  const client = axios.create({
-    baseURL: normalizedBaseUrl,
-    timeout: 15_000,
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-  })
-  const response = await client.post<ApiEnvelope<GuestTokenPayload> | GuestTokenPayload>("/api/auth/oauth2/token", body.toString())
-  const payload = response.data
-  const accessToken = "access_token" in payload ? payload.access_token : unwrapEnvelope(payload).access_token
-
-  guestAccessTokenCache = {
-    accessToken,
-    baseUrl: normalizedBaseUrl,
-    createdAt: Date.now(),
+  const pendingRequest = guestAccessTokenPendingRequests.get(normalizedBaseUrl)
+  if (pendingRequest) {
+    return pendingRequest
   }
 
-  return accessToken
+  const requestPromise = (async () => {
+    const body = buildOAuthTokenRequestBody("guest")
+
+    const client = axios.create({
+      baseURL: normalizedBaseUrl,
+      timeout: 15_000,
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+    })
+    const response = await client.post<ApiEnvelope<GuestTokenPayload> | GuestTokenPayload>("/api/auth/oauth2/token", body.toString())
+    const payload = response.data
+    const accessToken = "access_token" in payload ? payload.access_token : unwrapEnvelope(payload).access_token
+
+    guestAccessTokenCache = {
+      accessToken,
+      baseUrl: normalizedBaseUrl,
+      createdAt: Date.now(),
+    }
+
+    return accessToken
+  })()
+
+  guestAccessTokenPendingRequests.set(normalizedBaseUrl, requestPromise)
+
+  try {
+    return await requestPromise
+  } finally {
+    if (guestAccessTokenPendingRequests.get(normalizedBaseUrl) === requestPromise) {
+      guestAccessTokenPendingRequests.delete(normalizedBaseUrl)
+    }
+  }
+}
+
+export function resetTransferApiStateForTests() {
+  guestAccessTokenCache = null
+  guestAccessTokenPendingRequests.clear()
 }
 
 async function createGuestClient(baseUrl?: string) {
