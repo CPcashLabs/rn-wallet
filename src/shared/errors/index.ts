@@ -35,3 +35,13 @@ export class NativeCapabilityUnavailableError extends Error {
     this.capability = capability
   }
 }
+
+export class UnsafeUploadFileError extends Error {
+  code: string
+
+  constructor(message = "Unsafe upload file input") {
+    super(message)
+    this.name = "UnsafeUploadFileError"
+    this.code = "INVALID_UPLOAD_FILE"
+  }
+}

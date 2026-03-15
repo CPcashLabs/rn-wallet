@@ -1,4 +1,4 @@
-import { ApiError, NativeCapabilityUnavailableError, NetworkUnavailableError } from "@/shared/errors"
+import { ApiError, NativeCapabilityUnavailableError, NetworkUnavailableError, UnsafeUploadFileError } from "@/shared/errors"
 
 export type Translate = (key: string, options?: Record<string, unknown>) => string
 
@@ -44,7 +44,15 @@ export function resolveErrorMessage(t: Translate, error: unknown, options: Error
   }
 
   if (error instanceof NativeCapabilityUnavailableError) {
+    if (error.capability === "wallet") {
+      return t("auth.errors.walletUnavailable")
+    }
+
     return error.message || t("common.errors.capabilityUnavailable")
+  }
+
+  if (error instanceof UnsafeUploadFileError) {
+    return t("common.errors.invalidUploadFile")
   }
 
   if (error instanceof NetworkUnavailableError) {
