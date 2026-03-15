@@ -5,6 +5,7 @@ import { getNumber } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
+export const RPC_REQUEST_TIMEOUT_MS = 8_000
 const erc20BalanceOfInterface = new Interface(["function balanceOf(address owner) view returns (uint256)"])
 const abiCoder = new AbiCoder()
 
@@ -37,6 +38,31 @@ function toNumberBalance(value: bigint, precision: number) {
   }
 
   return parsed
+}
+
+type BalanceRpcProvider = Pick<ethers.JsonRpcProvider, "call" | "getBalance">
+
+function createRpcTimeoutError(label: string) {
+  return new Error(`rpc_timeout:${label}`)
+}
+
+async function withRpcTimeout<T>(request: Promise<T>, label: string) {
+  let timer: ReturnType<typeof setTimeout> | null = null
+
+  try {
+    return await Promise.race([
+      request,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => {
+          reject(createRpcTimeoutError(label))
+        }, RPC_REQUEST_TIMEOUT_MS)
+      }),
+    ])
+  } finally {
+    if (timer) {
+      clearTimeout(timer)
+    }
+  }
 }
 
 export function getRpcProvider(chainId?: string | number | null) {
@@ -77,6 +103,7 @@ export async function fetchOnChainBalances(params: {
   address?: string | null
   chainId?: string | number | null
   coins: WalletCoin[]
+  provider?: BalanceRpcProvider
 }) {
   const { address, chainId, coins } = params
 
@@ -84,17 +111,17 @@ export async function fetchOnChainBalances(params: {
     return {}
   }
 
-  const provider = getRpcProvider(chainId)
+  const provider = params.provider ?? getRpcProvider(chainId)
 
   const results = await Promise.allSettled(
     coins.map(async coin => {
       if (isNativeToken(coin.contract)) {
-        const balance = await provider.getBalance(address)
+        const balance = await withRpcTimeout(provider.getBalance(address), `${coin.code}:native`)
         return [coin.code, toNumberBalance(balance, coin.precision)] as const
       }
 
       const data = erc20BalanceOfInterface.encodeFunctionData("balanceOf", [address])
-      const result = await provider.call({ to: coin.contract, data })
+      const result = await withRpcTimeout(provider.call({ to: coin.contract, data }), `${coin.code}:erc20`)
       const [value] = abiCoder.decode(["uint256"], result)
       return [coin.code, toNumberBalance(value, coin.precision)] as const
     }),

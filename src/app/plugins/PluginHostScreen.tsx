@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -53,7 +53,7 @@ export function PluginHostScreen({ navigation, route }: Props) {
     }
   }, [manifest])
 
-  const handleRequestClose = (result?: PluginCloseResult) => {
+  const handleRequestClose = useCallback((result?: PluginCloseResult) => {
     if (closeRequestedRef.current) {
       return
     }
@@ -61,7 +61,7 @@ export function PluginHostScreen({ navigation, route }: Props) {
     closeRequestedRef.current = true
     closingResultRef.current = result
     setClosing(true)
-  }
+  }, [])
 
   const hostApi = useMemo(
     () =>
@@ -69,7 +69,7 @@ export function PluginHostScreen({ navigation, route }: Props) {
         pluginId: manifest.id,
         onRequestClose: handleRequestClose,
       }),
-    [manifest.id],
+    [handleRequestClose, manifest.id],
   )
 
   const context = useMemo(
