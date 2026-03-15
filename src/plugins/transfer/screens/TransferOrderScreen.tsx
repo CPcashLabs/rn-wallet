@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
+import { Alert, ScrollView, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -286,57 +286,6 @@ export function TransferOrderScreen({ navigation, route }: Props) {
         </SectionCard>
 
         <SectionCard>
-          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("transfer.order.coinTitle")}</Text>
-          {loading ? (
-            <Text style={[styles.helperText, { color: theme.colors.mutedText }]}>{t("transfer.order.loading")}</Text>
-          ) : options.length === 0 ? (
-            <Text style={[styles.helperText, { color: theme.colors.mutedText }]}>{t("transfer.order.empty")}</Text>
-          ) : (
-            <View style={styles.optionList}>
-              {options.map(item => {
-                const isSelected =
-                  selectedOption?.sendCoinCode === item.sendCoinCode && selectedOption?.recvCoinCode === item.recvCoinCode
-
-                return (
-                  <Pressable
-                    key={`${item.sendCoinCode}-${item.recvCoinCode || "same"}`}
-                    onPress={() => {
-                      setSelectedOptionCode(item.sendCoinCode)
-                      setOrderDraft({
-                        sendCoinCode: item.sendCoinCode,
-                        recvCoinCode: item.recvCoinCode,
-                      })
-                    }}
-                    style={[
-                      styles.optionItem,
-                      {
-                        borderColor: isSelected ? theme.colors.primary : theme.colors.border,
-                        backgroundColor: isSelected ? (theme.isDark ? "#0B2530" : "#EFF6FF") : theme.colors.background,
-                      },
-                    ]}
-                  >
-                    <View style={styles.optionMeta}>
-                      <Text style={[styles.optionTitle, { color: theme.colors.text }]}>{item.sendCoinSymbol}</Text>
-                      <Text style={[styles.optionBody, { color: theme.colors.mutedText }]}>
-                        {item.recvCoinSymbol
-                          ? t("transfer.order.optionBody", {
-                              send: item.sendCoinSymbol,
-                              recv: item.recvCoinSymbol,
-                            })
-                          : t("transfer.order.optionBodyNormal", { send: item.sendCoinSymbol })}
-                      </Text>
-                    </View>
-                    <Text style={[styles.optionBadge, { color: theme.colors.primary }]}>
-                      {isSelected ? t("transfer.order.selected") : ""}
-                    </Text>
-                  </Pressable>
-                )
-              })}
-            </View>
-          )}
-        </SectionCard>
-
-        <SectionCard>
           <Text style={[styles.inputLabel, { color: theme.colors.text }]}>{t("transfer.order.amountLabel")}</Text>
           <AppTextField
             backgroundTone="background"
@@ -395,40 +344,6 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     gap: 12,
-  },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  helperText: {
-    fontSize: 13,
-    lineHeight: 20,
-  },
-  optionList: {
-    gap: 10,
-  },
-  optionItem: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 14,
-    padding: 12,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  optionMeta: {
-    flex: 1,
-    gap: 4,
-  },
-  optionTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  optionBody: {
-    fontSize: 12,
-  },
-  optionBadge: {
-    fontSize: 12,
-    fontWeight: "700",
   },
   inputLabel: {
     fontSize: 14,
