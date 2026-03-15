@@ -7,6 +7,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import { navigateRoot } from "@/app/navigation/navigationRef"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { writeCachedReceiveChainColor } from "@/plugins/receive/services/receiveColorCache"
 import { useTransferDraftStore } from "@/plugins/transfer/store/useTransferDraftStore"
 import { resolveTransferChainType } from "@/plugins/transfer/utils/address"
 import { getTransferChannels } from "@/shared/exchange/services/exchangeApi"
@@ -125,6 +126,11 @@ export function SelectTokenScreen({ navigation, route }: Props) {
   const handleSelectChannel = useCallback(
     (item: ChannelItem) => {
       if (intent === "receive") {
+        writeCachedReceiveChainColor({
+          payChain: item.receiveChainName,
+          color: item.receiveChainColor,
+        })
+
         navigateRoot("ReceiveStack", {
           screen: "ReceiveHomeScreen",
           params: {
@@ -287,6 +293,7 @@ function ChannelRow(props: {
   const theme = useAppTheme()
   const { t } = useTranslation()
   const title = props.item.channelType === "normal" ? "CPcash" : props.item.receiveChainName
+  const logoUri = props.item.channelType === "normal" ? undefined : props.item.receiveChainLogo
 
   return (
     <Pressable
@@ -303,7 +310,7 @@ function ChannelRow(props: {
           chainColor={props.item.receiveChainColor}
           chainName={props.item.receiveChainName}
           fallbackMode={props.item.channelType === "normal" ? "cpcash" : "initials"}
-          logoUri={props.item.receiveChainLogo}
+          logoUri={logoUri}
         />
 
         <View style={styles.channelMain}>
