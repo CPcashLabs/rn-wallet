@@ -6,6 +6,7 @@
     "start": "react-native start",
     "android": "react-native run-android",
     "ios": "DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer react-native run-ios",
+    "prepare": "sh ./scripts/setup-git-hooks.sh",
     "pods:install": "cd ios && DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer pod install --repo-update",
     "pods:install:mirror": "cd ios && DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer COCOAPODS_SOURCE=https://mirrors.tuna.tsinghua.edu.cn/git/CocoaPods/Specs.git pod install --repo-update",
     "test": "npm run test:unit && npm run test:integration",

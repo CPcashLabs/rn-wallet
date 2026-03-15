@@ -1,0 +1,17 @@
+#!/bin/sh
+# Remove "Made-with: Cursor" line from commit message for compatibility.
+# Install: run scripts/setup-git-hooks.sh from repo root.
+msgfile="$1"
+[ -f "$msgfile" ] || exit 0
+tmp=$(mktemp) || exit 0
+
+if ! grep -v -i 'Made-with: Cursor' < "$msgfile" > "$tmp"; then
+  status=$?
+  if [ "$status" -gt 1 ]; then
+    rm -f "$tmp"
+    exit 0
+  fi
+fi
+
+mv "$tmp" "$msgfile"
+exit 0

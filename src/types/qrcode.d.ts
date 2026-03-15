@@ -1,4 +1,9 @@
 declare module "qrcode" {
+  export type QRCodeSegment = {
+    data: string | Uint8Array | number[]
+    mode?: "numeric" | "alphanumeric" | "byte" | "kanji"
+  }
+
   export type QRCodeToDataURLOptions = {
     errorCorrectionLevel?: "L" | "M" | "Q" | "H"
     margin?: number
@@ -11,7 +16,7 @@ declare module "qrcode" {
 
   const QRCode: {
     create(
-      value: string,
+      value: string | QRCodeSegment[],
       options?: QRCodeToDataURLOptions,
     ): {
       modules: {
@@ -19,7 +24,7 @@ declare module "qrcode" {
         data: Array<number | boolean>
       }
     }
-    toDataURL(value: string, options?: QRCodeToDataURLOptions): Promise<string>
+    toDataURL(value: string | QRCodeSegment[], options?: QRCodeToDataURLOptions): Promise<string>
   }
 
   export default QRCode

@@ -1,7 +1,6 @@
-import QRCode from "qrcode"
-
 import { getCurrentLanguage } from "@/shared/i18n"
 import { deepLinkAdapter } from "@/shared/native"
+import { buildQrCodeDataUrl } from "@/shared/qrcode"
 
 export type GuideSection = "wallet" | "faq" | "knowledge" | "safety"
 
@@ -78,7 +77,7 @@ export async function openExternalUrl(url: string) {
 }
 
 export async function buildInviteQrDataUrl(url: string) {
-  return QRCode.toDataURL(url, {
+  return buildQrCodeDataUrl(url, {
     margin: 1,
   })
 }

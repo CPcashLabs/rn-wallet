@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react"
 
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from "react-native"
-import QRCode from "qrcode"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -31,6 +30,7 @@ import { PageEmpty, PrimaryButton, SecondaryButton, SectionCard } from "@/shared
 import { openExternalUrl } from "@/features/settings/utils/settingsHub"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { fileAdapter, shareAdapter } from "@/shared/native"
+import { buildQrCodeDataUrl } from "@/shared/qrcode"
 import { useUserStore } from "@/shared/store/useUserStore"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
@@ -177,7 +177,7 @@ export function OrderVoucherScreen({ navigation, route }: VoucherProps) {
     }
 
     let active = true
-    void QRCode.toDataURL(voucher.orderReceiptUrl, { margin: 1 }).then(dataUrl => {
+    void buildQrCodeDataUrl(voucher.orderReceiptUrl, { margin: 1 }).then(dataUrl => {
       if (active) {
         setQrCodeUrl(dataUrl)
       }

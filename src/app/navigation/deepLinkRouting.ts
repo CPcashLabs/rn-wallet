@@ -384,7 +384,7 @@ function readValidatedQueryValue<T extends string>(
   return resolved
 }
 
-function readTargetPath(value?: string) {
+export function sanitizeWechatTargetPath(value?: string) {
   const trimmed = readBoundedString(value, MAX_TARGET_PATH_LENGTH)
 
   if (!trimmed) {
@@ -599,7 +599,7 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
         return toNotFound(url)
       }
 
-      const targetPath = readValidatedQueryValue(parsed.query, ["target", "path", "redirect"], readTargetPath)
+      const targetPath = readValidatedQueryValue(parsed.query, ["target", "path", "redirect"], sanitizeWechatTargetPath)
       if (targetPath === null) {
         return toNotFound(url)
       }

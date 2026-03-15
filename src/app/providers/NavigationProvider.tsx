@@ -8,8 +8,9 @@ import { describeRootRouteDescriptor, type RootRouteDescriptor } from "@/app/nav
 import { resolveDeepLink } from "@/app/navigation/deepLinkRouting"
 import { getCurrentRouteDescriptor, navigationRef, resetToAuthStack, resetToRootRoutes, resetToSupportScreen } from "@/app/navigation/navigationRef"
 import { setNetworkUnavailableHandler, setUnauthorizedHandler } from "@/shared/api/interceptors"
-import { getString, removeItem, setBoolean, setString } from "@/shared/storage/kvStorage"
+import { getString } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
+import { clearPersistedWechatTargetPath, persistWechatTargetPath } from "@/shared/navigation/wechatTargetPath"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useNavigationStateStore } from "@/shared/store/useNavigationStateStore"
 import { useThemeStore } from "@/shared/store/useThemeStore"
@@ -55,8 +56,7 @@ export function NavigationProvider({ children }: PropsWithChildren) {
         ? wechatInterceptorRoute.params.params?.targetPath
         : undefined
     if (targetPath) {
-      setString(KvStorageKeys.OriginalTargetPath, targetPath)
-      setBoolean(KvStorageKeys.WechatInterceptorShown, true)
+      persistWechatTargetPath(targetPath)
     }
 
     resetToRootRoutes(resolution.routes, resolution.index)
@@ -104,8 +104,7 @@ export function NavigationProvider({ children }: PropsWithChildren) {
       if (!processUrl(pendingProtectedUrl)) {
         setPendingProtectedUrl(pendingProtectedUrl)
       } else if (getString(KvStorageKeys.OriginalTargetPath) === pendingProtectedUrl) {
-        removeItem(KvStorageKeys.OriginalTargetPath)
-        removeItem(KvStorageKeys.WechatInterceptorShown)
+        clearPersistedWechatTargetPath()
       }
       return
     }

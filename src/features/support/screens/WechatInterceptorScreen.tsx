@@ -9,8 +9,7 @@ import { resetToRootRoutes } from "@/app/navigation/navigationRef"
 import { SupportPanel, SupportScaffold } from "@/features/support/components/SupportScaffold"
 import { resetToEntryScreen } from "@/features/support/utils/supportNavigation"
 import { getSupportGuideUrl, openSupportUrl } from "@/features/support/utils/supportLinks"
-import { removeItem, setBoolean, setString } from "@/shared/storage/kvStorage"
-import { KvStorageKeys } from "@/shared/storage/sessionKeys"
+import { clearPersistedWechatTargetPath, persistWechatTargetPath } from "@/shared/navigation/wechatTargetPath"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useNavigationStateStore } from "@/shared/store/useNavigationStateStore"
 
@@ -32,21 +31,18 @@ export function WechatInterceptorScreen({ navigation, route }: Props) {
   }
 
   const continueToTarget = () => {
-    const targetPath = route.params?.targetPath
+    const targetPath = persistWechatTargetPath(route.params?.targetPath)
     if (!targetPath) {
+      clearPersistedWechatTargetPath()
       resetToEntryScreen()
       return
     }
-
-    setString(KvStorageKeys.OriginalTargetPath, targetPath)
-    setBoolean(KvStorageKeys.WechatInterceptorShown, true)
 
     const resolution = resolveDeepLink(targetPath, authenticated)
     if (resolution.pendingProtectedUrl) {
       setPendingProtectedUrl(resolution.pendingProtectedUrl)
     } else {
-      removeItem(KvStorageKeys.OriginalTargetPath)
-      removeItem(KvStorageKeys.WechatInterceptorShown)
+      clearPersistedWechatTargetPath()
     }
 
     resetToRootRoutes(resolution.routes, resolution.index)
