@@ -17,7 +17,7 @@ import { useBalanceStore } from "@/shared/store/useBalanceStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
-import { AppCard, APP_CARD_RADIUS } from "@/shared/ui/AppCard"
+import { APP_CARD_RADIUS } from "@/shared/ui/AppCard"
 
 import type { HomeTabStackParamList } from "@/app/navigation/types"
 
@@ -32,7 +32,6 @@ export function HomeShellScreen({ navigation, route }: Props) {
   useProfileSync()
   const coins = useBalanceStore(state => state.coins)
   const balances = useBalanceStore(state => state.balances)
-  const loadingCoins = useBalanceStore(state => state.loading)
   const loadCoins = useBalanceStore(state => state.loadCoins)
   const [showBalance, setShowBalance] = useState(true)
   const inviteHandledRef = useRef(false)
@@ -127,13 +126,6 @@ export function HomeShellScreen({ navigation, route }: Props) {
       </View>
 
       <HomeMessagePreview onPress={handleOpenMessages} />
-
-      <AppCard style={styles.tipsCard}>
-        <Text style={[styles.tipTitle, { color: theme.colors.text }]}>{t("home.shell.statusTitle")}</Text>
-        <Text style={[styles.tipBody, { color: theme.colors.mutedText }]}>
-          {loadingCoins ? t("home.shell.loadingAssets") : t("home.shell.loadedCoins", { count: coins.length })}
-        </Text>
-      </AppCard>
     </HomeScaffold>
   )
 }
@@ -217,16 +209,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
     textAlign: "center",
-  },
-  tipsCard: {
-    gap: 6,
-  },
-  tipTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  tipBody: {
-    fontSize: 13,
-    lineHeight: 20,
   },
 })
