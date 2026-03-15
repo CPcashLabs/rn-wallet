@@ -151,6 +151,8 @@ const home = {
     loadedCoins: "{{count}} coins loaded",
     loadProfileFailed: "Failed to load profile.",
     inviteBound: "Invite code bound successfully.",
+    scan: "Scan",
+    scanUnsupportedQr: "No wallet address was detected in this QR code.",
   },
   actions: {
     transfer: "Transfer",

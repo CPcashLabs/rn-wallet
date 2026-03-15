@@ -151,6 +151,8 @@ const home = {
     loadedCoins: "已加载 {{count}} 个币种",
     loadProfileFailed: "加载用户信息失败。",
     inviteBound: "邀请码绑定成功。",
+    scan: "扫一扫",
+    scanUnsupportedQr: "当前二维码里没有识别出钱包地址。",
   },
   actions: {
     transfer: "转账",
