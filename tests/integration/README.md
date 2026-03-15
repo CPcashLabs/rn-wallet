@@ -44,3 +44,4 @@ Use the same ownership model as the runtime code:
 - `features/auth/auth-session-orchestrator.integration.test.ts`
 - `features/support/support-navigation.integration.test.ts`
 - `app/navigation/bootstrap-run-coordinator.integration.test.ts`
+- `app/navigation/navigation-ref-support.integration.test.ts`
