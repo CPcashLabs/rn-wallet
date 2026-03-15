@@ -10,6 +10,27 @@ import type { SupportStackParamList } from "@/app/navigation/types"
 export const navigationRef = createNavigationContainerRef<RootStackParamList>()
 
 type SupportStackRouteParams = RootStackParamList["SupportStack"]
+type NavigateRootArgs<T extends keyof RootStackParamList> =
+  undefined extends RootStackParamList[T]
+    ? [routeName: T] | [routeName: T, params: RootStackParamList[T]]
+    : [routeName: T, params: RootStackParamList[T]]
+
+export function navigateRoot<T extends keyof RootStackParamList>(...args: NavigateRootArgs<T>) {
+  if (!navigationRef.isReady()) {
+    return false
+  }
+
+  const [routeName, params] = args
+
+  navigationRef.dispatch(
+    CommonActions.navigate({
+      name: routeName,
+      params,
+    }),
+  )
+
+  return true
+}
 
 export function resetToAuthStack() {
   if (!navigationRef.isReady()) return

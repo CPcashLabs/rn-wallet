@@ -4,7 +4,7 @@ import { Alert, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
-import { resetToAuthStack } from "@/app/navigation/navigationRef"
+import { navigateRoot, resetToAuthStack } from "@/app/navigation/navigationRef"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { clearAuthSession } from "@/shared/api/auth-session"
 import { getCurrentLanguage } from "@/shared/i18n"
@@ -98,7 +98,7 @@ export function SettingsScreen({ navigation }: Props) {
           icon="lock"
           label={t("home.settings.changePassword")}
           onPress={() => {
-            ;(navigation.getParent()?.getParent() as any)?.navigate("AuthStack", {
+            navigateRoot("AuthStack", {
               screen: "LoggedInSetPasswordScreen",
             })
           }}

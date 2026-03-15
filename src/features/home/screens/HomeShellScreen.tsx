@@ -10,7 +10,8 @@ import { getInviteBindingMessage } from "@/features/auth/utils/authMessages"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { formatAddress, formatCurrency } from "@/features/home/utils/format"
 import { HomeMessagePreview } from "@/features/messages/components/HomeMessagePreview"
-import { buildPluginHostParams } from "@/shared/plugins/navigation"
+import { navigateRoot } from "@/app/navigation/navigationRef"
+import { openPluginHost } from "@/shared/plugins/navigation"
 import { getBoolean, setBoolean } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 import { useBalanceStore } from "@/shared/store/useBalanceStore"
@@ -79,19 +80,19 @@ export function HomeShellScreen({ navigation, route }: Props) {
   }
 
   const handleOpenTransfer = () => {
-    ;(navigation.getParent()?.getParent() as any)?.navigate("PluginHost", buildPluginHostParams({ pluginId: "transfer" }))
+    openPluginHost({ pluginId: "transfer" })
   }
 
   const handleOpenReceive = () => {
-    ;(navigation.getParent()?.getParent() as any)?.navigate("PluginHost", buildPluginHostParams({ pluginId: "receive" }))
+    openPluginHost({ pluginId: "receive" })
   }
 
   const handleOpenCopouch = () => {
-    ;(navigation.getParent()?.getParent() as any)?.navigate("PluginHost", buildPluginHostParams({ pluginId: "copouch" }))
+    openPluginHost({ pluginId: "copouch" })
   }
 
   const handleOpenMessages = () => {
-    ;(navigation.getParent()?.getParent() as any)?.navigate("MessageStack", {
+    navigateRoot("MessageStack", {
       screen: "MessageScreen",
     })
   }
@@ -110,18 +111,6 @@ export function HomeShellScreen({ navigation, route }: Props) {
             </Text>
           </View>
         </View>
-        <Pressable
-          onPress={handleOpenMessages}
-          style={[
-            styles.messageShortcut,
-            {
-              backgroundColor: theme.colors.surfaceElevated ?? theme.colors.surface,
-              borderColor: theme.colors.border,
-            },
-          ]}
-        >
-          <Text style={[styles.messageShortcutText, { color: theme.colors.text }]}>{t("message.title")}</Text>
-        </Pressable>
       </View>
 
       <View
@@ -213,17 +202,6 @@ const styles = StyleSheet.create({
   },
   brandCaption: {
     fontSize: 13,
-  },
-  messageShortcut: {
-    minHeight: 38,
-    borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 14,
-    justifyContent: "center",
-  },
-  messageShortcutText: {
-    fontSize: 13,
-    fontWeight: "600",
   },
   balanceCard: {
     borderRadius: 28,

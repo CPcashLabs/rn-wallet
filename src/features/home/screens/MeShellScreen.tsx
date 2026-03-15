@@ -8,6 +8,7 @@ import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { useProfileSync } from "@/features/home/hooks/useProfileSync"
 import { UserAvatar } from "@/features/home/components/UserAvatar"
 import { formatAddress } from "@/features/home/utils/format"
+import { navigateRoot } from "@/app/navigation/navigationRef"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useUserStore } from "@/shared/store/useUserStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
@@ -56,7 +57,7 @@ export function MeShellScreen({ navigation }: Props) {
           icon="addressBook"
           label={t("home.me.addressBook")}
           onPress={() => {
-            ;(navigation.getParent()?.getParent() as any)?.navigate("AddressBookStack", {
+            navigateRoot("AddressBookStack", {
               screen: "AddressBookListScreen",
             })
           }}
@@ -66,7 +67,7 @@ export function MeShellScreen({ navigation }: Props) {
           icon="book"
           label={t("home.me.records")}
           onPress={() => {
-            ;(navigation.getParent()?.getParent() as any)?.navigate("OrdersStack", {
+            navigateRoot("OrdersStack", {
               screen: "TxlogsScreen",
             })
           }}

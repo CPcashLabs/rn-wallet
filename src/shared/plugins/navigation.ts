@@ -1,4 +1,4 @@
-import { getCurrentRouteDescriptor } from "@/app/navigation/navigationRef"
+import { getCurrentRouteDescriptor, navigateRoot } from "@/app/navigation/navigationRef"
 import type { RootStackParamList } from "@/app/navigation/types"
 import type { PluginId, PluginReturnTarget, PluginRouteParams } from "@/shared/plugins/types"
 
@@ -19,4 +19,11 @@ export function buildPluginHostParams(input: {
     pluginParams: input.pluginParams,
     returnTo,
   }
+}
+
+export function openPluginHost(input: {
+  pluginId: PluginId
+  pluginParams?: PluginRouteParams
+}) {
+  return navigateRoot("PluginHost", buildPluginHostParams(input))
 }
