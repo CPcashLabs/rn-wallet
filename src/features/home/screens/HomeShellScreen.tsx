@@ -8,12 +8,11 @@ import { bindInviteCode } from "@/features/auth/services/authApi"
 import { useProfileSync } from "@/features/home/hooks/useProfileSync"
 import { getInviteBindingMessage } from "@/features/auth/utils/authMessages"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
-import { formatAddress, formatCurrency } from "@/features/home/utils/format"
+import { formatCurrency } from "@/features/home/utils/format"
 import { HomeMessagePreview } from "@/features/messages/components/HomeMessagePreview"
 import { buildPluginHostParams } from "@/shared/plugins/navigation"
 import { getBoolean, setBoolean } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
-import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useBalanceStore } from "@/shared/store/useBalanceStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useToast } from "@/shared/toast/useToast"
@@ -28,19 +27,15 @@ export function HomeShellScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
   const { showToast } = useToast()
-  const session = useAuthStore(state => state.session)
   const walletAddress = useWalletStore(state => state.address)
   const walletChainId = useWalletStore(state => state.chainId)
-  const { profile, isRefreshing: loadingProfile } = useProfileSync()
+  useProfileSync()
   const coins = useBalanceStore(state => state.coins)
   const balances = useBalanceStore(state => state.balances)
   const loadingCoins = useBalanceStore(state => state.loading)
   const loadCoins = useBalanceStore(state => state.loadCoins)
   const [showBalance, setShowBalance] = useState(true)
   const inviteHandledRef = useRef(false)
-
-  const address = walletAddress ?? profile?.address ?? session?.address ?? ""
-  const displayName = profile?.nickname || t("home.shell.defaultNickname")
 
   const totalAssetValue = useMemo(() => {
     return coins.reduce((sum, coin) => {
@@ -108,10 +103,7 @@ export function HomeShellScreen({ navigation, route }: Props) {
   }
 
   return (
-    <HomeScaffold
-      title={t("home.shell.title")}
-      right={<Text style={[styles.headerAddress, { color: theme.colors.mutedText }]}>{formatAddress(address)}</Text>}
-    >
+    <HomeScaffold hideHeader title={t("home.shell.title")}>
       <View style={[styles.balanceCard, { backgroundColor: theme.colors.primary }]}>
         <View style={styles.balanceHeader}>
           <Text style={styles.balanceLabel}>{t("home.shell.walletBalance")}</Text>
@@ -126,14 +118,6 @@ export function HomeShellScreen({ navigation, route }: Props) {
           <Text style={styles.totalAssetsButtonText}>{t("home.shell.openTotalAssets")}</Text>
         </Pressable>
       </View>
-
-      <AppCard style={styles.profileCard}>
-        <Text style={[styles.profileTitle, { color: theme.colors.text }]}>{displayName}</Text>
-        <Text style={[styles.profileAddress, { color: theme.colors.mutedText }]}>{formatAddress(address)}</Text>
-        <Text style={[styles.profileStatus, { color: theme.colors.mutedText }]}>
-          {loadingProfile ? t("home.shell.loadingProfile") : t("home.shell.profileReady")}
-        </Text>
-      </AppCard>
 
       <View style={styles.actionGrid}>
         <ActionButton label={t("home.actions.transfer")} onPress={handleOpenTransfer} />
@@ -168,9 +152,6 @@ function ActionButton(props: { label: string; onPress: () => void }) {
 }
 
 const styles = StyleSheet.create({
-  headerAddress: {
-    fontSize: 12,
-  },
   balanceCard: {
     borderRadius: 20,
     padding: 18,
@@ -214,19 +195,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#FFFFFF",
     fontWeight: "700",
-  },
-  profileCard: {
-    gap: 6,
-  },
-  profileTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  profileAddress: {
-    fontSize: 13,
-  },
-  profileStatus: {
-    fontSize: 12,
   },
   actionRow: {
     flexDirection: "row",

@@ -12,6 +12,7 @@ export function HomeScaffold(props: {
   canGoBack?: boolean
   onBack?: () => void
   right?: React.ReactNode
+  hideHeader?: boolean
   scroll?: boolean
   backgroundColor?: string
   headerBackgroundColor?: string
@@ -41,7 +42,7 @@ export function HomeScaffold(props: {
     </ScrollView>
   )
 
-  const header = titleAlign === "center" ? (
+  const header = props.hideHeader ? null : titleAlign === "center" ? (
     <View
       style={[
         styles.header,
@@ -91,16 +92,27 @@ export function HomeScaffold(props: {
 
   return (
     <View style={[styles.root, { backgroundColor }]}>
-      <View
-        style={{
-          backgroundColor: headerBackgroundColor,
-          paddingTop: insets.top,
-          paddingLeft: insets.left,
-          paddingRight: insets.right,
-        }}
-      >
-        {header}
-      </View>
+      {props.hideHeader ? (
+        <View
+          style={{
+            backgroundColor,
+            paddingTop: insets.top,
+            paddingLeft: insets.left,
+            paddingRight: insets.right,
+          }}
+        />
+      ) : (
+        <View
+          style={{
+            backgroundColor: headerBackgroundColor,
+            paddingTop: insets.top,
+            paddingLeft: insets.left,
+            paddingRight: insets.right,
+          }}
+        >
+          {header}
+        </View>
+      )}
       <SafeAreaView edges={["left", "right", "bottom"]} style={[styles.safeArea, { backgroundColor }]}>
         {content}
       </SafeAreaView>
