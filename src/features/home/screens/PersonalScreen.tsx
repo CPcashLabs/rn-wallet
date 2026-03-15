@@ -16,6 +16,7 @@ import { useUserStore } from "@/shared/store/useUserStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppGlyph } from "@/shared/ui/AppGlyph"
 import { AppListCard, AppListRow } from "@/shared/ui/AppList"
 
 import type { SettingsStackParamList } from "@/app/navigation/types"
@@ -111,6 +112,7 @@ export function PersonalScreen({ navigation }: Props) {
 
       <AppListCard>
         <AppListRow
+          left={<AppGlyph name="photo" />}
           onPress={handleAvatarPress}
           right={
             <View style={styles.rowRight}>
@@ -121,6 +123,7 @@ export function PersonalScreen({ navigation }: Props) {
           title={t("home.personal.avatar")}
         />
         <AppListRow
+          left={<AppGlyph name="edit" />}
           onPress={() => navigation.navigate("UpdateNameScreen")}
           right={
             <View style={styles.rowRight}>
@@ -131,6 +134,7 @@ export function PersonalScreen({ navigation }: Props) {
           title={t("home.personal.nickname")}
         />
         <AppListRow
+          left={<AppGlyph name="wallet" />}
           onPress={() => Alert.alert(t("common.infoTitle"), address)}
           right={
             <View style={styles.rowRight}>
@@ -142,6 +146,7 @@ export function PersonalScreen({ navigation }: Props) {
         />
         <AppListRow
           hideDivider
+          left={<AppGlyph name="mail" />}
           onPress={() => navigation.navigate(hasEmail ? "EmailBindedScreen" : "EmailHomeScreen")}
           right={
             <View style={styles.rowRight}>

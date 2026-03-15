@@ -13,6 +13,7 @@ import { useUserStore } from "@/shared/store/useUserStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { AppCard } from "@/shared/ui/AppCard"
+import { AppGlyph, type AppGlyphName } from "@/shared/ui/AppGlyph"
 import { AppListCard, AppListRow } from "@/shared/ui/AppList"
 
 import type { SettingsStackParamList } from "@/app/navigation/types"
@@ -23,6 +24,7 @@ export function MeShellScreen({ navigation }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
   const session = useAuthStore(state => state.session)
+  const loginType = useAuthStore(state => state.loginType)
   const walletAddress = useWalletStore(state => state.address)
   const { profile } = useProfileSync()
   const avatarVersion = useUserStore(state => state.avatarVersion)
@@ -35,19 +37,23 @@ export function MeShellScreen({ navigation }: Props) {
   return (
     <HomeScaffold title={t("home.tabs.me")}>
       <AppCard style={styles.profileCard}>
-        <UserAvatar cacheVersion={avatarVersion} label={displayName} size={48} uri={avatar} />
+        <UserAvatar cacheVersion={avatarVersion} label={displayName} size={58} uri={avatar} />
         <View style={styles.profileMeta}>
           <Text style={[styles.name, { color: theme.colors.text }]}>{displayName}</Text>
           <Text style={[styles.address, { color: theme.colors.mutedText }]}>{formatAddress(address)}</Text>
-          <Text style={[styles.level, { color: theme.colors.mutedText }]}>
-            {t("home.me.inviteStatus", { status: inviteBound ? t("home.me.inviteBound") : t("home.me.inviteUnbound") })}
-          </Text>
+          <View style={styles.statusRow}>
+            <StatusPill label={inviteBound ? t("home.me.inviteBound") : t("home.me.inviteUnbound")} tone={inviteBound ? "primary" : "neutral"} />
+            <StatusPill label={loginType === "passkey" ? "Passkey" : "Wallet"} tone="neutral" />
+          </View>
         </View>
       </AppCard>
 
+      <Text style={[styles.sectionTitle, { color: theme.colors.mutedText }]}>{t("home.me.personal")}</Text>
       <AppListCard style={styles.listCard}>
-        <MenuRow label={t("home.me.personal")} onPress={() => navigation.navigate("PersonalScreen")} />
+        <MenuRow body={t("home.personal.title")} icon="person" label={t("home.me.personal")} onPress={() => navigation.navigate("PersonalScreen")} />
         <MenuRow
+          body={t("home.me.addressBook")}
+          icon="addressBook"
           label={t("home.me.addressBook")}
           onPress={() => {
             ;(navigation.getParent()?.getParent() as any)?.navigate("AddressBookStack", {
@@ -55,21 +61,36 @@ export function MeShellScreen({ navigation }: Props) {
             })
           }}
         />
-        <MenuRow label={t("settingsHub.invite.title")} onPress={() => navigation.navigate("InviteHomeScreen")} />
-        <MenuRow label={t("home.me.settings")} onPress={() => navigation.navigate("SettingsHomeScreen")} />
-        <MenuRow label={t("settingsHub.help.title")} onPress={() => navigation.navigate("HelpCenterScreen")} />
-        <MenuRow label={t("settingsHub.about.title")} last onPress={() => navigation.navigate("AboutScreen")} />
+        <MenuRow
+          body={t("home.me.recordsBody")}
+          icon="book"
+          label={t("home.me.records")}
+          onPress={() => {
+            ;(navigation.getParent()?.getParent() as any)?.navigate("OrdersStack", {
+              screen: "TxlogsScreen",
+            })
+          }}
+        />
+        <MenuRow body={t("settingsHub.invite.bindTitle")} icon="invite" label={t("settingsHub.invite.title")} onPress={() => navigation.navigate("InviteHomeScreen")} />
+      </AppListCard>
+
+      <Text style={[styles.sectionTitle, { color: theme.colors.mutedText }]}>{t("home.me.settings")}</Text>
+      <AppListCard style={styles.listCard}>
+        <MenuRow body={t("home.settings.title")} icon="gear" label={t("home.me.settings")} onPress={() => navigation.navigate("SettingsHomeScreen")} />
+        <MenuRow body={t("settingsHub.help.needHelp")} icon="help" label={t("settingsHub.help.title")} onPress={() => navigation.navigate("HelpCenterScreen")} />
+        <MenuRow body={t("settingsHub.about.title")} icon="info" label={t("settingsHub.about.title")} last onPress={() => navigation.navigate("AboutScreen")} />
       </AppListCard>
     </HomeScaffold>
   )
 }
 
-function MenuRow(props: { label: string; badge?: string; onPress: () => void; last?: boolean }) {
+function MenuRow(props: { label: string; body: string; icon: AppGlyphName; badge?: string; onPress: () => void; last?: boolean }) {
   const theme = useAppTheme()
 
   return (
     <AppListRow
       hideDivider={props.last}
+      left={<AppGlyph name={props.icon} />}
       onPress={props.onPress}
       right={
         props.badge ? (
@@ -81,8 +102,21 @@ function MenuRow(props: { label: string; badge?: string; onPress: () => void; la
           </View>
         ) : undefined
       }
+      subtitle={props.body}
       title={props.label}
     />
+  )
+}
+
+function StatusPill(props: { label: string; tone: "primary" | "neutral" }) {
+  const theme = useAppTheme()
+  const backgroundColor = props.tone === "primary" ? theme.colors.primarySoft ?? `${theme.colors.primary}14` : theme.colors.surfaceMuted ?? theme.colors.background
+  const color = props.tone === "primary" ? theme.colors.primary : theme.colors.mutedText
+
+  return (
+    <View style={[styles.statusPill, { backgroundColor }]}>
+      <Text style={[styles.statusPillText, { color }]}>{props.label}</Text>
+    </View>
   )
 }
 
@@ -98,17 +132,27 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   name: {
-    fontSize: 16,
+    fontSize: 19,
     fontWeight: "700",
   },
   address: {
     fontSize: 13,
   },
-  level: {
-    fontSize: 12,
+  statusRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
   },
   listCard: {
     gap: 0,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
+    paddingHorizontal: 4,
+    paddingTop: 4,
   },
   rowRight: {
     flexDirection: "row",
@@ -129,5 +173,14 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: "#E37318",
     fontWeight: "700",
+  },
+  statusPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+  statusPillText: {
+    fontSize: 12,
+    fontWeight: "600",
   },
 })

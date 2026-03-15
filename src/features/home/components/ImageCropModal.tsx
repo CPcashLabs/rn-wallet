@@ -196,7 +196,7 @@ export function ImageCropModal({ visible, imageUri, onConfirm, onCancel, initial
     onConfirm({ sourceUri: imageUri, cropX: normX, cropY: normY, cropWidth: normW, cropHeight: normH, ratio })
   }
 
-  const isDark = theme.colors.isDark
+  const isDark = theme.isDark
 
   return (
     <Modal animationType="slide" onRequestClose={onCancel} transparent={false} visible={visible}>

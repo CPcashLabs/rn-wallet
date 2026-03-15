@@ -78,7 +78,17 @@ export function TotalAssetsScreen({ navigation }: Props) {
       scroll={false}
     >
       <ScrollView bounces={false} contentContainerStyle={styles.content}>
-        <View style={[styles.totalCard, { backgroundColor: theme.colors.primary }]}>
+        <View
+          style={[
+            styles.totalCard,
+            {
+              backgroundColor: theme.isDark ? theme.colors.surfaceElevated ?? theme.colors.surface : theme.colors.brand,
+              borderColor: theme.isDark ? theme.colors.border : "rgba(255,255,255,0.12)",
+            },
+          ]}
+        >
+          <View style={[styles.totalGlow, styles.totalGlowPrimary, { backgroundColor: theme.colors.primary }]} />
+          <View style={[styles.totalGlow, styles.totalGlowSecondary, { backgroundColor: "rgba(255,255,255,0.26)" }]} />
           <View style={styles.totalHeader}>
             <Text style={styles.totalLabel}>{t("home.totalAssets.walletBalance")}</Text>
             <Pressable onPress={toggleShowBalance} style={styles.totalToggle}>
@@ -129,9 +139,29 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   totalCard: {
-    borderRadius: 20,
+    borderRadius: 28,
     padding: 18,
     gap: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: "hidden",
+  },
+  totalGlow: {
+    position: "absolute",
+    borderRadius: 999,
+  },
+  totalGlowPrimary: {
+    width: 180,
+    height: 180,
+    right: -36,
+    top: -90,
+    opacity: 0.45,
+  },
+  totalGlowSecondary: {
+    width: 130,
+    height: 130,
+    left: -40,
+    bottom: -56,
+    opacity: 0.18,
   },
   totalHeader: {
     flexDirection: "row",
@@ -185,7 +215,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#CBD5E133",
+    borderBottomColor: "rgba(60,60,67,0.18)",
   },
   assetLeft: {
     gap: 4,
