@@ -8,7 +8,6 @@ import { getMessageList, type MessageItem } from "@/features/messages/services/m
 import {
   formatRelativeTime,
   resolveMessageAmount,
-  resolveMessageBody,
   resolveMessageCoin,
   resolveMessageTitle,
 } from "@/features/messages/utils/messagePresentation"
@@ -29,8 +28,8 @@ export function HomeMessagePreview(props: { onPress: () => void }) {
     setLoadFailed(false)
 
     try {
-      const response = await getMessageList({ page: 1, perPage: 3 })
-      setItems(response.data.slice(0, 3))
+      const response = await getMessageList({ page: 1, perPage: 2 })
+      setItems(response.data.slice(0, 2))
     } catch {
       setLoadFailed(true)
     } finally {
@@ -100,28 +99,26 @@ export function HomeMessagePreview(props: { onPress: () => void }) {
                 index === items.length - 1 ? styles.rowLast : null,
               ]}
             >
-              <View style={styles.rowTop}>
-                <Text numberOfLines={1} style={[styles.rowTitle, { color: theme.colors.text }]}>
-                  {resolveMessageTitle(item, t)}
+              <View style={styles.rowInline}>
+                <Text numberOfLines={1} style={[styles.rowSummary, { color: theme.colors.text }]}>
+                  {buildPreviewSummary(item, t)}
                 </Text>
                 <Text style={[styles.rowTime, { color: theme.colors.mutedText }]}>{formatRelativeTime(item.createdAt, t)}</Text>
-              </View>
-              <View style={styles.rowBottom}>
-                <Text numberOfLines={1} style={[styles.rowBody, { color: theme.colors.mutedText }]}>
-                  {resolveMessageBody(item, t)}
-                </Text>
-                <View style={styles.rowMeta}>
-                  {item.status === 0 ? <View style={styles.rowUnreadDot} /> : null}
-                  <Text style={[styles.rowAmount, { color: theme.colors.text }]}>
-                    {resolveMessageAmount(item)} {resolveMessageCoin(item)}
-                  </Text>
-                </View>
               </View>
             </Pressable>
           ))
         : null}
     </SectionCard>
   )
+}
+
+function buildPreviewSummary(item: MessageItem, t: ReturnType<typeof useTranslation>["t"]) {
+  const title = resolveMessageTitle(item, t)
+  const amount = resolveMessageAmount(item)
+  const coin = resolveMessageCoin(item)
+  const hasAmount = [item.sendAmount, item.recvAmount, item.sendActualAmount, item.recvActualAmount].some(value => value > 0)
+
+  return hasAmount ? `${title} ${amount}${coin}` : title
 }
 
 const styles = StyleSheet.create({
@@ -171,50 +168,25 @@ const styles = StyleSheet.create({
   row: {
     paddingTop: 12,
     paddingBottom: 12,
-    gap: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   rowLast: {
     borderBottomWidth: 0,
     paddingBottom: 0,
   },
-  rowTop: {
+  rowInline: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
   },
-  rowTitle: {
+  rowSummary: {
     flex: 1,
     fontSize: 14,
     fontWeight: "600",
   },
   rowTime: {
     fontSize: 12,
-  },
-  rowBottom: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  rowBody: {
-    flex: 1,
-    fontSize: 13,
-  },
-  rowMeta: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  rowUnreadDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 999,
-    backgroundColor: "#DC2626",
-  },
-  rowAmount: {
-    fontSize: 12,
-    fontWeight: "600",
+    flexShrink: 0,
   },
 })
