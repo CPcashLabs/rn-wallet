@@ -34,6 +34,7 @@ import {
   summarizeStatistics,
   type RangePreset,
 } from "@/features/orders/utils/orderHelpers"
+import { createLatestTaskController } from "@/shared/async/taskController"
 import { PageEmpty, PrimaryButton, SectionCard } from "@/shared/ui/AppFlowUi"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { useUserStore } from "@/shared/store/useUserStore"
@@ -95,6 +96,11 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const loadingMoreRef = useRef(false)
+  const mountedRef = useRef(true)
+  const loadTaskControllerRef = useRef(createLatestTaskController())
+  const itemsRef = useRef<OrderListItem[]>([])
+  const statisticsRef = useRef<OrderStatistics>({ receiptAmount: 0, paymentAmount: 0, fee: 0, transactions: 0 })
+  const totalRef = useRef(0)
 
   const rangeSelection = useMemo(() => buildRangeSelection("all"), [])
   const cacheKey = useMemo(
@@ -110,8 +116,29 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
   const typeOptions = useMemo(() => resolveOrderTypeOptions(t), [t])
 
   useEffect(() => {
-    let active = true
+    itemsRef.current = items
+  }, [items])
+
+  useEffect(() => {
+    statisticsRef.current = statistics
+  }, [statistics])
+
+  useEffect(() => {
+    totalRef.current = total
+  }, [total])
+
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false
+      loadingMoreRef.current = false
+      loadTaskControllerRef.current.cancel()
+    }
+  }, [])
+
+  useEffect(() => {
+    const run = loadTaskControllerRef.current.begin()
     const cachedSnapshot = readOrderLogsCache(cacheKey)
+    loadingMoreRef.current = false
 
     if (cachedSnapshot) {
       setItems(cachedSnapshot.items)
@@ -119,8 +146,12 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
       setPage(cachedSnapshot.page)
       setTotal(cachedSnapshot.total)
       setLoading(false)
+      setLoadingMore(false)
+      setRefreshing(false)
     } else {
       setLoading(true)
+      setLoadingMore(false)
+      setRefreshing(false)
       setItems([])
       setStatistics({ receiptAmount: 0, paymentAmount: 0, fee: 0, transactions: 0 })
       setPage(1)
@@ -144,7 +175,7 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
           }),
         ])
 
-        if (!active) {
+        if (!run.isCurrent() || !mountedRef.current) {
           return
         }
 
@@ -169,28 +200,28 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
           }
         }
       } catch (error) {
-        if (active && !cachedSnapshot) {
+        if (run.isCurrent() && mountedRef.current && !cachedSnapshot) {
           presentError(error, {
             fallbackKey: "orders.list.loadFailed",
           })
         }
       } finally {
-        if (active) {
+        if (run.isCurrent() && mountedRef.current) {
+          loadingMoreRef.current = false
           setLoading(false)
           setRefreshing(false)
+          setLoadingMore(false)
         }
       }
     })()
-
-    return () => {
-      active = false
-    }
   }, [cacheKey, orderType, presentError, props.otherAddress, rangeSelection, showToast, t])
 
   const handleLoadMore = async () => {
-    if (loading || refreshing || loadingMoreRef.current || items.length >= total) {
+    if (loading || refreshing || loadingMoreRef.current || itemsRef.current.length >= totalRef.current) {
       return
     }
+
+    const run = loadTaskControllerRef.current.begin()
 
     try {
       loadingMoreRef.current = true
@@ -204,11 +235,16 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
         ...rangeSelection,
       })
 
+      if (!run.isCurrent() || !mountedRef.current) {
+        return
+      }
+
+      const nextStatistics = statisticsRef.current
       setItems(current => {
         const nextItems = [...current, ...response.data]
         writeOrderLogsCache(cacheKey, {
           items: nextItems,
-          statistics,
+          statistics: nextStatistics,
           page: response.page,
           total: response.total,
         })
@@ -217,16 +253,25 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
       setPage(response.page)
       setTotal(response.total)
     } catch (error) {
+      if (!run.isCurrent() || !mountedRef.current) {
+        return
+      }
+
       presentError(error, {
         fallbackKey: "orders.list.loadMoreFailed",
       })
     } finally {
-      loadingMoreRef.current = false
-      setLoadingMore(false)
+      if (run.isCurrent() && mountedRef.current) {
+        loadingMoreRef.current = false
+        setLoadingMore(false)
+      }
     }
   }
 
   const handleRefresh = async () => {
+    const run = loadTaskControllerRef.current.begin()
+    loadingMoreRef.current = false
+    setLoadingMore(false)
     setRefreshing(true)
 
     try {
@@ -245,6 +290,10 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
         }),
       ])
 
+      if (!run.isCurrent() || !mountedRef.current) {
+        return
+      }
+
       setItems(listResponse.data)
       setStatistics(statsResponse)
       setPage(listResponse.page)
@@ -256,11 +305,17 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
         total: listResponse.total,
       })
     } catch (error) {
+      if (!run.isCurrent() || !mountedRef.current) {
+        return
+      }
+
       presentError(error, {
         fallbackKey: "orders.list.refreshFailed",
       })
     } finally {
-      setRefreshing(false)
+      if (run.isCurrent() && mountedRef.current) {
+        setRefreshing(false)
+      }
     }
   }
 
