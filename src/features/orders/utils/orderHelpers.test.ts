@@ -6,6 +6,7 @@ import {
   resolveCounterpartyAddress,
   resolveDetailCounterparty,
   resolveOrderExplorerUrl,
+  resolveOrderListStatusBadge,
   resolveOrderTypeLabel,
   resolveQuickRange,
   shouldShowVoucherAction,
@@ -96,6 +97,29 @@ describe("orderHelpers", () => {
     expect(shouldShowVoucherAction("SEND", OrderStatus.BuyerPaid)).toBe(true)
     expect(shouldShowVoucherAction("SEND", OrderStatus.TimeoutClosed)).toBe(false)
     expect(shouldShowVoucherAction("RECEIPT", OrderStatus.BuyerPaid)).toBe(false)
+  })
+
+  it("hides completed statuses from list badges", () => {
+    expect(resolveOrderListStatusBadge(t, OrderStatus.OrderFinished)).toBeNull()
+  })
+
+  it("maps list badges to active and failure tones", () => {
+    expect(resolveOrderListStatusBadge(t, OrderStatus.BuyerPaying)).toEqual({
+      label: "orders.status.paying",
+      tone: "active",
+    })
+    expect(resolveOrderListStatusBadge(t, OrderStatus.SellerPaying)).toEqual({
+      label: "orders.status.depositing",
+      tone: "active",
+    })
+    expect(resolveOrderListStatusBadge(t, OrderStatus.TimeoutClosed)).toEqual({
+      label: "orders.status.failed",
+      tone: "danger",
+    })
+    expect(resolveOrderListStatusBadge(t, OrderStatus.Refunded)).toEqual({
+      label: "orders.status.refunded",
+      tone: "danger",
+    })
   })
 
   it("picks the correct explorer URL source for each order direction", () => {

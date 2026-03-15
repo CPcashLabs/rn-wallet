@@ -18,6 +18,8 @@ export enum OrderStatus {
 
 type Translator = (key: string, options?: Record<string, unknown>) => string
 
+export type OrderListStatusTone = "active" | "danger"
+
 const RECEIPT_ORDER_TYPES = [
   "RECEIPT",
   "RECEIPT_FIXED",
@@ -112,6 +114,45 @@ export function resolveOrderStatusLabel(t: Translator, status: number) {
   }
 
   return t("orders.status.closed")
+}
+
+export function resolveOrderListStatusBadge(t: Translator, status: number): { label: string; tone: OrderListStatusTone } | null {
+  if (status === OrderStatus.OrderFinished) {
+    return null
+  }
+
+  if (status === OrderStatus.BuyerPaying) {
+    return {
+      label: t("orders.status.paying"),
+      tone: "active",
+    }
+  }
+
+  if (status === OrderStatus.SellerPaying) {
+    return {
+      label: t("orders.status.depositing"),
+      tone: "active",
+    }
+  }
+
+  if (status === OrderStatus.Refunded) {
+    return {
+      label: t("orders.status.refunded"),
+      tone: "danger",
+    }
+  }
+
+  if (status < 0) {
+    return {
+      label: t("orders.status.failed"),
+      tone: "danger",
+    }
+  }
+
+  return {
+    label: resolveOrderStatusLabel(t, status),
+    tone: "active",
+  }
 }
 
 export function resolveCounterpartyAddress(order: Pick<OrderListItem, "paymentAddress" | "receiveAddress" | "depositAddress" | "transferAddress" | "orderType">) {

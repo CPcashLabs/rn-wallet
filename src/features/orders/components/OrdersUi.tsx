@@ -5,7 +5,15 @@ import { Pressable, StyleSheet, Text, View } from "react-native"
 import { SectionCard } from "@/shared/ui/AppFlowUi"
 import { formatAddress } from "@/features/home/utils/format"
 import type { OrderListItem } from "@/features/orders/services/ordersApi"
-import { formatMonthKey, formatSignedTokenAmount, formatTimestamp, resolveCounterpartyAddress, resolveOrderStatusLabel, resolveOrderTypeLabel } from "@/features/orders/utils/orderHelpers"
+import {
+  formatMonthKey,
+  formatSignedTokenAmount,
+  formatTimestamp,
+  resolveCounterpartyAddress,
+  resolveOrderListStatusBadge,
+  resolveOrderTypeLabel,
+  type OrderListStatusTone,
+} from "@/features/orders/utils/orderHelpers"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { AppListRow } from "@/shared/ui/AppList"
 import { AppStatusHero } from "@/shared/ui/AppStatusHero"
@@ -77,6 +85,7 @@ export function OrderListCard(props: {
 }) {
   const theme = useAppTheme()
   const counterparty = resolveCounterpartyAddress(props.item)
+  const statusBadge = resolveOrderListStatusBadge(props.t, props.item.status)
 
   return (
     <Pressable onPress={props.onPress}>
@@ -90,16 +99,44 @@ export function OrderListCard(props: {
           </Text>
         </View>
         <View style={styles.rowBottom}>
-          <Text style={[styles.rowMeta, { color: theme.colors.mutedText }]}>
+          <Text style={[styles.rowMeta, styles.rowMetaAddress, { color: theme.colors.mutedText }]}>
             {formatAddress(counterparty || props.item.walletAddress || props.item.receiveAddress || props.item.paymentAddress || "")}
           </Text>
-          <Text style={[styles.rowMeta, { color: theme.colors.mutedText }]}>
-            {resolveOrderStatusLabel(props.t, props.item.status)}
-          </Text>
+          {statusBadge ? <OrderStatusBadge label={statusBadge.label} tone={statusBadge.tone} /> : null}
         </View>
         <Text style={[styles.rowTime, { color: theme.colors.mutedText }]}>{formatTimestamp(props.item.createdAt)}</Text>
       </SectionCard>
     </Pressable>
+  )
+}
+
+function OrderStatusBadge(props: {
+  label: string
+  tone: OrderListStatusTone
+}) {
+  const theme = useAppTheme()
+  const isDanger = props.tone === "danger"
+
+  return (
+    <View
+      style={[
+        styles.statusBadge,
+        {
+          backgroundColor: isDanger ? "rgba(220,38,38,0.12)" : theme.colors.primarySoft ?? `${theme.colors.primary}14`,
+        },
+      ]}
+    >
+      <Text
+        style={[
+          styles.statusBadgeText,
+          {
+            color: isDanger ? "#DC2626" : theme.colors.primary,
+          },
+        ]}
+      >
+        {props.label}
+      </Text>
+    </View>
   )
 }
 
@@ -214,10 +251,25 @@ const styles = StyleSheet.create({
   },
   rowMeta: {
     fontSize: 12,
+  },
+  rowMetaAddress: {
     flex: 1,
+    paddingRight: 12,
   },
   rowTime: {
     fontSize: 12,
+  },
+  statusBadge: {
+    minHeight: 24,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: "600",
   },
   successTitle: {
     fontSize: 16,

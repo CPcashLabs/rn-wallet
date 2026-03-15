@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useMemo, useRef, useState } from "react"
 
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
+import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -78,7 +78,7 @@ export function TxlogsByAddressScreen({ navigation, route }: TxlogsByAddressProp
 function OrderLogsScreenBase(props: OrderListBaseProps) {
   const theme = useAppTheme()
   const { t } = useTranslation()
-  const { presentError, presentMessage } = useErrorPresenter()
+  const { presentError } = useErrorPresenter()
   const [rangePreset, setRangePreset] = useState<RangePreset>("all")
   const [orderType, setOrderType] = useState<OrderTypeFilter | undefined>(undefined)
   const [items, setItems] = useState<OrderListItem[]>([])
@@ -88,6 +88,7 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
   const [refreshing, setRefreshing] = useState(false)
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
+  const loadingMoreRef = useRef(false)
 
   const rangeSelection = useMemo(() => buildRangeSelection(rangePreset), [rangePreset])
   const orderGroups = useMemo(() => groupOrdersByMonth(items), [items])
@@ -143,11 +144,12 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
   }, [orderType, presentError, props.otherAddress, rangeSelection])
 
   const handleLoadMore = async () => {
-    if (loadingMore || items.length >= total) {
+    if (loading || refreshing || loadingMoreRef.current || items.length >= total) {
       return
     }
 
     try {
+      loadingMoreRef.current = true
       setLoadingMore(true)
       const nextPage = page + 1
       const response = await getOrderTxlogs({
@@ -166,6 +168,7 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
         fallbackKey: "orders.list.loadMoreFailed",
       })
     } finally {
+      loadingMoreRef.current = false
       setLoadingMore(false)
     }
   }
@@ -214,94 +217,100 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
         ) : null
       }
     >
-      <ScrollView contentContainerStyle={styles.content}>
-        <SectionCard>
-          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("orders.filters.time")}</Text>
-          <View style={styles.filterWrap}>
-            {rangeOptions.map(option => (
-              <FilterChip
-                key={option.value}
-                label={option.label}
-                active={rangePreset === option.value}
-                onPress={() => setRangePreset(option.value)}
-              />
-            ))}
-          </View>
-          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("orders.filters.type")}</Text>
-          <View style={styles.filterWrap}>
-            {typeOptions.map(option => (
-              <FilterChip
-                key={option.label}
-                label={option.label}
-                active={orderType === option.value}
-                onPress={() => setOrderType(option.value)}
-              />
-            ))}
-          </View>
-        </SectionCard>
-
-        <SummaryGrid
-          items={summarizeStatistics(statistics).map(item => ({
-            label: t(`orders.summary.${item.key}`),
-            value: item.value,
-          }))}
-        />
-
-        {props.otherAddress ? (
-          <SectionCard>
-            <Text style={[styles.addressTitle, { color: theme.colors.text }]}>{t("orders.list.currentAddress")}</Text>
-            <Text style={[styles.addressBody, { color: theme.colors.mutedText }]}>{formatAddressLabel(props.otherAddress)}</Text>
-          </SectionCard>
-        ) : null}
-
-        {loading ? (
-          <SectionCard>
-            <View style={styles.loadingWrap}>
-              <ActivityIndicator color={theme.colors.primary} />
-              <Text style={[styles.body, { color: theme.colors.mutedText }]}>{t("orders.list.loading")}</Text>
+      <FlatList
+        bounces
+        contentContainerStyle={styles.content}
+        data={loading ? [] : orderGroups}
+        keyExtractor={([month]) => month}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
+        ListEmptyComponent={
+          !loading ? (
+            <View style={styles.emptyState}>
+              <PageEmpty title={t("orders.list.emptyTitle")} body={t("orders.list.emptyBody")} />
             </View>
-          </SectionCard>
-        ) : null}
-
-        {!loading && items.length === 0 ? <PageEmpty title={t("orders.list.emptyTitle")} body={t("orders.list.emptyBody")} /> : null}
-
-        {!loading
-          ? orderGroups.map(([month, monthItems]) => (
-              <View key={month} style={styles.listGroup}>
-                <MonthHeader value={month} />
-                {monthItems.map(item => (
-                  <OrderListCard
-                    key={item.orderSn}
-                    item={item}
-                    t={t}
-                    onPress={() =>
-                      props.navigation.navigate("OrderDetailScreen", {
-                        orderSn: item.orderSn,
-                        source: "manual",
-                      })
-                    }
+          ) : null
+        }
+        ListFooterComponent={
+          <View style={styles.listFooter}>
+            {loadingMore ? <ActivityIndicator color={theme.colors.primary} /> : null}
+          </View>
+        }
+        ListHeaderComponent={
+          <View style={styles.headerContent}>
+            <SectionCard>
+              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("orders.filters.time")}</Text>
+              <View style={styles.filterWrap}>
+                {rangeOptions.map(option => (
+                  <FilterChip
+                    key={option.value}
+                    label={option.label}
+                    active={rangePreset === option.value}
+                    onPress={() => setRangePreset(option.value)}
                   />
                 ))}
               </View>
-            ))
-          : null}
+              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("orders.filters.type")}</Text>
+              <View style={styles.filterWrap}>
+                {typeOptions.map(option => (
+                  <FilterChip
+                    key={option.label}
+                    label={option.label}
+                    active={orderType === option.value}
+                    onPress={() => setOrderType(option.value)}
+                  />
+                ))}
+              </View>
+            </SectionCard>
 
-        {!loading && items.length < total ? (
-          <PrimaryButton
-            label={loadingMore ? t("common.loading") : t("orders.list.loadMore")}
-            onPress={() => void handleLoadMore()}
-            disabled={loadingMore}
-          />
-        ) : null}
+            <SummaryGrid
+              items={summarizeStatistics(statistics).map(item => ({
+                label: t(`orders.summary.${item.key}`),
+                value: item.value,
+              }))}
+            />
 
-        {!loading ? (
-          <Pressable onPress={() => void handleRefresh()} style={[styles.refreshButton, { borderColor: theme.colors.border }]}>
-            <Text style={[styles.refreshText, { color: theme.colors.text }]}>
-              {refreshing ? t("common.loading") : t("orders.list.refresh")}
-            </Text>
-          </Pressable>
-        ) : null}
-      </ScrollView>
+            {props.otherAddress ? (
+              <SectionCard>
+                <Text style={[styles.addressTitle, { color: theme.colors.text }]}>{t("orders.list.currentAddress")}</Text>
+                <Text style={[styles.addressBody, { color: theme.colors.mutedText }]}>{formatAddressLabel(props.otherAddress)}</Text>
+              </SectionCard>
+            ) : null}
+
+            {loading ? (
+              <SectionCard>
+                <View style={styles.loadingWrap}>
+                  <ActivityIndicator color={theme.colors.primary} />
+                  <Text style={[styles.body, { color: theme.colors.mutedText }]}>{t("orders.list.loading")}</Text>
+                </View>
+              </SectionCard>
+            ) : null}
+          </View>
+        }
+        onEndReached={() => void handleLoadMore()}
+        onEndReachedThreshold={0.35}
+        onRefresh={() => void handleRefresh()}
+        refreshing={refreshing}
+        renderItem={({ item: [month, monthItems] }) => (
+          <View style={styles.listGroup}>
+            <MonthHeader value={month} />
+            {monthItems.map(item => (
+              <OrderListCard
+                key={item.orderSn}
+                item={item}
+                t={t}
+                onPress={() =>
+                  props.navigation.navigate("OrderDetailScreen", {
+                    orderSn: item.orderSn,
+                    source: "manual",
+                  })
+                }
+              />
+            ))}
+          </View>
+        )}
+        showsVerticalScrollIndicator={false}
+      />
     </HomeScaffold>
   )
 }
@@ -524,6 +533,9 @@ export function BillExportScreen({ navigation, route }: BillExportProps) {
 const styles = StyleSheet.create({
   content: {
     padding: 16,
+    paddingBottom: 24,
+  },
+  headerContent: {
     gap: 12,
   },
   sectionTitle: {
@@ -547,18 +559,15 @@ const styles = StyleSheet.create({
   },
   listGroup: {
     gap: 10,
+    marginTop: 12,
   },
-  refreshButton: {
-    minHeight: 44,
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
+  emptyState: {
+    marginTop: 12,
+  },
+  listFooter: {
+    minHeight: 36,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 24,
-  },
-  refreshText: {
-    fontSize: 14,
-    fontWeight: "600",
   },
   addressTitle: {
     fontSize: 14,
