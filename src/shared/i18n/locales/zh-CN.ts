@@ -32,10 +32,12 @@ const auth = {
   },
   importLogin: {
     title: "导入钱包登录",
-    subtitle: "输入助记词或私钥，系统会自动识别并导入当前钱包后继续登录。",
+    subtitle: "输入助记词或私钥，系统会自动识别格式并完成签名登录。",
     secretLabel: "助记词或私钥",
     secretPlaceholder: "请输入或粘贴助记词 / 私钥",
-    secretHint: "支持 12/15/18/21/24 个英文单词助记词，或 64 位十六进制私钥。",
+    secretHint: "支持 12/15/18/21/24 个英文单词助记词，支持空格、换行或常见标点分隔；也支持 64 位十六进制私钥。",
+    detectedMnemonic: "已识别为助记词，对应地址 {{address}}。",
+    detectedPrivateKey: "已识别为私钥，对应地址 {{address}}。",
     submit: "导入并登录",
   },
   passkeySignup: {

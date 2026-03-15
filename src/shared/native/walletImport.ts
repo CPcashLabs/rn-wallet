@@ -21,6 +21,7 @@ export type ParsedWalletImport = {
 }
 
 const PRIVATE_KEY_PATTERN = /^(0x)?[0-9a-fA-F]{64}$/
+const MNEMONIC_SEPARATOR_PATTERN = /[\s,，、;；]+/g
 
 function normalizeWhitespace(value: string) {
   return value.replace(/\u3000/g, " ").trim()
@@ -29,6 +30,10 @@ function normalizeWhitespace(value: string) {
 function normalizePrivateKey(compactInput: string) {
   const withoutPrefix = compactInput.replace(/^0x/i, "")
   return `0x${withoutPrefix.toLowerCase()}`
+}
+
+function normalizeMnemonicInput(value: string) {
+  return normalizeWhitespace(value).replace(MNEMONIC_SEPARATOR_PATTERN, " ").trim().toLowerCase()
 }
 
 export function parseWalletImportInput(input: string): ParsedWalletImport {
@@ -51,7 +56,7 @@ export function parseWalletImportInput(input: string): ParsedWalletImport {
     }
   }
 
-  const normalizedMnemonic = trimmed.replace(/\s+/g, " ").toLowerCase()
+  const normalizedMnemonic = normalizeMnemonicInput(trimmed)
   if (normalizedMnemonic.includes(" ")) {
     if (!bip39.validateMnemonic(normalizedMnemonic)) {
       throw new WalletImportInputError("invalid")
@@ -68,4 +73,26 @@ export function parseWalletImportInput(input: string): ParsedWalletImport {
   }
 
   throw new WalletImportInputError("invalid")
+}
+
+export function tryParseWalletImportInput(input: string): ParsedWalletImport | null {
+  try {
+    return parseWalletImportInput(input)
+  } catch (error) {
+    if (error instanceof WalletImportInputError) {
+      return null
+    }
+
+    throw error
+  }
+}
+
+export async function signMessageWithWalletImport(input: string, message: string) {
+  const parsed = parseWalletImportInput(input)
+  const wallet = new Wallet(parsed.privateKey)
+
+  return {
+    ...parsed,
+    signature: await wallet.signMessage(message),
+  }
 }

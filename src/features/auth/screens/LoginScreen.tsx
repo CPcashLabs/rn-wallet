@@ -191,13 +191,11 @@ export function LoginScreen({ navigation, route }: Props) {
         {walletActionsEnabled ? (
           <AuthButton label={t("auth.login.walletButton")} loading={loadingType === "wallet"} onPress={() => void handleWalletLogin()} variant="secondary" />
         ) : null}
-        {walletActionsEnabled ? (
-          <AuthButton
-            label={t("auth.login.importSecretButton")}
-            onPress={() => navigation.navigate("ImportWalletLoginScreen", { inviteCode })}
-            variant="secondary"
-          />
-        ) : null}
+        <AuthButton
+          label={t("auth.login.importSecretButton")}
+          onPress={() => navigation.navigate("ImportWalletLoginScreen", { inviteCode })}
+          variant="secondary"
+        />
 
         <Pressable onPress={() => navigation.navigate("PasswordLoginScreen", { inviteCode })} style={styles.textAction}>
           <Text style={[styles.link, { color: theme.colors.primary }]}>

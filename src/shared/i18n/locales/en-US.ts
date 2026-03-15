@@ -32,10 +32,12 @@ const auth = {
   },
   importLogin: {
     title: "Import Wallet Login",
-    subtitle: "Paste a recovery phrase or private key. The app will detect the format, import the wallet, and continue signing in.",
+    subtitle: "Paste a recovery phrase or private key. The app will detect the format and complete sign-in with the matching wallet.",
     secretLabel: "Recovery Phrase or Private Key",
     secretPlaceholder: "Paste recovery phrase / private key",
-    secretHint: "Supports 12/15/18/21/24-word English recovery phrases or a 64-character hexadecimal private key.",
+    secretHint: "Supports 12/15/18/21/24-word English recovery phrases separated by spaces, line breaks, or common punctuation, and 64-character hexadecimal private keys.",
+    detectedMnemonic: "Detected a recovery phrase for address {{address}}.",
+    detectedPrivateKey: "Detected a private key for address {{address}}.",
     submit: "Import and Sign In",
   },
   passkeySignup: {
