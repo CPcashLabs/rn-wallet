@@ -313,6 +313,8 @@ function unwrapEnvelope<T>(payload: ApiEnvelope<T>) {
   return payload.data
 }
 
+const FIXED_TRANSFER_GAS_LIMIT = 100_000
+
 function toDetailedBridgeExchangePair(payload: DetailedBridgeExchangePairPayload, chainName: string): DetailedBridgeExchangePair {
   return {
     recvChainName: payload.recv_chain_name ?? chainName,
@@ -534,14 +536,9 @@ export async function getTransferGas(input: {
   chainName: string
   contractAddress: string
 }) {
-  const response = await apiClient.get<ApiEnvelope<string>>("/api/blockchain/member/chain/get-transfer-gas", {
-    params: {
-      chain_name: input.chainName,
-      contract_address: input.contractAddress,
-    },
-  })
+  void input
 
-  return Number(unwrapEnvelope(response.data) || 0)
+  return FIXED_TRANSFER_GAS_LIMIT
 }
 
 export async function getNormalCoinDetail(input: {

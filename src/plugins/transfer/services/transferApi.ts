@@ -231,8 +231,10 @@ export type TransferOrderOptions = {
 }
 
 export type TransferGasEstimate = {
-  gasAmount: number
+  gasLimit: number
 }
+
+const FIXED_TRANSFER_GAS_LIMIT = 100_000
 
 export type TransferQuote = {
   feeAmount: number
@@ -653,21 +655,10 @@ export async function getTransferOrderOptions(input: {
 }
 
 export async function getTransferGasEstimate(input: { chainName: string; contractAddress: string }) {
-  if (!input.contractAddress) {
-    return {
-      gasAmount: 0,
-    } satisfies TransferGasEstimate
-  }
-
-  const response = await apiClient.get<ApiEnvelope<string | number>>("/api/blockchain/member/chain/get-transfer-gas", {
-    params: {
-      chain_name: input.chainName,
-      contract_address: input.contractAddress,
-    },
-  })
+  void input
 
   return {
-    gasAmount: toNumber(unwrapEnvelope(response.data)),
+    gasLimit: FIXED_TRANSFER_GAS_LIMIT,
   } satisfies TransferGasEstimate
 }
 

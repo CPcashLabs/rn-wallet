@@ -69,7 +69,7 @@ function CopouchTransferScreen(props: {
   const [selectedOptionCode, setSelectedOptionCode] = useState("")
   const [amount, setAmount] = useState("")
   const [note, setNote] = useState("")
-  const [gasAmount, setGasAmount] = useState(0)
+  const [gasLimit, setGasLimit] = useState(0)
   const [quotedOption, setQuotedOption] = useState<TransferOrderOption | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -164,16 +164,10 @@ function CopouchTransferScreen(props: {
   }, [balances, props.mode, safeAssets])
 
   const availableBalance = selectedOption ? sourceBalances[selectedOption.sendCoinCode] ?? 0 : 0
-  const gasBalance =
-    sourceBalances[currentChainName] ??
-    sourceBalances[detail?.chainName ?? ""] ??
-    sourceBalances.BTT ??
-    sourceBalances.BTT_TEST ??
-    0
 
   useEffect(() => {
     if (!selectedOption?.sendCoinContract || !selectedChannel) {
-      setGasAmount(0)
+      setGasLimit(0)
       return
     }
 
@@ -182,10 +176,10 @@ function CopouchTransferScreen(props: {
       contractAddress: selectedOption.sendCoinContract,
     })
       .then(response => {
-        setGasAmount(response.gasAmount)
+        setGasLimit(response.gasLimit)
       })
       .catch(() => {
-        setGasAmount(0)
+        setGasLimit(0)
       })
   }, [currentChainName, selectedChannel, selectedOption?.sendCoinContract])
 
@@ -252,12 +246,8 @@ function CopouchTransferScreen(props: {
       return t("copouch.transfer.balanceInsufficient")
     }
 
-    if (gasAmount > 0 && gasBalance < gasAmount) {
-      return t("copouch.transfer.gasInsufficient")
-    }
-
     return ""
-  }, [amount, availableBalance, destinationAddress, detail, gasAmount, gasBalance, numericAmount, resolvedOption, selectedChannel, t])
+  }, [amount, availableBalance, destinationAddress, detail, numericAmount, resolvedOption, selectedChannel, t])
 
   const handleSubmit = async () => {
     if (validationMessage) {
@@ -376,7 +366,7 @@ function CopouchTransferScreen(props: {
             value={note}
           />
           <FieldRow label={t("copouch.transfer.estimate")} value={formatAmount(resolvedOption?.recvEstimateAmount ?? numericAmount)} />
-          <FieldRow label={t("copouch.transfer.gas")} value={gasAmount > 0 ? formatAmount(gasAmount) : "--"} />
+          <FieldRow label={t("copouch.transfer.gasLimit")} value={gasLimit > 0 ? String(gasLimit) : "--"} />
           <FieldRow label={t("copouch.transfer.direction")} value={props.mode === "withdraw" ? t("copouch.transfer.directionOut") : t("copouch.transfer.directionIn")} />
           {validationMessage ? <Text style={[styles.helperText, { color: "#DC2626" }]}>{validationMessage}</Text> : null}
         </SectionCard>

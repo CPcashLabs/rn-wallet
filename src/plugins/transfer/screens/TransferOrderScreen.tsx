@@ -47,7 +47,7 @@ export function TransferOrderScreen({ navigation, route }: Props) {
   const [selectedOptionCode, setSelectedOptionCode] = useState(selectedSendCoinCode)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
-  const [gasAmount, setGasAmount] = useState(0)
+  const [gasLimit, setGasLimit] = useState(0)
   const [quotedOption, setQuotedOption] = useState<TransferOrderOption | null>(null)
 
   const sendChainName = resolveChainNameById(chainId)
@@ -64,7 +64,6 @@ export function TransferOrderScreen({ navigation, route }: Props) {
 
   const numericAmount = Number(sendAmount || 0)
   const availableBalance = selectedOption ? balances[selectedOption.sendCoinCode] ?? 0 : 0
-  const gasBalance = balances[sendChainName] ?? balances.BTT ?? balances.BTT_TEST ?? 0
 
   const validationMessage = useMemo(() => {
     if (!recipientAddress) {
@@ -91,12 +90,8 @@ export function TransferOrderScreen({ navigation, route }: Props) {
       return t("transfer.order.balanceInsufficient")
     }
 
-    if (gasAmount > 0 && gasBalance < gasAmount) {
-      return t("transfer.order.gasInsufficient")
-    }
-
     return ""
-  }, [availableBalance, gasAmount, gasBalance, numericAmount, recipientAddress, selectedOption, sendAmount, t])
+  }, [availableBalance, numericAmount, recipientAddress, selectedOption, sendAmount, t])
 
   useEffect(() => {
     void loadCoins(chainId)
@@ -155,7 +150,7 @@ export function TransferOrderScreen({ navigation, route }: Props) {
     let mounted = true
 
     if (!selectedOption?.sendCoinContract) {
-      setGasAmount(0)
+      setGasLimit(0)
       return
     }
 
@@ -167,11 +162,11 @@ export function TransferOrderScreen({ navigation, route }: Props) {
         })
 
         if (mounted) {
-          setGasAmount(gas.gasAmount)
+          setGasLimit(gas.gasLimit)
         }
       } catch {
         if (mounted) {
-          setGasAmount(0)
+          setGasLimit(0)
         }
       }
     })()
@@ -364,8 +359,8 @@ export function TransferOrderScreen({ navigation, route }: Props) {
             }
           />
           <FieldRow
-            label={t("transfer.order.gasEstimate")}
-            value={`${formatAmount(gasAmount)} ${sendChainName}`.trim()}
+            label={t("transfer.order.gasLimit")}
+            value={gasLimit > 0 ? String(gasLimit) : "--"}
           />
           {selectedCoin ? (
             <FieldRow label={t("transfer.order.assetChain")} value={`${selectedCoin.chainName} / ${selectedCoin.symbol}`} />
