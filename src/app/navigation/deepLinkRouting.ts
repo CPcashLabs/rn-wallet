@@ -18,6 +18,17 @@ const ALLOWED_WEB_HOSTS = new Set([
   "share.cpcash.app",
 ])
 
+const CONTROL_CHARACTERS_PATTERN = /[\u0000-\u001F\u007F]/g
+const SAFE_ROUTE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/
+const SAFE_INVITE_CODE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/
+const SAFE_CHAIN_NAME_PATTERN = /^[A-Za-z][A-Za-z0-9_-]{0,31}$/
+const SAFE_TXID_PATTERN = /^(?:0x)?[A-Fa-f0-9]{64}$/
+const SAFE_EVM_ADDRESS_PATTERN = /^(?:0x|0X)?[A-Fa-f0-9]{40}$/
+const SAFE_TRON_ADDRESS_PATTERN = /^T[a-zA-Z0-9]{33}$/
+const SAFE_CHAIN_COLOR_PATTERN = /^#(?:[A-Fa-f0-9]{3}|[A-Fa-f0-9]{6}|[A-Fa-f0-9]{8})$/
+const MAX_DIAGNOSTIC_PATH_LENGTH = 512
+const MAX_TARGET_PATH_LENGTH = 1024
+
 type InviteScreenName =
   | "InviteHomeScreen"
   | "InviteCodeScreen"
@@ -32,14 +43,14 @@ function toResolution(routes: RootRouteDescriptor[], index = routes.length - 1):
 }
 
 function toNotFound(url: string): DeepLinkResolution {
+  const path = sanitizeDiagnosticPath(url)
+
   return toResolution([
     {
       name: "SupportStack",
       params: {
         screen: "NotFoundScreen",
-        params: {
-          path: url,
-        },
+        params: path ? { path } : undefined,
       },
     },
   ])
@@ -261,6 +272,40 @@ function readString(value?: string) {
   return typeof value === "string" && value.trim() ? value.trim() : undefined
 }
 
+function readBoundedString(value: string | undefined, maxLength: number) {
+  const trimmed = readString(value)
+
+  if (!trimmed || trimmed.length > maxLength || CONTROL_CHARACTERS_PATTERN.test(trimmed)) {
+    CONTROL_CHARACTERS_PATTERN.lastIndex = 0
+    return undefined
+  }
+
+  CONTROL_CHARACTERS_PATTERN.lastIndex = 0
+  return trimmed
+}
+
+function readPatternString(value: string | undefined, pattern: RegExp, maxLength = 128) {
+  const trimmed = readBoundedString(value, maxLength)
+
+  if (!trimmed || !pattern.test(trimmed)) {
+    return undefined
+  }
+
+  return trimmed
+}
+
+function readRouteId(value?: string) {
+  return readPatternString(value, SAFE_ROUTE_ID_PATTERN, 128)
+}
+
+function readInviteCode(value?: string) {
+  return readPatternString(value, SAFE_INVITE_CODE_PATTERN, 64)
+}
+
+function readPayChain(value?: string) {
+  return readPatternString(value, SAFE_CHAIN_NAME_PATTERN, 32)
+}
+
 function readReceiveCollapse(value?: string) {
   return value === "individuals" || value === "business" ? value : undefined
 }
@@ -270,7 +315,90 @@ function readReceiveMode(value?: string) {
 }
 
 function readChainColor(value?: string) {
-  return typeof value === "string" && value.trim() ? value.trim() : undefined
+  return readPatternString(value, SAFE_CHAIN_COLOR_PATTERN, 16)
+}
+
+function readWalletAddress(value?: string) {
+  const trimmed = readBoundedString(value, 64)
+
+  if (!trimmed) {
+    return undefined
+  }
+
+  if (SAFE_EVM_ADDRESS_PATTERN.test(trimmed) || SAFE_TRON_ADDRESS_PATTERN.test(trimmed)) {
+    return trimmed
+  }
+
+  return undefined
+}
+
+function readTxid(value?: string) {
+  return readPatternString(value, SAFE_TXID_PATTERN, 66)
+}
+
+function sanitizeDiagnosticPath(value?: string) {
+  if (typeof value !== "string") {
+    return undefined
+  }
+
+  const withoutControls = value.replace(CONTROL_CHARACTERS_PATTERN, "").trim()
+
+  if (!withoutControls) {
+    return undefined
+  }
+
+  if (withoutControls.length <= MAX_DIAGNOSTIC_PATH_LENGTH) {
+    return withoutControls
+  }
+
+  return `${withoutControls.slice(0, MAX_DIAGNOSTIC_PATH_LENGTH - 1)}…`
+}
+
+function readValidatedQueryValue<T extends string>(
+  query: Record<string, string>,
+  keys: string[],
+  reader: (value: string) => T | undefined,
+): T | undefined | null {
+  let resolved: T | undefined
+
+  for (const key of keys) {
+    const rawValue = readString(query[key])
+
+    if (!rawValue) {
+      continue
+    }
+
+    const value = reader(rawValue)
+
+    if (!value) {
+      return null
+    }
+
+    if (resolved && resolved !== value) {
+      return null
+    }
+
+    resolved = value
+  }
+
+  return resolved
+}
+
+function readTargetPath(value?: string) {
+  const trimmed = readBoundedString(value, MAX_TARGET_PATH_LENGTH)
+
+  if (!trimmed) {
+    return undefined
+  }
+
+  const nested = normalizeSegments(trimmed)
+  const nestedHead = nested?.segments[0]?.toLowerCase()
+
+  if (!nested || !nestedHead || nestedHead === "wechat-interceptor") {
+    return undefined
+  }
+
+  return trimmed
 }
 
 export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkResolution {
@@ -288,7 +416,7 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
 
   switch (head) {
     case "orders": {
-      const orderSn = readString(segments[1])
+      const orderSn = readRouteId(segments[1])
       if (!orderSn) {
         return toNotFound(url)
       }
@@ -305,7 +433,7 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
     }
 
     case "order-voucher": {
-      const orderSn = readString(segments[1])
+      const orderSn = readRouteId(segments[1])
       if (!orderSn || segments.length !== 2) {
         return toNotFound(url)
       }
@@ -314,7 +442,7 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
     }
 
     case "digitalreceipt": {
-      const orderSn = readString(segments[1])
+      const orderSn = readRouteId(segments[1])
       if (!orderSn || segments.length !== 2) {
         return toNotFound(url)
       }
@@ -323,7 +451,7 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
     }
 
     case "flowproof": {
-      const orderSn = readString(segments[1])
+      const orderSn = readRouteId(segments[1])
       if (!orderSn || segments.length !== 2) {
         return toNotFound(url)
       }
@@ -332,7 +460,7 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
     }
 
     case "refund": {
-      const orderSn = readString(segments[1])
+      const orderSn = readRouteId(segments[1])
       if (!orderSn || segments.length !== 2) {
         return toNotFound(url)
       }
@@ -350,7 +478,7 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
 
     case "txlogs": {
       const section = segments[1]?.toLowerCase()
-      const orderSn = readString(segments[2])
+      const orderSn = readRouteId(segments[2])
       if (!section || !orderSn || segments.length !== 3) {
         return toNotFound(url)
       }
@@ -374,7 +502,7 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
     case "cowallet": {
       const isDirectDetail = segments.length === 2
       const isDetailPath = segments.length === 3 && segments[1]?.toLowerCase() === "detail"
-      const id = readString(isDetailPath ? segments[2] : segments[1])
+      const id = readRouteId(isDetailPath ? segments[2] : segments[1])
       if (!id || (!isDirectDetail && !isDetailPath)) {
         return toNotFound(url)
       }
@@ -383,7 +511,11 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
     }
 
     case "invite": {
-      const inviteCode = readString(parsed.query.code)
+      const inviteCode = readValidatedQueryValue(parsed.query, ["code"], readInviteCode)
+      if (inviteCode === null) {
+        return toNotFound(url)
+      }
+
       const screen = segments[1]?.toLowerCase()
 
       if (!screen) {
@@ -423,17 +555,37 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
         return toNotFound(url)
       }
 
+      const payChain = readValidatedQueryValue(parsed.query, ["payChain"], readPayChain)
+      const copouch = readValidatedQueryValue(parsed.query, ["copouch", "cowallet"], readWalletAddress)
+      const cowallet = readValidatedQueryValue(parsed.query, ["cowallet"], readWalletAddress)
+      const multisigWalletId = readValidatedQueryValue(parsed.query, ["multisig_wallet_id", "multisigWalletId"], readRouteId)
+      const collapse = readValidatedQueryValue(parsed.query, ["collapse"], readReceiveCollapse)
+      const chainColor = readValidatedQueryValue(parsed.query, ["chain_color", "chainColor"], readChainColor)
+      const receiveMode = readValidatedQueryValue(parsed.query, ["receiveMode"], readReceiveMode)
+
+      if (
+        payChain === null ||
+        copouch === null ||
+        cowallet === null ||
+        multisigWalletId === null ||
+        collapse === null ||
+        chainColor === null ||
+        receiveMode === null
+      ) {
+        return toNotFound(url)
+      }
+
       return withAuth(
         [
           toHomeTab(),
           toReceiveHome({
-            payChain: readString(parsed.query.payChain),
-            copouch: readString(parsed.query.copouch) ?? readString(parsed.query.cowallet),
-            cowallet: readString(parsed.query.cowallet),
-            multisigWalletId: readString(parsed.query.multisig_wallet_id) ?? readString(parsed.query.multisigWalletId),
-            collapse: readReceiveCollapse(parsed.query.collapse),
-            chainColor: readChainColor(parsed.query.chain_color) ?? readChainColor(parsed.query.chainColor),
-            receiveMode: readReceiveMode(parsed.query.receiveMode),
+            payChain: payChain ?? undefined,
+            copouch: copouch ?? undefined,
+            cowallet: cowallet ?? undefined,
+            multisigWalletId: multisigWalletId ?? undefined,
+            collapse: collapse ?? undefined,
+            chainColor: chainColor ?? undefined,
+            receiveMode: receiveMode ?? undefined,
           }),
         ],
         url,
@@ -447,7 +599,11 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
         return toNotFound(url)
       }
 
-      const targetPath = readString(parsed.query.target) ?? readString(parsed.query.path) ?? readString(parsed.query.redirect)
+      const targetPath = readValidatedQueryValue(parsed.query, ["target", "path", "redirect"], readTargetPath)
+      if (targetPath === null) {
+        return toNotFound(url)
+      }
+
       return toResolution([toWechatInterceptor(targetPath)], 0)
     }
 
@@ -456,7 +612,11 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
         parsed.scheme === "http" || parsed.scheme === "https" ? `${parsed.scheme}://${parsed.host}` : undefined
 
       if (segments.length === 2 && segments[1]?.toLowerCase() === "detail") {
-        const txid = readString(parsed.query.txid)
+        const txid = readValidatedQueryValue(parsed.query, ["txid"], readTxid)
+        if (txid === null) {
+          return toNotFound(url)
+        }
+
         if (!txid) {
           return toNotFound(url)
         }
@@ -468,7 +628,11 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
         return toNotFound(url)
       }
 
-      const orderSn = readString(parsed.query.share)
+      const orderSn = readValidatedQueryValue(parsed.query, ["share"], readRouteId)
+      if (orderSn === null) {
+        return toNotFound(url)
+      }
+
       if (!orderSn) {
         return toNotFound(url)
       }
@@ -481,7 +645,11 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
         return toNotFound(url)
       }
 
-      const txid = readString(parsed.query.txid)
+      const txid = readValidatedQueryValue(parsed.query, ["txid"], readTxid)
+      if (txid === null) {
+        return toNotFound(url)
+      }
+
       if (!txid) {
         return toNotFound(url)
       }
