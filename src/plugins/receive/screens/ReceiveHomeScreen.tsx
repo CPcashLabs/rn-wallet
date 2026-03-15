@@ -22,6 +22,7 @@ import { useReceiveStore } from "@/plugins/receive/store/useReceiveStore"
 import { buildQrCodeDataUrl, buildQrMatrix, stripDataUrlPrefix, type QrMatrix } from "@/plugins/receive/utils/qrcode"
 import { resolveChainNameById } from "@/shared/api/walletAssets"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
+import { logErrorSafely } from "@/shared/logging/safeConsole"
 import { clipboardAdapter, fileAdapter, shareAdapter } from "@/shared/native"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useUserStore } from "@/shared/store/useUserStore"
@@ -220,7 +221,7 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
     try {
       setQrMatrix(buildQrMatrix(qrSource))
     } catch (error) {
-      console.error("[receive][qr][matrix]", error)
+      logErrorSafely("[receive][qr][matrix]", error)
       setQrMatrix(null)
     }
   }, [qrSource])
@@ -283,7 +284,7 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
 
       showToast({ message: t("receive.home.saveQrSuccess"), tone: "success" })
     } catch (error) {
-      console.error("[receive][qr][save]", error)
+      logErrorSafely("[receive][qr][save]", error)
       showToast({ message: t("receive.home.saveQrFailed"), tone: "error" })
     }
   }

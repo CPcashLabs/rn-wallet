@@ -9,6 +9,7 @@ import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { writeCachedReceiveChainColor } from "@/plugins/receive/services/receiveColorCache"
 import { useHomeBackAction } from "@/shared/navigation/useHomeBackAction"
 import { getTransferChannels } from "@/shared/exchange/services/exchangeApi"
+import { logErrorSafely } from "@/shared/logging/safeConsole"
 import { getBoolean, setBoolean } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 import { useWalletStore } from "@/shared/store/useWalletStore"
@@ -46,7 +47,7 @@ export function ReceiveSelectNetworkScreen({ navigation, route }: Props) {
       setChannels(result)
       setBoolean(KvStorageKeys.SelectTokenPageReload, false)
     } catch (error) {
-      console.error("[receive-plugin][select-network][loadChannels]", error)
+      logErrorSafely("[receive-plugin][select-network][loadChannels]", error)
       setChannels([])
       Alert.alert(t("common.errorTitle"), t("receive.select.loadFailed"))
     } finally {
@@ -60,7 +61,7 @@ export function ReceiveSelectNetworkScreen({ navigation, route }: Props) {
 
       if (shouldReload || channels.length === 0) {
         void loadChannels().catch(error => {
-          console.error("[receive-plugin][select-network][focusReload]", error)
+          logErrorSafely("[receive-plugin][select-network][focusReload]", error)
         })
       }
 

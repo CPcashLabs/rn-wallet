@@ -9,6 +9,7 @@ import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { ReceiveOrderCard } from "@/plugins/receive/components/ReceiveUi"
 import { getReceiveShareDetail } from "@/plugins/receive/services/receiveApi"
 import { buildQrCodeDataUrl, buildQrMatrix, stripDataUrlPrefix, type QrMatrix } from "@/plugins/receive/utils/qrcode"
+import { logErrorSafely } from "@/shared/logging/safeConsole"
 import { FieldRow, SectionCard } from "@/shared/ui/AppFlowUi"
 import { fileAdapter, shareAdapter } from "@/shared/native"
 import { useToast } from "@/shared/toast/useToast"
@@ -58,7 +59,7 @@ export function ReceiveShareScreen({ navigation, route }: Props) {
 
       showToast({ message: t("receive.share.saveSuccess"), tone: "success" })
     } catch (error) {
-      console.error("[receive][share][qr][save]", error)
+      logErrorSafely("[receive][share][qr][save]", error)
       showToast({ message: t("receive.share.saveFailed"), tone: "error" })
     }
   }

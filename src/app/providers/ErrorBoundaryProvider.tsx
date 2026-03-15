@@ -2,6 +2,7 @@ import React, { Component, type ErrorInfo, type PropsWithChildren, type ReactNod
 
 import { useTranslation } from "react-i18next"
 
+import { logErrorSafely } from "@/shared/logging/safeConsole"
 import { PlaceholderScreen } from "@/shared/ui/PlaceholderScreen"
 
 type State = {
@@ -23,7 +24,9 @@ class Boundary extends Component<BoundaryProps, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error("[ErrorBoundary]", error, info)
+    logErrorSafely("[ErrorBoundary]", error, {
+      context: info,
+    })
   }
 
   render(): ReactNode {

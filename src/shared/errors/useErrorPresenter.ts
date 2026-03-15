@@ -4,6 +4,7 @@ import { Alert } from "react-native"
 import { useTranslation } from "react-i18next"
 
 import { resolveErrorMessage, type ErrorMessageOptions } from "@/shared/errors/presentation"
+import { logErrorSafely } from "@/shared/logging/safeConsole"
 import type { ToastTone } from "@/shared/toast/ToastContext"
 import { useToast } from "@/shared/toast/useToast"
 
@@ -44,7 +45,7 @@ export function useErrorPresenter() {
       const message = resolveErrorMessage(t, error, options)
 
       if (options.log) {
-        console.error(options.logTag ?? "[error]", error)
+        logErrorSafely(options.logTag ?? "[error]", error)
       }
 
       return presentMessage(message, options)

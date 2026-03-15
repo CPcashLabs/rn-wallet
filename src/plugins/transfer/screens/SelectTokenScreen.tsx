@@ -11,6 +11,7 @@ import { writeCachedReceiveChainColor } from "@/plugins/receive/services/receive
 import { useTransferDraftStore } from "@/plugins/transfer/store/useTransferDraftStore"
 import { resolveTransferChainType } from "@/plugins/transfer/utils/address"
 import { getTransferChannels } from "@/shared/exchange/services/exchangeApi"
+import { logErrorSafely } from "@/shared/logging/safeConsole"
 import { useHomeBackAction } from "@/shared/navigation/useHomeBackAction"
 import { getBoolean, setBoolean } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
@@ -62,7 +63,7 @@ export function SelectTokenScreen({ navigation, route }: Props) {
       setChannels(result)
       setBoolean(KvStorageKeys.SelectTokenPageReload, false)
     } catch (error) {
-      console.error("[select-token][loadChannels]", error)
+      logErrorSafely("[select-token][loadChannels]", error)
       setChannels([])
       Alert.alert(t("common.errorTitle"), t("transfer.selectToken.loadFailed"))
     } finally {
@@ -76,7 +77,7 @@ export function SelectTokenScreen({ navigation, route }: Props) {
 
       if (shouldReload || channels.length === 0) {
         void loadChannels().catch(error => {
-          console.error("[select-token][focusReload]", error)
+          logErrorSafely("[select-token][focusReload]", error)
         })
       }
 
