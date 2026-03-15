@@ -18,6 +18,16 @@ import {
   ReimburseScreen,
   SplitDetailScreen,
 } from "@/features/orders/screens/OrderFollowupScreens"
+import {
+  FAQGuideDetailScreen,
+  FAQScreen,
+  HelpCenterScreen,
+  KnowledgeGuideDetailScreen,
+  ReceiveDiffScreen,
+  SafetyGuideDetailScreen,
+  UserGuideScreen,
+  WalletGuideDetailScreen,
+} from "@/features/settings/screens/SettingsHelpScreens"
 import { TagsNotesScreen } from "@/features/orders/screens/TagsNotesScreen"
 import { TxPayStatusScreen } from "@/plugins/transfer/screens/TxPayStatusScreen"
 
@@ -30,6 +40,14 @@ export function OrdersStackNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="TxlogsScreen" component={TxlogsScreen} />
       <Stack.Screen name="TxlogsByAddressScreen" component={TxlogsByAddressScreen} />
+      <Stack.Screen name="HelpCenterScreen" component={HelpCenterScreen} />
+      <Stack.Screen name="FAQScreen" component={FAQScreen} />
+      <Stack.Screen name="ReceiveDiffScreen" component={ReceiveDiffScreen} />
+      <Stack.Screen name="UserGuideScreen" component={UserGuideScreen} />
+      <Stack.Screen name="WalletGuideDetailScreen" component={WalletGuideDetailScreen} />
+      <Stack.Screen name="FAQGuideDetailScreen" component={FAQGuideDetailScreen} />
+      <Stack.Screen name="KnowledgeGuideDetailScreen" component={KnowledgeGuideDetailScreen} />
+      <Stack.Screen name="SafetyGuideDetailScreen" component={SafetyGuideDetailScreen} />
       <Stack.Screen name="OrderDetailScreen" component={OrderDetailScreen} />
       <Stack.Screen name="SplitDetailScreen" component={SplitDetailScreen} />
       <Stack.Screen name="TxPayStatusScreen" component={TxPayStatusScreen} />

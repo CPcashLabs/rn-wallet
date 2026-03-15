@@ -60,6 +60,14 @@ export type OrdersStackParamList = {
   TxlogsByAddressScreen: {
     address: string
   }
+  HelpCenterScreen: undefined
+  FAQScreen: undefined
+  ReceiveDiffScreen: undefined
+  UserGuideScreen: undefined
+  WalletGuideDetailScreen: undefined
+  FAQGuideDetailScreen: undefined
+  KnowledgeGuideDetailScreen: undefined
+  SafetyGuideDetailScreen: undefined
   OrderDetailScreen: {
     orderSn: string
     source?: "message" | "manual"
@@ -138,7 +146,15 @@ type CopouchNavigationContext =
   | undefined
 
 export type TransferStackParamList = {
-  SelectTokenScreen: (CopouchNavigationContext & { intent?: "transfer" | "receive" }) | undefined
+  SelectTokenScreen:
+    | (CopouchNavigationContext & {
+        intent?: "transfer" | "receive"
+        preferredChainType?: "EVM" | "TRON"
+        prefilledRecipientAddress?: string
+        autoAdvanceToOrder?: boolean
+        autoSelectFirstMatching?: boolean
+      })
+    | undefined
   TransferAddressScreen: {
     receiveChainName: string
     receiveChainFullName: string
