@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native"
+import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
 import { useFocusEffect } from "@react-navigation/native"
 import { useTranslation } from "react-i18next"
 
@@ -15,27 +15,109 @@ import { SectionCard } from "@/shared/ui/AppFlowUi"
 import { useSocketStore } from "@/shared/store/useSocketStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
+const PREVIEW_LIMIT = 2
+const ROW_HEIGHT = 44
+
+type RowAnimationState = {
+  opacity: Animated.Value
+  translateY: Animated.Value
+  height: Animated.Value
+}
+
 export function HomeMessagePreview(props: { onPress: () => void }) {
   const theme = useAppTheme()
   const { t } = useTranslation()
   const socketEvent = useSocketStore(state => state.lastEvent)
   const [items, setItems] = useState<MessageItem[]>([])
-  const [loading, setLoading] = useState(true)
+  const [ready, setReady] = useState(false)
   const [loadFailed, setLoadFailed] = useState(false)
+  const hasHydratedRef = useRef(false)
+  const itemIdsRef = useRef<string[]>([])
+  const rowAnimationsRef = useRef<Record<string, RowAnimationState>>({})
+
+  const resolveRowAnimation = React.useCallback((id: string) => {
+    const existing = rowAnimationsRef.current[id]
+    if (existing) {
+      return existing
+    }
+
+    const created = {
+      opacity: new Animated.Value(1),
+      translateY: new Animated.Value(0),
+      height: new Animated.Value(ROW_HEIGHT),
+    }
+    rowAnimationsRef.current[id] = created
+    return created
+  }, [])
+
+  const animateInsertedRows = React.useCallback(
+    (insertedIds: string[]) => {
+      if (insertedIds.length === 0) {
+        return
+      }
+
+      insertedIds.forEach(id => {
+        const animation = {
+          opacity: new Animated.Value(0),
+          translateY: new Animated.Value(-10),
+          height: new Animated.Value(0),
+        }
+        rowAnimationsRef.current[id] = animation
+      })
+
+      requestAnimationFrame(() => {
+        insertedIds.forEach(id => {
+          const animation = rowAnimationsRef.current[id]
+          if (!animation) {
+            return
+          }
+
+          Animated.parallel([
+            Animated.timing(animation.opacity, {
+              toValue: 1,
+              duration: 220,
+              useNativeDriver: false,
+            }),
+            Animated.timing(animation.translateY, {
+              toValue: 0,
+              duration: 220,
+              useNativeDriver: false,
+            }),
+            Animated.timing(animation.height, {
+              toValue: ROW_HEIGHT,
+              duration: 240,
+              useNativeDriver: false,
+            }),
+          ]).start()
+        })
+      })
+    },
+    [],
+  )
 
   const loadPreview = React.useCallback(async () => {
-    setLoading(true)
-    setLoadFailed(false)
-
     try {
-      const response = await getMessageList({ page: 1, perPage: 2 })
-      setItems(response.data.slice(0, 2))
+      const response = await getMessageList({ page: 1, perPage: PREVIEW_LIMIT })
+      const nextItems = response.data.slice(0, PREVIEW_LIMIT)
+      const nextIds = nextItems.map(item => item.id)
+      const insertedIds =
+        hasHydratedRef.current
+          ? nextIds.filter(id => !itemIdsRef.current.includes(id))
+          : []
+
+      itemIdsRef.current = nextIds
+      setLoadFailed(false)
+      setItems(nextItems)
+      animateInsertedRows(insertedIds)
+      hasHydratedRef.current = true
     } catch {
-      setLoadFailed(true)
+      if (!hasHydratedRef.current && itemIdsRef.current.length === 0) {
+        setLoadFailed(true)
+      }
     } finally {
-      setLoading(false)
+      setReady(true)
     }
-  }, [])
+  }, [animateInsertedRows])
 
   useFocusEffect(
     React.useCallback(() => {
@@ -65,47 +147,51 @@ export function HomeMessagePreview(props: { onPress: () => void }) {
         </Pressable>
       </View>
 
-      {loading ? (
-        <View style={styles.stateWrap}>
-          <ActivityIndicator color={theme.colors.primary} />
-          <Text style={[styles.stateBody, { color: theme.colors.mutedText }]}>{t("message.loading")}</Text>
-        </View>
-      ) : null}
-
-      {!loading && loadFailed ? (
+      {ready && loadFailed ? (
         <View style={styles.stateWrap}>
           <Text style={[styles.stateTitle, { color: theme.colors.text }]}>{t("message.preview.loadFailedTitle")}</Text>
           <Text style={[styles.stateBody, { color: theme.colors.mutedText }]}>{t("message.preview.loadFailedBody")}</Text>
         </View>
       ) : null}
 
-      {!loading && !loadFailed && items.length === 0 ? (
+      {ready && !loadFailed && items.length === 0 ? (
         <View style={styles.stateWrap}>
           <Text style={[styles.stateTitle, { color: theme.colors.text }]}>{t("message.emptyTitle")}</Text>
           <Text style={[styles.stateBody, { color: theme.colors.mutedText }]}>{t("message.emptyBody")}</Text>
         </View>
       ) : null}
 
-      {!loading && !loadFailed
+      {!loadFailed
         ? items.map((item, index) => (
-            <Pressable
+            <Animated.View
               key={item.id}
-              onPress={props.onPress}
               style={[
-                styles.row,
+                styles.rowWrap,
                 {
-                  borderBottomColor: theme.colors.border,
+                  opacity: resolveRowAnimation(item.id).opacity,
+                  transform: [{ translateY: resolveRowAnimation(item.id).translateY }],
+                  height: resolveRowAnimation(item.id).height,
                 },
-                index === items.length - 1 ? styles.rowLast : null,
               ]}
             >
-              <View style={styles.rowInline}>
-                <Text numberOfLines={1} style={[styles.rowSummary, { color: theme.colors.text }]}>
-                  {buildPreviewSummary(item, t)}
-                </Text>
-                <Text style={[styles.rowTime, { color: theme.colors.mutedText }]}>{formatRelativeTime(item.createdAt, t)}</Text>
-              </View>
-            </Pressable>
+              <Pressable
+                onPress={props.onPress}
+                style={[
+                  styles.row,
+                  {
+                    borderBottomColor: theme.colors.border,
+                  },
+                  index === items.length - 1 ? styles.rowLast : null,
+                ]}
+              >
+                <View style={styles.rowInline}>
+                  <Text numberOfLines={1} style={[styles.rowSummary, { color: theme.colors.text }]}>
+                    {buildPreviewSummary(item, t)}
+                  </Text>
+                  <Text style={[styles.rowTime, { color: theme.colors.mutedText }]}>{formatRelativeTime(item.createdAt, t)}</Text>
+                </View>
+              </Pressable>
+            </Animated.View>
           ))
         : null}
     </SectionCard>
@@ -165,14 +251,16 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     textAlign: "center",
   },
+  rowWrap: {
+    overflow: "hidden",
+  },
   row: {
-    paddingTop: 12,
-    paddingBottom: 12,
+    height: ROW_HEIGHT,
     borderBottomWidth: StyleSheet.hairlineWidth,
+    justifyContent: "center",
   },
   rowLast: {
     borderBottomWidth: 0,
-    paddingBottom: 0,
   },
   rowInline: {
     flexDirection: "row",
