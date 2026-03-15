@@ -3,7 +3,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Alert,
-  Clipboard,
   LayoutAnimation,
   type LayoutAnimationConfig,
   Platform,
@@ -22,7 +21,7 @@ import { useReceiveStore } from "@/plugins/receive/store/useReceiveStore"
 import { buildQrCodeDataUrl, buildQrMatrix, stripDataUrlPrefix, type QrMatrix } from "@/plugins/receive/utils/qrcode"
 import { resolveChainNameById } from "@/shared/api/walletAssets"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
-import { fileAdapter, shareAdapter } from "@/shared/native"
+import { clipboardAdapter, fileAdapter, shareAdapter } from "@/shared/native"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useUserStore } from "@/shared/store/useUserStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
@@ -354,18 +353,20 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
     })
   }
 
-  function handleCopy() {
+  async function handleCopy() {
     if (!qrSource) {
       showToast({ message: t("receive.home.qrUnavailable"), tone: "warning" })
       return
     }
 
-    try {
-      Clipboard.setString(qrSource)
+    const result = await clipboardAdapter.setString(qrSource)
+
+    if (result.ok) {
       showToast({ message: t("receive.home.copySuccess"), tone: "success" })
-    } catch {
-      showToast({ message: t("receive.home.copyFailed"), tone: "error" })
+      return
     }
+
+    showToast({ message: t("receive.home.copyFailed"), tone: "error" })
   }
 
   function handleRefreshCurrent() {
@@ -464,7 +465,7 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
         </View>
         <View style={styles.actionRow}>
           <ActionButton label={t("receive.home.share")} onPress={handleShare} />
-          <ActionButton label={t("receive.home.copy")} onPress={handleCopy} />
+          <ActionButton label={t("receive.home.copy")} onPress={() => void handleCopy()} />
         </View>
         <View style={styles.depositRow}>
           <Text style={styles.depositLabel}>{t("receive.home.minimumDeposit")}</Text>

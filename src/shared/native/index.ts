@@ -1,3 +1,4 @@
+export { clipboardAdapter } from "@/shared/native/clipboardAdapter"
 export { deepLinkAdapter } from "@/shared/native/deepLinkAdapter"
 export { fileAdapter, isNativeImagePickerCancelledError } from "@/shared/native/fileAdapter"
 export { passkeyAdapter } from "@/shared/native/passkeyAdapter"

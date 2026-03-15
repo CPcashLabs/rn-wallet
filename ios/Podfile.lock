@@ -1598,6 +1598,27 @@ PODS:
     - React-logger
     - React-perflogger
     - React-utils (= 0.76.9)
+  - RNCClipboard (1.16.3):
+    - DoubleConversion
+    - glog
+    - RCT-Folly (= 2024.10.14.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Yoga
   - RNGestureHandler (2.30.0):
     - DoubleConversion
     - glog
@@ -1755,6 +1776,7 @@ DEPENDENCIES:
   - React-utils (from `../node_modules/react-native/ReactCommon/react/utils`)
   - ReactCodegen (from `build/generated/ios`)
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
+  - "RNCClipboard (from `../node_modules/@react-native-clipboard/clipboard`)"
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
   - RNKeychain (from `../node_modules/react-native-keychain`)
   - RNScreens (from `../node_modules/react-native-screens`)
@@ -1891,6 +1913,8 @@ EXTERNAL SOURCES:
     :path: build/generated/ios
   ReactCommon:
     :path: "../node_modules/react-native/ReactCommon"
+  RNCClipboard:
+    :path: "../node_modules/@react-native-clipboard/clipboard"
   RNGestureHandler:
     :path: "../node_modules/react-native-gesture-handler"
   RNKeychain:
@@ -1964,6 +1988,7 @@ SPEC CHECKSUMS:
   React-utils: faa7b0d9d558ed343b8c185070e11f80fd36f576
   ReactCodegen: 25c2c1bed6e2c89daaa9e61c40e8680803df3c8f
   ReactCommon: 9cd9f89d1600b392c3a94552afc34def5fe54d02
+  RNCClipboard: d681d551a18f43cd8eada9b3b618a1096f613a94
   RNGestureHandler: 581a15096def4c5654e5a624958d8f1c8afcf0a2
   RNKeychain: 850dedd8ef1b00ea4a629aaff89ef68d50ba895f
   RNScreens: b9ce702be4fca55dddcb4e37aceeffdbe9ad8b39

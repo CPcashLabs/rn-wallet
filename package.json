@@ -18,6 +18,7 @@
     "check:repo": "node ./scripts/verify-repo-standards.mjs"
   },
   "dependencies": {
+    "@react-native-clipboard/clipboard": "^1.16.3",
     "@react-navigation/bottom-tabs": "^7.2.0",
     "@react-navigation/native": "^7.1.0",
     "@react-navigation/native-stack": "^7.2.0",
