@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { useFocusEffect } from "@react-navigation/native"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
@@ -63,11 +63,23 @@ export function CopouchBillListScreen({ navigation, route }: StackProps<"Copouch
   const [selectedFilterKey, setSelectedFilterKey] = useState<(typeof billFilters)[number]["key"]>("all")
   const [selectedMemberId, setSelectedMemberId] = useState("")
   const [exporting, setExporting] = useState(false)
+  const mountedRef = useRef(true)
+
+  useEffect(() => {
+    mountedRef.current = true
+
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
   const activeFilter = useMemo(() => billFilters.find(item => item.key === selectedFilterKey) ?? billFilters[0], [selectedFilterKey])
 
   const loadBills = useCallback(async () => {
-    setBillLoading(true)
+    if (mountedRef.current) {
+      setBillLoading(true)
+    }
+
     try {
       const [billResponse, statResponse, memberResponse] = await Promise.all([
         getCopouchBillList({
@@ -87,11 +99,17 @@ export function CopouchBillListScreen({ navigation, route }: StackProps<"Copouch
         }),
       ])
 
+      if (!mountedRef.current) {
+        return
+      }
+
       setItems(billResponse.items)
       setStats(statResponse)
       setMembers(memberResponse)
     } finally {
-      setBillLoading(false)
+      if (mountedRef.current) {
+        setBillLoading(false)
+      }
     }
   }, [activeFilter.orderTypeList, route.params.id, selectedMemberId])
 
@@ -258,20 +276,39 @@ export function CopouchRemindScreen({ navigation, route }: StackProps<"CopouchRe
   const { loading, invalidAccess, reload } = useCopouchWalletDetail(route.params.id)
   const [events, setEvents] = useState<CopouchEvent[]>([])
   const [eventLoading, setEventLoading] = useState(true)
+  const mountedRef = useRef(true)
+
+  useEffect(() => {
+    mountedRef.current = true
+
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
   const loadEvents = useCallback(async () => {
-    setEventLoading(true)
+    if (mountedRef.current) {
+      setEventLoading(true)
+    }
+
     try {
       const response = await getCopouchWalletEvents({
         walletId: route.params.id,
         perPage: 40,
       })
+
+      if (!mountedRef.current) {
+        return
+      }
+
       setEvents(response.items)
-      if (response.items.length > 0) {
+      if (mountedRef.current && response.items.length > 0) {
         await markAllCopouchEventsRead().catch(() => null)
       }
     } finally {
-      setEventLoading(false)
+      if (mountedRef.current) {
+        setEventLoading(false)
+      }
     }
   }, [route.params.id])
 
@@ -342,9 +379,20 @@ export function CopouchBalanceScreen({ navigation, route }: StackProps<"CopouchB
   const [assets, setAssets] = useState<CopouchAssetItem[]>([])
   const [memberAccounts, setMemberAccounts] = useState<CopouchMemberAccount[]>([])
   const [totalValue, setTotalValue] = useState(0)
+  const mountedRef = useRef(true)
+
+  useEffect(() => {
+    mountedRef.current = true
+
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
   const load = useCallback(async () => {
-    setLoading(true)
+    if (mountedRef.current) {
+      setLoading(true)
+    }
 
     try {
       const [assetResponse, memberResponse] = await Promise.all([
@@ -358,6 +406,10 @@ export function CopouchBalanceScreen({ navigation, route }: StackProps<"CopouchB
         }),
       ])
 
+      if (!mountedRef.current) {
+        return
+      }
+
       setWallet(assetResponse.wallet)
       setAssets(assetResponse.assets)
       setTotalValue(assetResponse.totalValue)
@@ -365,12 +417,16 @@ export function CopouchBalanceScreen({ navigation, route }: StackProps<"CopouchB
       setInvalidAccess(false)
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) {
-        setInvalidAccess(true)
+        if (mountedRef.current) {
+          setInvalidAccess(true)
+        }
       } else {
         throw error
       }
     } finally {
-      setLoading(false)
+      if (mountedRef.current) {
+        setLoading(false)
+      }
     }
   }, [chainId, route.params.id])
 

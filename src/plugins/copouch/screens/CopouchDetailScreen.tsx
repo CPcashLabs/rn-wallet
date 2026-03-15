@@ -74,10 +74,6 @@ export function CopouchDetailScreen({ navigation, route }: Props) {
     }
   }, [presentError, refreshWalletValue, route.params.id])
 
-  useEffect(() => {
-    void loadDetail()
-  }, [loadDetail])
-
   useFocusEffect(
     React.useCallback(() => {
       void refreshOverview().catch(() => null)

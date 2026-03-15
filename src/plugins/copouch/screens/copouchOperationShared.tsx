@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
 
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
@@ -222,25 +222,45 @@ export function useCopouchWalletDetail(id: string) {
   const [detail, setDetail] = useState<CopouchDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [invalidAccess, setInvalidAccess] = useState(false)
+  const mountedRef = useRef(true)
+
+  useEffect(() => {
+    mountedRef.current = true
+
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
   const load = useCallback(async () => {
-    setLoading(true)
+    if (mountedRef.current) {
+      setLoading(true)
+    }
 
     try {
       const response = await getCopouchDetail(id)
-      setDetail(response)
-      setInvalidAccess(false)
+
+      if (mountedRef.current) {
+        setDetail(response)
+        setInvalidAccess(false)
+      }
+
       return response
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) {
-        setInvalidAccess(true)
-        setDetail(null)
+        if (mountedRef.current) {
+          setInvalidAccess(true)
+          setDetail(null)
+        }
+
         return null
       }
 
       throw error
     } finally {
-      setLoading(false)
+      if (mountedRef.current) {
+        setLoading(false)
+      }
     }
   }, [id])
 

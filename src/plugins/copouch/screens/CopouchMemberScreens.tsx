@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { useFocusEffect } from "@react-navigation/native"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
@@ -170,14 +170,35 @@ export function CopouchDeleteMemberScreen({ navigation, route }: StackProps<"Cop
   const [owners, setOwners] = useState<CopouchOwner[]>([])
   const [ownersLoading, setOwnersLoading] = useState(true)
   const [deletingWalletAddress, setDeletingWalletAddress] = useState("")
+  const mountedRef = useRef(true)
+
+  useEffect(() => {
+    mountedRef.current = true
+
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
   const loadOwners = useCallback(async () => {
-    setOwnersLoading(true)
+    if (mountedRef.current) {
+      setOwnersLoading(true)
+    }
+
     try {
-      const nextOwners = await loadCopouchOwnersWithGuard(route.params.id, () => setDetail(null))
-      setOwners(nextOwners)
+      const nextOwners = await loadCopouchOwnersWithGuard(route.params.id, () => {
+        if (mountedRef.current) {
+          setDetail(null)
+        }
+      })
+
+      if (mountedRef.current) {
+        setOwners(nextOwners)
+      }
     } finally {
-      setOwnersLoading(false)
+      if (mountedRef.current) {
+        setOwnersLoading(false)
+      }
     }
   }, [route.params.id, setDetail])
 
@@ -195,6 +216,54 @@ export function CopouchDeleteMemberScreen({ navigation, route }: StackProps<"Cop
 
   const members = useMemo(() => owners.filter(owner => !owner.isCreator), [owners])
 
+  const handleDeleteOwner = useCallback(
+    async (owner: CopouchOwner) => {
+      if (!mountedRef.current) {
+        return
+      }
+
+      setDeletingWalletAddress(owner.walletAddress)
+
+      try {
+        await preValidateCopouchRemoveOwner(route.params.id, owner.walletAddress)
+        await removeCopouchOwner(route.params.id, { walletAddress: owner.walletAddress })
+
+        if (mountedRef.current) {
+          await loadAll()
+        }
+
+        if (!mountedRef.current) {
+          return
+        }
+
+        showToast({ message: t("copouch.member.removeSuccess"), tone: "success" })
+      } catch (error) {
+        try {
+          await syncCopouchOwners(route.params.id)
+
+          if (mountedRef.current) {
+            await loadAll()
+          }
+        } catch {
+          // ignore sync errors and surface the original mutation error
+        }
+
+        if (!mountedRef.current) {
+          return
+        }
+
+        presentMessage(resolveMutationMessage(t, error, "remove"), {
+          mode: "toast",
+        })
+      } finally {
+        if (mountedRef.current) {
+          setDeletingWalletAddress("")
+        }
+      }
+    },
+    [loadAll, presentMessage, route.params.id, showToast, t],
+  )
+
   const confirmDelete = useCallback(
     (owner: CopouchOwner) => {
       Alert.alert(t("copouch.member.deleteConfirmTitle"), t("copouch.member.deleteConfirmBody", { name: owner.nickname || formatAddress(owner.walletAddress) }), [
@@ -203,33 +272,12 @@ export function CopouchDeleteMemberScreen({ navigation, route }: StackProps<"Cop
           text: t("common.confirm"),
           style: "destructive",
           onPress: () => {
-            void (async () => {
-              setDeletingWalletAddress(owner.walletAddress)
-                try {
-                  await preValidateCopouchRemoveOwner(route.params.id, owner.walletAddress)
-                  await removeCopouchOwner(route.params.id, { walletAddress: owner.walletAddress })
-                  await loadAll()
-                  showToast({ message: t("copouch.member.removeSuccess"), tone: "success" })
-                } catch (error) {
-                try {
-                  await syncCopouchOwners(route.params.id)
-                  await loadAll()
-                } catch {
-                  // ignore sync errors and surface the original mutation error
-                }
-
-                  presentMessage(resolveMutationMessage(t, error, "remove"), {
-                    mode: "toast",
-                  })
-                } finally {
-                setDeletingWalletAddress("")
-              }
-            })()
+            void handleDeleteOwner(owner)
           },
         },
       ])
     },
-    [loadAll, presentMessage, route.params.id, t],
+    [handleDeleteOwner, t],
   )
 
   return (

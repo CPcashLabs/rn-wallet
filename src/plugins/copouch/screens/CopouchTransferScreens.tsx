@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useMemo, useRef, useState } from "react"
 
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
@@ -14,6 +14,12 @@ import {
   styles,
   useCopouchWalletDetail,
 } from "@/plugins/copouch/screens/copouchOperationShared"
+import {
+  applyCopouchTransferQuote,
+  buildCopouchTransferQuoteKey,
+  resolveCopouchTransferOption,
+  type CopouchTransferQuotedOption,
+} from "@/plugins/copouch/screens/copouchTransferQuote"
 import {
   getCopouchAssetBreakdown,
   type CopouchAssetItem,
@@ -73,10 +79,13 @@ function CopouchTransferScreen(props: {
   const [amount, setAmount] = useState("")
   const [note, setNote] = useState("")
   const [gasLimit, setGasLimit] = useState(0)
-  const [quotedOption, setQuotedOption] = useState<TransferOrderOption | null>(null)
+  const [quotedOption, setQuotedOption] = useState<CopouchTransferQuotedOption | null>(null)
+  const [quoteLoading, setQuoteLoading] = useState(false)
+  const [quoteFailed, setQuoteFailed] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [confirmOrder, setConfirmOrder] = useState<{ orderSn: string; variant: TransferConfirmVariant } | null>(null)
   const [confirmVisible, setConfirmVisible] = useState(false)
+  const quoteRequestIdRef = useRef(0)
 
   useEffect(() => {
     void reload().catch(() => null)
@@ -187,35 +196,73 @@ function CopouchTransferScreen(props: {
       })
   }, [currentChainName, selectedChannel, selectedOption?.sendCoinContract])
 
+  const currentQuoteRequestKey = useMemo(() => {
+    if (!selectedChannel || !selectedOption || !numericAmount || numericAmount <= 0) {
+      return null
+    }
+
+    return buildCopouchTransferQuoteKey({
+      channelKey: selectedChannel.key,
+      sendCoinCode: selectedOption.sendCoinCode,
+      recvCoinCode: selectedOption.recvCoinCode,
+      amount: numericAmount,
+    })
+  }, [numericAmount, selectedChannel, selectedOption])
+
   useEffect(() => {
-    if (!selectedOption || !numericAmount || numericAmount <= 0) {
+    if (!selectedOption || !currentQuoteRequestKey) {
+      quoteRequestIdRef.current += 1
       setQuotedOption(null)
+      setQuoteLoading(false)
+      setQuoteFailed(false)
       return
     }
 
+    const requestId = quoteRequestIdRef.current + 1
+    quoteRequestIdRef.current = requestId
+    const baseOption = selectedOption
+
+    setQuotedOption(null)
+    setQuoteLoading(true)
+    setQuoteFailed(false)
+
     void getTransferQuote({
-      sendCoinCode: selectedOption.sendCoinCode,
-      recvCoinCode: selectedOption.recvCoinCode,
+      sendCoinCode: baseOption.sendCoinCode,
+      recvCoinCode: baseOption.recvCoinCode,
       recvAmount: numericAmount,
     })
       .then(quote => {
+        if (requestId !== quoteRequestIdRef.current) {
+          return
+        }
+
         setQuotedOption({
-          ...selectedOption,
-          sellerId: String(quote.sellerId ?? selectedOption.sellerId),
-          feeAmount: quote.feeValue,
-          recvEstimateAmount: quote.recvAmount,
-          sendMinAmount: quote.sendMinAmount,
+          requestKey: currentQuoteRequestKey,
+          option: applyCopouchTransferQuote(baseOption, quote),
         })
+        setQuoteLoading(false)
+        setQuoteFailed(false)
       })
       .catch(() => {
-        setQuotedOption(null)
-      })
-  }, [numericAmount, selectedOption])
+        if (requestId !== quoteRequestIdRef.current) {
+          return
+        }
 
-  const resolvedOption = quotedOption && selectedOption && quotedOption.sendCoinCode === selectedOption.sendCoinCode ? quotedOption : selectedOption
+        setQuotedOption(null)
+        setQuoteLoading(false)
+        setQuoteFailed(true)
+      })
+  }, [currentQuoteRequestKey, numericAmount, selectedOption])
+
+  const resolvedOption = useMemo(
+    () => resolveCopouchTransferOption(selectedOption, quotedOption, currentQuoteRequestKey),
+    [currentQuoteRequestKey, quotedOption, selectedOption],
+  )
   const destinationAddress = props.mode === "withdraw" ? walletAddress ?? "" : detail?.walletAddress ?? ""
   const destinationTitle =
     props.mode === "withdraw" ? profile?.nickname || t("copouch.transfer.me") : detail?.walletName || t("copouch.home.unnamedWallet")
+  const quoteRequired = selectedChannel?.channelType === "bridge" && currentQuoteRequestKey != null
+  const hasCurrentQuote = quotedOption?.requestKey === currentQuoteRequestKey
 
   const validationMessage = useMemo(() => {
     if (!detail) {
@@ -242,6 +289,18 @@ function CopouchTransferScreen(props: {
       return t("copouch.transfer.amountInvalid")
     }
 
+    if (quoteRequired && quoteLoading) {
+      return t("copouch.transfer.quoteLoading")
+    }
+
+    if (quoteRequired && quoteFailed) {
+      return t("copouch.transfer.quoteFailed")
+    }
+
+    if (quoteRequired && !hasCurrentQuote) {
+      return t("copouch.transfer.quoteLoading")
+    }
+
     if (resolvedOption.sendMinAmount > 0 && numericAmount < resolvedOption.sendMinAmount) {
       return t("copouch.transfer.amountTooSmall", { amount: formatAmount(resolvedOption.sendMinAmount) })
     }
@@ -251,7 +310,7 @@ function CopouchTransferScreen(props: {
     }
 
     return ""
-  }, [amount, availableBalance, destinationAddress, detail, numericAmount, resolvedOption, selectedChannel, t])
+  }, [amount, availableBalance, destinationAddress, detail, hasCurrentQuote, numericAmount, quoteFailed, quoteLoading, quoteRequired, resolvedOption, selectedChannel, t])
 
   useEffect(() => {
     setConfirmOrder(null)
