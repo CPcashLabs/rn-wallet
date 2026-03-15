@@ -182,6 +182,10 @@ const home = {
     avatarUpdated: "Avatar updated.",
     avatarUploadFailed: "Failed to upload avatar.",
     avatarPending: "Avatar change is not available on this device.",
+    cropTitle: "Crop Avatar",
+    cropConfirm: "Done",
+    cropCancel: "Cancel",
+    cropHint: "Pinch to zoom · Drag to reposition",
   },
   settings: {
     title: "Settings",

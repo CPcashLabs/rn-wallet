@@ -182,6 +182,10 @@ const home = {
     avatarUpdated: "头像更新成功。",
     avatarUploadFailed: "头像上传失败。",
     avatarPending: "当前设备暂不支持更换头像。",
+    cropTitle: "裁剪头像",
+    cropConfirm: "完成",
+    cropCancel: "取消",
+    cropHint: "双指缩放 · 拖动调整位置",
   },
   settings: {
     title: "设置",

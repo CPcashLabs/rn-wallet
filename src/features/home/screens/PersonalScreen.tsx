@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { ImageCropModal, type CropResult } from "@/features/home/components/ImageCropModal"
 import { useProfileSync } from "@/features/home/hooks/useProfileSync"
 import { UserAvatar } from "@/features/home/components/UserAvatar"
 import { formatAddress } from "@/features/home/utils/format"
@@ -31,6 +32,7 @@ export function PersonalScreen({ navigation }: Props) {
   const walletAddress = useWalletStore(state => state.address)
   const patchProfile = useUserStore(state => state.patchProfile)
   const [uploading, setUploading] = React.useState(false)
+  const [cropUri, setCropUri] = React.useState<string | null>(null)
 
   const address = walletAddress ?? profile?.address ?? session?.address ?? ""
   const nickname = profile?.nickname || t("home.shell.defaultNickname")
@@ -55,9 +57,27 @@ export function PersonalScreen({ navigation }: Props) {
         throw picked.error
       }
 
-      setUploading(true)
+      // 打开裁剪弹窗，后续上传在 handleCropConfirm 中进行
+      setCropUri(picked.data.uri)
+    } catch (error) {
+      if (isNativeImagePickerCancelledError(error)) {
+        return
+      }
 
-      const avatarUrl = await uploadProfileImage(picked.data)
+      showToast({ message: t("home.personal.avatarUploadFailed"), tone: "error" })
+    }
+  }
+
+  const handleCropConfirm = async (cropResult: CropResult) => {
+    setCropUri(null)
+    setUploading(true)
+
+    try {
+      const avatarUrl = await uploadProfileImage({
+        uri: cropResult.sourceUri,
+        name: "avatar.jpg",
+        mimeType: "image/jpeg",
+      })
       if (!avatarUrl) {
         throw new Error("missing avatar url")
       }
@@ -67,19 +87,28 @@ export function PersonalScreen({ navigation }: Props) {
       void refresh()
 
       showToast({ message: t("home.personal.avatarUpdated"), tone: "success" })
-    } catch (error) {
-      if (isNativeImagePickerCancelledError(error)) {
-        return
-      }
-
+    } catch {
       showToast({ message: t("home.personal.avatarUploadFailed"), tone: "error" })
     } finally {
       setUploading(false)
     }
   }
 
+  const handleCropCancel = () => {
+    setCropUri(null)
+  }
+
   return (
     <HomeScaffold canGoBack onBack={navigation.goBack} title={t("home.personal.title")}>
+      {cropUri ? (
+        <ImageCropModal
+          imageUri={cropUri}
+          onCancel={handleCropCancel}
+          onConfirm={handleCropConfirm}
+          visible
+        />
+      ) : null}
+
       <AppListCard>
         <AppListRow
           onPress={handleAvatarPress}
