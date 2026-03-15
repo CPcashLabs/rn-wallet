@@ -101,8 +101,7 @@ export function NetworkLogo(props: NetworkLogoProps) {
 
   const handleAssetError = React.useCallback(() => {
     if (displaySource.kind === "local") {
-      removeCachedNetworkLogoEntry(logoKey)
-      void removeNetworkLogoFile(displaySource.uri).catch(() => undefined)
+      void removeCachedNetworkLogoEntry(logoKey).catch(() => undefined)
 
       if (displaySource.remoteUri) {
         setDisplaySource({
@@ -141,31 +140,31 @@ export function NetworkLogo(props: NetworkLogoProps) {
     }
 
     let cancelled = false
-    const previousLocalUri = cacheEntry?.localUri || ""
 
     void cacheNetworkLogoToFile({
       logoKey,
       remoteUri: activeUri,
     })
       .then(localUri => {
-        if (cancelled || !localUri) {
+        if (!localUri) {
           return
         }
 
-        writeCachedNetworkLogoEntry({
+        if (cancelled) {
+          void removeNetworkLogoFile(localUri).catch(() => undefined)
+          return
+        }
+
+        void writeCachedNetworkLogoEntry({
           logoKey,
           remoteUri: activeUri,
           localUri,
-        })
+        }).catch(() => undefined)
         setDisplaySource({
           uri: localUri,
           kind: "local",
           remoteUri: activeUri,
         })
-
-        if (previousLocalUri && previousLocalUri !== localUri) {
-          void removeNetworkLogoFile(previousLocalUri).catch(() => undefined)
-        }
       })
       .catch(() => undefined)
 

@@ -1,4 +1,6 @@
+import { removeNetworkLogoFile } from "@/shared/ui/networkLogoFileCache"
 import { getJson, removeItem, setJson } from "@/shared/storage/kvStorage"
+import { removeRemoteImageCacheEntry, upsertRemoteImageCacheEntry } from "@/shared/storage/remoteImageCacheIndex"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 
 type StoredNetworkLogoCacheEntry = {
@@ -53,18 +55,16 @@ function readNetworkLogoCacheMap() {
 }
 
 function writeNetworkLogoCacheMap(cacheMap: NetworkLogoCacheMap) {
-  const entries = Object.entries(cacheMap)
-
-  if (entries.length === 0) {
+  if (Object.keys(cacheMap).length === 0) {
     removeItem(KvStorageKeys.NetworkLogoCache)
     return
   }
 
-  const trimmedEntries = entries
-    .sort(([, left], [, right]) => right.updatedAt - left.updatedAt)
-    .slice(0, MAX_NETWORK_LOGO_CACHE_ENTRIES)
+  setJson(KvStorageKeys.NetworkLogoCache, cacheMap)
+}
 
-  setJson(KvStorageKeys.NetworkLogoCache, Object.fromEntries(trimmedEntries))
+async function cleanupRemovedNetworkLogoFiles(localUris: string[]) {
+  await Promise.allSettled(localUris.map(localUri => removeNetworkLogoFile(localUri)))
 }
 
 export function buildNetworkLogoCacheKey(input: {
@@ -91,7 +91,7 @@ export function readCachedNetworkLogoEntry(logoKey?: string | null) {
   return normalizeStoredEntry(normalizedLogoKey, readNetworkLogoCacheMap()[normalizedLogoKey])
 }
 
-export function writeCachedNetworkLogoEntry(input: {
+export async function writeCachedNetworkLogoEntry(input: {
   logoKey?: string | null
   remoteUri?: string | null
   localUri?: string | null
@@ -105,17 +105,23 @@ export function writeCachedNetworkLogoEntry(input: {
   }
 
   const cacheMap = readNetworkLogoCacheMap()
-  cacheMap[normalizedLogoKey] = {
-    logoKey: normalizedLogoKey,
-    remoteUri: normalizedRemoteUri,
-    localUri: normalizedLocalUri,
-    updatedAt: Date.now(),
-  }
+  const mutation = upsertRemoteImageCacheEntry<StoredNetworkLogoCacheEntry>(
+    cacheMap,
+    normalizedLogoKey,
+    {
+      logoKey: normalizedLogoKey,
+      remoteUri: normalizedRemoteUri,
+      localUri: normalizedLocalUri,
+      updatedAt: Date.now(),
+    },
+    MAX_NETWORK_LOGO_CACHE_ENTRIES,
+  )
 
-  writeNetworkLogoCacheMap(cacheMap)
+  writeNetworkLogoCacheMap(mutation.nextCacheMap)
+  await cleanupRemovedNetworkLogoFiles(mutation.removedLocalUris)
 }
 
-export function removeCachedNetworkLogoEntry(logoKey?: string | null) {
+export async function removeCachedNetworkLogoEntry(logoKey?: string | null) {
   const normalizedLogoKey = normalizeLogoKey(logoKey)
 
   if (!normalizedLogoKey) {
@@ -123,11 +129,12 @@ export function removeCachedNetworkLogoEntry(logoKey?: string | null) {
   }
 
   const cacheMap = readNetworkLogoCacheMap()
+  const mutation = removeRemoteImageCacheEntry<StoredNetworkLogoCacheEntry>(cacheMap, normalizedLogoKey)
 
-  if (!cacheMap[normalizedLogoKey]) {
+  if (mutation.nextCacheMap === cacheMap) {
     return
   }
 
-  delete cacheMap[normalizedLogoKey]
-  writeNetworkLogoCacheMap(cacheMap)
+  writeNetworkLogoCacheMap(mutation.nextCacheMap)
+  await cleanupRemovedNetworkLogoFiles(mutation.removedLocalUris)
 }
