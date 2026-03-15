@@ -8,6 +8,10 @@ export type NativePickedImage = {
   mimeType?: string
 }
 
+export type NativeCachedRemoteImage = {
+  localUri: string
+}
+
 type NativeFilePickerConstants = {
   isSupported?: boolean
   reason?: string
@@ -17,6 +21,8 @@ type NativeFilePickerModuleShape = NativeFilePickerConstants & {
   pickImage(): Promise<NativePickedImage>
   saveImage(filename: string, base64: string): Promise<void>
   exportFile(filename: string, base64: string, mimeType: string): Promise<void>
+  cacheRemoteImage?(accountKey: string, remoteUrl: string): Promise<NativeCachedRemoteImage>
+  removeCachedImage?(localUri: string): Promise<void>
 }
 
 const nativeFilePickerModule = NativeModules.CPCashFilePicker as NativeFilePickerModuleShape | undefined
@@ -73,4 +79,30 @@ export async function saveNativeImage(filename: string, base64: string) {
 
 export async function exportNativeFile(filename: string, base64: string, mimeType = "application/octet-stream") {
   return requireNativeFilePickerModule().exportFile(filename, base64, mimeType)
+}
+
+export function supportsNativeRemoteImageCache() {
+  if (Platform.OS !== "ios" && Platform.OS !== "android") {
+    return false
+  }
+
+  return typeof nativeFilePickerModule?.cacheRemoteImage === "function" && typeof nativeFilePickerModule?.removeCachedImage === "function"
+}
+
+export async function cacheNativeRemoteImage(accountKey: string, remoteUrl: string) {
+  const module = requireNativeFilePickerModule()
+  if (typeof module.cacheRemoteImage !== "function") {
+    throw new NativeCapabilityUnavailableError("avatar-cache", "Native avatar file cache is not installed.")
+  }
+
+  return module.cacheRemoteImage(accountKey, remoteUrl)
+}
+
+export async function removeNativeCachedImage(localUri: string) {
+  const module = requireNativeFilePickerModule()
+  if (typeof module.removeCachedImage !== "function") {
+    throw new NativeCapabilityUnavailableError("avatar-cache", "Native avatar file cache is not installed.")
+  }
+
+  return module.removeCachedImage(localUri)
 }

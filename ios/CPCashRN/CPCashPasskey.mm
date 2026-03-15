@@ -49,8 +49,16 @@ RCT_EXPORT_METHOD(register:(NSDictionary *)options
     }
 
     NSString *userID = [self randomEntropyHex];
+    if (userID.length == 0) {
+      reject(@"entropy_unavailable", @"Secure random generation failed.", nil);
+      return;
+    }
     NSData *userIDData = [userID dataUsingEncoding:NSUTF8StringEncoding];
     NSData *challenge = [self randomDataWithLength:32];
+    if (challenge == nil) {
+      reject(@"entropy_unavailable", @"Secure random generation failed.", nil);
+      return;
+    }
     ASAuthorizationPlatformPublicKeyCredentialProvider *provider =
       [[ASAuthorizationPlatformPublicKeyCredentialProvider alloc] initWithRelyingPartyIdentifier:rpId];
     ASAuthorizationPlatformPublicKeyCredentialRegistrationRequest *request =
@@ -81,6 +89,10 @@ RCT_EXPORT_METHOD(authenticate:(NSDictionary *)options
     }
 
     NSData *challenge = [self randomDataWithLength:32];
+    if (challenge == nil) {
+      reject(@"entropy_unavailable", @"Secure random generation failed.", nil);
+      return;
+    }
     ASAuthorizationPlatformPublicKeyCredentialProvider *provider =
       [[ASAuthorizationPlatformPublicKeyCredentialProvider alloc] initWithRelyingPartyIdentifier:rpId];
     ASAuthorizationPlatformPublicKeyCredentialAssertionRequest *request =
@@ -243,12 +255,12 @@ RCT_EXPORT_METHOD(authenticate:(NSDictionary *)options
   return [(NSString *)value stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
 }
 
-- (NSData *)randomDataWithLength:(size_t)length
+- (NSData * _Nullable)randomDataWithLength:(size_t)length
 {
   NSMutableData *data = [NSMutableData dataWithLength:length];
   int result = SecRandomCopyBytes(kSecRandomDefault, length, data.mutableBytes);
   if (result != errSecSuccess) {
-    return [@"fallback-passkey-challenge" dataUsingEncoding:NSUTF8StringEncoding];
+    return nil;
   }
 
   return data;
@@ -257,6 +269,9 @@ RCT_EXPORT_METHOD(authenticate:(NSDictionary *)options
 - (NSString *)randomEntropyHex
 {
   NSData *randomData = [self randomDataWithLength:16];
+  if (randomData == nil || randomData.length != 16) {
+    return @"";
+  }
   const unsigned char *bytes = (const unsigned char *)randomData.bytes;
   NSMutableString *hex = [NSMutableString stringWithCapacity:randomData.length * 2];
 

@@ -1,6 +1,7 @@
 #import "CPCashFilePicker.h"
 
 #import <AVFoundation/AVFoundation.h>
+#import <CommonCrypto/CommonDigest.h>
 #import <CoreImage/CoreImage.h>
 #import <Photos/Photos.h>
 #import <PhotosUI/PhotosUI.h>
@@ -217,6 +218,11 @@ didOutputMetadataObjects:(NSArray<__kindof AVMetadataObject *> *)metadataObjects
 @property (nonatomic, copy, nullable) RCTPromiseResolveBlock pendingExportResolve;
 @property (nonatomic, copy, nullable) RCTPromiseRejectBlock pendingExportReject;
 @property (nonatomic, strong, nullable) NSURL *pendingExportTemporaryURL;
+- (NSURL * _Nullable)avatarCacheDirectoryURL:(NSError * _Nullable __autoreleasing *)error;
+- (NSString *)trimmedString:(NSString * _Nullable)value;
+- (NSString *)sanitizedFilenameComponent:(NSString *)value fallback:(NSString *)fallback;
+- (NSString *)sha256ForString:(NSString *)value;
+- (NSString *)preferredImagePathExtensionForURL:(NSURL *)url response:(NSURLResponse * _Nullable)response;
 @end
 
 @implementation CPCashFilePicker
@@ -489,6 +495,132 @@ RCT_EXPORT_METHOD(exportFile:(NSString *)filename
   });
 }
 
+RCT_EXPORT_METHOD(cacheRemoteImage:(NSString *)accountKey
+                  remoteUrl:(NSString *)remoteUrl
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+{
+  NSString *normalizedAccountKey = [self trimmedString:accountKey];
+  NSString *normalizedRemoteUrl = [self trimmedString:remoteUrl];
+  if (normalizedAccountKey.length == 0 || normalizedRemoteUrl.length == 0) {
+    reject(@"invalid_arguments", @"accountKey and remoteUrl are required.", nil);
+    return;
+  }
+
+  NSURL *sourceURL = [NSURL URLWithString:normalizedRemoteUrl];
+  NSString *scheme = sourceURL.scheme.lowercaseString;
+  if (sourceURL == nil || !([scheme isEqualToString:@"https"] || [scheme isEqualToString:@"http"])) {
+    reject(@"invalid_url", @"remoteUrl is invalid.", nil);
+    return;
+  }
+
+  NSURLSessionDownloadTask *task = [[NSURLSession sharedSession] downloadTaskWithURL:sourceURL
+                                                                   completionHandler:^(NSURL * _Nullable location, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+    if (error != nil) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        reject(@"download_failed", error.localizedDescription ?: @"Failed to download remote image.", error);
+      });
+      return;
+    }
+
+    if (location == nil) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        reject(@"download_failed", @"Failed to download remote image.", nil);
+      });
+      return;
+    }
+
+    if ([response isKindOfClass:[NSHTTPURLResponse class]]) {
+      NSInteger statusCode = ((NSHTTPURLResponse *)response).statusCode;
+      if (statusCode < 200 || statusCode >= 300) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          reject(@"download_failed", [NSString stringWithFormat:@"Remote image request failed with status %ld.", (long)statusCode], nil);
+        });
+        return;
+      }
+    }
+
+    NSError *directoryError = nil;
+    NSURL *cacheDirectoryURL = [self avatarCacheDirectoryURL:&directoryError];
+    if (cacheDirectoryURL == nil) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        reject(@"cache_unavailable", directoryError.localizedDescription ?: @"Avatar cache directory is unavailable.", directoryError);
+      });
+      return;
+    }
+
+    NSString *safeAccountKey = [self sanitizedFilenameComponent:normalizedAccountKey fallback:@"user"];
+    NSString *remoteHash = [self sha256ForString:normalizedRemoteUrl];
+    NSString *pathExtension = [self preferredImagePathExtensionForURL:sourceURL response:response];
+    NSString *filename = [NSString stringWithFormat:@"avatar-%@-%@", safeAccountKey, remoteHash];
+    if (pathExtension.length > 0) {
+      filename = [filename stringByAppendingPathExtension:pathExtension];
+    }
+
+    NSURL *destinationURL = [cacheDirectoryURL URLByAppendingPathComponent:filename];
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    [fileManager removeItemAtURL:destinationURL error:nil];
+
+    NSError *moveError = nil;
+    if (![fileManager moveItemAtURL:location toURL:destinationURL error:&moveError]) {
+      NSData *fileData = [NSData dataWithContentsOfURL:location options:0 error:&moveError];
+      if (fileData == nil || ![fileData writeToURL:destinationURL options:NSDataWritingAtomic error:&moveError]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          reject(@"cache_write_failed", moveError.localizedDescription ?: @"Failed to persist remote image.", moveError);
+        });
+        return;
+      }
+    }
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+      resolve(@{ @"localUri": destinationURL.absoluteString });
+    });
+  }];
+
+  [task resume];
+}
+
+RCT_EXPORT_METHOD(removeCachedImage:(NSString *)localUri
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+{
+  NSString *normalizedLocalUri = [self trimmedString:localUri];
+  if (normalizedLocalUri.length == 0) {
+    resolve(nil);
+    return;
+  }
+
+  NSError *directoryError = nil;
+  NSURL *cacheDirectoryURL = [self avatarCacheDirectoryURL:&directoryError];
+  if (cacheDirectoryURL == nil) {
+    reject(@"cache_unavailable", directoryError.localizedDescription ?: @"Avatar cache directory is unavailable.", directoryError);
+    return;
+  }
+
+  NSURL *candidateURL = [NSURL URLWithString:normalizedLocalUri];
+  if (candidateURL == nil || !candidateURL.isFileURL) {
+    candidateURL = [NSURL fileURLWithPath:normalizedLocalUri];
+  }
+
+  NSString *cacheDirectoryPath = cacheDirectoryURL.URLByStandardizingPath.path;
+  NSString *candidatePath = candidateURL.URLByStandardizingPath.path;
+  if (![candidatePath hasPrefix:cacheDirectoryPath]) {
+    reject(@"invalid_path", @"Only avatar cache files can be removed.", nil);
+    return;
+  }
+
+  NSFileManager *fileManager = [NSFileManager defaultManager];
+  if ([fileManager fileExistsAtPath:candidatePath]) {
+    NSError *removeError = nil;
+    if (![fileManager removeItemAtURL:[NSURL fileURLWithPath:candidatePath] error:&removeError]) {
+      reject(@"remove_failed", removeError.localizedDescription ?: @"Failed to remove cached image.", removeError);
+      return;
+    }
+  }
+
+  resolve(nil);
+}
+
 - (BOOL)hasPendingRequest
 {
   return self.pendingResolve != nil || self.pendingReject != nil || self.pendingScanResolve != nil || self.pendingScanReject != nil;
@@ -690,6 +822,98 @@ RCT_EXPORT_METHOD(exportFile:(NSString *)filename
   }
 
   return @"image/jpeg";
+}
+
+- (NSURL * _Nullable)avatarCacheDirectoryURL:(NSError * _Nullable __autoreleasing *)error
+{
+  NSFileManager *fileManager = [NSFileManager defaultManager];
+  NSURL *cachesDirectoryURL = [[fileManager URLsForDirectory:NSCachesDirectory inDomains:NSUserDomainMask] firstObject];
+  if (cachesDirectoryURL == nil) {
+    return nil;
+  }
+
+  NSURL *avatarDirectoryURL = [cachesDirectoryURL URLByAppendingPathComponent:@"CPCashAvatarCache" isDirectory:YES];
+  if (![fileManager createDirectoryAtURL:avatarDirectoryURL withIntermediateDirectories:YES attributes:nil error:error]) {
+    return nil;
+  }
+
+  return avatarDirectoryURL;
+}
+
+- (NSString *)trimmedString:(NSString * _Nullable)value
+{
+  return [value isKindOfClass:[NSString class]] ? [value stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] : @"";
+}
+
+- (NSString *)sanitizedFilenameComponent:(NSString *)value fallback:(NSString *)fallback
+{
+  NSString *normalized = [self trimmedString:value].lowercaseString;
+  if (normalized.length == 0) {
+    normalized = fallback;
+  }
+
+  NSMutableString *sanitized = [[NSMutableString alloc] initWithCapacity:normalized.length];
+  NSCharacterSet *allowed = [NSCharacterSet characterSetWithCharactersInString:@"abcdefghijklmnopqrstuvwxyz0123456789-_"];
+  for (NSUInteger index = 0; index < normalized.length; index += 1) {
+    unichar character = [normalized characterAtIndex:index];
+    if ([allowed characterIsMember:character]) {
+      [sanitized appendFormat:@"%C", character];
+    } else {
+      [sanitized appendString:@"_"];
+    }
+  }
+
+  if (sanitized.length == 0) {
+    return fallback;
+  }
+
+  if (sanitized.length > 48) {
+    return [sanitized substringToIndex:48];
+  }
+
+  return sanitized;
+}
+
+- (NSString *)sha256ForString:(NSString *)value
+{
+  NSData *data = [value dataUsingEncoding:NSUTF8StringEncoding];
+  if (data == nil) {
+    return NSUUID.UUID.UUIDString.lowercaseString;
+  }
+
+  uint8_t digest[CC_SHA256_DIGEST_LENGTH];
+  CC_SHA256(data.bytes, (CC_LONG)data.length, digest);
+
+  NSMutableString *hash = [[NSMutableString alloc] initWithCapacity:CC_SHA256_DIGEST_LENGTH * 2];
+  for (NSUInteger index = 0; index < CC_SHA256_DIGEST_LENGTH; index += 1) {
+    [hash appendFormat:@"%02x", digest[index]];
+  }
+
+  return hash;
+}
+
+- (NSString *)preferredImagePathExtensionForURL:(NSURL *)url response:(NSURLResponse * _Nullable)response
+{
+  NSString *pathExtension = url.pathExtension.lowercaseString;
+  if (pathExtension.length > 0) {
+    return pathExtension;
+  }
+
+  NSString *mimeType = response.MIMEType.lowercaseString;
+  if ([mimeType containsString:@"png"]) {
+    return @"png";
+  }
+  if ([mimeType containsString:@"gif"]) {
+    return @"gif";
+  }
+  if ([mimeType containsString:@"webp"]) {
+    return @"webp";
+  }
+  if ([mimeType containsString:@"heic"] || [mimeType containsString:@"heif"]) {
+    return @"heic";
+  }
+
+  return @"jpg";
 }
 
 - (void)resolvePendingWithPayload:(NSDictionary *)payload
