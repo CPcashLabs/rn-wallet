@@ -56,6 +56,22 @@ describe("nativeFilePickerModule", () => {
     })
   })
 
+  it("falls back to the default unsupported file-picker reason", () => {
+    expect(
+      loadNativeFilePickerModule({
+        nativeModule: {
+          isSupported: false,
+          pickImage: jest.fn(),
+          saveImage: jest.fn(),
+          exportFile: jest.fn(),
+        },
+      }).readNativeFilePickerCapability(),
+    ).toEqual({
+      supported: false,
+      reason: "File picker is not supported on this device.",
+    })
+  })
+
   it("reports supported native modules without a reason override", () => {
     expect(
       loadNativeFilePickerModule({

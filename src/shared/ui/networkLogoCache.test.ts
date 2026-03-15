@@ -104,4 +104,29 @@ describe("networkLogoCache", () => {
     await removeCachedNetworkLogoEntry("v2::initials::missing")
     expect(mockRemoveNetworkLogoFile).not.toHaveBeenCalled()
   })
+
+  it("falls back to initials mode and normalizes malformed updatedAt values", () => {
+    expect(
+      buildNetworkLogoCacheKey({
+        chainName: "TRON",
+        fallbackMode: "   ",
+      }),
+    ).toBe("v2::initials::tron")
+
+    mockStorageMap.set("app.network_logo_cache", {
+      "v2::initials::tron": {
+        logoKey: "v2::initials::tron",
+        remoteUri: " https://cp.cash/logo.png ",
+        localUri: " file:///logo.png ",
+        updatedAt: "bad",
+      },
+    })
+
+    expect(readCachedNetworkLogoEntry("v2::initials::tron")).toEqual({
+      logoKey: "v2::initials::tron",
+      remoteUri: "https://cp.cash/logo.png",
+      localUri: "file:///logo.png",
+      updatedAt: 0,
+    })
+  })
 })

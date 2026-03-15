@@ -65,6 +65,7 @@ describe("websocket runtime configuration", () => {
     expect(isTlsPinnedHost("https://wallet-preview.cp.cash")).toBe(true)
     expect(isTlsPinnedHost("https://wallet.charprotocol.com")).toBe(true)
     expect(isTlsPinnedHost("https://wallet.charprotocol.dev")).toBe(true)
+    expect(isTlsPinnedHost("https://")).toBe(false)
     expect(isTlsPinnedHost("https://share.cpcash.app")).toBe(false)
     expect(isTlsPinnedHost("")).toBe(false)
   })
@@ -74,12 +75,20 @@ describe("websocket runtime configuration", () => {
     expect(isLocalDevelopmentHost("http://127.0.0.1:3000")).toBe(true)
     expect(isLocalDevelopmentHost("http://999.0.0.1:3000")).toBe(false)
     expect(isLocalDevelopmentHost("http://10.0.0.2:3000")).toBe(true)
+    expect(isLocalDevelopmentHost("http://192.168.0.2:3000")).toBe(true)
+    expect(isLocalDevelopmentHost("http://172.16.0.2:3000")).toBe(true)
+    expect(isLocalDevelopmentHost("http://172.31.0.2:3000")).toBe(true)
+    expect(isLocalDevelopmentHost("http://172.15.0.2:3000")).toBe(false)
+    expect(isLocalDevelopmentHost("http://[::1")).toBe(false)
     expect(isLocalDevelopmentHost("http://app.local")).toBe(true)
     expect(isLocalDevelopmentHost("http://[::1]:3000")).toBe(true)
     expect(isLocalDevelopmentHost("https://cp.cash")).toBe(false)
     expect(normalizePinnedNetworkBaseUrl("http://127.0.0.1:3000", { allowLocalDevHosts: true })).toBe("http://127.0.0.1:3000")
     expect(() => normalizePinnedNetworkBaseUrl("http://127.0.0.1:3000", { allowLocalDevHosts: false })).toThrow(
       "Unpinned network host",
+    )
+    expect(() => normalizePinnedNetworkBaseUrl("   ", { allowLocalDevHosts: false })).toThrow(
+      "Unpinned network host: unknown",
     )
   })
 
@@ -120,6 +129,13 @@ describe("websocket runtime configuration", () => {
     expect(resolveRuntimeEnv()).toBe("prod")
   })
 
+  it("falls back to the default debug api host when no override is provided in development", () => {
+    runtimeGlobals.__DEV__ = true
+    runtimeGlobals.__CPCASH_API_BASE_URL__ = undefined
+
+    expect(resolveApiBaseUrl()).toBe("https://charprotocol.com")
+  })
+
   it("resolves oauth client id from runtime overrides or test defaults", () => {
     runtimeGlobals.__CPCASH_OAUTH_CLIENT_ID__ = "override-client"
     expect(resolveOAuthClientId()).toBe("override-client")
@@ -148,6 +164,26 @@ describe("websocket runtime configuration", () => {
     expect(resolvePasskeyRpId()).toBe("wallet.charprotocol.com")
   })
 
+  it("resolves dev and preview runtime, auth and passkey hosts from the non-wallet domains", () => {
+    runtimeGlobals.__CPCASH_API_BASE_URL__ = "https://charprotocol.dev"
+    expect(resolveRuntimeEnv()).toBe("dev")
+    expect(resolveAuthBaseUrl()).toBe("https://wallet.charprotocol.dev")
+    expect(resolvePasskeyRpId()).toBe("wallet.charprotocol.dev")
+
+    runtimeGlobals.__CPCASH_API_BASE_URL__ = "https://preview.cp.cash"
+    expect(resolveRuntimeEnv()).toBe("preview")
+    expect(resolveAuthBaseUrl()).toBe("https://wallet-preview.cp.cash")
+    expect(resolvePasskeyRpId()).toBe("wallet-preview.cp.cash")
+  })
+
+  it("resolves test and production passkey rp ids from the non-wallet domains", () => {
+    runtimeGlobals.__CPCASH_API_BASE_URL__ = "https://charprotocol.com"
+    expect(resolvePasskeyRpId()).toBe("wallet.charprotocol.com")
+
+    runtimeGlobals.__CPCASH_API_BASE_URL__ = "https://cp.cash"
+    expect(resolvePasskeyRpId()).toBe("wallet.cp.cash")
+  })
+
   it("infers preview and production passkey rp ids from api hosts", () => {
     runtimeGlobals.__CPCASH_API_BASE_URL__ = "https://wallet-preview.cp.cash"
     expect(resolvePasskeyRpId()).toBe("wallet-preview.cp.cash")
@@ -168,6 +204,15 @@ describe("websocket runtime configuration", () => {
     runtimeGlobals.__CPCASH_API_BASE_URL__ = "http://127.0.0.1:3000"
 
     expect(resolveRuntimeEnv()).toBe("dev")
+  })
+
+  it("falls back to the production runtime and release passkey rp id for unknown pinned hosts in production", () => {
+    runtimeGlobals.__DEV__ = false
+    runtimeGlobals.__CPCASH_API_BASE_URL__ = "https://api.charprotocol.dev"
+
+    expect(resolveRuntimeEnv()).toBe("prod")
+    expect(resolveAuthBaseUrl()).toBe("https://api.charprotocol.dev")
+    expect(resolvePasskeyRpId()).toBe("wallet.cp.cash")
   })
 
   it("resolves websocket urls for http, ws and protocol-less local hosts", () => {

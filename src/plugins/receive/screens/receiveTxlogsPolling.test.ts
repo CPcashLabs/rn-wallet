@@ -64,6 +64,18 @@ describe("receiveTxlogsPolling", () => {
     expect(nextSeenMap.ORDER_1.at(-1)).toBe(buildReceiveTxlogKey(logs[1]))
   })
 
+  it("treats all keys as fresh when no previous seen state exists", () => {
+    const log = createLog()
+    const key = buildReceiveTxlogKey(log)
+
+    expect(buildNextSeenLogState("ORDER_2", [log], {})).toEqual({
+      freshKeys: [key],
+      nextSeenMap: {
+        ORDER_2: [key],
+      },
+    })
+  })
+
   it("prevents overlapping poll requests and suppresses repeated refresh failure notifications", () => {
     const controller = createReceiveTxlogsPollController()
 

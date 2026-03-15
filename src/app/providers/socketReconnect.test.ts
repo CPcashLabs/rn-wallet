@@ -127,4 +127,38 @@ describe("socketReconnect", () => {
 
     expect(setTimeoutMock).not.toHaveBeenCalled()
   })
+
+  it("uses the global timer api defaults when no timer api is provided", () => {
+    jest.useFakeTimers()
+
+    const generationRef = { current: 0 }
+    const timerRef = { current: null as ReturnType<typeof setTimeout> | null }
+    const onReconnect = jest.fn()
+
+    expect(
+      scheduleReconnectAttempt({
+        delayMs: 1_000,
+        timerRef,
+        generationRef,
+        canReconnect: () => true,
+        onReconnect,
+      }),
+    ).toBe(true)
+
+    invalidateReconnectAttempt(timerRef, generationRef)
+    expect(timerRef.current).toBeNull()
+
+    expect(
+      scheduleReconnectAttempt({
+        delayMs: 1_000,
+        timerRef,
+        generationRef,
+        canReconnect: () => true,
+        onReconnect,
+      }),
+    ).toBe(true)
+
+    jest.advanceTimersByTime(1_000)
+    expect(onReconnect).toHaveBeenCalledTimes(1)
+  })
 })

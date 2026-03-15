@@ -1,4 +1,5 @@
 import {
+  getTxPayStatusCountdownLeft,
   resolveTxPayStatusCountdownEndAt,
   shouldDisableTxPayStatusRefresh,
   startTxPayStatusCountdown,
@@ -35,6 +36,40 @@ describe("txPayStatusTimers", () => {
         shouldStart: false,
       }),
     ).toBeNull()
+  })
+
+  it("uses runtime defaults when explicit now, duration and intervals are omitted", () => {
+    jest.useFakeTimers().setSystemTime(10_000)
+
+    expect(getTxPayStatusCountdownLeft(12_500)).toBe(2_500)
+    expect(
+      resolveTxPayStatusCountdownEndAt({
+        existingEndAt: null,
+        shouldStart: true,
+      }),
+    ).toBe(25_000)
+
+    const onTick = jest.fn()
+    const onExpire = jest.fn()
+    startTxPayStatusCountdown({
+      endAt: 11_000,
+      onExpire,
+      onTick,
+    })
+
+    expect(onTick).toHaveBeenLastCalledWith(1_000)
+
+    jest.advanceTimersByTime(1_000)
+    expect(onExpire).toHaveBeenCalledTimes(1)
+
+    const task = jest.fn()
+    const stop = startTxPayStatusPoller({
+      getTask: () => task,
+    })
+
+    jest.advanceTimersByTime(5_000)
+    expect(task).toHaveBeenCalledTimes(1)
+    stop()
   })
 
   it("clears the countdown timer when the countdown expires", () => {

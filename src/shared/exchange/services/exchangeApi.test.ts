@@ -155,6 +155,45 @@ describe("exchangeApi", () => {
     await expect(getTransferChannels("199")).rejects.toBe(normalError)
   })
 
+  it("surfaces rebate failures when bridge and normal channels are both unavailable", async () => {
+    const rebatesError = new Error("rebates failed")
+    mockRequestRebateExchangePairs.mockRejectedValue(rebatesError)
+    mockRequestCpCashAllowList.mockRejectedValue(new Error("bridge unavailable"))
+    mockRequestCoinAllowList.mockResolvedValue([])
+
+    await expect(getTransferChannels("199")).rejects.toBe(rebatesError)
+  })
+
+  it("builds bridge-only channels when the normal allow-list is null", async () => {
+    mockRequestRebateExchangePairs.mockResolvedValue([])
+    mockRequestCpCashAllowList.mockResolvedValue([
+      {
+        chain_name: "ETH",
+        chain_full_name: "Ethereum",
+        chain_logo: "eth.png",
+        chain_color: "#627eea",
+        chain_address_format_regex: ["^0x"],
+        exchange_pairs: [],
+      },
+    ])
+    mockRequestCoinAllowList.mockResolvedValue(null)
+
+    await expect(getTransferChannels("199")).resolves.toEqual([
+      {
+        key: "bridge:ETH",
+        channelType: "bridge",
+        receiveChainName: "ETH",
+        receiveChainFullName: "Ethereum",
+        receiveChainColor: "#627eea",
+        receiveChainLogo: "eth.png",
+        addressRegexes: ["^0x"],
+        title: "ETH",
+        subtitle: "Ethereum",
+        isRebate: false,
+      },
+    ])
+  })
+
   it("builds bridge order options from exchange pairs and local coins", async () => {
     mockGetCoinList.mockResolvedValue([
       {
@@ -281,6 +320,167 @@ describe("exchangeApi", () => {
     })
   })
 
+  it("maps sparse bridge and same-chain option fallbacks", async () => {
+    mockGetCoinList.mockResolvedValue([
+      {
+        code: "USDT",
+        symbol: "USDT-SYM",
+        name: "Tether",
+        logo: "coin.png",
+        chainName: "BTT",
+        chainColor: "#10d8ff",
+        contract: "0xusdt",
+        price: 1,
+        precision: 6,
+      },
+      {
+        code: "COIN_A",
+        symbol: "COIN-SYM",
+        name: "Coin A",
+        logo: "coin-a.png",
+        chainName: "BTT",
+        chainColor: "#10d8ff",
+        contract: "0xcoin-a",
+        price: 1,
+        precision: 6,
+      },
+    ])
+    mockRequestRebateExchangePairs.mockRejectedValue(new Error("rebates unavailable"))
+    mockRequestCpCashAllowList.mockResolvedValue([
+      {
+        chain_name: "ETH",
+        exchange_pairs: [
+          {
+            send_coin_code: "COIN_A",
+            recv_coin_code: "ETH-USDT",
+          },
+          {
+            send_coin_code: "CODE_ONLY",
+            recv_coin_code: "ETH-ONLY",
+          },
+          {
+            send_coin_code: undefined,
+            recv_coin_code: undefined,
+          },
+        ],
+      },
+    ])
+    mockRequestCoinAllowList.mockResolvedValue([
+      {
+        chain_name: "BTT",
+        coins: [
+          {
+            coin_code: "USDT",
+            is_send_allowed: true,
+          },
+          {
+            coin_code: "RAW",
+            is_send_allowed: true,
+          },
+          {
+            coin_code: undefined,
+            is_send_allowed: true,
+          },
+        ],
+      },
+    ])
+
+    await expect(
+      getTransferOrderOptions({
+        sendChainName: "BTT",
+        receiveChainName: "ETH",
+        channelType: "bridge",
+      }),
+    ).resolves.toEqual({
+      chainName: "ETH",
+      chainFullName: "ETH",
+      chainLogo: "",
+      chainColor: "",
+      options: [
+        {
+          sellerId: "",
+          sendCoinCode: "COIN_A",
+          sendCoinSymbol: "COIN-SYM",
+          recvCoinCode: "ETH-USDT",
+          recvCoinSymbol: "ETH-USDT",
+          feeAmount: 0,
+          recvEstimateAmount: 0,
+          sendMinAmount: 0,
+          sendCoinContract: "0xcoin-a",
+        },
+        {
+          sellerId: "",
+          sendCoinCode: "CODE_ONLY",
+          sendCoinSymbol: "CODE_ONLY",
+          recvCoinCode: "ETH-ONLY",
+          recvCoinSymbol: "ETH-ONLY",
+          feeAmount: 0,
+          recvEstimateAmount: 0,
+          sendMinAmount: 0,
+          sendCoinContract: "",
+        },
+        {
+          sellerId: "",
+          sendCoinCode: "",
+          sendCoinSymbol: "",
+          recvCoinCode: "",
+          recvCoinSymbol: "",
+          feeAmount: 0,
+          recvEstimateAmount: 0,
+          sendMinAmount: 0,
+          sendCoinContract: "",
+        },
+      ],
+    })
+    await expect(
+      getTransferOrderOptions({
+        sendChainName: "BTT",
+        receiveChainName: "BTT",
+        channelType: "normal",
+      }),
+    ).resolves.toEqual({
+      chainName: "BTT",
+      chainFullName: "BTT",
+      chainLogo: "",
+      chainColor: "",
+      options: [
+        {
+          sellerId: "",
+          sendCoinCode: "USDT",
+          sendCoinSymbol: "USDT-SYM",
+          recvCoinCode: "",
+          recvCoinSymbol: "",
+          feeAmount: 0,
+          recvEstimateAmount: 0,
+          sendMinAmount: 0,
+          sendCoinContract: "0xusdt",
+        },
+        {
+          sellerId: "",
+          sendCoinCode: "RAW",
+          sendCoinSymbol: "RAW",
+          recvCoinCode: "",
+          recvCoinSymbol: "",
+          feeAmount: 0,
+          recvEstimateAmount: 0,
+          sendMinAmount: 0,
+          sendCoinContract: "",
+        },
+        {
+          sellerId: "",
+          sendCoinCode: "",
+          sendCoinSymbol: "",
+          recvCoinCode: "",
+          recvCoinSymbol: "",
+          feeAmount: 0,
+          recvEstimateAmount: 0,
+          sendMinAmount: 0,
+          sendCoinContract: "",
+        },
+      ],
+    })
+  })
+
   it("returns a fixed transfer gas estimate", async () => {
     await expect(
       getTransferGasEstimate({
@@ -332,6 +532,58 @@ describe("exchangeApi", () => {
       recv_coin_code: "USDT",
       recv_amount: 10,
       rate_type: 1,
+    })
+  })
+
+  it("maps transfer quote fallbacks to coin codes and numeric defaults", async () => {
+    mockRequestCpCashShow.mockResolvedValue({
+      recv_coin_name: undefined,
+      send_coin_name: undefined,
+    })
+
+    await expect(
+      getTransferQuote({
+        sendCoinCode: "BTT",
+        recvCoinCode: "USDT",
+        recvAmount: 5,
+      }),
+    ).resolves.toEqual({
+      feeAmount: 0,
+      feeValue: 0,
+      recvAmount: 0,
+      recvCoinCode: "",
+      recvCoinName: "",
+      sendAmount: 0,
+      sendCoinCode: "",
+      sendCoinName: "",
+      sendMinAmount: 0,
+      sendMaxAmount: 0,
+      sellerId: 0,
+    })
+  })
+
+  it("falls back to the requested receive chain name when bridge metadata is entirely missing", async () => {
+    mockGetCoinList.mockResolvedValue([])
+    mockRequestCpCashAllowList.mockResolvedValue([
+      {
+        chain_name: undefined,
+        exchange_pairs: [],
+      },
+    ])
+    mockRequestCoinAllowList.mockResolvedValue(null)
+
+    await expect(
+      getTransferOrderOptions({
+        sendChainName: "BTT",
+        receiveChainName: undefined as never,
+        channelType: "bridge",
+      }),
+    ).resolves.toEqual({
+      chainName: "undefined",
+      chainFullName: "undefined",
+      chainLogo: "",
+      chainColor: "",
+      options: [],
     })
   })
 })

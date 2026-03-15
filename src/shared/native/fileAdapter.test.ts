@@ -175,6 +175,54 @@ describe("fileAdapter", () => {
     })
   })
 
+  it("preserves Error instances from the picker and uses a generic fallback for non-object failures", async () => {
+    mockReadNativeFilePickerCapability.mockReturnValue({
+      supported: true,
+    })
+    mockPickNativeImage.mockRejectedValueOnce(new Error("Picker closed unexpectedly"))
+    mockExportNativeFile.mockRejectedValueOnce("failed")
+
+    await expect(fileAdapter.pickImage()).resolves.toMatchObject({
+      ok: false,
+      error: {
+        message: "Picker closed unexpectedly",
+      },
+    })
+    await expect(
+      fileAdapter.exportFile({
+        filename: "note.txt",
+        content: "hello",
+      }),
+    ).resolves.toMatchObject({
+      ok: false,
+      error: {
+        message: "Image picking failed",
+      },
+    })
+  })
+
+  it("keeps the generic picker message when native payload fields are blank or non-string", async () => {
+    mockReadNativeFilePickerCapability.mockReturnValue({
+      supported: true,
+    })
+    mockPickNativeImage.mockRejectedValue({
+      message: "   ",
+      code: 123,
+    })
+
+    const result = await fileAdapter.pickImage()
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        message: "Image picking failed",
+      },
+    })
+    if (!result.ok) {
+      expect("code" in result.error).toBe(false)
+    }
+  })
+
   it("detects image-picker cancellation errors by name, code and message", () => {
     expect(
       isNativeImagePickerCancelledError(

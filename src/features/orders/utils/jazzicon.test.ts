@@ -1,4 +1,16 @@
-import { createJazziconSpec, resolveJazziconSeed } from "@/features/orders/utils/jazzicon"
+import {
+  MersenneTwister,
+  createJazziconSpec,
+  decodeBase58,
+  hashString,
+  hslToRgb,
+  hueToRgb,
+  normalizeHue,
+  parseHexSeed,
+  resolveJazziconSeed,
+  rgbToHsl,
+  tronToEthereumHex,
+} from "@/features/orders/utils/jazzicon"
 
 type FakeElement = {
   children: FakeElement[]
@@ -99,5 +111,40 @@ describe("jazzicon", () => {
       expect(Number.isFinite(shape.translateX)).toBe(true)
       expect(Number.isFinite(shape.translateY)).toBe(true)
     })
+  })
+
+  it("covers internal helper edge cases", () => {
+    const zeroHashInput = String.fromCharCode(0xcb33, 0xa1d9, 0x0001)
+    const shortHexZeroHashInput = `0x${String.fromCharCode(0x5e1a, 0xaabd, 0x0000)}`
+    const longHexZeroHashInput = `0x${String.fromCharCode(0x5e1a, 0xaabd, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000)}`
+
+    expect(hashString(zeroHashInput)).toBe(0)
+    expect(resolveJazziconSeed(zeroHashInput)).toBe(0x13579bdf)
+    expect(parseHexSeed(shortHexZeroHashInput)).toBe(0x13579bdf)
+    expect(parseHexSeed(longHexZeroHashInput)).toBe(0x13579bdf)
+
+    expect(rgbToHsl(128, 128, 128)).toEqual({
+      hue: 0,
+      saturation: 0,
+      lightness: expect.closeTo(50.19607843137255, 12),
+    })
+    expect(rgbToHsl(10, 240, 30).hue).toBeGreaterThan(90)
+    expect(hslToRgb(42, 0, 50)).toEqual([127.5, 127.5, 127.5])
+    expect(normalizeHue(-30)).toBe(330)
+    expect(hueToRgb(0.2, 0.8, -0.1)).toBeCloseTo(hueToRgb(0.2, 0.8, 0.9), 12)
+
+    expect(tronToEthereumHex("111")).toBe("")
+    expect(tronToEthereumHex("0-not-base58")).toBe("")
+    expect(decodeBase58("1112")).toBeInstanceOf(Uint8Array)
+
+    const lazyTwister = Object.create(MersenneTwister.prototype) as {
+      mt: number[]
+      mti: number
+      random: () => number
+    }
+    lazyTwister.mt = new Array(624).fill(0)
+    lazyTwister.mti = 625
+
+    expect(Number.isFinite(lazyTwister.random())).toBe(true)
   })
 })

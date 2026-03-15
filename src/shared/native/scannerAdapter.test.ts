@@ -25,6 +25,11 @@ describe("scannerAdapter", () => {
     expect(scannerAdapter.getCapability()).toEqual({
       supported: true,
     })
+    expect(scannerAdapter.getCapability("image")).toEqual({
+      supported: true,
+    })
+    expect(mockReadNativeScannerCapability).toHaveBeenNthCalledWith(1, "camera")
+    expect(mockReadNativeScannerCapability).toHaveBeenNthCalledWith(2, "image")
   })
 
   it("returns unavailable results when scanning is unsupported", async () => {
@@ -84,6 +89,58 @@ describe("scannerAdapter", () => {
     expect(result.error).toMatchObject({
       message: "Camera busy",
       code: "SCAN_FAILED",
+    })
+  })
+
+  it("preserves Error instances from the camera flow", async () => {
+    mockReadNativeScannerCapability.mockReturnValue({
+      supported: true,
+    })
+    mockScanWithNativeCamera.mockRejectedValue(new Error("Camera offline"))
+
+    const result = await scannerAdapter.scan()
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        message: "Camera offline",
+      },
+    })
+  })
+
+  it("falls back to a generic scanning error for non-error payloads", async () => {
+    mockReadNativeScannerCapability.mockReturnValue({
+      supported: true,
+    })
+    mockScanWithNativeImage.mockRejectedValue({
+      message: "   ",
+      code: 123,
+    })
+
+    const result = await scannerAdapter.scanImage()
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        message: "Scanning failed",
+      },
+    })
+    if (!result.ok) {
+      expect("code" in result.error).toBe(false)
+    }
+  })
+
+  it("falls back to a generic scanning error for primitive rejections", async () => {
+    mockReadNativeScannerCapability.mockReturnValue({
+      supported: true,
+    })
+    mockScanWithNativeImage.mockRejectedValue("failed")
+
+    await expect(scannerAdapter.scanImage()).resolves.toMatchObject({
+      ok: false,
+      error: {
+        message: "Scanning failed",
+      },
     })
   })
 })

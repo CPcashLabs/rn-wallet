@@ -162,6 +162,7 @@ describe("websocketAdapter", () => {
       throw new Error("Missing first socket instance")
     }
 
+    firstSocket.readyState = FakeWebSocket.OPEN
     await websocketAdapter.connect("wss://wallet.cp.cash/ws")
     expect(FakeWebSocket.instances).toHaveLength(1)
 
@@ -171,6 +172,7 @@ describe("websocketAdapter", () => {
     const savedOpenHandler = firstSocket.onopen
     const savedMessageHandler = firstSocket.onmessage
     const savedErrorHandler = firstSocket.onerror
+    const savedCloseHandler = firstSocket.onclose
 
     await websocketAdapter.connect("wss://wallet-preview.cp.cash/ws")
 
@@ -183,6 +185,7 @@ describe("websocketAdapter", () => {
     savedOpenHandler?.()
     savedMessageHandler?.({ data: "stale" })
     savedErrorHandler?.()
+    savedCloseHandler?.({ code: 4000, reason: "stale" })
   })
 
   it("normalizes constructor, send and close failures", async () => {
@@ -233,6 +236,51 @@ describe("websocketAdapter", () => {
       ok: false,
       error: {
         message: "Failed to close WebSocket connection.",
+      },
+    })
+  })
+
+  it("preserves Error instances for constructor, send and close failures", async () => {
+    const FakeWebSocket = createFakeWebSocket()
+    runtimeGlobals.WebSocket = FakeWebSocket
+    FakeWebSocket.constructorError = new Error("constructor failed")
+    let mod = loadWebsocketAdapter()
+
+    await expect(mod.websocketAdapter.connect("wss://wallet.cp.cash/ws")).resolves.toMatchObject({
+      ok: false,
+      error: {
+        message: "constructor failed",
+      },
+    })
+
+    FakeWebSocket.constructorError = null
+    mod = loadWebsocketAdapter()
+    await mod.websocketAdapter.connect("wss://wallet.cp.cash/ws")
+    const socket = FakeWebSocket.instances[0]
+    if (!socket) {
+      throw new Error("Missing socket instance")
+    }
+
+    socket.readyState = FakeWebSocket.OPEN
+    socket.send.mockImplementation(() => {
+      throw new Error("send failed")
+    })
+
+    await expect(mod.websocketAdapter.send("hello")).resolves.toMatchObject({
+      ok: false,
+      error: {
+        message: "send failed",
+      },
+    })
+
+    socket.close.mockImplementation(() => {
+      throw new Error("close failed")
+    })
+
+    await expect(mod.websocketAdapter.disconnect(4999, "manual")).resolves.toMatchObject({
+      ok: false,
+      error: {
+        message: "close failed",
       },
     })
   })

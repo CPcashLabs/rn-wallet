@@ -38,6 +38,7 @@ describe("transfer address utils", () => {
 
   it("detects tron chain names and builds fallback regexes", () => {
     expect(isTronChainName("  tron mainnet ")).toBe(true)
+    expect(resolveTransferChainType("tron")).toBe("TRON")
     expect(resolveTransferChainType("ETH")).toBe("EVM")
     expect(buildAddressRegexes(["[", "^T[a-zA-Z0-9]{33}$"], "TRON")).toHaveLength(1)
     expect(buildAddressRegexes(undefined, "TRON")[0].test("TLa2f6VPqDgRE67v1736s7bJ8Ray5wYjU7")).toBe(true)
@@ -65,6 +66,13 @@ describe("transfer address utils", () => {
     shiftedRegex.lastIndex = 100
 
     expect(extractTransferAddress("\"\"", buildAddressRegexes(undefined, "ETH"))).toBe("")
+
+    expect(
+      extractTransferAddress(
+        "   ",
+        buildAddressRegexes(undefined, "ETH"),
+      ),
+    ).toBe("")
 
     expect(
       extractTransferAddress(

@@ -5,6 +5,10 @@ import {
 } from "@/shared/hooks/persistentCountdownState"
 
 describe("persistentCountdownState", () => {
+  afterEach(() => {
+    jest.useRealTimers()
+  })
+
   it("calculates seconds left from an end timestamp", () => {
     expect(calculatePersistentCountdownSecondsLeft(null, 10_000)).toBe(0)
     expect(calculatePersistentCountdownSecondsLeft(10_001, 10_000)).toBe(1)
@@ -22,5 +26,13 @@ describe("persistentCountdownState", () => {
     expect(getPersistentCountdownNextDelay(15_000, 10_000)).toBe(1000)
     expect(getPersistentCountdownNextDelay(10_750, 10_000)).toBe(750)
     expect(getPersistentCountdownNextDelay(10_000, 10_000)).toBe(0)
+  })
+
+  it("uses Date.now defaults when explicit now values are omitted", () => {
+    jest.useFakeTimers().setSystemTime(10_000)
+
+    expect(calculatePersistentCountdownSecondsLeft(10_001)).toBe(1)
+    expect(sanitizePersistentCountdownEndAt(10_500)).toBe(10_500)
+    expect(getPersistentCountdownNextDelay(10_750)).toBe(750)
   })
 })

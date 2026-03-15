@@ -1,15 +1,36 @@
 import { DEFAULT_LANGUAGE } from "@/shared/i18n/resources"
-import { SYSTEM_LANGUAGE_PREFERENCE, mapLocaleToAppLanguage, resolveLanguageFromPreference } from "@/shared/i18n/languagePreference"
+import {
+  SYSTEM_LANGUAGE_PREFERENCE,
+  isLanguagePreference,
+  mapLocaleToAppLanguage,
+  resolveLanguageFromPreference,
+} from "@/shared/i18n/languagePreference"
 
 describe("language preference resolution", () => {
+  it("validates supported and system language preferences", () => {
+    expect(isLanguagePreference("system")).toBe(true)
+    expect(isLanguagePreference("en-US")).toBe(true)
+    expect(isLanguagePreference("fr-FR")).toBe(false)
+    expect(isLanguagePreference(null)).toBe(false)
+    expect(isLanguagePreference(undefined)).toBe(false)
+  })
+
   it("maps supported Chinese and English system locales into app languages", () => {
+    expect(mapLocaleToAppLanguage("en-US")).toBe("en-US")
+    expect(mapLocaleToAppLanguage("en")).toBe("en-US")
     expect(mapLocaleToAppLanguage("zh-Hans-CN")).toBe("zh-CN")
     expect(mapLocaleToAppLanguage("zh_CN")).toBe("zh-CN")
     expect(mapLocaleToAppLanguage("en-GB")).toBe("en-US")
   })
 
+  it("returns null for missing or blank locales", () => {
+    expect(mapLocaleToAppLanguage(undefined)).toBeNull()
+    expect(mapLocaleToAppLanguage("   ")).toBeNull()
+  })
+
   it("falls back to the default language for unsupported locales", () => {
     expect(resolveLanguageFromPreference(SYSTEM_LANGUAGE_PREFERENCE, "fr-FR")).toBe(DEFAULT_LANGUAGE)
+    expect(resolveLanguageFromPreference("fr-FR", null)).toBe(DEFAULT_LANGUAGE)
   })
 
   it("prefers an explicit language over the system locale", () => {

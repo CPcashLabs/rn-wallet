@@ -47,6 +47,29 @@ describe("nativeScannerModule", () => {
     })
   })
 
+  it("falls back to default scanner reasons when the native module omits them", () => {
+    const unsupported = loadNativeScannerModule({
+      nativeModule: {
+        scannerCameraSupported: false,
+      },
+    })
+    const unavailable = loadNativeScannerModule({
+      nativeModule: {
+        scannerCameraSupported: true,
+        scannerImageSupported: undefined,
+      },
+    })
+
+    expect(unsupported.readNativeScannerCapability("camera")).toEqual({
+      supported: false,
+      reason: "Scanner is not supported on this device.",
+    })
+    expect(unavailable.readNativeScannerCapability("image")).toEqual({
+      supported: false,
+      reason: "Scanner capability is unavailable.",
+    })
+  })
+
   it("delegates native scan calls when support is available", async () => {
     const nativeModule = {
       scannerCameraSupported: true,

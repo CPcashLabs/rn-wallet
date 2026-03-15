@@ -76,6 +76,28 @@ describe("orderHelpers", () => {
     expect(resolveDetailCounterparty(order)).toBe("payment-address")
   })
 
+  it("falls back through transfer, deposit and receive addresses for incoming orders", () => {
+    expect(
+      resolveCounterpartyAddress({
+        orderType: "RECEIPT",
+        paymentAddress: "",
+        transferAddress: "",
+        depositAddress: "deposit-address",
+        receiveAddress: "receive-address",
+      }),
+    ).toBe("deposit-address")
+
+    expect(
+      resolveDetailCounterparty({
+        orderType: "RECEIPT",
+        paymentAddress: "",
+        transferAddress: "",
+        depositAddress: "",
+        receiveAddress: "receive-address",
+      }),
+    ).toBe("receive-address")
+  })
+
   it("resolves the counterparty address for outgoing orders", () => {
     const order = {
       orderType: "SEND",
@@ -87,6 +109,18 @@ describe("orderHelpers", () => {
 
     expect(resolveCounterpartyAddress(order)).toBe("receive-address")
     expect(resolveDetailCounterparty(order)).toBe("receive-address")
+  })
+
+  it("falls back to the payment address for outgoing orders when no other address exists", () => {
+    expect(
+      resolveCounterpartyAddress({
+        orderType: "SEND",
+        paymentAddress: "payment-address",
+        transferAddress: "",
+        depositAddress: "",
+        receiveAddress: "",
+      }),
+    ).toBe("payment-address")
   })
 
   it("builds quick ranges from the current local day", () => {
@@ -206,6 +240,14 @@ describe("orderHelpers", () => {
         recvChainBrowsers: [{ addressUrl: "https://recv.example/address", logo: "", txIdUrl: "", url: "" }],
       }),
     ).toBe("https://recv.example/address")
+
+    expect(
+      resolveOrderExplorerUrl({
+        orderType: "SEND",
+        sendChainBrowsers: [{ addressUrl: "", logo: "", txIdUrl: "", url: "" }],
+        recvChainBrowsers: [{ addressUrl: "", logo: "", txIdUrl: "", url: "" }],
+      }),
+    ).toBe("")
   })
 
   it("formats token amounts, timestamps and month keys", () => {
@@ -219,6 +261,16 @@ describe("orderHelpers", () => {
     expect(formatMonthKey(null)).toBe("Unknown")
     expect(toApiDateTime(new Date(2026, 2, 15, 10, 20, 30))).toBe("2026-03-15 10:20:30")
     expect(formatMonthKey(new Date(2026, 2, 15, 10, 20, 30).getTime())).toBe("2026-03")
+  })
+
+  it("returns placeholders when compact timestamp coercion throws", () => {
+    const throwingValue = {
+      [Symbol.toPrimitive]() {
+        throw new Error("bad date")
+      },
+    }
+
+    expect(formatCompactTimestamp(throwingValue as unknown as number)).toBe("--")
   })
 
   it("falls back when timestamp formatting throws", () => {

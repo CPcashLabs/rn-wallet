@@ -18,6 +18,10 @@ function createDeferred(): Deferred {
 }
 
 describe("mapWithConcurrency", () => {
+  it("returns immediately for empty item lists", async () => {
+    await expect(mapWithConcurrency([], 2, async value => value)).resolves.toEqual([])
+  })
+
   it("preserves item order while respecting the concurrency budget", async () => {
     let active = 0
     let maxActive = 0

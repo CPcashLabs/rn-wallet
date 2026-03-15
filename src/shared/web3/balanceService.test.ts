@@ -13,6 +13,23 @@ import type { WalletCoin } from "@/shared/api/walletAssets"
 const abiCoder = new AbiCoder()
 const TEST_ADDRESS = "0x00000000000000000000000000000000000000a1"
 
+function loadBalanceServiceModuleWithFormatUnits(formatter: (value: bigint, precision: number) => string) {
+  jest.resetModules()
+  jest.doMock("@/shared/storage/kvStorage", () => ({
+    getNumber: (...args: unknown[]) => mockGetNumber(...args),
+  }))
+  jest.doMock("ethers", () => {
+    const actual = jest.requireActual("ethers")
+
+    return {
+      ...actual,
+      formatUnits: formatter,
+    }
+  })
+
+  return require("@/shared/web3/balanceService") as typeof import("@/shared/web3/balanceService")
+}
+
 function createCoin(overrides: Partial<WalletCoin>): WalletCoin {
   return {
     chainColor: "#00AAFF",
@@ -131,14 +148,41 @@ describe("fetchOnChainBalances", () => {
     expect(getRpcProvider("199")).not.toBe(mainnetProvider)
   })
 
+  it("falls back to the first rpc entry and the cached provider when the index or provider are missing", async () => {
+    mockGetNumber.mockReturnValue(undefined)
+
+    const provider = getRpcProvider()
+    const getBalanceSpy = jest.spyOn(provider, "getBalance").mockResolvedValue(2_000_000_000_000_000_000n)
+
+    expect(provider._getConnection().url).toBe("https://pre-rpc.bt.io/")
+    await expect(
+      fetchOnChainBalances({
+        address: TEST_ADDRESS,
+        coins: [createCoin({ code: "BTT" })],
+      }),
+    ).resolves.toEqual({
+      BTT: 2,
+    })
+    expect(getBalanceSpy).toHaveBeenCalledWith(TEST_ADDRESS)
+  })
+
+  it("falls back to the first rpc url when the stored rpc index is out of range", () => {
+    mockGetNumber.mockReturnValue(99)
+
+    const provider = getRpcProvider("199")
+
+    expect(provider._getConnection().url).toBe("https://rpc.bt.io/")
+  })
+
   it("normalizes non-finite balances to zero", async () => {
+    const mod = loadBalanceServiceModuleWithFormatUnits(() => "Infinity")
     const provider = {
-      getBalance: jest.fn(async () => BigInt(`1${"0".repeat(400)}`)),
+      getBalance: jest.fn(async () => 1n),
       call: jest.fn(),
     }
 
     await expect(
-      fetchOnChainBalances({
+      mod.fetchOnChainBalances({
         address: TEST_ADDRESS,
         coins: [createCoin({ code: "BTT" })],
         provider,

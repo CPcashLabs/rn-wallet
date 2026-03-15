@@ -1,4 +1,5 @@
-import { resolveDeepLink, sanitizeWechatTargetPath } from "@/app/navigation/deepLinkRouting"
+import { deepLinkAdapter } from "@/shared/native"
+import { resolveDeepLink, sanitizeWechatTargetPath, serializeRouteDescriptorsAsDeepLink } from "@/app/navigation/deepLinkRouting"
 
 const ORDER_SN = "ORDER_123"
 const COPUCH_ID = "COPOUCH_123"
@@ -567,5 +568,274 @@ describe("resolveDeepLink", () => {
     expectNotFound("app://send/detail?txid=bad")
     expectNotFound("app://send?share=bad/code")
     expectNotFound("app://send")
+  })
+})
+
+describe("deepLinkRouting internals", () => {
+  const runtimeGlobals = globalThis as { __CPCASH_API_BASE_URL__?: string }
+  const originalApiBaseUrl = runtimeGlobals.__CPCASH_API_BASE_URL__
+
+  beforeEach(() => {
+    runtimeGlobals.__CPCASH_API_BASE_URL__ = "https://cp.cash"
+  })
+
+  afterEach(() => {
+    runtimeGlobals.__CPCASH_API_BASE_URL__ = originalApiBaseUrl
+    jest.restoreAllMocks()
+  })
+
+  it("serializes route descriptors through fallback branches", () => {
+    expect(serializeRouteDescriptorsAsDeepLink([])).toBeUndefined()
+    expect(serializeRouteDescriptorsAsDeepLink([{ name: "SupportStack" } as never])).toBeUndefined()
+
+    expect(
+      serializeRouteDescriptorsAsDeepLink([
+        {
+          name: "AuthStack",
+          params: {
+            screen: "LoginScreen",
+            params: {
+              inviteCode: "HELLO_123",
+            },
+          },
+        } as never,
+      ]),
+    ).toBe("/invite?code=HELLO_123")
+    expect(
+      serializeRouteDescriptorsAsDeepLink([
+        {
+          name: "AuthStack",
+          params: {
+            screen: "LoginScreen",
+            params: "invalid",
+          },
+        } as never,
+      ]),
+    ).toBeUndefined()
+
+    expect(
+      serializeRouteDescriptorsAsDeepLink([
+        {
+          name: "MainTabs",
+          params: {
+            screen: "HomeTab",
+            params: {
+              screen: "HomeShellScreen",
+            },
+          },
+        } as never,
+      ]),
+    ).toBeUndefined()
+    expect(
+      serializeRouteDescriptorsAsDeepLink([
+        {
+          name: "MainTabs",
+          params: {
+            screen: "WalletTab",
+          },
+        } as never,
+      ]),
+    ).toBeUndefined()
+    expect(
+      serializeRouteDescriptorsAsDeepLink([
+        {
+          name: "MainTabs",
+          params: {
+            screen: "MeTab",
+          },
+        } as never,
+      ]),
+    ).toBeUndefined()
+
+    for (const screen of [
+      "OrderDetailScreen",
+      "OrderVoucherScreen",
+      "DigitalReceiptScreen",
+      "FlowProofScreen",
+      "RefundDetailScreen",
+      "SplitDetailScreen",
+    ]) {
+      expect(
+        serializeRouteDescriptorsAsDeepLink([
+          {
+            name: "OrdersStack",
+            params: {
+              screen,
+              params: {},
+            },
+          } as never,
+        ]),
+      ).toBeUndefined()
+    }
+    expect(
+      serializeRouteDescriptorsAsDeepLink([
+        {
+          name: "OrdersStack",
+          params: {
+            screen: "UnknownScreen",
+          },
+        } as never,
+      ]),
+    ).toBeUndefined()
+
+    expect(
+      serializeRouteDescriptorsAsDeepLink([
+        {
+          name: "TransferStack",
+          params: {
+            screen: "TxPayStatusScreen",
+            params: {
+              publicAccess: true,
+            },
+          },
+        } as never,
+      ]),
+    ).toBeUndefined()
+    expect(
+      serializeRouteDescriptorsAsDeepLink([
+        {
+          name: "TransferStack",
+          params: {
+            screen: "TxPayStatusScreen",
+            params: {
+              publicAccess: true,
+              publicTxid: TXID,
+              publicBaseUrl: "https://wallet.cp.cash",
+            },
+          },
+        } as never,
+      ]),
+    ).toBe(`https://wallet.cp.cash/share?txid=${TXID}`)
+    expect(
+      serializeRouteDescriptorsAsDeepLink([
+        {
+          name: "TransferStack",
+          params: {
+            screen: "SendPaymentInfoScreen",
+            params: {
+              orderSn: ORDER_SN,
+              publicAccess: true,
+              publicBaseUrl: "javascript:alert(1)",
+            },
+          },
+        } as never,
+      ]),
+    ).toBe(`/send?share=${ORDER_SN}`)
+    expect(
+      serializeRouteDescriptorsAsDeepLink([
+        {
+          name: "TransferStack",
+          params: {
+            screen: "SendPaymentInfoScreen",
+            params: "invalid",
+          },
+        } as never,
+      ]),
+    ).toBeUndefined()
+    expect(
+      serializeRouteDescriptorsAsDeepLink([
+        {
+          name: "TransferStack",
+          params: {
+            screen: "UnknownScreen",
+          },
+        } as never,
+      ]),
+    ).toBeUndefined()
+
+    expect(
+      serializeRouteDescriptorsAsDeepLink([
+        {
+          name: "ReceiveStack",
+          params: {
+            screen: "ReceiveHomeScreen",
+            params: "invalid",
+          },
+        } as never,
+      ]),
+    ).toBe("/receive")
+    expect(
+      serializeRouteDescriptorsAsDeepLink([
+        {
+          name: "ReceiveStack",
+          params: {
+            screen: "OtherScreen",
+          },
+        } as never,
+      ]),
+    ).toBeUndefined()
+
+    expect(
+      serializeRouteDescriptorsAsDeepLink([
+        {
+          name: "CopouchStack",
+          params: {
+            screen: "CopouchDetailScreen",
+          },
+        } as never,
+      ]),
+    ).toBeUndefined()
+    expect(
+      serializeRouteDescriptorsAsDeepLink([
+        {
+          name: "CopouchStack",
+          params: {
+            screen: "OtherScreen",
+            params: {
+              id: COPUCH_ID,
+            },
+          },
+        } as never,
+      ]),
+    ).toBeUndefined()
+  })
+
+  it("covers segment normalization fallbacks through public APIs", () => {
+    const parseSpy = jest.spyOn(deepLinkAdapter, "parse")
+    parseSpy
+      .mockReturnValueOnce({
+        isValid: true,
+        scheme: undefined,
+        host: undefined,
+        pathSegments: ["invite"],
+      } as never)
+      .mockReturnValueOnce({
+        isValid: true,
+        scheme: "https",
+        host: undefined,
+        pathSegments: ["invite"],
+        query: {},
+      } as never)
+      .mockReturnValueOnce({
+        isValid: true,
+        scheme: undefined,
+        host: undefined,
+        pathSegments: ["invite"],
+        query: {},
+      } as never)
+      .mockReturnValueOnce({
+        isValid: true,
+        scheme: "https",
+        host: undefined,
+        pathSegments: ["invite"],
+        query: {},
+      } as never)
+
+    expect(sanitizeWechatTargetPath("custom-scheme://invite")).toBeUndefined()
+    expect(sanitizeWechatTargetPath("https://missing-host/invite")).toBeUndefined()
+    expect(resolveDeepLink("custom-scheme://invite", true)).toMatchObject({
+      routes: [
+        {
+          name: "SupportStack",
+        },
+      ],
+    })
+    expect(resolveDeepLink("https://missing-host/invite", true)).toMatchObject({
+      routes: [
+        {
+          name: "SupportStack",
+        },
+      ],
+    })
   })
 })

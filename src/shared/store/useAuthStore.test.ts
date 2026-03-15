@@ -65,6 +65,24 @@ describe("useAuthStore", () => {
     })
   })
 
+  it("falls back to a null login type when the session omits it", () => {
+    mockGetJson.mockReturnValue([])
+    const { useAuthStore } = loadAuthStore()
+
+    useAuthStore.getState().setSession({
+      accessToken: "access",
+      refreshToken: "refresh",
+    })
+
+    expect(useAuthStore.getState()).toMatchObject({
+      session: {
+        accessToken: "access",
+        refreshToken: "refresh",
+      },
+      loginType: null,
+    })
+  })
+
   it("deduplicates and persists the two most recent passkeys", () => {
     mockGetJson.mockReturnValue([
       {

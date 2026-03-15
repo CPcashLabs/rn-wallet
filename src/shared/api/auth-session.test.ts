@@ -219,4 +219,25 @@ describe("auth session storage", () => {
 
     expect(mockSecureStore.get(SecureStorageKeys.AuthSessionVersion)).toBeTruthy()
   })
+
+  it("migrates legacy token pairs even when no session meta is stored", async () => {
+    mockSecureStore.set(SecureStorageKeys.AccessToken, "legacy-access")
+    mockSecureStore.set(SecureStorageKeys.RefreshToken, "legacy-refresh")
+
+    await expect(readAuthSession()).resolves.toEqual({
+      accessToken: "legacy-access",
+      refreshToken: "legacy-refresh",
+    })
+  })
+
+  it("ignores malformed legacy session meta during migration", async () => {
+    mockSecureStore.set(SecureStorageKeys.AccessToken, "legacy-access")
+    mockSecureStore.set(SecureStorageKeys.RefreshToken, "legacy-refresh")
+    mockSecureStore.set(SecureStorageKeys.SessionMeta, "{bad-json")
+
+    await expect(readAuthSession()).resolves.toEqual({
+      accessToken: "legacy-access",
+      refreshToken: "legacy-refresh",
+    })
+  })
 })

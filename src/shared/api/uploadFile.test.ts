@@ -62,6 +62,19 @@ describe("buildImageUploadFormDataPart", () => {
     ).toThrow(UnsafeUploadFileError)
   })
 
+  it("rejects non-string upload uris before any path normalization", () => {
+    expect(() =>
+      buildImageUploadFormDataPart(
+        {
+          uri: 42 as never,
+          name: "avatar.png",
+          mimeType: "image/png",
+        },
+        "avatar.jpg",
+      ),
+    ).toThrow(new UnsafeUploadFileError("Invalid upload file URI."))
+  })
+
   it("rejects file URIs outside temp or cache directories", () => {
     expect(() =>
       buildImageUploadFormDataPart(
@@ -101,6 +114,23 @@ describe("buildImageUploadFormDataPart", () => {
       uri: "file:///private/var/mobile/Containers/Data/Application/demo/tmp/camera-roll/photo.webp",
       name: "Profile_Picture.webp",
       type: "image/webp",
+    })
+  })
+
+  it("normalizes image/jpg and uses the fallback basename when the original name is blank", () => {
+    expect(
+      buildImageUploadFormDataPart(
+        {
+          uri: "file:///private/var/mobile/Containers/Data/Application/demo/tmp/camera-roll/photo.jpg#preview",
+          name: "   ",
+          mimeType: "image/jpg",
+        },
+        "cover draft",
+      ),
+    ).toEqual({
+      uri: "file:///private/var/mobile/Containers/Data/Application/demo/tmp/camera-roll/photo.jpg#preview",
+      name: "cover_draft.jpg",
+      type: "image/jpeg",
     })
   })
 
@@ -163,7 +193,7 @@ describe("buildImageUploadFormDataPart", () => {
     expect(() =>
       buildImageUploadFormDataPart(
         {
-          uri: "file://relative/path.jpg",
+          uri: "file:///relative/path.jpg",
           name: "   ",
         },
         "avatar.jpg",

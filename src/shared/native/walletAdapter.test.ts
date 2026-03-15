@@ -132,4 +132,43 @@ describe("walletAdapter", () => {
       },
     })
   })
+
+  it("preserves Error instances from wallet operations", async () => {
+    mockGetOrCreateLocalWallet.mockRejectedValue(new Error("Wallet locked"))
+    mockImportLocalWallet.mockRejectedValue(new Error("Invalid private key"))
+    mockSignWithLocalWallet.mockRejectedValue(new Error("Signing rejected"))
+    mockBroadcastTransferWithLocalWallet.mockRejectedValue(new Error("RPC unavailable"))
+
+    await expect(walletAdapter.connect()).resolves.toMatchObject({
+      ok: false,
+      error: {
+        message: "Wallet locked",
+      },
+    })
+    await expect(walletAdapter.importSecret("secret")).resolves.toMatchObject({
+      ok: false,
+      error: {
+        message: "Invalid private key",
+      },
+    })
+    await expect(walletAdapter.signMessage("hello")).resolves.toMatchObject({
+      ok: false,
+      error: {
+        message: "Signing rejected",
+      },
+    })
+    await expect(
+      walletAdapter.signAndBroadcastTransfer({
+        toAddress: "0xreceiver",
+        amount: 1,
+        coinPrecision: 6,
+        contractAddress: "0xcontract",
+      }),
+    ).resolves.toMatchObject({
+      ok: false,
+      error: {
+        message: "RPC unavailable",
+      },
+    })
+  })
 })

@@ -40,6 +40,18 @@ describe("resolveErrorMessage", () => {
     expect(message).toBe("scanner disabled")
   })
 
+  it("falls back to the generic capability message when an unknown capability error has no message", () => {
+    const message = resolveErrorMessage(
+      t,
+      new NativeCapabilityUnavailableError("scanner", ""),
+      {
+        fallbackKey: "common.errors.generic",
+      },
+    )
+
+    expect(message).toBe("common.errors.capabilityUnavailable")
+  })
+
   it("maps unsafe upload file errors to the localized invalid-upload copy", () => {
     const message = resolveErrorMessage(t, new UnsafeUploadFileError("internal upload validation failure"), {
       fallbackKey: "common.errors.generic",
@@ -111,10 +123,17 @@ describe("resolveErrorMessage", () => {
         fallbackKey: "common.errors.generic",
       }),
     ).toBe("plain error")
+
+    expect(
+      resolveErrorMessage(t, new Error("   "), {
+        fallbackKey: "common.errors.generic",
+      }),
+    ).toBe("common.errors.generic")
   })
 
   it("detects passkey association failures from generic errors", () => {
     expect(isPasskeyAssociationErrorMessage("Unable to verify webcredentials for credential")).toBe(true)
+    expect(isPasskeyAssociationErrorMessage("Associated with domain but no credential metadata")).toBe(true)
     expect(isPasskeyAssociationErrorMessage("random message")).toBe(false)
 
     expect(

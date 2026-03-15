@@ -55,6 +55,33 @@ describe("nativePasskeyModule", () => {
     })
   })
 
+  it("falls back to default native passkey reasons when native flags are incomplete", () => {
+    expect(
+      loadNativePasskeyModule({
+        nativeModule: {
+          isSupported: false,
+          register: jest.fn(),
+          authenticate: jest.fn(),
+        },
+      }).readNativePasskeyCapability(),
+    ).toEqual({
+      supported: false,
+      reason: "Passkey is not supported on this device.",
+    })
+
+    expect(
+      loadNativePasskeyModule({
+        nativeModule: {
+          register: jest.fn(),
+          authenticate: jest.fn(),
+          reason: "   ",
+        },
+      }).readNativePasskeyCapability(),
+    ).toEqual({
+      supported: true,
+    })
+  })
+
   it("delegates register and authenticate calls to the native module", async () => {
     const nativeModule = {
       register: jest.fn(async () => ({ credentialId: "credential-1", rawId: "raw-1", userId: "user-1" })),

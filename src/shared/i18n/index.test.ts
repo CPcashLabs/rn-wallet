@@ -86,6 +86,20 @@ describe("shared i18n index", () => {
     expect(module.getCurrentLanguage()).toBe("en-US")
   })
 
+  it("falls back to the system preference when the stored language is invalid", () => {
+    const { module, mockI18n } = loadI18nModule({
+      storedLanguage: "fr-FR",
+      systemLanguage: "zh-CN",
+    })
+
+    expect(mockI18n.init).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lng: "zh-CN",
+      }),
+    )
+    expect(module.getLanguagePreference()).toBe("system")
+  })
+
   it("hydrates and persists explicit or system language changes", async () => {
     const { module, mockI18n } = loadI18nModule({
       storedLanguage: "zh-CN",
@@ -104,6 +118,34 @@ describe("shared i18n index", () => {
     expect(mockRemoveItem).toHaveBeenCalledWith("app.language")
   })
 
+  it("skips language changes when the next language is already active", async () => {
+    const { module, mockI18n } = loadI18nModule({
+      storedLanguage: "en-US",
+      systemLanguage: "zh-CN",
+      currentLanguage: "en-US",
+    })
+
+    await module.hydrateI18n()
+    expect(mockI18n.changeLanguage).not.toHaveBeenCalled()
+
+    await module.setLanguagePreference("en-US")
+    expect(mockSetString).toHaveBeenCalledWith("app.language", "en-US")
+    expect(mockI18n.changeLanguage).not.toHaveBeenCalled()
+  })
+
+  it("normalizes invalid preferences to system and avoids changing to the same resolved language", async () => {
+    const { module, mockI18n } = loadI18nModule({
+      storedLanguage: null,
+      systemLanguage: "zh-CN",
+      currentLanguage: "zh-CN",
+    })
+
+    await module.setLanguagePreference("fr-FR" as never)
+
+    expect(mockRemoveItem).toHaveBeenCalledWith("app.language")
+    expect(mockI18n.changeLanguage).not.toHaveBeenCalled()
+  })
+
   it("falls back to the system language for unsupported current values and aborts hydration", async () => {
     const { module, mockI18n } = loadI18nModule({
       storedLanguage: "system",
@@ -111,6 +153,7 @@ describe("shared i18n index", () => {
       currentLanguage: "fr-FR",
     })
 
+    mockI18n.language = "fr-FR"
     expect(module.getCurrentLanguage()).toBe("zh-CN")
 
     const controller = new AbortController()

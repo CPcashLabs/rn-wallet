@@ -151,6 +151,72 @@ describe("transferApi guest token", () => {
     expect(mockTokenPost).toHaveBeenCalledTimes(1)
   })
 
+  it("reuses cached guest tokens and falls back for sparse public share payloads", async () => {
+    const txid = `0x${"b".repeat(64)}`
+    const nowSpy = jest.spyOn(Date, "now")
+    nowSpy.mockReturnValue(1_700_000_000_000)
+
+    const mockTokenPost = jest.fn(async () => ({
+      data: {
+        code: 200,
+        message: "ok",
+        data: {
+          access_token: "guest-token",
+        },
+      },
+    }))
+    const mockGuestGet = jest.fn(async () => ({
+      data: {
+        code: 200,
+        message: "ok",
+        data: {
+          recv_address: "T_PUBLIC",
+          recv_amount: "1.5",
+          recv_coin_symbol: "USDT",
+          send_amount: "2.5",
+          send_coin_symbol: "BTT",
+        },
+      },
+    }))
+
+    mockAxiosCreate.mockImplementation((config: { headers?: Record<string, string> }) => {
+      if (config.headers?.["Content-Type"] === "application/x-www-form-urlencoded") {
+        return {
+          post: mockTokenPost,
+        }
+      }
+
+      return {
+        get: mockGuestGet,
+      }
+    })
+
+    await expect(getPublicTxStatusDetail(txid)).resolves.toEqual(
+      expect.objectContaining({
+        orderSn: "",
+        orderType: "",
+        receiveAddress: "T_PUBLIC",
+        recvAmount: 1.5,
+        recvCoinName: "USDT",
+        sendAmount: 2.5,
+        sendCoinName: "BTT",
+        sellerId: "",
+        payUrl: "",
+        txid: "",
+        shareUrl: "",
+        isPayable: true,
+        orderReceiptUrl: "",
+        txBrowserUrl: "",
+      }),
+    )
+
+    nowSpy.mockReturnValue(1_700_000_001_000)
+    await getPublicTxStatusDetail(txid)
+
+    expect(mockTokenPost).toHaveBeenCalledTimes(1)
+    nowSpy.mockRestore()
+  })
+
   it("maps recent transfers and order creation responses", async () => {
     mockApiGet.mockResolvedValueOnce({
       data: {
@@ -241,6 +307,108 @@ describe("transferApi guest token", () => {
       }),
     ).resolves.toEqual({
       orderSn: "SEND_TOKEN_1",
+    })
+  })
+
+  it("falls back across sparse order creation payloads", async () => {
+    mockApiPost
+      .mockResolvedValueOnce({
+        data: {
+          code: 200,
+          message: "ok",
+          data: {
+            serial_number: "PAYMENT_SERIAL",
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          code: 200,
+          message: "ok",
+          data: {},
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          code: 200,
+          message: "ok",
+          data: {},
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          code: 200,
+          message: "ok",
+          data: {
+            serial_number: "SEND_TOKEN_SERIAL",
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          code: 200,
+          message: "ok",
+          data: {},
+        },
+      })
+
+    await expect(
+      createPaymentOrder({
+        sellerId: "",
+        recvCoinCode: "USDT",
+        sendCoinCode: "BTT",
+        sendAmount: 12.5,
+        recvAddress: "T_RECEIVER",
+        note: "",
+      }),
+    ).resolves.toEqual({
+      orderSn: "PAYMENT_SERIAL",
+    })
+    await expect(
+      createPaymentOrder({
+        sellerId: "",
+        recvCoinCode: "USDT",
+        sendCoinCode: "BTT",
+        sendAmount: 12.5,
+        recvAddress: "T_RECEIVER",
+        note: "",
+      }),
+    ).resolves.toEqual({
+      orderSn: "",
+    })
+    await expect(
+      createSendCodeOrder({
+        sellerId: "7",
+        recvCoinCode: "USDT",
+        sendCoinCode: "BTT",
+        sendAmount: 12.5,
+      }),
+    ).resolves.toEqual({
+      orderSn: "",
+    })
+    await expect(
+      createSendTokenOrder({
+        sellerId: "7",
+        recvCoinCode: "USDT",
+        sendCoinCode: "BTT",
+        sendAmount: 12.5,
+      }),
+    ).resolves.toEqual({
+      orderSn: "SEND_TOKEN_SERIAL",
+    })
+    await expect(
+      createSendTokenOrder({
+        sellerId: "7",
+        recvCoinCode: "USDT",
+        sendCoinCode: "BTT",
+        sendAmount: 12.5,
+      }),
+    ).resolves.toEqual({
+      orderSn: "",
+    })
+
+    expect(mockApiPost.mock.calls[0]?.[1]).toMatchObject({
+      seller_id: undefined,
     })
   })
 
@@ -518,6 +686,129 @@ describe("transferApi guest token", () => {
 
     expect(mockApiPut).toHaveBeenCalledWith("/api/order/member/order/recv-address/ORDER_1", {
       address: "T_UPDATED",
+    })
+  })
+
+  it("maps sparse detail, network and log payload fallbacks", async () => {
+    mockApiGet
+      .mockResolvedValueOnce({
+        data: {
+          code: 200,
+          message: "ok",
+          data: {
+            recv_address: "T_FALLBACK",
+            recv_amount: "6.5",
+            recv_coin_symbol: "USDT",
+            send_amount: "7.5",
+            send_coin_symbol: "BTT",
+            seller_id: null,
+            pay_url: null,
+            txid: null,
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          code: 200,
+          message: "ok",
+          data: {
+            supported: true,
+            current_network: "ETH",
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          code: 200,
+          message: "ok",
+          data: {},
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          page: "0",
+          total: "0",
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          page: "1",
+          total: "1",
+          data: [
+            {
+              order_sn: "ORDER_3",
+              order_type: "SEND",
+              created_at: 1700000006000,
+              send_amount: "2.5",
+              send_coin_name: null,
+              recv_amount: "1.5",
+              recv_coin_name: null,
+              status: "1",
+              receive_address: null,
+              payment_address: null,
+              deposit_address: null,
+              transfer_address: null,
+              recv_actual_amount: "1.1",
+            },
+          ],
+        },
+      })
+
+    await expect(getOrderDetail("ORDER_FALLBACK")).resolves.toEqual(
+      expect.objectContaining({
+        orderSn: "",
+        orderType: "",
+        receiveAddress: "T_FALLBACK",
+        recvAmount: 6.5,
+        recvCoinName: "USDT",
+        sendAmount: 7.5,
+        sendCoinName: "BTT",
+        sellerId: "",
+        payUrl: "",
+        txid: "",
+      }),
+    )
+    await expect(checkTransferNetwork({ chainName: "TRON", address: "T_ADDRESS" })).resolves.toEqual({
+      matched: true,
+      chainName: "ETH",
+    })
+    await expect(checkTransferNetwork({ chainName: "TRON", address: "T_ADDRESS" })).resolves.toEqual({
+      matched: false,
+      chainName: "",
+    })
+    await expect(getSendOrderLogs({})).resolves.toEqual({
+      page: 0,
+      total: 0,
+      items: [],
+    })
+    await expect(getSendOrderLogs({ page: 1 })).resolves.toEqual({
+      page: 1,
+      total: 1,
+      items: [
+        {
+          orderSn: "ORDER_3",
+          orderType: "SEND",
+          createdAt: 1700000006000,
+          sendAmount: 2.5,
+          sendCoinName: "",
+          recvAmount: 1.5,
+          recvCoinName: "",
+          status: 1,
+          receiveAddress: "",
+          paymentAddress: "",
+          depositAddress: "",
+          transferAddress: "",
+          recvActualAmount: 1.1,
+        },
+      ],
+    })
+
+    expect(mockApiGet.mock.calls[3]?.[1]).toMatchObject({
+      params: {
+        page: 1,
+        per_page: 10,
+        order_type: "SEND",
+      },
     })
   })
 })

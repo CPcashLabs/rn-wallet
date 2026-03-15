@@ -50,4 +50,33 @@ describe("remoteImageCacheIndex", () => {
     expect(result.nextCacheMap).toEqual({})
     expect(result.removedLocalUris).toEqual(["file:///avatar"])
   })
+
+  it("ignores missing local uris when pruning or removing entries", () => {
+    expect(
+      pruneRemoteImageCacheEntries(
+        {
+          newest: { updatedAt: 2 },
+          oldest: { updatedAt: 1 },
+        },
+        1,
+      ),
+    ).toEqual({
+      nextCacheMap: {
+        newest: { updatedAt: 2 },
+      },
+      removedLocalUris: [],
+    })
+
+    expect(
+      removeRemoteImageCacheEntry(
+        {
+          avatar: { updatedAt: 1 },
+        },
+        "avatar",
+      ),
+    ).toEqual({
+      nextCacheMap: {},
+      removedLocalUris: [],
+    })
+  })
 })

@@ -35,6 +35,13 @@ describe("mapApiError", () => {
     expect(mapped.message).toBe("socket hang up")
   })
 
+  it("falls back to the default network message when transport failures have no message", () => {
+    const mapped = mapApiError(createAxiosError({ message: "", response: undefined }))
+
+    expect(mapped).toBeInstanceOf(NetworkUnavailableError)
+    expect(mapped.message).toBe("Network unavailable")
+  })
+
   it("maps non-token 401 responses to AuthExpiredError", () => {
     const mapped = mapApiError(
       createAxiosError({
@@ -87,5 +94,80 @@ describe("mapApiError", () => {
     expect(mapped).toBeInstanceOf(ApiError)
     expect(mapped.message).toBe("service unavailable")
     expect((mapped as ApiError).status).toBe(500)
+  })
+
+  it("extracts numeric codes and fallback error fields from response payloads", () => {
+    const mapped = mapApiError(
+      createAxiosError({
+        response: {
+          status: 400,
+          data: {
+            message: "",
+            error_description: "",
+            error: "invalid amount",
+            code: 42,
+          },
+        },
+      }),
+    )
+
+    expect(mapped).toBeInstanceOf(ApiError)
+    expect(mapped.message).toBe("invalid amount")
+    expect((mapped as ApiError).code).toBe("42")
+  })
+
+  it("preserves explicit string codes and falls back to empty response fields when needed", () => {
+    const explicitCode = mapApiError(
+      createAxiosError({
+        response: {
+          status: 409,
+          data: {
+            message: "already exists",
+            code: "DUPLICATE_ORDER",
+          },
+        },
+      }),
+    )
+    const emptyFields = mapApiError(
+      createAxiosError({
+        message: "",
+        response: {
+          status: 422,
+          data: {
+            message: "",
+            error_description: "",
+            error: "",
+          },
+        },
+      }),
+    )
+
+    expect((explicitCode as ApiError).code).toBe("DUPLICATE_ORDER")
+    expect(emptyFields.message).toBe("API request failed")
+    expect((emptyFields as ApiError).code).toBe("")
+  })
+
+  it("falls back to the axios message or the generic api message when response data is unusable", () => {
+    const messageFallback = mapApiError(
+      createAxiosError({
+        message: "Gateway timeout",
+        response: {
+          status: 504,
+          data: "   ",
+        },
+      }),
+    )
+    const genericFallback = mapApiError(
+      createAxiosError({
+        message: "",
+        response: {
+          status: 500,
+          data: null,
+        },
+      }),
+    )
+
+    expect(messageFallback.message).toBe("Gateway timeout")
+    expect(genericFallback.message).toBe("API request failed")
   })
 })

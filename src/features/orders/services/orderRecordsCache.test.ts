@@ -195,6 +195,16 @@ describe("order detail cache", () => {
     })
   })
 
+  it("uses all-range cache key defaults and returns null for missing bill caches", () => {
+    expect(
+      buildOrderLogsCacheKey({
+        startedAt: "2026-03-01 00:00:00",
+        endedAt: "2026-03-15 23:59:59",
+      }),
+    ).toBe("logs::all::all::2026-03-01 00:00:00|2026-03-15 23:59:59||")
+    expect(readOrderBillCache("missing")).toBeNull()
+  })
+
   it("counts only newly appeared order records", () => {
     expect(
       countNewOrderRecords(

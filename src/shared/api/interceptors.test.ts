@@ -144,6 +144,22 @@ describe("registerInterceptors", () => {
     })
   })
 
+  it("falls back to the generic api message when a failing envelope has no message", async () => {
+    await expect(
+      successResponseInterceptor({
+        status: 400,
+        data: {
+          code: 500,
+        },
+      }),
+    ).rejects.toMatchObject({
+      name: "ApiError",
+      message: "API request failed",
+      status: 400,
+      code: 500,
+    })
+  })
+
   it("passes successful responses through untouched", async () => {
     const response = {
       status: 200,

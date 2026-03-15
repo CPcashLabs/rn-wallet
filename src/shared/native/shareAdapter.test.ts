@@ -40,6 +40,25 @@ describe("shareAdapter", () => {
     })
   })
 
+  it("shares plain messages when no url is provided", async () => {
+    mockShare.mockResolvedValue(undefined)
+
+    await expect(
+      shareAdapter.share({
+        message: "Join CPCash",
+      }),
+    ).resolves.toEqual({
+      ok: true,
+      data: undefined,
+    })
+
+    expect(mockShare).toHaveBeenCalledWith({
+      title: undefined,
+      message: "Join CPCash",
+      url: undefined,
+    })
+  })
+
   it("normalizes native share failures", async () => {
     mockShare.mockRejectedValue("failed")
 
@@ -54,6 +73,21 @@ describe("shareAdapter", () => {
 
     expect(result.error).toMatchObject({
       message: "Native share failed",
+    })
+  })
+
+  it("preserves native Error instances", async () => {
+    mockShare.mockRejectedValue(new Error("Share sheet unavailable"))
+
+    const result = await shareAdapter.share({
+      message: "Join CPCash",
+    })
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        message: "Share sheet unavailable",
+      },
     })
   })
 })

@@ -187,6 +187,94 @@ describe("safeConsole", () => {
     })
   })
 
+  it("handles sparse axios errors and blank metadata without adding empty summaries", () => {
+    expect(
+      sanitizeLogValue(
+        Object.assign(new Error("   "), {
+          name: "   ",
+          isAxiosError: true,
+          config: "invalid",
+          response: "invalid",
+        }),
+      ),
+    ).toEqual({
+      name: "Error",
+      kind: "AxiosError",
+    })
+  })
+
+  it("omits empty axios response summaries when the response object has no useful fields", () => {
+    expect(
+      sanitizeLogValue(
+        Object.assign(new Error("request failed"), {
+          name: "AxiosError",
+          isAxiosError: true,
+          response: {},
+        }),
+      ),
+    ).toEqual({
+      name: "AxiosError",
+      message: "request failed",
+      kind: "AxiosError",
+    })
+  })
+
+  it("omits empty axios config fields and keeps the explicit error status over the response status", () => {
+    expect(
+      sanitizeLogValue(
+        Object.assign(new Error("request failed"), {
+          name: "AxiosError",
+          status: 500,
+          isAxiosError: true,
+          config: {
+            method: "   ",
+            baseURL: "   ",
+            url: "   ",
+          },
+          response: {
+            status: 403,
+          },
+        }),
+      ),
+    ).toEqual({
+      name: "AxiosError",
+      message: "request failed",
+      status: 500,
+      kind: "AxiosError",
+      response: {
+        status: 403,
+      },
+    })
+  })
+
+  it("omits empty plain-object config and response summaries and falls back to Object when there is no constructor name", () => {
+    expect(
+      sanitizeLogValue({
+        status: 201,
+        config: {},
+        response: {
+          status: 202,
+        },
+      }),
+    ).toEqual({
+      status: 201,
+      response: {
+        status: 202,
+      },
+    })
+
+    expect(
+      sanitizeLogValue(
+        Object.assign(Object.create(null), {
+          config: {},
+          response: {},
+        }),
+      ),
+    ).toEqual({
+      kind: "Object",
+    })
+  })
+
   it("truncates overly long sanitized strings and logs production summaries without context", () => {
     const spy = jest.spyOn(console, "error").mockImplementation(() => {})
     const longMessage = `token=${"x".repeat(240)}`
@@ -261,5 +349,25 @@ describe("safeConsole", () => {
     })
 
     expect(spy).toHaveBeenCalledWith("[dev]", error)
+  })
+
+  it("uses the runtime __DEV__ flag when devMode is omitted", () => {
+    const runtime = globalThis as typeof globalThis & {
+      __DEV__?: boolean
+    }
+    const originalDev = runtime.__DEV__
+    const spy = jest.spyOn(console, "error").mockImplementation(() => {})
+
+    runtime.__DEV__ = false
+    try {
+      logErrorSafely("[auto]", new Error("wallet@example.com failed"))
+    } finally {
+      runtime.__DEV__ = originalDev
+    }
+
+    expect(spy).toHaveBeenCalledWith("[auto]", {
+      name: "Error",
+      message: "[REDACTED_EMAIL] failed",
+    })
   })
 })

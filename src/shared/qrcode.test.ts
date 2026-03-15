@@ -75,6 +75,18 @@ describe("shared qrcode helpers", () => {
     expect(Array.from(segments[0]?.data ?? [])).toEqual([65])
   })
 
+  it("keeps unmatched surrogate halves as three-byte utf8 and uses the default matrix error correction level", async () => {
+    await buildQrCodeDataUrl("\ud83d!")
+
+    const [segments] = mockToDataURL.mock.calls[0] as unknown as [Array<{ data: Uint8Array; mode: string }>]
+    expect(Array.from(segments[0]?.data ?? [])).toEqual([237, 160, 189, 33])
+
+    buildQrMatrix("B")
+    expect(mockCreate).toHaveBeenLastCalledWith(expect.any(Array), {
+      errorCorrectionLevel: "M",
+    })
+  })
+
   it("strips the PNG data URL prefix", () => {
     expect(stripDataUrlPrefix("data:image/png;base64,abc123")).toBe("abc123")
     expect(stripDataUrlPrefix("plain-base64")).toBe("plain-base64")

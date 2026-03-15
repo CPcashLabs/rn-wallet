@@ -36,6 +36,17 @@ describe("passkeyAdapter", () => {
     })
   })
 
+  it("falls back to the disabled reason when native support is absent without a reason", () => {
+    mockedReadNativePasskeyCapability.mockReturnValue({
+      supported: false,
+    })
+
+    expect(passkeyAdapter.getCapability()).toEqual({
+      supported: false,
+      reason: "Passkey sign-in is disabled until a hardware-backed native signer replaces the JS private-key derivation flow.",
+    })
+  })
+
   it("fails closed for register and authenticate", async () => {
     const registerResult = await passkeyAdapter.register({
       username: "alice",

@@ -151,6 +151,56 @@ describe("ordersApi", () => {
     })).toBe("page=2&tags=one&tags=two&order_type=PAYMENT")
   })
 
+  it("falls back for sparse tx-log pages and item labels", async () => {
+    mockApiGet
+      .mockResolvedValueOnce({
+        data: {
+          data: null,
+          total: "0",
+          page: "0",
+          other_address: null,
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          data: [
+            {
+              order_sn: "ORDER_2",
+              labels: null,
+            },
+          ],
+          total: "1",
+          page: "0",
+        },
+      })
+
+    await expect(getOrderTxlogs({})).resolves.toEqual({
+      data: [],
+      total: 0,
+      page: 1,
+      otherAddress: "",
+    })
+    await expect(getOrderTxlogs({ page: 7 })).resolves.toEqual({
+      data: [
+        expect.objectContaining({
+          orderSn: "ORDER_2",
+          labels: [],
+        }),
+      ],
+      total: 1,
+      page: 7,
+      otherAddress: "",
+    })
+
+    expect(mockApiGet.mock.calls[0]?.[0]).toBe("/api/order/member/order/cp-cash-page")
+    expect(mockApiGet.mock.calls[0]?.[1]).toMatchObject({
+      params: {
+        page: 1,
+        per_page: 20,
+      },
+    })
+  })
+
   it("loads tx-log statistics and order detail data", async () => {
     mockApiGet
       .mockResolvedValueOnce({
@@ -230,6 +280,15 @@ describe("ordersApi", () => {
       transactions: 4,
     })
 
+    const statisticsConfig = mockApiGet.mock.calls[0]?.[1]
+    expect(statisticsConfig.paramsSerializer({
+      order_type: "PAYMENT",
+      started_at: "2026-03-01 00:00:00",
+      ended_at: "",
+      tags: ["one", "", "two"],
+      nil: null,
+    })).toBe("order_type=PAYMENT&started_at=2026-03-01+00%3A00%3A00&tags=one&tags=two")
+
     await expect(getOrderDetail("ORDER_1")).resolves.toEqual({
       note: "memo",
       recvChainName: "TRON",
@@ -290,6 +349,54 @@ describe("ordersApi", () => {
     })
 
     await expect(getOrderDetail("ORDER_404")).rejects.toThrow("Order detail not found")
+  })
+
+  it("falls back for sparse statistics, detail and bill payloads", async () => {
+    mockApiGet
+      .mockResolvedValueOnce({
+        data: {
+          data: null,
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          data: {
+            recv_chain_browsers: null,
+            send_chain_browsers: null,
+            seller_chain_browsers: null,
+            multisig_wallet_id: null,
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          data: {
+            send_fee_amount: "0.9",
+          },
+        },
+      })
+
+    await expect(getOrderTxlogStatistics({})).resolves.toEqual({
+      receiptAmount: 0,
+      paymentAmount: 0,
+      fee: 0,
+      transactions: 0,
+    })
+    await expect(getOrderDetail("ORDER_SPARSE")).resolves.toEqual(
+      expect.objectContaining({
+        recvChainBrowsers: [],
+        sendChainBrowsers: [],
+        sellerChainBrowsers: [],
+        multisigWalletId: null,
+      }),
+    )
+    await expect(getBillDetail({ orderSn: "ORDER_SPARSE", address: "T_RECEIVE" })).resolves.toEqual(
+      expect.objectContaining({
+        feeAmount: 0.9,
+      }),
+    )
+
+    expect(mockApiGet.mock.calls[0]?.[0]).toBe("/api/order/member/order/cp-cash-statistics")
   })
 
   it("wraps boolean mutation endpoints", async () => {
@@ -543,6 +650,54 @@ describe("ordersApi", () => {
         notesImageUrl: "https://example.com/note.png",
       }),
     ).resolves.toBe(false)
+  })
+
+  it("falls back for sparse bill-address and label collections", async () => {
+    mockApiGet
+      .mockResolvedValueOnce({
+        data: {
+          data: null,
+          total: "0",
+          page: "0",
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          data: null,
+          total: "0",
+          page: "0",
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          data: null,
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          data: {
+            notes: null,
+            member_order_label_item_volist: null,
+          },
+        },
+      })
+
+    await expect(getOrderBillAddresses({})).resolves.toEqual({
+      data: [],
+      total: 0,
+      page: 1,
+    })
+    await expect(getOrderBillAddresses({ page: 5 })).resolves.toEqual({
+      data: [],
+      total: 0,
+      page: 5,
+    })
+    await expect(listUserCategoryLabels()).resolves.toEqual([])
+    await expect(findOrderLabels("ORDER_EMPTY")).resolves.toEqual({
+      notes: "",
+      notesImageUrl: "",
+      labels: [],
+    })
   })
 
   it("uploads order note images and resolves fallback file urls", async () => {

@@ -229,6 +229,25 @@ describe("useBalanceStore", () => {
     })
   })
 
+  it("uses an unknown wallet key suffix when the chain id is missing", async () => {
+    useWalletStore.setState({
+      address: "TA1",
+      chainId: null,
+      status: "connected",
+    })
+    mockGetCoinList.mockResolvedValueOnce(oldCoins)
+    mockFetchOnChainBalances.mockResolvedValueOnce({ OLD: 7.5 })
+
+    await useBalanceStore.getState().loadCoins()
+
+    expect(useBalanceStore.getState()).toMatchObject({
+      walletKey: "ta1::unknown",
+      balances: {
+        OLD: 7.5,
+      },
+    })
+  })
+
   it("refreshes through loadCoins when no snapshot exists and skips concurrent refreshes", async () => {
     useWalletStore.setState({
       address: "TA1",
@@ -302,6 +321,22 @@ describe("useBalanceStore", () => {
     expect(useBalanceStore.getState().error).toEqual({
       kind: "refresh",
       message: "balance_refresh_failed",
+    })
+  })
+
+  it("falls back to the generic load error when loading fails with an unknown value", async () => {
+    useWalletStore.setState({
+      address: "TA1",
+      chainId: "199",
+      status: "connected",
+    })
+    mockGetCoinList.mockRejectedValueOnce({})
+
+    await useBalanceStore.getState().loadCoins("199")
+
+    expect(useBalanceStore.getState().error).toEqual({
+      kind: "load",
+      message: "balance_load_failed",
     })
   })
 
@@ -396,6 +431,42 @@ describe("useBalanceStore", () => {
       refreshing: false,
       coins: [],
       balances: {},
+      error: null,
+    })
+  })
+
+  it("ignores stale refresh completions after a newer wallet request starts", async () => {
+    useWalletStore.setState({
+      address: "TA1",
+      chainId: "199",
+      status: "connected",
+    })
+    mockGetCoinList.mockResolvedValueOnce(oldCoins)
+    mockFetchOnChainBalances.mockResolvedValueOnce({ OLD: 1 })
+    await useBalanceStore.getState().loadCoins("199")
+
+    const staleRefresh = createDeferred<Record<string, number>>()
+    mockGetCoinList.mockResolvedValueOnce(oldCoins).mockResolvedValueOnce(newCoins)
+    mockFetchOnChainBalances.mockReturnValueOnce(staleRefresh.promise).mockResolvedValueOnce({ NEW: 9 })
+
+    const refreshPromise = useBalanceStore.getState().refreshCoins("199")
+
+    useWalletStore.setState({
+      address: "TB2",
+      chainId: "199",
+      status: "connected",
+    })
+    await useBalanceStore.getState().loadCoins("199")
+
+    staleRefresh.resolve({ OLD: 2 })
+    await refreshPromise
+
+    expect(useBalanceStore.getState()).toMatchObject({
+      walletKey: "tb2::199",
+      balances: {
+        NEW: 9,
+      },
+      coins: newCoins,
       error: null,
     })
   })

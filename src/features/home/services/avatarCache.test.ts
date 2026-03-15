@@ -84,4 +84,40 @@ describe("avatarCache", () => {
     })
     expect(mockRemoveAvatarFile).not.toHaveBeenCalled()
   })
+
+  it("normalizes malformed stored entries and falls back through legacy avatar uri fields", () => {
+    mockStorageMap.set("auth.user_avatar_cache", {
+      "0xabc": {
+        accountKey: "0xabc",
+        remoteUri: " https://cp.cash/avatar.png ",
+        localUri: " file:///avatar.png ",
+        resolvedUri: "",
+        avatarUri: "https://cp.cash/legacy.png",
+        updatedAt: "bad",
+      },
+      "0xdef": {
+        accountKey: "0xdef",
+        remoteUri: "",
+        localUri: "file:///avatar-2.png",
+        resolvedUri: "",
+        avatarUri: "https://cp.cash/legacy-2.png",
+        updatedAt: 2,
+      },
+    })
+
+    expect(readCachedAvatarEntry("0xabc")).toEqual({
+      accountKey: "0xabc",
+      remoteUri: "https://cp.cash/avatar.png",
+      localUri: "file:///avatar.png",
+      fallbackRemoteUri: "https://cp.cash/avatar.png",
+      updatedAt: 0,
+    })
+    expect(readCachedAvatarEntry("0xdef")).toEqual({
+      accountKey: "0xdef",
+      remoteUri: "",
+      localUri: "file:///avatar-2.png",
+      fallbackRemoteUri: "https://cp.cash/legacy-2.png",
+      updatedAt: 2,
+    })
+  })
 })

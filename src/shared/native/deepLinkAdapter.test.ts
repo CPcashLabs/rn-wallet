@@ -51,6 +51,48 @@ describe("deepLinkAdapter", () => {
     })
   })
 
+  it("parses urls without authorities and authority-only urls", () => {
+    expect(deepLinkAdapter.parse("cpcash:transfer/send?from=home")).toEqual({
+      raw: "cpcash:transfer/send?from=home",
+      isValid: true,
+      scheme: "cpcash",
+      host: null,
+      pathSegments: ["transfer", "send"],
+      query: {
+        from: "home",
+      },
+    })
+
+    expect(deepLinkAdapter.parse("cpcash:///transfer/send?from=home")).toEqual({
+      raw: "cpcash:///transfer/send?from=home",
+      isValid: true,
+      scheme: "cpcash",
+      host: null,
+      pathSegments: ["transfer", "send"],
+      query: {
+        from: "home",
+      },
+    })
+
+    expect(deepLinkAdapter.parse("cpcash://")).toEqual({
+      raw: "cpcash://",
+      isValid: true,
+      scheme: "cpcash",
+      host: null,
+      pathSegments: [],
+      query: {},
+    })
+
+    expect(deepLinkAdapter.parse("CPCASH://wallet")).toEqual({
+      raw: "CPCASH://wallet",
+      isValid: true,
+      scheme: "cpcash",
+      host: "wallet",
+      pathSegments: [],
+      query: {},
+    })
+  })
+
   it("opens urls through the native linking module", async () => {
     mockOpenURL.mockResolvedValue(undefined)
 
@@ -74,6 +116,19 @@ describe("deepLinkAdapter", () => {
 
     expect(result.error).toMatchObject({
       message: "Failed to open URL",
+    })
+  })
+
+  it("preserves native Error instances when opening urls fails", async () => {
+    mockOpenURL.mockRejectedValue(new Error("Blocked by platform policy"))
+
+    const result = await deepLinkAdapter.open("cpcash://wallet")
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        message: "Blocked by platform policy",
+      },
     })
   })
 })

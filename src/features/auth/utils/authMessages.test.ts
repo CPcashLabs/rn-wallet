@@ -10,6 +10,10 @@ import { ApiError } from "@/shared/errors"
 import { appendApiDebugSuffix, getAuthErrorMessage, getInviteBindingMessage } from "@/features/auth/utils/authMessages"
 
 describe("authMessages", () => {
+  it("uses a custom fallback key when auth errors cannot be resolved", () => {
+    expect(getAuthErrorMessage(new Error(""), "auth.errors.customFallback")).toBe("auth.errors.customFallback")
+  })
+
   it("does not append internal status metadata in production mode", () => {
     const message = appendApiDebugSuffix(
       "Login failed",
@@ -28,6 +32,23 @@ describe("authMessages", () => {
     )
 
     expect(message).toBe("Login failed\nhttp=401 / code=ACCOUNT_LOCKED")
+  })
+
+  it("returns the original message for non-api errors and uses unknown placeholders for missing api metadata", () => {
+    const runtime = global as typeof globalThis & {
+      __DEV__?: boolean
+    }
+    const previousDev = __DEV__
+
+    runtime.__DEV__ = true
+    try {
+      expect(appendApiDebugSuffix("Login failed", new Error("boom"), true)).toBe("Login failed")
+      expect(appendApiDebugSuffix("Login failed", new ApiError("unauthorized"))).toBe(
+        "Login failed\nhttp=unknown / code=none",
+      )
+    } finally {
+      runtime.__DEV__ = previousDev
+    }
   })
 
   it("maps auth api errors and invite binding errors through translations", () => {
