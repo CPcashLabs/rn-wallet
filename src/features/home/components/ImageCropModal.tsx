@@ -89,6 +89,9 @@ export function ImageCropModal({ visible, imageUri, onConfirm, onCancel, initial
     const idY = translateY.addListener(({ value }) => { currentTy.current = value })
     const idS = scaleAnim.addListener(({ value }) => { currentScale.current = value })
     return () => {
+      translateX.stopAnimation()
+      translateY.stopAnimation()
+      scaleAnim.stopAnimation()
       translateX.removeListener(idX)
       translateY.removeListener(idY)
       scaleAnim.removeListener(idS)

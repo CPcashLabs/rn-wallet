@@ -67,6 +67,14 @@ export function ToastProvider({ children }: PropsWithChildren) {
     const translateYListenerId = translateY.addListener(() => undefined)
 
     return () => {
+      if (hideTimerRef.current) {
+        clearTimeout(hideTimerRef.current)
+        hideTimerRef.current = null
+      }
+      animationRef.current?.stop()
+      animationRef.current = null
+      opacity.stopAnimation()
+      translateY.stopAnimation()
       opacity.removeListener(opacityListenerId)
       translateY.removeListener(translateYListenerId)
     }
