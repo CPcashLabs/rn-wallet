@@ -128,7 +128,7 @@ function clampColor(value: number) {
   return Math.max(0, Math.min(255, Math.round(value)))
 }
 
-function rgbToHsl(red: number, green: number, blue: number) {
+export function rgbToHsl(red: number, green: number, blue: number) {
   const r = red / 255
   const g = green / 255
   const b = blue / 255
@@ -168,7 +168,7 @@ function rgbToHsl(red: number, green: number, blue: number) {
   }
 }
 
-function hslToRgb(hue: number, saturation: number, lightness: number) {
+export function hslToRgb(hue: number, saturation: number, lightness: number) {
   const s = saturation / 100
   const l = lightness / 100
 
@@ -188,12 +188,12 @@ function hslToRgb(hue: number, saturation: number, lightness: number) {
   ] as const
 }
 
-function normalizeHue(value: number) {
+export function normalizeHue(value: number) {
   const normalized = value % 360
   return normalized < 0 ? normalized + 360 : normalized
 }
 
-function hueToRgb(p: number, q: number, t: number) {
+export function hueToRgb(p: number, q: number, t: number) {
   let value = t
 
   if (value < 0) {
@@ -215,7 +215,7 @@ function hueToRgb(p: number, q: number, t: number) {
   return p
 }
 
-function parseHexSeed(value: string) {
+export function parseHexSeed(value: string) {
   if (!value.startsWith("0x") || value.length < 10) {
     return hashString(value) || DEFAULT_SEED
   }
@@ -224,7 +224,7 @@ function parseHexSeed(value: string) {
   return Number.isFinite(parsed) ? parsed >>> 0 : hashString(value) || DEFAULT_SEED
 }
 
-function tronToEthereumHex(address: string) {
+export function tronToEthereumHex(address: string) {
   try {
     const decoded = decodeBase58(address)
 
@@ -238,7 +238,7 @@ function tronToEthereumHex(address: string) {
   }
 }
 
-function decodeBase58(value: string) {
+export function decodeBase58(value: string) {
   const bytes: number[] = [0]
 
   for (const char of value) {
@@ -273,7 +273,7 @@ function decodeBase58(value: string) {
   return Uint8Array.from(bytes.reverse())
 }
 
-function hashString(value: string) {
+export function hashString(value: string) {
   let hash = 2166136261
 
   for (let index = 0; index < value.length; index += 1) {
@@ -284,7 +284,7 @@ function hashString(value: string) {
   return hash >>> 0
 }
 
-class MersenneTwister {
+export class MersenneTwister {
   private static readonly N = 624
   private static readonly M = 397
   private static readonly MATRIX_A = 0x9908b0df
