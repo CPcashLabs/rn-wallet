@@ -9,7 +9,7 @@ export function getProfileSyncInFlightRequest() {
   return inFlightProfileSync
 }
 
-export function runProfileSync(task: () => Promise<void>, force = false) {
+export function runProfileSync(task: () => Promise<boolean>, force = false) {
   if (inFlightProfileSync && !force) {
     return inFlightProfileSync
   }
@@ -18,13 +18,15 @@ export function runProfileSync(task: () => Promise<void>, force = false) {
     return Promise.resolve()
   }
 
-  didFetchProfileThisSession = true
-
-  const request = task().finally(() => {
-    if (inFlightProfileSync === request) {
-      inFlightProfileSync = null
-    }
-  })
+  const request = task()
+    .then(didHydrate => {
+      didFetchProfileThisSession = didFetchProfileThisSession || didHydrate
+    })
+    .finally(() => {
+      if (inFlightProfileSync === request) {
+        inFlightProfileSync = null
+      }
+    })
 
   inFlightProfileSync = request
   return request

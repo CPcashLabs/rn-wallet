@@ -66,8 +66,10 @@ function toUserProfile(payload: UserProfilePayload): UserProfile {
   }
 }
 
-export async function getCurrentUserProfile() {
-  const response = await apiClient.get<ApiEnvelope<UserProfilePayload>>("/api/system/member/security/current")
+export async function getCurrentUserProfile(signal?: AbortSignal) {
+  const response = await apiClient.get<ApiEnvelope<UserProfilePayload>>("/api/system/member/security/current", {
+    signal,
+  })
   return toUserProfile(unwrapEnvelope(response.data))
 }
 

@@ -1,4 +1,6 @@
+import { removeAvatarFile } from "@/features/home/services/avatarFileCache"
 import { getJson, removeItem, setJson } from "@/shared/storage/kvStorage"
+import { removeRemoteImageCacheEntry, upsertRemoteImageCacheEntry } from "@/shared/storage/remoteImageCacheIndex"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 
 type StoredAvatarCacheEntry = {
@@ -62,20 +64,19 @@ export function readCachedAvatarEntry(accountKey?: string | null): AvatarCacheEn
 }
 
 function writeAvatarCacheMap(cacheMap: AvatarCacheMap) {
-  const entries = Object.entries(cacheMap)
-  if (entries.length === 0) {
+  if (Object.keys(cacheMap).length === 0) {
     removeItem(KvStorageKeys.UserAvatarCache)
     return
   }
 
-  const trimmedEntries = entries
-    .sort(([, left], [, right]) => right.updatedAt - left.updatedAt)
-    .slice(0, MAX_AVATAR_CACHE_ENTRIES)
-
-  setJson(KvStorageKeys.UserAvatarCache, Object.fromEntries(trimmedEntries))
+  setJson(KvStorageKeys.UserAvatarCache, cacheMap)
 }
 
-export function writeCachedAvatarEntry(input: {
+async function cleanupRemovedAvatarFiles(localUris: string[]) {
+  await Promise.allSettled(localUris.map(localUri => removeAvatarFile(localUri)))
+}
+
+export async function writeCachedAvatarEntry(input: {
   accountKey?: string | null
   remoteUri?: string | null
   localUri?: string | null
@@ -89,28 +90,37 @@ export function writeCachedAvatarEntry(input: {
   }
 
   const cacheMap = readAvatarCacheMap()
-  cacheMap[normalizedAccountKey] = {
-    accountKey: normalizedAccountKey,
-    avatarUri: normalizedRemoteUri,
-    resolvedUri: normalizedRemoteUri,
-    remoteUri: normalizedRemoteUri,
-    localUri: normalizedLocalUri,
-    updatedAt: Date.now(),
-  }
-  writeAvatarCacheMap(cacheMap)
+  const mutation = upsertRemoteImageCacheEntry<StoredAvatarCacheEntry>(
+    cacheMap,
+    normalizedAccountKey,
+    {
+      accountKey: normalizedAccountKey,
+      avatarUri: normalizedRemoteUri,
+      resolvedUri: normalizedRemoteUri,
+      remoteUri: normalizedRemoteUri,
+      localUri: normalizedLocalUri,
+      updatedAt: Date.now(),
+    },
+    MAX_AVATAR_CACHE_ENTRIES,
+  )
+
+  writeAvatarCacheMap(mutation.nextCacheMap)
+  await cleanupRemovedAvatarFiles(mutation.removedLocalUris)
 }
 
-export function removeCachedAvatarEntry(accountKey?: string | null) {
+export async function removeCachedAvatarEntry(accountKey?: string | null) {
   const normalizedAccountKey = normalizeAccountKey(accountKey)
   if (!normalizedAccountKey) {
     return
   }
 
   const cacheMap = readAvatarCacheMap()
-  if (!cacheMap[normalizedAccountKey]) {
+  const mutation = removeRemoteImageCacheEntry<StoredAvatarCacheEntry>(cacheMap, normalizedAccountKey)
+
+  if (mutation.nextCacheMap === cacheMap) {
     return
   }
 
-  delete cacheMap[normalizedAccountKey]
-  writeAvatarCacheMap(cacheMap)
+  writeAvatarCacheMap(mutation.nextCacheMap)
+  await cleanupRemovedAvatarFiles(mutation.removedLocalUris)
 }

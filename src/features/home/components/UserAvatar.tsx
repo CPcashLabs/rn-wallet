@@ -84,30 +84,31 @@ export function UserAvatar(props: Props) {
     }
 
     let cancelled = false
-    const previousLocalUri = cacheEntry?.localUri || ""
 
     void cacheAvatarToFile({
       accountKey: normalizedAccountKey,
       remoteUri: resolvedUri,
     })
       .then(localUri => {
-        if (cancelled || !localUri) {
+        if (!localUri) {
           return
         }
 
-        writeCachedAvatarEntry({
+        if (cancelled) {
+          void removeAvatarFile(localUri).catch(() => undefined)
+          return
+        }
+
+        void writeCachedAvatarEntry({
           accountKey: normalizedAccountKey,
           remoteUri: resolvedUri,
           localUri,
-        })
+        }).catch(() => undefined)
         setDisplaySource({
           uri: localUri,
           kind: "local",
           remoteUri: resolvedUri,
         })
-        if (previousLocalUri && previousLocalUri !== localUri) {
-          void removeAvatarFile(previousLocalUri).catch(() => undefined)
-        }
       })
       .catch(() => undefined)
 
@@ -137,8 +138,7 @@ export function UserAvatar(props: Props) {
       fadeDuration={0}
       onError={() => {
         if (displaySource.kind === "local") {
-          removeCachedAvatarEntry(normalizedAccountKey)
-          void removeAvatarFile(displaySource.uri).catch(() => undefined)
+          void removeCachedAvatarEntry(normalizedAccountKey).catch(() => undefined)
           if (resolvedUri) {
             setDisplaySource({
               uri: resolvedUri,
