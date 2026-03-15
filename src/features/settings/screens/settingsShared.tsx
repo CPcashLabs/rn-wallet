@@ -127,7 +127,6 @@ export const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
   },
   errorText: {
-    color: "#DC2626",
     fontSize: 12,
   },
   helperText: {
