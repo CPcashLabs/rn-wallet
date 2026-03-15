@@ -1,6 +1,6 @@
 import React from "react"
 
-import { Image, Pressable, StyleSheet, Text, View } from "react-native"
+import { Pressable, StyleSheet, Text, View } from "react-native"
 
 import { SectionCard } from "@/shared/ui/AppFlowUi"
 import { formatAddress } from "@/features/home/utils/format"

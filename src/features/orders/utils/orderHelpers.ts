@@ -339,9 +339,6 @@ export function resolveOrderTypeOptions(t: Translator): Array<{ label: string; v
     { label: t("orders.filters.all"), value: undefined },
     { label: t("orders.types.receipt"), value: "RECEIPT" },
     { label: t("orders.types.payment"), value: "PAYMENT" },
-    { label: t("orders.types.sendCode"), value: "SEND" },
-    { label: t("orders.types.sendToken"), value: "SEND_TOKEN" },
-    { label: t("orders.types.native"), value: "NATIVE" },
   ]
 }
 

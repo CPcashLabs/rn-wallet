@@ -31,7 +31,6 @@ import {
   groupOrdersByMonth,
   resolveOrderBillRangeOptions,
   resolveOrderTypeOptions,
-  resolveRangeOptions,
   summarizeStatistics,
   type RangePreset,
 } from "@/features/orders/utils/orderHelpers"
@@ -87,7 +86,6 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
   const { t } = useTranslation()
   const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
-  const [rangePreset, setRangePreset] = useState<RangePreset>("all")
   const [orderType, setOrderType] = useState<OrderTypeFilter | undefined>(undefined)
   const [items, setItems] = useState<OrderListItem[]>([])
   const [statistics, setStatistics] = useState<OrderStatistics>({ receiptAmount: 0, paymentAmount: 0, fee: 0, transactions: 0 })
@@ -98,7 +96,7 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
   const [total, setTotal] = useState(0)
   const loadingMoreRef = useRef(false)
 
-  const rangeSelection = useMemo(() => buildRangeSelection(rangePreset), [rangePreset])
+  const rangeSelection = useMemo(() => buildRangeSelection("all"), [])
   const cacheKey = useMemo(
     () =>
       buildOrderLogsCacheKey({
@@ -109,7 +107,6 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
     [orderType, props.otherAddress, rangeSelection],
   )
   const orderGroups = useMemo(() => groupOrdersByMonth(items), [items])
-  const rangeOptions = useMemo(() => resolveRangeOptions(t), [t])
   const typeOptions = useMemo(() => resolveOrderTypeOptions(t), [t])
 
   useEffect(() => {
@@ -298,41 +295,25 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
             {loadingMore ? <ActivityIndicator color={theme.colors.primary} /> : null}
           </View>
         }
+        ItemSeparatorComponent={() => <View style={styles.monthSectionSpacer} />}
         ListHeaderComponent={
           <View style={styles.headerContent}>
             <SectionCard style={styles.filtersCard}>
               <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("orders.filters.type")}</Text>
-              <View style={styles.filtersPanel}>
-                <ScrollView
-                  horizontal
-                  contentContainerStyle={styles.filterScrollContent}
-                  showsHorizontalScrollIndicator={false}
-                >
-                  {typeOptions.map(option => (
-                    <FilterChip
-                      key={option.label}
-                      label={option.label}
-                      active={orderType === option.value}
-                      onPress={() => setOrderType(option.value)}
-                    />
-                  ))}
-                </ScrollView>
-                <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("orders.filters.time")}</Text>
-                <ScrollView
-                  horizontal
-                  contentContainerStyle={styles.filterScrollContent}
-                  showsHorizontalScrollIndicator={false}
-                >
-                  {rangeOptions.map(option => (
-                    <FilterChip
-                      key={option.value}
-                      label={option.label}
-                      active={rangePreset === option.value}
-                      onPress={() => setRangePreset(option.value)}
-                    />
-                  ))}
-                </ScrollView>
-              </View>
+              <ScrollView
+                horizontal
+                contentContainerStyle={styles.filterScrollContent}
+                showsHorizontalScrollIndicator={false}
+              >
+                {typeOptions.map(option => (
+                  <FilterChip
+                    key={option.label}
+                    label={option.label}
+                    active={orderType === option.value}
+                    onPress={() => setOrderType(option.value)}
+                  />
+                ))}
+              </ScrollView>
             </SectionCard>
 
             <SummaryGrid
@@ -651,6 +632,9 @@ const styles = StyleSheet.create({
   },
   listGroup: {
     marginTop: 14,
+  },
+  monthSectionSpacer: {
+    height: 16,
   },
   emptyState: {
     marginTop: 12,

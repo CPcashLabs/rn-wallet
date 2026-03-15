@@ -416,7 +416,7 @@ function pickNumber(next: () => number, min: number, max: number) {
 }
 
 function toHsl(hue: number, saturation: number, lightness: number) {
-  return `hsl(${hue} ${saturation}% ${lightness}%)`
+  return `hsl(${hue}, ${saturation}%, ${lightness}%)`
 }
 
 const styles = StyleSheet.create({

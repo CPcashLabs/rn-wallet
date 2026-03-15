@@ -7,6 +7,7 @@ import {
   resolveDetailCounterparty,
   resolveOrderExplorerUrl,
   resolveOrderListStatusBadge,
+  resolveOrderTypeOptions,
   resolveOrderTypeLabel,
   resolveQuickRange,
   shouldShowVoucherAction,
@@ -30,6 +31,14 @@ describe("orderHelpers", () => {
     expect(resolveOrderTypeLabel(t, "SEND")).toBe("orders.types.sendCode")
     expect(resolveOrderTypeLabel(t, "receipt_fixed")).toBe("orders.types.receipt")
     expect(resolveOrderTypeLabel(t, "")).toBe("orders.types.unknown")
+  })
+
+  it("exposes only the supported order type filter chips", () => {
+    expect(resolveOrderTypeOptions(t)).toEqual([
+      { label: "orders.filters.all", value: undefined },
+      { label: "orders.types.receipt", value: "RECEIPT" },
+      { label: "orders.types.payment", value: "PAYMENT" },
+    ])
   })
 
   it("resolves the counterparty address for incoming orders", () => {
