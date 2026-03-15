@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { checkTransferNetwork, getOrderDetail, getReceivingOrder, submitShipOrder } from "@/plugins/transfer/services/transferApi"
 import { isCancelledAction } from "@/plugins/transfer/utils/order"
+import { NativeCapabilityUnavailableError } from "@/shared/errors"
 import { walletAdapter } from "@/shared/native/walletAdapter"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useToast } from "@/shared/toast/useToast"
@@ -46,6 +47,8 @@ type OrderDetail = Awaited<ReturnType<typeof getReceivingOrder>>
 function useTransferConfirmController({ onCompleted, orderSn, variant }: Omit<SharedProps, "onClose">) {
   const { t } = useTranslation()
   const { showToast } = useToast()
+  const walletCapability = walletAdapter.getCapability()
+  const submitUnavailableMessage = walletCapability.supported ? "" : t("auth.errors.walletUnavailable")
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [detail, setDetail] = useState<OrderDetail | null>(null)
@@ -109,6 +112,11 @@ function useTransferConfirmController({ onCompleted, orderSn, variant }: Omit<Sh
       return
     }
 
+    if (!walletCapability.supported) {
+      Alert.alert(t("common.infoTitle"), submitUnavailableMessage)
+      return
+    }
+
     setSubmitting(true)
 
     try {
@@ -158,6 +166,8 @@ function useTransferConfirmController({ onCompleted, orderSn, variant }: Omit<Sh
     } catch (error) {
       if (isCancelledAction(error)) {
         showToast({ message: t("transfer.confirm.userRejected"), tone: "warning" })
+      } else if (error instanceof NativeCapabilityUnavailableError) {
+        Alert.alert(t("common.infoTitle"), t("auth.errors.walletUnavailable"))
       } else {
         Alert.alert(t("common.errorTitle"), t("transfer.confirm.submitFailed"))
       }
@@ -171,6 +181,7 @@ function useTransferConfirmController({ onCompleted, orderSn, variant }: Omit<Sh
   return {
     detail,
     loading,
+    submitUnavailableMessage,
     submitting,
     onSubmit: handleSubmit,
   }
@@ -181,6 +192,7 @@ function TransferConfirmBody(props: {
   loading: boolean
   onClose: () => void
   onSubmit: () => void
+  submitUnavailableMessage?: string
   submitting: boolean
   bottomInset?: number
 }) {
@@ -245,10 +257,18 @@ function TransferConfirmBody(props: {
         <Text style={[styles.tipBody, { color: theme.colors.mutedText }]}>{t("transfer.confirm.tipBody")}</Text>
       </SectionCard>
 
+      {props.submitUnavailableMessage ? (
+        <SectionCard>
+          <Text style={[styles.capabilityWarning, { color: theme.colors.warning }]}>
+            {props.submitUnavailableMessage}
+          </Text>
+        </SectionCard>
+      ) : null}
+
       <View style={styles.actions}>
         <SecondaryButton disabled={props.submitting} label={t("common.cancel")} onPress={props.onClose} />
         <PrimaryButton
-          disabled={props.submitting || props.loading || !props.detail}
+          disabled={props.submitting || props.loading || !props.detail || Boolean(props.submitUnavailableMessage)}
           label={props.submitting ? t("common.loading") : t("transfer.confirm.submit")}
           onPress={props.onSubmit}
         />
@@ -272,6 +292,7 @@ export function TransferConfirmScreenView(props: SharedProps) {
         loading={controller.loading}
         onClose={props.onClose}
         onSubmit={() => void controller.onSubmit()}
+        submitUnavailableMessage={controller.submitUnavailableMessage}
         submitting={controller.submitting}
         bottomInset={24}
       />
@@ -359,7 +380,13 @@ export function TransferConfirmModal(props: ModalProps) {
           ]}
         >
           <View style={styles.sheetHeaderSide}>
-            <Pressable disabled={controller.submitting} hitSlop={8} onPress={dismiss} style={styles.backButton}>
+            <Pressable
+              accessibilityShowsLargeContentViewer={false}
+              disabled={controller.submitting}
+              hitSlop={8}
+              onPress={dismiss}
+              style={styles.backButton}
+            >
               <Text style={[styles.backChevron, { color: theme.colors.primary }]}>‹</Text>
               <Text style={[styles.backText, { color: theme.colors.primary }]}>{t("common.back")}</Text>
             </Pressable>
@@ -369,6 +396,7 @@ export function TransferConfirmModal(props: ModalProps) {
           </Text>
           <View style={[styles.sheetHeaderSide, styles.sheetHeaderSideRight]}>
             <Pressable
+              accessibilityShowsLargeContentViewer={false}
               disabled={controller.submitting}
               hitSlop={8}
               onPress={dismiss}
@@ -391,6 +419,7 @@ export function TransferConfirmModal(props: ModalProps) {
           loading={controller.loading}
           onClose={dismiss}
           onSubmit={() => void controller.onSubmit()}
+          submitUnavailableMessage={controller.submitUnavailableMessage}
           submitting={controller.submitting}
         />
       </Animated.View>
@@ -419,6 +448,11 @@ const styles = StyleSheet.create({
   tipBody: {
     fontSize: 13,
     lineHeight: 20,
+  },
+  capabilityWarning: {
+    fontSize: 13,
+    lineHeight: 20,
+    fontWeight: "600",
   },
   actions: {
     gap: 10,
