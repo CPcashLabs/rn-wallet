@@ -3,6 +3,8 @@ import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 
 import type {
   OrderBillAddressItem,
+  OrderDetail,
+  OrderLabelBinding,
   OrderListItem,
   OrderStatistics,
   OrderTypeFilter,
@@ -20,6 +22,15 @@ type OrderLogsCacheEntry = {
 type OrderBillCacheEntry = {
   items: OrderBillAddressItem[]
   statistics: OrderStatistics
+  cachedAt: number
+}
+
+type OrderDetailCacheSnapshot = {
+  detail: OrderDetail
+  labelBinding: OrderLabelBinding
+}
+
+type OrderDetailCacheEntry = OrderDetailCacheSnapshot & {
   cachedAt: number
 }
 
@@ -82,6 +93,42 @@ export function writeOrderBillCache(
     ...value,
     cachedAt: Date.now(),
   })
+}
+
+export function buildOrderDetailCacheKey(orderSn: string) {
+  return `detail::${orderSn}`
+}
+
+export function readOrderDetailCache(orderSn: string): OrderDetailCacheSnapshot | null {
+  const cacheKey = buildOrderDetailCacheKey(orderSn)
+  const entry = readCacheMap<OrderDetailCacheEntry>(KvStorageKeys.OrdersDetailCache)[cacheKey]
+  if (!entry) {
+    return null
+  }
+
+  return {
+    detail: entry.detail,
+    labelBinding: entry.labelBinding,
+  }
+}
+
+export function writeOrderDetailCache(orderSn: string, value: OrderDetailCacheSnapshot) {
+  const cacheKey = buildOrderDetailCacheKey(orderSn)
+  writeCacheMap<OrderDetailCacheEntry>(KvStorageKeys.OrdersDetailCache, cacheKey, {
+    ...value,
+    cachedAt: Date.now(),
+  })
+}
+
+export function isOrderDetailCacheSnapshotEqual(left: OrderDetailCacheSnapshot | null, right: OrderDetailCacheSnapshot | null) {
+  if (left === right) {
+    return true
+  }
+  if (!left || !right) {
+    return false
+  }
+
+  return JSON.stringify(left) === JSON.stringify(right)
 }
 
 export function countNewOrderRecords(previous: OrderListItem[], next: OrderListItem[]) {

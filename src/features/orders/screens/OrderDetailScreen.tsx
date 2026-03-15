@@ -7,7 +7,16 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import type { OrdersStackParamList } from "@/app/navigation/types"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
-import { confirmOrder, findOrderLabels, getOrderDetail, type OrderDetail, type OrderLabelBinding } from "@/features/orders/services/ordersApi"
+import {
+  confirmOrder,
+  findOrderLabels,
+  getOrderDetail,
+  isOrderDetailCacheSnapshotEqual,
+  readOrderDetailCache,
+  writeOrderDetailCache,
+  type OrderDetail,
+  type OrderLabelBinding,
+} from "@/features/orders/services/ordersApi"
 import {
   OrderStatus,
   formatAddressLabel,
@@ -55,17 +64,30 @@ const EMPTY_LABEL_BINDING: OrderLabelBinding = {
   labels: [],
 }
 
+function resolveLabelBinding(detail: OrderDetail, binding?: OrderLabelBinding | null): OrderLabelBinding {
+  if (binding) {
+    return binding
+  }
+
+  return {
+    notes: detail.note,
+    notesImageUrl: detail.notesImageUrl,
+    labels: [],
+  }
+}
+
 export function OrderDetailScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
   const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
   const orderSn = route.params.orderSn
-  const [detail, setDetail] = useState<OrderDetail | null>(null)
-  const [labelBinding, setLabelBinding] = useState<OrderLabelBinding>(EMPTY_LABEL_BINDING)
-  const [loading, setLoading] = useState(true)
+  const cacheSnapshotRef = useRef(readOrderDetailCache(orderSn))
+  const [detail, setDetail] = useState<OrderDetail | null>(() => cacheSnapshotRef.current?.detail ?? null)
+  const [labelBinding, setLabelBinding] = useState<OrderLabelBinding>(() => cacheSnapshotRef.current?.labelBinding ?? EMPTY_LABEL_BINDING)
+  const [loading, setLoading] = useState(() => cacheSnapshotRef.current == null)
   const [confirming, setConfirming] = useState(false)
-  const hasLoadedDetailRef = useRef(false)
+  const hasLoadedDetailRef = useRef(cacheSnapshotRef.current != null)
 
   const loadOrderDetail = useCallback(async (options?: { silent?: boolean }) => {
     const silent = Boolean(options?.silent && hasLoadedDetailRef.current)
@@ -76,15 +98,21 @@ export function OrderDetailScreen({ navigation, route }: Props) {
 
     try {
       const [response, binding] = await Promise.all([getOrderDetail(orderSn), findOrderLabels(orderSn).catch(() => null)])
-      setDetail(response)
-      setLabelBinding(
-        binding ?? {
-          notes: response.note,
-          notesImageUrl: response.notesImageUrl,
-          labels: [],
-        },
-      )
+      const previousSnapshot = cacheSnapshotRef.current
+      const nextSnapshot = {
+        detail: response,
+        labelBinding: resolveLabelBinding(response, binding),
+      }
+      const hasChanged = !isOrderDetailCacheSnapshotEqual(previousSnapshot, nextSnapshot)
+
+      writeOrderDetailCache(orderSn, nextSnapshot)
+      cacheSnapshotRef.current = nextSnapshot
       hasLoadedDetailRef.current = true
+
+      if (hasChanged || previousSnapshot == null) {
+        setDetail(nextSnapshot.detail)
+        setLabelBinding(nextSnapshot.labelBinding)
+      }
     } catch (error) {
       if (!hasLoadedDetailRef.current) {
         setDetail(null)
@@ -132,6 +160,12 @@ export function OrderDetailScreen({ navigation, route }: Props) {
       setConfirming(true)
       await confirmOrder(detail.orderSn)
       const refreshed = await getOrderDetail(detail.orderSn)
+      const nextSnapshot = {
+        detail: refreshed,
+        labelBinding,
+      }
+      writeOrderDetailCache(detail.orderSn, nextSnapshot)
+      cacheSnapshotRef.current = nextSnapshot
       setDetail(refreshed)
       showToast({ message: t("orders.detail.confirmSuccess"), tone: "success" })
     } catch (error) {

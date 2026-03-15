@@ -805,10 +805,14 @@ export async function uploadOrderNoteImage(image: UploadableImage) {
 
 export {
   buildOrderBillCacheKey,
+  buildOrderDetailCacheKey,
   buildOrderLogsCacheKey,
   countNewOrderRecords,
+  isOrderDetailCacheSnapshotEqual,
   readOrderBillCache,
+  readOrderDetailCache,
   readOrderLogsCache,
   writeOrderBillCache,
+  writeOrderDetailCache,
   writeOrderLogsCache,
 } from "@/features/orders/services/orderRecordsCache"
