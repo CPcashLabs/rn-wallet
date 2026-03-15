@@ -12,6 +12,7 @@ export enum KvStorageKeys {
   PasskeyHistory = "auth.passkey_history",
   UserProfile = "auth.user_profile",
   UserAvatarCache = "auth.user_avatar_cache",
+  NetworkLogoCache = "app.network_logo_cache",
   VerificationCodeCountdownEndAt = "auth.verification_code_countdown_end_at",
   EmailBindCountdownEndAt = "auth.email_bind_countdown_end_at",
   EmailUnbindCountdownEndAt = "auth.email_unbind_countdown_end_at",

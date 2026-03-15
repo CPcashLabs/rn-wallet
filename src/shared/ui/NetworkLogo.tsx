@@ -4,6 +4,13 @@ import { Image, StyleSheet, Text, View } from "react-native"
 import { SvgUri } from "react-native-svg"
 
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import {
+  buildNetworkLogoCacheKey,
+  readCachedNetworkLogoEntry,
+  removeCachedNetworkLogoEntry,
+  writeCachedNetworkLogoEntry,
+} from "@/shared/ui/networkLogoCache"
+import { cacheNetworkLogoToFile, removeNetworkLogoFile, supportsNetworkLogoFileCache } from "@/shared/ui/networkLogoFileCache"
 
 type NetworkLogoProps = {
   logoUri?: string | null
@@ -11,6 +18,12 @@ type NetworkLogoProps = {
   chainColor?: string | null
   fallbackMode?: "initials" | "cpcash"
   size?: number
+}
+
+type DisplaySource = {
+  uri: string
+  kind: "local" | "remote"
+  remoteUri: string
 }
 
 function buildLogoCandidates(logoUri?: string | null) {
@@ -35,14 +48,48 @@ function isSvgUri(uri?: string | null) {
 
 export function NetworkLogo(props: NetworkLogoProps) {
   const theme = useAppTheme()
-  const candidates = React.useMemo(() => buildLogoCandidates(props.logoUri), [props.logoUri])
-  const [candidateIndex, setCandidateIndex] = React.useState(candidates.length > 0 ? 0 : -1)
   const size = props.size ?? 34
   const fallbackMode = props.fallbackMode ?? "initials"
-  const activeUri = candidateIndex >= 0 ? candidates[candidateIndex] : null
+  const normalizedChainName = props.chainName.trim()
   const logoSize = Math.round(size * 0.72)
+  const candidates = React.useMemo(() => buildLogoCandidates(props.logoUri), [props.logoUri])
+  const logoKey = React.useMemo(
+    () =>
+      buildNetworkLogoCacheKey({
+        chainName: normalizedChainName,
+        fallbackMode,
+      }),
+    [fallbackMode, normalizedChainName],
+  )
+  const cacheEntry = readCachedNetworkLogoEntry(logoKey)
+  const [candidateIndex, setCandidateIndex] = React.useState(candidates.length > 0 ? 0 : -1)
+  const activeUri = candidateIndex >= 0 ? candidates[candidateIndex] ?? "" : ""
+  const preferredSource = React.useMemo<DisplaySource>(() => {
+    if (activeUri && cacheEntry?.remoteUri === activeUri && cacheEntry.localUri) {
+      return {
+        uri: cacheEntry.localUri,
+        kind: "local",
+        remoteUri: activeUri,
+      }
+    }
 
-  const handleAssetError = React.useCallback(() => {
+    if (activeUri) {
+      return {
+        uri: activeUri,
+        kind: "remote",
+        remoteUri: activeUri,
+      }
+    }
+
+    return {
+      uri: "",
+      kind: "remote",
+      remoteUri: "",
+    }
+  }, [activeUri, cacheEntry?.localUri, cacheEntry?.remoteUri])
+  const [displaySource, setDisplaySource] = React.useState(preferredSource)
+
+  const advanceCandidate = React.useCallback(() => {
     setCandidateIndex(current => {
       if (current < 0) {
         return -1
@@ -52,11 +99,82 @@ export function NetworkLogo(props: NetworkLogoProps) {
     })
   }, [candidates.length])
 
+  const handleAssetError = React.useCallback(() => {
+    if (displaySource.kind === "local") {
+      removeCachedNetworkLogoEntry(logoKey)
+      void removeNetworkLogoFile(displaySource.uri).catch(() => undefined)
+
+      if (displaySource.remoteUri) {
+        setDisplaySource({
+          uri: displaySource.remoteUri,
+          kind: "remote",
+          remoteUri: displaySource.remoteUri,
+        })
+        return
+      }
+    }
+
+    advanceCandidate()
+  }, [advanceCandidate, displaySource.kind, displaySource.remoteUri, displaySource.uri, logoKey])
+
   React.useEffect(() => {
     setCandidateIndex(candidates.length > 0 ? 0 : -1)
   }, [candidates])
 
-  if (activeUri) {
+  React.useEffect(() => {
+    setDisplaySource(previous =>
+      previous.uri === preferredSource.uri &&
+      previous.kind === preferredSource.kind &&
+      previous.remoteUri === preferredSource.remoteUri
+        ? previous
+        : preferredSource,
+    )
+  }, [preferredSource])
+
+  React.useEffect(() => {
+    if (!logoKey || !activeUri || !supportsNetworkLogoFileCache()) {
+      return
+    }
+
+    if (cacheEntry?.remoteUri === activeUri && cacheEntry.localUri) {
+      return
+    }
+
+    let cancelled = false
+    const previousLocalUri = cacheEntry?.localUri || ""
+
+    void cacheNetworkLogoToFile({
+      logoKey,
+      remoteUri: activeUri,
+    })
+      .then(localUri => {
+        if (cancelled || !localUri) {
+          return
+        }
+
+        writeCachedNetworkLogoEntry({
+          logoKey,
+          remoteUri: activeUri,
+          localUri,
+        })
+        setDisplaySource({
+          uri: localUri,
+          kind: "local",
+          remoteUri: activeUri,
+        })
+
+        if (previousLocalUri && previousLocalUri !== localUri) {
+          void removeNetworkLogoFile(previousLocalUri).catch(() => undefined)
+        }
+      })
+      .catch(() => undefined)
+
+    return () => {
+      cancelled = true
+    }
+  }, [activeUri, cacheEntry?.localUri, cacheEntry?.remoteUri, logoKey])
+
+  if (displaySource.uri) {
     return (
       <View
         style={[
@@ -70,7 +188,7 @@ export function NetworkLogo(props: NetworkLogoProps) {
           },
         ]}
       >
-        {isSvgUri(activeUri) ? (
+        {isSvgUri(displaySource.uri) ? (
           <SvgUri
             fallback={
               <View
@@ -87,14 +205,15 @@ export function NetworkLogo(props: NetworkLogoProps) {
             }
             height={logoSize}
             onError={handleAssetError}
-            uri={activeUri}
+            uri={displaySource.uri}
             width={logoSize}
           />
         ) : (
           <Image
+            fadeDuration={0}
             onError={handleAssetError}
             resizeMode="contain"
-            source={{ uri: activeUri }}
+            source={{ uri: displaySource.uri, cache: "force-cache" }}
             style={[
               styles.image,
               {
@@ -139,7 +258,7 @@ export function NetworkLogo(props: NetworkLogoProps) {
         },
       ]}
     >
-      <Text style={styles.initialsText}>{props.chainName.slice(0, 2).toUpperCase()}</Text>
+      <Text style={styles.initialsText}>{normalizedChainName.slice(0, 2).toUpperCase()}</Text>
     </View>
   )
 }
