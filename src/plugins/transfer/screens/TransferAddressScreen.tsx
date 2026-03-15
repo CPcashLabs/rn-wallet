@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import { useAddressBookStore } from "@/features/address-book/store/useAddressBookStore"
+import { navigateRoot } from "@/app/navigation/navigationRef"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { PrimaryButton } from "@/shared/ui/AppFlowUi"
 import { formatAddress, formatDateTime } from "@/features/home/utils/format"
@@ -25,7 +26,7 @@ import { AppEmptyState } from "@/shared/ui/AppEmptyState"
 import { AppListCard, AppListRow } from "@/shared/ui/AppList"
 import { AppTextField } from "@/shared/ui/AppTextField"
 
-import type { RootStackParamList, TransferStackParamList } from "@/app/navigation/types"
+import type { TransferStackParamList } from "@/app/navigation/types"
 
 type Props = NativeStackScreenProps<TransferStackParamList, "TransferAddressScreen">
 type RecentEntry = Awaited<ReturnType<typeof getRecentTransferEntries>>[number]
@@ -260,27 +261,31 @@ export function TransferAddressScreen({ navigation, route }: Props) {
       return
     }
 
-    navigation
-      .getParent<NativeStackScreenProps<RootStackParamList>["navigation"]>()
-      ?.navigate("AddressBookStack", {
-        screen: "AddressBookListScreen",
-        params: {
-          mode: "select",
-          chainType: targetChainType,
-        },
-      })
+    const navigated = navigateRoot("AddressBookStack", {
+      screen: "AddressBookListScreen",
+      params: {
+        mode: "select",
+        chainType: targetChainType,
+      },
+    })
+
+    if (!navigated) {
+      presentMessage(t("transfer.address.loadAddressBookFailed"))
+    }
   }
 
   const handleAddAddressBook = () => {
-    navigation
-      .getParent<NativeStackScreenProps<RootStackParamList>["navigation"]>()
-      ?.navigate("AddressBookStack", {
-        screen: "AddressBookEditScreen",
-        params: {
-          initialAddress: normalizedAddress,
-          chainType: targetChainType,
-        },
-      })
+    const navigated = navigateRoot("AddressBookStack", {
+      screen: "AddressBookEditScreen",
+      params: {
+        initialAddress: normalizedAddress,
+        chainType: targetChainType,
+      },
+    })
+
+    if (!navigated) {
+      presentMessage(t("transfer.address.loadAddressBookFailed"))
+    }
   }
 
   const handleScan = async (mode: "camera" | "image") => {
