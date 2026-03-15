@@ -6,6 +6,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { useTranslation } from "react-i18next"
 
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { writeCachedReceiveChainColor } from "@/plugins/receive/services/receiveColorCache"
 import { useHomeBackAction } from "@/shared/navigation/useHomeBackAction"
 import { getTransferChannels } from "@/shared/exchange/services/exchangeApi"
 import { getBoolean, setBoolean } from "@/shared/storage/kvStorage"
@@ -97,6 +98,11 @@ export function ReceiveSelectNetworkScreen({ navigation, route }: Props) {
 
   const handleSelectChannel = useCallback(
     (item: ChannelItem) => {
+      writeCachedReceiveChainColor({
+        payChain: item.receiveChainName,
+        color: item.receiveChainColor,
+      })
+
       navigation.navigate("ReceiveHomeScreen", {
         payChain: item.receiveChainName,
         chainColor: item.receiveChainColor,
@@ -195,6 +201,7 @@ function ChannelRow(props: {
 }) {
   const theme = useAppTheme()
   const title = props.item.channelType === "normal" ? "CPcash" : props.item.receiveChainName
+  const logoUri = props.item.channelType === "normal" ? undefined : props.item.receiveChainLogo
 
   return (
     <Pressable
@@ -211,7 +218,7 @@ function ChannelRow(props: {
           chainColor={props.item.receiveChainColor}
           chainName={props.item.receiveChainName}
           fallbackMode={props.item.channelType === "normal" ? "cpcash" : "initials"}
-          logoUri={props.item.receiveChainLogo}
+          logoUri={logoUri}
         />
 
         <Text style={[styles.channelTitle, { color: theme.colors.text }]}>{title}</Text>
