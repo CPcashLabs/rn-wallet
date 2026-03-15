@@ -17,6 +17,7 @@ export function HomeScaffold(props: {
   backgroundColor?: string
   headerBackgroundColor?: string
   headerTintColor?: string
+  backTintColor?: string
   contentContainerStyle?: StyleProp<ViewStyle>
   titleAlign?: "left" | "center"
 }) {
@@ -26,7 +27,7 @@ export function HomeScaffold(props: {
   const backgroundColor = props.backgroundColor ?? theme.colors.background
   const headerBackgroundColor = props.headerBackgroundColor ?? theme.colors.glassStrong ?? theme.colors.surfaceElevated ?? theme.colors.surface
   const headerTintColor = props.headerTintColor ?? theme.colors.text
-  const backTintColor = theme.colors.primary
+  const backTintColor = props.backTintColor ?? theme.colors.primary
   const titleAlign = props.titleAlign ?? (props.canGoBack ? "center" : "left")
   const isLargeTitle = titleAlign === "left" && !props.canGoBack
   const contentOpacity = React.useRef(new Animated.Value(0)).current
@@ -155,7 +156,7 @@ export function HomeScaffold(props: {
         <View
           style={{
             backgroundColor,
-            paddingTop: insets.top + 10,
+            paddingTop: insets.top + 4,
             paddingLeft: insets.left,
             paddingRight: insets.right,
           }}
