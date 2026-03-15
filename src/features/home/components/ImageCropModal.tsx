@@ -80,31 +80,42 @@ export function ImageCropModal({ visible, imageUri, onConfirm, onCancel, initial
   const translateY = React.useRef(new Animated.Value(0)).current
   const scaleAnim = React.useRef(new Animated.Value(1)).current
 
-  // 存储当前实际值（Animated.Value 不能直接读取，需要通过 listener）
+  // 手势逻辑使用同步 ref 作为真值，避免依赖 Animated listener 的异步时序。
   const currentTx = React.useRef(0)
   const currentTy = React.useRef(0)
   const currentScale = React.useRef(1)
 
+  const setTranslateXValue = React.useCallback((value: number) => {
+    currentTx.current = value
+    translateX.setValue(value)
+  }, [translateX])
+
+  const setTranslateYValue = React.useCallback((value: number) => {
+    currentTy.current = value
+    translateY.setValue(value)
+  }, [translateY])
+
+  const setScaleValue = React.useCallback((value: number) => {
+    currentScale.current = value
+    scaleAnim.setValue(value)
+  }, [scaleAnim])
+
   React.useEffect(() => {
-    const idX = translateX.addListener(({ value }) => { currentTx.current = value })
-    const idY = translateY.addListener(({ value }) => { currentTy.current = value })
-    const idS = scaleAnim.addListener(({ value }) => { currentScale.current = value })
+    const idS = scaleAnim.addListener(({ value }) => {
+      currentScale.current = value
+    })
+
     return () => {
-      stopAnimatedValueListener(translateX, idX)
-      stopAnimatedValueListener(translateY, idY)
       stopAnimatedValueListener(scaleAnim, idS)
     }
-  }, [translateX, translateY, scaleAnim])
+  }, [scaleAnim])
 
   // 重置动画值
   const resetTransform = React.useCallback(() => {
-    translateX.setValue(0)
-    translateY.setValue(0)
-    scaleAnim.setValue(1)
-    currentTx.current = 0
-    currentTy.current = 0
-    currentScale.current = 1
-  }, [translateX, translateY, scaleAnim])
+    setTranslateXValue(0)
+    setTranslateYValue(0)
+    setScaleValue(1)
+  }, [setScaleValue, setTranslateXValue, setTranslateYValue])
 
   React.useEffect(() => {
     if (visible) resetTransform()
@@ -143,11 +154,11 @@ export function ImageCropModal({ visible, imageUri, onConfirm, onCancel, initial
                 MAX_SCALE,
                 Math.max(MIN_SCALE, lastScale.current * (dist / lastTouchDist.current)),
               )
-              scaleAnim.setValue(newScale)
+              setScaleValue(newScale)
             }
           } else if (!isPinching.current) {
-            translateX.setValue(lastTx.current + gestureState.dx)
-            translateY.setValue(lastTy.current + gestureState.dy)
+            setTranslateXValue(lastTx.current + gestureState.dx)
+            setTranslateYValue(lastTy.current + gestureState.dy)
           }
         },
         onPanResponderRelease: () => {
@@ -159,8 +170,7 @@ export function ImageCropModal({ visible, imageUri, onConfirm, onCancel, initial
           lastTouchDist.current = 0
         },
       }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+    [scaleAnim, setScaleValue, setTranslateXValue, setTranslateYValue],
   )
 
   const cropAreaWidth = SCREEN_WIDTH - 48

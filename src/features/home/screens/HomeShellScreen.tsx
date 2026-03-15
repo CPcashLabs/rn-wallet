@@ -74,11 +74,20 @@ export function HomeShellScreen({ navigation, route }: Props) {
   const balanceError = useBalanceStore(state => state.error)
   const loadCoins = useBalanceStore(state => state.loadCoins)
   const [showBalance, setShowBalance] = useState(true)
+  const mountedRef = useRef(true)
   const inviteHandledRef = useRef(false)
   const balanceValueAnim = useRef(new Animated.Value(0)).current
   const displayedBalanceValueRef = useRef(0)
   const hasAppliedLiveValueRef = useRef(false)
   const [displayedBalanceValue, setDisplayedBalanceValue] = useState(0)
+
+  useEffect(() => {
+    mountedRef.current = true
+
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
   const totalAssetValue = useMemo(() => {
     return coins.reduce((sum, coin) => {
@@ -108,6 +117,10 @@ export function HomeShellScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     const listenerId = balanceValueAnim.addListener(({ value }) => {
+      if (!mountedRef.current) {
+        return
+      }
+
       displayedBalanceValueRef.current = value
       setDisplayedBalanceValue(value)
     })
@@ -122,6 +135,10 @@ export function HomeShellScreen({ navigation, route }: Props) {
     hasAppliedLiveValueRef.current = false
     const cachedValue = balanceCacheKey ? readHomeBalanceCache(balanceCacheKey)?.totalAssetValue ?? 0 : 0
 
+    if (!mountedRef.current) {
+      return
+    }
+
     balanceValueAnim.stopAnimation()
     balanceValueAnim.setValue(cachedValue)
     displayedBalanceValueRef.current = cachedValue
@@ -130,7 +147,8 @@ export function HomeShellScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     if (
-      !balanceCacheKey
+      !mountedRef.current
+      || !balanceCacheKey
       || balanceWalletKey !== balanceCacheKey
       || coins.length === 0
       || !Number.isFinite(totalAssetValue)
@@ -163,7 +181,13 @@ export function HomeShellScreen({ navigation, route }: Props) {
       duration,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
-    }).start()
+    }).start(({ finished }) => {
+      if (!finished || !mountedRef.current) {
+        return
+      }
+
+      displayedBalanceValueRef.current = nextValue
+    })
   }, [balanceCacheKey, balanceValueAnim, balanceWalletKey, coins.length, totalAssetValue])
 
   useEffect(() => {
@@ -173,15 +197,30 @@ export function HomeShellScreen({ navigation, route }: Props) {
 
     inviteHandledRef.current = true
 
+    let cancelled = false
+
     void (async () => {
       try {
         await bindInviteCode(route.params?.inviteCode as string)
+
+        if (cancelled || !mountedRef.current) {
+          return
+        }
+
         showToast({ message: t("home.shell.inviteBound"), tone: "success" })
       } catch (error) {
+        if (cancelled || !mountedRef.current) {
+          return
+        }
+
         Alert.alert(t("common.errorTitle"), getInviteBindingMessage(error))
       }
     })()
-  }, [route.params?.inviteCode, t])
+
+    return () => {
+      cancelled = true
+    }
+  }, [route.params?.inviteCode, showToast, t])
 
   const handleToggleBalance = () => {
     const next = !showBalance
@@ -215,6 +254,10 @@ export function HomeShellScreen({ navigation, route }: Props) {
     }
 
     const result = await scannerAdapter.scan()
+
+    if (!mountedRef.current) {
+      return
+    }
 
     if (!result.ok) {
       if (isCancelledNativeAction(result.error)) {
