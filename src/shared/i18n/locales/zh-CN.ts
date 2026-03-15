@@ -567,6 +567,8 @@ const home = {
       refreshStatus: "刷新状态",
       refreshing: "刷新中...",
       updatedAt: "更新时间 {{at}}",
+      orderSn: "子单号",
+      createdAt: "创建时间",
       new: "新",
       pending: "处理中",
       emptyTitle: "暂无子单记录",

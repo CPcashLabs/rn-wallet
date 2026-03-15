@@ -567,6 +567,8 @@ const home = {
       refreshStatus: "Refresh Status",
       refreshing: "Refreshing...",
       updatedAt: "Updated at {{at}}",
+      orderSn: "Sub-order SN",
+      createdAt: "Created At",
       new: "NEW",
       pending: "Pending",
       emptyTitle: "No sub-order yet",
