@@ -2,31 +2,36 @@ import React, { useCallback, useMemo, useState } from "react"
 
 import { useFocusEffect } from "@react-navigation/native"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
-import { Alert, FlatList, StyleSheet, Text, View } from "react-native"
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { getTransferChannels } from "@/shared/exchange/services/exchangeApi"
-import { useDeferredValueCompat } from "@/shared/hooks/useDeferredValueCompat"
 import { getBoolean, setBoolean } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { useToast } from "@/shared/toast/useToast"
 import { AppEmptyState } from "@/shared/ui/AppEmptyState"
-import { AppListRow } from "@/shared/ui/AppList"
-import { AppTextField } from "@/shared/ui/AppTextField"
+import { AppGlyph } from "@/shared/ui/AppGlyph"
+import { NetworkLogo } from "@/shared/ui/NetworkLogo"
 
 import type { ReceiveStackParamList } from "@/app/navigation/types"
 
 type Props = NativeStackScreenProps<ReceiveStackParamList, "ReceiveSelectNetworkScreen">
 type ChannelItem = Awaited<ReturnType<typeof getTransferChannels>>[number]
+type ChannelSection = {
+  key: "normal" | "bridge"
+  title: string
+  infoMessage: string
+  items: ChannelItem[]
+}
 
 export function ReceiveSelectNetworkScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const toast = useToast()
   const chainId = useWalletStore(state => state.chainId)
-  const [keyword, setKeyword] = useState("")
-  const deferredKeyword = useDeferredValueCompat(keyword)
   const [channels, setChannels] = useState<ChannelItem[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -40,7 +45,7 @@ export function ReceiveSelectNetworkScreen({ navigation, route }: Props) {
     } catch (error) {
       console.error("[receive-plugin][select-network][loadChannels]", error)
       setChannels([])
-      Alert.alert(t("common.errorTitle"), t("transfer.selectToken.loadFailed"))
+      Alert.alert(t("common.errorTitle"), t("receive.select.loadFailed"))
     } finally {
       setLoading(false)
     }
@@ -62,20 +67,31 @@ export function ReceiveSelectNetworkScreen({ navigation, route }: Props) {
     }, [channels.length, loadChannels]),
   )
 
-  const filteredChannels = useMemo(() => {
-    const normalized = deferredKeyword.trim().toLowerCase()
-    if (!normalized) {
-      return channels
+  const sections = useMemo<ChannelSection[]>(() => {
+    const normalChannels = channels.filter(item => item.channelType === "normal")
+    const bridgeChannels = channels.filter(item => item.channelType === "bridge")
+    const result: ChannelSection[] = []
+
+    if (normalChannels.length > 0) {
+      result.push({
+        key: "normal",
+        title: t("receive.select.normalSectionTitle"),
+        infoMessage: t("receive.select.normalSectionMessage"),
+        items: normalChannels,
+      })
     }
 
-    return channels.filter(item => {
-      return (
-        item.title.toLowerCase().includes(normalized) ||
-        item.subtitle.toLowerCase().includes(normalized) ||
-        item.receiveChainName.toLowerCase().includes(normalized)
-      )
-    })
-  }, [channels, deferredKeyword])
+    if (bridgeChannels.length > 0) {
+      result.push({
+        key: "bridge",
+        title: t("receive.select.bridgeSectionTitle"),
+        infoMessage: t("receive.select.bridgeSectionMessage"),
+        items: bridgeChannels,
+      })
+    }
+
+    return result
+  }, [channels, t])
 
   const handleSelectChannel = useCallback(
     (item: ChannelItem) => {
@@ -91,51 +107,83 @@ export function ReceiveSelectNetworkScreen({ navigation, route }: Props) {
     [navigation, route.params?.copouch, route.params?.cowallet, route.params?.multisigWalletId],
   )
 
-  const renderChannel = useCallback(
-    ({ item, index }: { item: ChannelItem; index: number }) => (
-      <ChannelRow item={item} last={index === filteredChannels.length - 1} onPress={() => handleSelectChannel(item)} />
-    ),
-    [filteredChannels.length, handleSelectChannel],
+  const handleShowInfo = useCallback(
+    (message: string) => {
+      toast.showToast({
+        message,
+        duration: 2600,
+      })
+    },
+    [toast],
   )
 
   return (
-    <HomeScaffold title={t("receive.select.title")} scroll={false}>
+    <HomeScaffold
+      backgroundColor={theme.colors.surfaceElevated ?? theme.colors.background}
+      hideHeader
+      scroll={false}
+      title={t("receive.select.title")}
+    >
       <View style={styles.page}>
-        <View style={[styles.tipCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <Text style={[styles.tipTitle, { color: theme.colors.text }]}>{t("receive.select.tipTitle")}</Text>
-          <Text style={[styles.tipBody, { color: theme.colors.mutedText }]}>{t("receive.select.tipBody")}</Text>
+        <View style={styles.header}>
+          {navigation.canGoBack() ? (
+            <Pressable hitSlop={10} onPress={navigation.goBack} style={styles.backButton}>
+              <Text style={[styles.backButtonText, { color: theme.colors.text }]}>‹</Text>
+            </Pressable>
+          ) : null}
+          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>{t("receive.select.title")}</Text>
         </View>
 
-        <AppTextField
-          autoCapitalize="none"
-          backgroundTone="surface"
-          containerStyle={styles.searchField}
-          onChangeText={setKeyword}
-          placeholder={t("receive.select.searchPlaceholder")}
-          value={keyword}
-        />
+        {loading && sections.length === 0 ? (
+          <View style={styles.stateCard}>
+            <AppEmptyState body={t("receive.select.loading")} title={t("common.loading")} />
+          </View>
+        ) : sections.length === 0 ? (
+          <View style={styles.stateCard}>
+            <AppEmptyState body={t("receive.select.emptyBody")} title={t("receive.select.emptyTitle")} />
+          </View>
+        ) : (
+          <ScrollView
+            bounces={false}
+            contentContainerStyle={styles.scrollContent}
+            keyboardDismissMode="on-drag"
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View
+              style={[
+                styles.tipCard,
+                {
+                  backgroundColor: theme.colors.surfaceMuted ?? theme.colors.surface,
+                  borderColor: theme.isDark ? theme.colors.border : "transparent",
+                },
+              ]}
+            >
+              <View style={styles.tipHeader}>
+                <AppGlyph backgroundColor="transparent" name="info" size={26} tintColor={theme.colors.text} />
+                <Text style={[styles.tipTitle, { color: theme.colors.text }]}>{t("receive.select.tipTitle")}</Text>
+              </View>
+              <Text style={[styles.tipBody, { color: theme.colors.mutedText }]}>{t("receive.select.tipBody")}</Text>
+            </View>
 
-        <FlatList
-          data={filteredChannels}
-          initialNumToRender={12}
-          keyboardDismissMode="on-drag"
-          keyboardShouldPersistTaps="handled"
-          keyExtractor={item => item.key}
-          ListEmptyComponent={
-            loading ? (
-              <AppEmptyState body={t("transfer.selectToken.loading")} title={t("common.loading")} />
-            ) : (
-              <AppEmptyState body={t("receive.select.emptyBody")} title={t("receive.select.emptyTitle")} />
-            )
-          }
-          maxToRenderPerBatch={16}
-          removeClippedSubviews
-          renderItem={renderChannel}
-          showsVerticalScrollIndicator={false}
-          style={[styles.listCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
-          windowSize={8}
-          contentContainerStyle={filteredChannels.length === 0 ? styles.listCardEmptyContent : undefined}
-        />
+            {sections.map(section => (
+              <View key={section.key} style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Text style={[styles.sectionTitle, { color: theme.colors.mutedText }]}>{section.title}</Text>
+                  <Pressable hitSlop={8} onPress={() => handleShowInfo(section.infoMessage)} style={styles.sectionInfoButton}>
+                    <AppGlyph backgroundColor="transparent" name="info" size={24} tintColor={theme.colors.mutedText} />
+                  </Pressable>
+                </View>
+
+                <View style={styles.sectionList}>
+                  {section.items.map(item => (
+                    <ChannelRow key={item.key} item={item} onPress={() => handleSelectChannel(item)} />
+                  ))}
+                </View>
+              </View>
+            ))}
+          </ScrollView>
+        )}
       </View>
     </HomeScaffold>
   )
@@ -144,92 +192,124 @@ export function ReceiveSelectNetworkScreen({ navigation, route }: Props) {
 function ChannelRow(props: {
   item: ChannelItem
   onPress: () => void
-  last: boolean
 }) {
   const theme = useAppTheme()
+  const title = props.item.channelType === "normal" ? "CPcash" : props.item.receiveChainName
 
   return (
-    <AppListRow
-      hideDivider={props.last}
-      left={
-        props.item.receiveChainLogo ? (
-          <View style={[styles.logoShell, { borderColor: theme.colors.border, backgroundColor: theme.colors.background }]}>
-            <Text style={[styles.logoText, { color: theme.colors.text }]}>{props.item.title.slice(0, 2).toUpperCase()}</Text>
-          </View>
-        ) : (
-          <View style={[styles.channelDot, { backgroundColor: props.item.receiveChainColor || theme.colors.success }]} />
-        )
-      }
+    <Pressable
       onPress={props.onPress}
+      style={({ pressed }) => [
+        styles.channelRow,
+        {
+          backgroundColor: pressed ? theme.colors.surfaceMuted ?? theme.colors.backgroundMuted : "transparent",
+        },
+      ]}
     >
-      <View style={styles.titleRow}>
-        <Text style={[styles.rowTitle, { color: theme.colors.text }]}>{props.item.title}</Text>
+      <View style={styles.channelRowContent}>
+        <NetworkLogo
+          chainColor={props.item.receiveChainColor}
+          chainName={props.item.receiveChainName}
+          fallbackMode={props.item.channelType === "normal" ? "cpcash" : "initials"}
+          logoUri={props.item.receiveChainLogo}
+        />
+
+        <Text style={[styles.channelTitle, { color: theme.colors.text }]}>{title}</Text>
       </View>
-      <Text style={[styles.rowSubtitle, { color: theme.colors.mutedText }]}>{props.item.subtitle}</Text>
-    </AppListRow>
+    </Pressable>
   )
 }
 
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    padding: 16,
-    gap: 12,
+    paddingHorizontal: 24,
+    paddingBottom: 8,
+  },
+  header: {
+    minHeight: 56,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  backButton: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    width: 44,
+    height: 44,
+    alignItems: "flex-start",
+    justifyContent: "center",
+  },
+  backButtonText: {
+    fontSize: 34,
+    lineHeight: 34,
+    fontWeight: "300",
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+  },
+  stateCard: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  scrollContent: {
+    paddingBottom: 28,
+    gap: 28,
   },
   tipCard: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 16,
-    padding: 14,
-    gap: 6,
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 22,
+    gap: 16,
+  },
+  tipHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
   tipTitle: {
-    fontSize: 14,
-    fontWeight: "700",
+    fontSize: 17,
+    fontWeight: "500",
   },
   tipBody: {
-    fontSize: 13,
-    lineHeight: 20,
+    fontSize: 16,
+    lineHeight: 24,
   },
-  searchField: {
-    backgroundColor: "transparent",
+  section: {
+    gap: 20,
   },
-  listCard: {
-    flex: 1,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 18,
-  },
-  listCardEmptyContent: {
-    flexGrow: 1,
-  },
-  logoShell: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  logoText: {
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  channelDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 999,
-    marginHorizontal: 13,
-  },
-  titleRow: {
+  sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
   },
-  rowTitle: {
-    fontSize: 15,
-    fontWeight: "700",
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "400",
   },
-  rowSubtitle: {
-    fontSize: 12,
-    lineHeight: 18,
+  sectionInfoButton: {
+    marginTop: 1,
+  },
+  sectionList: {
+    gap: 18,
+  },
+  channelRow: {
+    borderRadius: 18,
+    marginHorizontal: -8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  channelRowContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+  },
+  channelTitle: {
+    fontSize: 21,
+    fontWeight: "700",
+    letterSpacing: -0.2,
   },
 })
