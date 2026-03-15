@@ -18,7 +18,7 @@ export function mapLocaleToAppLanguage(locale: string | null | undefined): AppLa
     return null
   }
 
-  const [language = "", region] = normalized.split("-")
+  const [language, region] = normalized.split("-")
   const canonical = region ? `${language.toLowerCase()}-${region.toUpperCase()}` : language.toLowerCase()
   if (isSupportedLanguage(canonical)) {
     return canonical
