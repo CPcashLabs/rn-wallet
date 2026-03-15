@@ -9,14 +9,21 @@ import { formatAddress } from "@/features/home/utils/format"
 import { ActionRow, FilterChip, MonthHeader, OrderListCard, SummaryGrid, SuccessStateCard } from "@/features/orders/components/OrdersUi"
 import { exportOrderBillFile } from "@/features/orders/services/orderExport"
 import {
+  buildOrderBillCacheKey,
+  buildOrderLogsCacheKey,
+  countNewOrderRecords,
   getOrderBillAddresses,
   getOrderBillStatistics,
   getOrderTxlogs,
   getOrderTxlogStatistics,
+  readOrderBillCache,
+  readOrderLogsCache,
   type OrderBillAddressItem,
   type OrderListItem,
   type OrderStatistics,
   type OrderTypeFilter,
+  writeOrderBillCache,
+  writeOrderLogsCache,
 } from "@/features/orders/services/ordersApi"
 import {
   buildRangeSelection,
@@ -79,6 +86,7 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
   const theme = useAppTheme()
   const { t } = useTranslation()
   const { presentError } = useErrorPresenter()
+  const { showToast } = useToast()
   const [rangePreset, setRangePreset] = useState<RangePreset>("all")
   const [orderType, setOrderType] = useState<OrderTypeFilter | undefined>(undefined)
   const [items, setItems] = useState<OrderListItem[]>([])
@@ -91,15 +99,38 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
   const loadingMoreRef = useRef(false)
 
   const rangeSelection = useMemo(() => buildRangeSelection(rangePreset), [rangePreset])
+  const cacheKey = useMemo(
+    () =>
+      buildOrderLogsCacheKey({
+        otherAddress: props.otherAddress,
+        orderType,
+        ...rangeSelection,
+      }),
+    [orderType, props.otherAddress, rangeSelection],
+  )
   const orderGroups = useMemo(() => groupOrdersByMonth(items), [items])
   const rangeOptions = useMemo(() => resolveRangeOptions(t), [t])
   const typeOptions = useMemo(() => resolveOrderTypeOptions(t), [t])
 
   useEffect(() => {
     let active = true
+    const cachedSnapshot = readOrderLogsCache(cacheKey)
+
+    if (cachedSnapshot) {
+      setItems(cachedSnapshot.items)
+      setStatistics(cachedSnapshot.statistics)
+      setPage(cachedSnapshot.page)
+      setTotal(cachedSnapshot.total)
+      setLoading(false)
+    } else {
+      setLoading(true)
+      setItems([])
+      setStatistics({ receiptAmount: 0, paymentAmount: 0, fee: 0, transactions: 0 })
+      setPage(1)
+      setTotal(0)
+    }
 
     void (async () => {
-      setLoading(true)
       try {
         const [listResponse, statsResponse] = await Promise.all([
           getOrderTxlogs({
@@ -124,8 +155,24 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
         setStatistics(statsResponse)
         setPage(listResponse.page)
         setTotal(listResponse.total)
+        writeOrderLogsCache(cacheKey, {
+          items: listResponse.data,
+          statistics: statsResponse,
+          page: listResponse.page,
+          total: listResponse.total,
+        })
+
+        if (cachedSnapshot) {
+          const nextCount = countNewOrderRecords(cachedSnapshot.items, listResponse.data)
+          if (nextCount > 0) {
+            showToast({
+              message: t("orders.list.updatedWithCount", { count: nextCount }),
+              tone: "success",
+            })
+          }
+        }
       } catch (error) {
-        if (active) {
+        if (active && !cachedSnapshot) {
           presentError(error, {
             fallbackKey: "orders.list.loadFailed",
           })
@@ -141,7 +188,7 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
     return () => {
       active = false
     }
-  }, [orderType, presentError, props.otherAddress, rangeSelection])
+  }, [cacheKey, orderType, presentError, props.otherAddress, rangeSelection, showToast, t])
 
   const handleLoadMore = async () => {
     if (loading || refreshing || loadingMoreRef.current || items.length >= total) {
@@ -160,7 +207,16 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
         ...rangeSelection,
       })
 
-      setItems(current => [...current, ...response.data])
+      setItems(current => {
+        const nextItems = [...current, ...response.data]
+        writeOrderLogsCache(cacheKey, {
+          items: nextItems,
+          statistics,
+          page: response.page,
+          total: response.total,
+        })
+        return nextItems
+      })
       setPage(response.page)
       setTotal(response.total)
     } catch (error) {
@@ -196,6 +252,12 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
       setStatistics(statsResponse)
       setPage(listResponse.page)
       setTotal(listResponse.total)
+      writeOrderLogsCache(cacheKey, {
+        items: listResponse.data,
+        statistics: statsResponse,
+        page: listResponse.page,
+        total: listResponse.total,
+      })
     } catch (error) {
       presentError(error, {
         fallbackKey: "orders.list.refreshFailed",
@@ -326,13 +388,24 @@ export function OrderBillScreen({ navigation, route }: OrderBillProps) {
   const [loading, setLoading] = useState(true)
 
   const rangeSelection = useMemo(() => buildRangeSelection(preset), [preset])
+  const cacheKey = useMemo(() => buildOrderBillCacheKey(rangeSelection), [rangeSelection])
   const rangeOptions = useMemo(() => resolveOrderBillRangeOptions(t), [t])
 
   useEffect(() => {
     let active = true
+    const cachedSnapshot = readOrderBillCache(cacheKey)
+
+    if (cachedSnapshot) {
+      setStatistics(cachedSnapshot.statistics)
+      setItems(cachedSnapshot.items)
+      setLoading(false)
+    } else {
+      setLoading(true)
+      setStatistics({ receiptAmount: 0, paymentAmount: 0, fee: 0, transactions: 0 })
+      setItems([])
+    }
 
     void (async () => {
-      setLoading(true)
       try {
         const [statsResponse, listResponse] = await Promise.all([
           getOrderBillStatistics(rangeSelection),
@@ -345,8 +418,12 @@ export function OrderBillScreen({ navigation, route }: OrderBillProps) {
 
         setStatistics(statsResponse)
         setItems(listResponse.data)
+        writeOrderBillCache(cacheKey, {
+          statistics: statsResponse,
+          items: listResponse.data,
+        })
       } catch (error) {
-        if (active) {
+        if (active && !cachedSnapshot) {
           presentError(error, {
             fallbackKey: "orders.bill.loadFailed",
           })
@@ -361,7 +438,7 @@ export function OrderBillScreen({ navigation, route }: OrderBillProps) {
     return () => {
       active = false
     }
-  }, [presentError, rangeSelection])
+  }, [cacheKey, presentError, rangeSelection])
 
   return (
     <HomeScaffold
