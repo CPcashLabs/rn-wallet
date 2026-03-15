@@ -106,15 +106,15 @@ describe("orderHelpers", () => {
   it("maps list badges to active and failure tones", () => {
     expect(resolveOrderListStatusBadge(t, OrderStatus.BuyerPaying)).toEqual({
       label: "orders.status.pending",
-      tone: "active",
+      tone: "warning",
     })
     expect(resolveOrderListStatusBadge(t, OrderStatus.BuyerPaid)).toEqual({
       label: "orders.status.inProgress",
-      tone: "active",
+      tone: "info",
     })
     expect(resolveOrderListStatusBadge(t, OrderStatus.SellerPaying)).toEqual({
       label: "orders.status.inProgress",
-      tone: "active",
+      tone: "info",
     })
     expect(resolveOrderListStatusBadge(t, OrderStatus.TimeoutClosed)).toEqual({
       label: "orders.status.failed",

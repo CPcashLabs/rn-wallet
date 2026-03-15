@@ -6,7 +6,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import { HeaderTextAction, HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { formatAddress } from "@/features/home/utils/format"
-import { ActionRow, FilterChip, MonthHeader, OrderListCard, SummaryGrid, SuccessStateCard } from "@/features/orders/components/OrdersUi"
+import { ActionRow, FilterChip, OrderMonthSection, SummaryGrid, SuccessStateCard } from "@/features/orders/components/OrdersUi"
 import { exportOrderBillFile } from "@/features/orders/services/orderExport"
 import {
   buildOrderBillCacheKey,
@@ -300,28 +300,38 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
         }
         ListHeaderComponent={
           <View style={styles.headerContent}>
-            <SectionCard>
-              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("orders.filters.time")}</Text>
-              <View style={styles.filterWrap}>
-                {rangeOptions.map(option => (
-                  <FilterChip
-                    key={option.value}
-                    label={option.label}
-                    active={rangePreset === option.value}
-                    onPress={() => setRangePreset(option.value)}
-                  />
-                ))}
-              </View>
+            <SectionCard style={styles.filtersCard}>
               <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("orders.filters.type")}</Text>
-              <View style={styles.filterWrap}>
-                {typeOptions.map(option => (
-                  <FilterChip
-                    key={option.label}
-                    label={option.label}
-                    active={orderType === option.value}
-                    onPress={() => setOrderType(option.value)}
-                  />
-                ))}
+              <View style={styles.filtersPanel}>
+                <ScrollView
+                  horizontal
+                  contentContainerStyle={styles.filterScrollContent}
+                  showsHorizontalScrollIndicator={false}
+                >
+                  {typeOptions.map(option => (
+                    <FilterChip
+                      key={option.label}
+                      label={option.label}
+                      active={orderType === option.value}
+                      onPress={() => setOrderType(option.value)}
+                    />
+                  ))}
+                </ScrollView>
+                <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("orders.filters.time")}</Text>
+                <ScrollView
+                  horizontal
+                  contentContainerStyle={styles.filterScrollContent}
+                  showsHorizontalScrollIndicator={false}
+                >
+                  {rangeOptions.map(option => (
+                    <FilterChip
+                      key={option.value}
+                      label={option.label}
+                      active={rangePreset === option.value}
+                      onPress={() => setRangePreset(option.value)}
+                    />
+                  ))}
+                </ScrollView>
               </View>
             </SectionCard>
 
@@ -354,22 +364,17 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
         onRefresh={() => void handleRefresh()}
         refreshing={refreshing}
         renderItem={({ item: [month, monthItems] }) => (
-          <View style={styles.listGroup}>
-            <MonthHeader value={month} />
-            {monthItems.map(item => (
-              <OrderListCard
-                key={item.orderSn}
-                item={item}
-                t={t}
-                onPress={() =>
-                  props.navigation.navigate("OrderDetailScreen", {
-                    orderSn: item.orderSn,
-                    source: "manual",
-                  })
-                }
-              />
-            ))}
-          </View>
+          <OrderMonthSection
+            month={month}
+            items={monthItems}
+            t={t}
+            onPressItem={item =>
+              props.navigation.navigate("OrderDetailScreen", {
+                orderSn: item.orderSn,
+                source: "manual",
+              })
+            }
+          />
         )}
         showsVerticalScrollIndicator={false}
       />
@@ -464,9 +469,9 @@ export function OrderBillScreen({ navigation, route }: OrderBillProps) {
       }
     >
       <ScrollView contentContainerStyle={styles.content}>
-        <SectionCard>
+        <SectionCard style={styles.filtersCard}>
           <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("orders.bill.rangeTitle")}</Text>
-          <View style={styles.filterWrap}>
+          <ScrollView horizontal contentContainerStyle={styles.filterScrollContent} showsHorizontalScrollIndicator={false}>
             {rangeOptions.map(option => (
               <FilterChip
                 key={option.value}
@@ -475,7 +480,7 @@ export function OrderBillScreen({ navigation, route }: OrderBillProps) {
                 onPress={() => setPreset(option.value)}
               />
             ))}
-          </View>
+          </ScrollView>
         </SectionCard>
 
         <SummaryGrid
@@ -613,7 +618,17 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   headerContent: {
+    gap: 14,
+  },
+  filtersCard: {
     gap: 12,
+  },
+  filtersPanel: {
+    gap: 10,
+  },
+  filterScrollContent: {
+    gap: 10,
+    paddingRight: 8,
   },
   sectionTitle: {
     fontSize: 15,
@@ -635,8 +650,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   listGroup: {
-    gap: 10,
-    marginTop: 12,
+    marginTop: 14,
   },
   emptyState: {
     marginTop: 12,

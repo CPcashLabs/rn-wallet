@@ -18,7 +18,7 @@ export enum OrderStatus {
 
 type Translator = (key: string, options?: Record<string, unknown>) => string
 
-export type OrderListStatusTone = "active" | "danger"
+export type OrderListStatusTone = "info" | "warning" | "danger"
 
 const RECEIPT_ORDER_TYPES = [
   "RECEIPT",
@@ -124,14 +124,14 @@ export function resolveOrderListStatusBadge(t: Translator, status: number): { la
   if (status === OrderStatus.BuyerPaying) {
     return {
       label: t("orders.status.pending"),
-      tone: "active",
+      tone: "warning",
     }
   }
 
   if (status === OrderStatus.BuyerPaid || status === OrderStatus.SellerPaying) {
     return {
       label: t("orders.status.inProgress"),
-      tone: "active",
+      tone: "info",
     }
   }
 
@@ -151,7 +151,7 @@ export function resolveOrderListStatusBadge(t: Translator, status: number): { la
 
   return {
     label: resolveOrderStatusLabel(t, status),
-    tone: "active",
+    tone: "info",
   }
 }
 
@@ -209,6 +209,24 @@ export function formatTimestamp(value: number | null, options?: Intl.DateTimeFor
       minute: "2-digit",
       ...(options ?? {}),
     }).format(new Date(value))
+  } catch {
+    return "--"
+  }
+}
+
+export function formatCompactTimestamp(value: number | null) {
+  if (!value) {
+    return "--"
+  }
+
+  try {
+    const date = new Date(value)
+    const month = String(date.getMonth() + 1).padStart(2, "0")
+    const day = String(date.getDate()).padStart(2, "0")
+    const hour = String(date.getHours()).padStart(2, "0")
+    const minute = String(date.getMinutes()).padStart(2, "0")
+
+    return `${month}-${day} ${hour}:${minute}`
   } catch {
     return "--"
   }
