@@ -14,6 +14,7 @@ import {
   resolveMessageTarget,
   resolveMessageTitle,
 } from "@/features/messages/utils/messagePresentation"
+import { navigateRoot } from "@/app/navigation/navigationRef"
 import { PageEmpty, SectionCard } from "@/shared/ui/AppFlowUi"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { useSocketStore } from "@/shared/store/useSocketStore"
@@ -88,7 +89,6 @@ export function MessageScreen({ navigation }: Props) {
       return
     }
 
-    const rootNavigation = navigation.getParent() as any
     const target = resolveMessageTarget(item)
 
     if (target.kind === "missingOrder") {
@@ -97,14 +97,14 @@ export function MessageScreen({ navigation }: Props) {
     }
 
     if (target.kind === "copouchHome") {
-      rootNavigation?.navigate("CopouchStack", {
+      navigateRoot("CopouchStack", {
         screen: "CopouchHomeScreen",
       })
       return
     }
 
     if (target.kind === "copouchAllocation") {
-      rootNavigation?.navigate("CopouchStack", {
+      navigateRoot("CopouchStack", {
         screen: "CopouchViewAllocationScreen",
         params: {
           id: target.walletId,
@@ -114,7 +114,7 @@ export function MessageScreen({ navigation }: Props) {
       return
     }
 
-    rootNavigation?.navigate("OrdersStack", {
+    navigateRoot("OrdersStack", {
       screen: "OrderDetailScreen",
       params: {
         orderSn: target.orderSn,

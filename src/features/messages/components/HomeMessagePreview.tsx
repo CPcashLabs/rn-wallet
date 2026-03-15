@@ -17,6 +17,7 @@ import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 const PREVIEW_LIMIT = 2
 const ROW_HEIGHT = 44
+const PREVIEW_BODY_HEIGHT = PREVIEW_LIMIT * ROW_HEIGHT
 
 type RowAnimationState = {
   opacity: Animated.Value
@@ -134,6 +135,52 @@ export function HomeMessagePreview(props: { onPress: () => void }) {
   }, [loadPreview, socketEvent?.at, socketEvent?.type])
 
   const hasUnread = items.some(item => item.status === 0)
+  const previewContent =
+    ready && loadFailed ? (
+      <View style={styles.stateWrap}>
+        <Text style={[styles.stateTitle, { color: theme.colors.text }]}>{t("message.preview.loadFailedTitle")}</Text>
+        <Text style={[styles.stateBody, { color: theme.colors.mutedText }]}>{t("message.preview.loadFailedBody")}</Text>
+      </View>
+    ) : ready && items.length === 0 ? (
+      <View style={styles.stateWrap}>
+        <Text style={[styles.stateTitle, { color: theme.colors.text }]}>{t("message.preview.emptyTitle")}</Text>
+        <Text style={[styles.stateBody, { color: theme.colors.mutedText }]}>{t("message.preview.emptyBody")}</Text>
+      </View>
+    ) : (
+      <View style={styles.rowsWrap}>
+        {items.map((item, index) => (
+          <Animated.View
+            key={item.id}
+            style={[
+              styles.rowWrap,
+              {
+                opacity: resolveRowAnimation(item.id).opacity,
+                transform: [{ translateY: resolveRowAnimation(item.id).translateY }],
+                height: resolveRowAnimation(item.id).height,
+              },
+            ]}
+          >
+            <Pressable
+              onPress={props.onPress}
+              style={[
+                styles.row,
+                {
+                  borderBottomColor: theme.colors.border,
+                },
+                index === items.length - 1 ? styles.rowLast : null,
+              ]}
+            >
+              <View style={styles.rowInline}>
+                <Text numberOfLines={1} style={[styles.rowSummary, { color: theme.colors.text }]}>
+                  {buildPreviewSummary(item, t)}
+                </Text>
+                <Text style={[styles.rowTime, { color: theme.colors.mutedText }]}>{formatRelativeTime(item.createdAt, t)}</Text>
+              </View>
+            </Pressable>
+          </Animated.View>
+        ))}
+      </View>
+    )
 
   return (
     <SectionCard>
@@ -146,54 +193,7 @@ export function HomeMessagePreview(props: { onPress: () => void }) {
           <Text style={[styles.headerActionText, { color: theme.colors.primary }]}>{t("message.preview.openAll")}</Text>
         </Pressable>
       </View>
-
-      {ready && loadFailed ? (
-        <View style={styles.stateWrap}>
-          <Text style={[styles.stateTitle, { color: theme.colors.text }]}>{t("message.preview.loadFailedTitle")}</Text>
-          <Text style={[styles.stateBody, { color: theme.colors.mutedText }]}>{t("message.preview.loadFailedBody")}</Text>
-        </View>
-      ) : null}
-
-      {ready && !loadFailed && items.length === 0 ? (
-        <View style={styles.stateWrap}>
-          <Text style={[styles.stateTitle, { color: theme.colors.text }]}>{t("message.emptyTitle")}</Text>
-          <Text style={[styles.stateBody, { color: theme.colors.mutedText }]}>{t("message.emptyBody")}</Text>
-        </View>
-      ) : null}
-
-      {!loadFailed
-        ? items.map((item, index) => (
-            <Animated.View
-              key={item.id}
-              style={[
-                styles.rowWrap,
-                {
-                  opacity: resolveRowAnimation(item.id).opacity,
-                  transform: [{ translateY: resolveRowAnimation(item.id).translateY }],
-                  height: resolveRowAnimation(item.id).height,
-                },
-              ]}
-            >
-              <Pressable
-                onPress={props.onPress}
-                style={[
-                  styles.row,
-                  {
-                    borderBottomColor: theme.colors.border,
-                  },
-                  index === items.length - 1 ? styles.rowLast : null,
-                ]}
-              >
-                <View style={styles.rowInline}>
-                  <Text numberOfLines={1} style={[styles.rowSummary, { color: theme.colors.text }]}>
-                    {buildPreviewSummary(item, t)}
-                  </Text>
-                  <Text style={[styles.rowTime, { color: theme.colors.mutedText }]}>{formatRelativeTime(item.createdAt, t)}</Text>
-                </View>
-              </Pressable>
-            </Animated.View>
-          ))
-        : null}
+      {previewContent}
     </SectionCard>
   )
 }
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#DC2626",
   },
   stateWrap: {
-    minHeight: 96,
+    minHeight: PREVIEW_BODY_HEIGHT,
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
@@ -253,6 +253,10 @@ const styles = StyleSheet.create({
   },
   rowWrap: {
     overflow: "hidden",
+  },
+  rowsWrap: {
+    minHeight: PREVIEW_BODY_HEIGHT,
+    justifyContent: "flex-start",
   },
   row: {
     height: ROW_HEIGHT,
