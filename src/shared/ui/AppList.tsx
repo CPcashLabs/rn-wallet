@@ -62,7 +62,7 @@ export const AppListRow = React.memo(function AppListRow(props: AppListRowProps)
     {
       minHeight: props.minHeight ?? APP_LIST_ROW_MIN_HEIGHT,
       borderBottomColor: theme.colors.border,
-      backgroundColor: props.selected ? `${theme.colors.primary}12` : theme.colors.surface,
+      backgroundColor: props.selected ? theme.colors.primarySoft ?? `${theme.colors.primary}12` : theme.colors.surfaceElevated ?? theme.colors.surface,
       borderBottomWidth: props.hideDivider ? 0 : StyleSheet.hairlineWidth,
     },
     props.style,
@@ -70,7 +70,19 @@ export const AppListRow = React.memo(function AppListRow(props: AppListRowProps)
 
   if (props.onPress) {
     return (
-      <Pressable onPress={props.onPress} style={rowStyle}>
+      <Pressable
+        onPress={props.onPress}
+        style={({ pressed }) => [
+          rowStyle,
+          pressed
+            ? {
+                backgroundColor: props.selected
+                  ? theme.colors.primarySoft ?? `${theme.colors.primary}12`
+                  : theme.colors.surfaceMuted ?? theme.colors.background,
+              }
+            : null,
+        ]}
+      >
         {content}
       </Pressable>
     )
@@ -98,12 +110,14 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 15,
-    fontWeight: "600",
+    fontWeight: "500",
   },
   subtitle: {
     fontSize: 13,
   },
   arrow: {
-    fontSize: 18,
+    fontSize: 22,
+    lineHeight: 22,
+    fontWeight: "300",
   },
 })

@@ -29,12 +29,17 @@ export function AppCard(props: AppCardProps) {
       style={[
         styles.base,
         {
-          backgroundColor: props.backgroundColor ?? theme.colors.surface,
+          backgroundColor: props.backgroundColor ?? theme.colors.surfaceElevated ?? theme.colors.surface,
           borderColor: props.borderColor ?? theme.colors.border,
-          borderRadius: props.radius ?? APP_CARD_RADIUS,
-          padding: props.padding ?? APP_CARD_PADDING,
+          borderRadius: props.radius ?? 28,
+          padding: props.padding ?? 18,
           gap: props.gap ?? APP_CARD_GAP,
           overflow: props.overflow ?? "visible",
+          shadowColor: theme.colors.shadow,
+          shadowOpacity: theme.isDark ? 0.18 : 0.08,
+          shadowRadius: 18,
+          shadowOffset: { width: 0, height: 10 },
+          elevation: 3,
         },
         props.style,
       ]}

@@ -28,18 +28,24 @@ export const AppButton = React.memo(function AppButton(props: AppButtonProps) {
     <Pressable
       disabled={disabled}
       onPress={props.onPress}
-      style={[
+      style={({ pressed }) => [
         styles.base,
         variant === "primary"
           ? {
               backgroundColor: primaryColor,
+              shadowColor: theme.colors.shadow,
+              shadowOpacity: theme.isDark ? 0.16 : 0.14,
+              shadowRadius: 14,
+              shadowOffset: { width: 0, height: 8 },
+              elevation: 3,
             }
           : {
-              backgroundColor: theme.colors.surface,
+              backgroundColor: theme.colors.surfaceElevated ?? theme.colors.surface,
               borderColor: secondaryBorderColor,
               borderWidth: StyleSheet.hairlineWidth,
             },
         disabled ? styles.disabled : null,
+        pressed ? styles.pressed : null,
         props.style,
       ]}
     >
@@ -65,18 +71,22 @@ AppButton.displayName = "AppButton"
 
 const styles = StyleSheet.create({
   base: {
-    minHeight: 48,
+    minHeight: 52,
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
   },
   disabled: {
     opacity: 0.55,
   },
+  pressed: {
+    opacity: 0.9,
+    transform: [{ scale: 0.985 }],
+  },
   label: {
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   labelPrimary: {
     letterSpacing: 0.2,

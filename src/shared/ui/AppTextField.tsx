@@ -43,7 +43,10 @@ export const AppTextField = React.memo(function AppTextField(props: AppTextField
   const [masked, setMasked] = useState(Boolean(secureTextEntry))
   const preset = variant === "auth" ? stylePresets.auth : stylePresets.default
   const shouldMask = secureTextEntry ? masked : false
-  const resolvedBackgroundColor = backgroundTone === "surface" ? theme.colors.surface : theme.colors.background
+  const resolvedBackgroundColor =
+    backgroundTone === "surface"
+      ? theme.colors.surfaceElevated ?? theme.colors.surface
+      : theme.colors.surfaceMuted ?? theme.colors.background
   const helperColor = error ? "#DC2626" : theme.colors.mutedText
   const resolvedInputStyle = useMemo(() => {
     return [
@@ -68,6 +71,11 @@ export const AppTextField = React.memo(function AppTextField(props: AppTextField
             backgroundColor: resolvedBackgroundColor,
             borderColor: error ? "#DC2626" : theme.colors.border,
             alignItems: multiline ? "flex-start" : "center",
+            shadowColor: theme.colors.shadow,
+            shadowOpacity: theme.isDark ? 0.08 : 0.04,
+            shadowRadius: 10,
+            shadowOffset: { width: 0, height: 6 },
+            elevation: 1,
           },
           containerStyle,
         ]}
@@ -104,9 +112,9 @@ AppTextField.displayName = "AppTextField"
 const stylePresets: Record<"default" | "auth", { container: ViewStyle; input: TextStyle }> = {
   default: {
     container: {
-      minHeight: 48,
-      borderRadius: 14,
-      paddingHorizontal: 14,
+      minHeight: 50,
+      borderRadius: 18,
+      paddingHorizontal: 16,
     },
     input: {
       paddingVertical: 13,
@@ -116,8 +124,8 @@ const stylePresets: Record<"default" | "auth", { container: ViewStyle; input: Te
   auth: {
     container: {
       minHeight: 54,
-      borderRadius: 18,
-      paddingHorizontal: 16,
+      borderRadius: 22,
+      paddingHorizontal: 18,
     },
     input: {
       paddingVertical: 14,
