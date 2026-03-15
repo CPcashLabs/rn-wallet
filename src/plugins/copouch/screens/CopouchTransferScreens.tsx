@@ -108,9 +108,8 @@ function CopouchTransferScreen(props: {
     void getTransferChannels(chainId, "transfer")
       .then(nextChannels => {
         setChannels(nextChannels)
-        if (nextChannels.length > 0) {
-          setSelectedChannelKey(nextChannels[0].key)
-        }
+        const cpCashChannel = nextChannels.find(ch => ch.channelType === "normal")
+        setSelectedChannelKey((cpCashChannel ?? nextChannels[0])?.key ?? "")
       })
       .catch(error => {
         presentError(error, {
@@ -317,19 +316,6 @@ function CopouchTransferScreen(props: {
               sublabel={formatAddress(destinationAddress)}
             />
           </View>
-        </SectionCard>
-
-        <SectionCard>
-          <Text style={[styles.inputLabel, { color: theme.colors.text }]}>{t("copouch.transfer.channelLabel")}</Text>
-          {channelLoading ? (
-            <LoadingCard body={t("copouch.transfer.channelLoading")} />
-          ) : (
-            <View style={styles.filterWrap}>
-              {channels.map(channel => (
-                <FilterChip key={channel.key} active={selectedChannelKey === channel.key} label={channel.title} onPress={() => setSelectedChannelKey(channel.key)} />
-              ))}
-            </View>
-          )}
         </SectionCard>
 
         <SectionCard>
