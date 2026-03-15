@@ -2,13 +2,12 @@ import { create } from "zustand"
 
 import {
   createReceiveOrder,
-  getReceiveConfig,
   getRecentReceiveOrders,
   getReceivingOrderStatus,
   getTraceDetail,
-  type ReceiveConfig,
   type ReceiveOrder,
 } from "@/plugins/receive/services/receiveApi"
+import { getReceiveConfig, type ReceiveConfig } from "@/shared/receive/services/receiveEntryApi"
 
 type ReceiveStoreState = {
   config: ReceiveConfig | null

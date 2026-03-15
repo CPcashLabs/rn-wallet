@@ -6,7 +6,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import type { TransferStackParamList } from "@/app/navigation/types"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
-import { checkBttClaim, claimBtt, type BttClaimStatus } from "@/plugins/receive/services/receiveApi"
+import { checkBttClaim, claimBtt, type BttClaimStatus } from "@/shared/receive/services/receiveEntryApi"
 import { SectionCard } from "@/shared/ui/AppFlowUi"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useToast } from "@/shared/toast/useToast"
