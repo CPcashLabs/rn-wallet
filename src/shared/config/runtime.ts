@@ -2,6 +2,7 @@ const DEFAULT_DEBUG_API_BASE_URL = "https://charprotocol.com"
 const DEFAULT_RELEASE_API_BASE_URL = "https://cp.cash"
 const DEFAULT_DEBUG_PASSKEY_RP_ID = "wallet.charprotocol.com"
 const DEFAULT_RELEASE_PASSKEY_RP_ID = "wallet.cp.cash"
+const TLS_PINNED_DOMAINS = ["cp.cash", "charprotocol.com", "charprotocol.dev"] as const
 
 type RuntimeGlobals = typeof globalThis & {
   __CPCASH_API_BASE_URL__?: string
@@ -28,10 +29,75 @@ function normalizeHost(value: string) {
     return ""
   }
 
-  return trimmed
+  const authority = trimmed
     .replace(/^[a-z][a-z0-9+.-]*:\/\//i, "")
     .split(/[/?#]/, 1)[0]
     .replace(/\/+$/, "")
+
+  if (!authority) {
+    return ""
+  }
+
+  if (authority.startsWith("[")) {
+    const closingIndex = authority.indexOf("]")
+    if (closingIndex !== -1) {
+      return authority.slice(1, closingIndex).toLowerCase()
+    }
+  }
+
+  return authority.replace(/:\d+$/, "").toLowerCase()
+}
+
+function isPinnedNetworkHost(host: string) {
+  return TLS_PINNED_DOMAINS.some((domain) => host === domain || host.endsWith(`.${domain}`))
+}
+
+function isPrivateIpv4Host(host: string) {
+  if (!/^\d{1,3}(?:\.\d{1,3}){3}$/.test(host)) {
+    return false
+  }
+
+  const octets = host.split(".").map((segment) => Number(segment))
+  if (octets.some((octet) => Number.isNaN(octet) || octet < 0 || octet > 255)) {
+    return false
+  }
+
+  return (
+    octets[0] === 10 ||
+    octets[0] === 127 ||
+    (octets[0] === 192 && octets[1] === 168) ||
+    (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31)
+  )
+}
+
+export function isLocalDevelopmentHost(value: string) {
+  const host = normalizeHost(value)
+  if (!host) {
+    return false
+  }
+
+  return host === "localhost" || host === "0.0.0.0" || host === "::1" || host.endsWith(".local") || isPrivateIpv4Host(host)
+}
+
+export function isTlsPinnedHost(value: string) {
+  const host = normalizeHost(value)
+  if (!host) {
+    return false
+  }
+
+  return isPinnedNetworkHost(host)
+}
+
+export function normalizePinnedNetworkBaseUrl(value: string, options?: { allowLocalDevHosts?: boolean }) {
+  const normalized = normalizeBaseUrl(value)
+  const host = normalizeHost(normalized)
+  const allowLocalDevHosts = options?.allowLocalDevHosts ?? __DEV__
+
+  if (isPinnedNetworkHost(host) || (allowLocalDevHosts && isLocalDevelopmentHost(host))) {
+    return normalized
+  }
+
+  throw new Error(`Unpinned network host: ${host || "unknown"}`)
 }
 
 function readPasskeyRpIdOverride() {
@@ -45,7 +111,9 @@ function readPasskeyRpIdOverride() {
 }
 
 function resolveDefaultApiBaseUrl() {
-  return __DEV__ ? DEFAULT_DEBUG_API_BASE_URL : DEFAULT_RELEASE_API_BASE_URL
+  return normalizePinnedNetworkBaseUrl(__DEV__ ? DEFAULT_DEBUG_API_BASE_URL : DEFAULT_RELEASE_API_BASE_URL, {
+    allowLocalDevHosts: false,
+  })
 }
 
 function inferPasskeyRpIdFromHost(host: string) {
@@ -70,7 +138,7 @@ function inferPasskeyRpIdFromHost(host: string) {
 export function resolveApiBaseUrl() {
   const override = readApiBaseUrlOverride()
   if (override) {
-    return override
+    return normalizePinnedNetworkBaseUrl(override)
   }
 
   return resolveDefaultApiBaseUrl()
@@ -103,18 +171,18 @@ export function resolveAuthBaseUrl() {
   switch (apiHost) {
     case "charprotocol.dev":
     case "wallet.charprotocol.dev":
-      return "https://wallet.charprotocol.dev"
+      return normalizePinnedNetworkBaseUrl("https://wallet.charprotocol.dev", { allowLocalDevHosts: false })
     case "charprotocol.com":
     case "wallet.charprotocol.com":
-      return "https://wallet.charprotocol.com"
+      return normalizePinnedNetworkBaseUrl("https://wallet.charprotocol.com", { allowLocalDevHosts: false })
     case "preview.cp.cash":
     case "wallet-preview.cp.cash":
-      return "https://wallet-preview.cp.cash"
+      return normalizePinnedNetworkBaseUrl("https://wallet-preview.cp.cash", { allowLocalDevHosts: false })
     case "cp.cash":
     case "wallet.cp.cash":
-      return "https://wallet.cp.cash"
+      return normalizePinnedNetworkBaseUrl("https://wallet.cp.cash", { allowLocalDevHosts: false })
     default:
-      return resolveApiBaseUrl()
+      return normalizePinnedNetworkBaseUrl(resolveApiBaseUrl())
   }
 }
 
