@@ -3,6 +3,7 @@ import React, { useEffect } from "react"
 import { useNavigation } from "@react-navigation/native"
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 
+import { beginBootstrapRun } from "@/app/navigation/bootstrapRunCoordinator"
 import { readAuthSession } from "@/shared/api/auth-session"
 import { hydrateI18n } from "@/shared/i18n"
 import { getString } from "@/shared/storage/kvStorage"
@@ -22,7 +23,8 @@ export function BootstrapGate() {
   const navigation = useNavigation<Navigation>()
 
   useEffect(() => {
-    let mounted = true
+    const run = beginBootstrapRun()
+    const isCurrentRun = run.isCurrent
 
     const bootstrap = async () => {
       const { clearSession, setBootstrapped, setSession } = useAuthStore.getState()
@@ -31,50 +33,80 @@ export function BootstrapGate() {
 
       try {
         await Promise.all([hydrateI18n(), hydrateThemePreference()])
+        if (!isCurrentRun()) {
+          return
+        }
 
         const session = await readAuthSession()
-        if (!mounted) return
+        if (!isCurrentRun()) {
+          return
+        }
 
         if (session?.accessToken) {
+          if (!isCurrentRun()) {
+            return
+          }
+
           setSession(session)
           setWalletState({
             status: session.address ? "connected" : "idle",
             address: session.address ?? null,
             chainId: persistedChainId,
           })
+
+          if (!isCurrentRun()) {
+            return
+          }
+
           void syncCurrentUserProfile()
           navigation.reset({
             index: 0,
             routes: [{ name: "MainTabs", params: { screen: "HomeTab" } }],
           })
         } else {
+          if (!isCurrentRun()) {
+            return
+          }
+
           clearSession()
           setWalletState({
             status: "idle",
             address: null,
             chainId: persistedChainId,
           })
+
+          if (!isCurrentRun()) {
+            return
+          }
+
           navigation.reset({
             index: 0,
             routes: [{ name: "AuthStack", params: { screen: "LoginScreen" } }],
           })
         }
       } catch {
-        if (mounted) {
-          clearSession()
-          setWalletState({
-            status: "idle",
-            address: null,
-            chainId: persistedChainId,
-          })
-          const supportRoute = resolveSupportRoute("bootstrap_failed")
-          navigation.reset({
-            index: 0,
-            routes: [{ name: "SupportStack", params: supportRoute }],
-          })
+        if (!isCurrentRun()) {
+          return
         }
+
+        clearSession()
+        setWalletState({
+          status: "idle",
+          address: null,
+          chainId: persistedChainId,
+        })
+
+        if (!isCurrentRun()) {
+          return
+        }
+
+        const supportRoute = resolveSupportRoute("bootstrap_failed")
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "SupportStack", params: supportRoute }],
+        })
       } finally {
-        if (mounted) {
+        if (isCurrentRun()) {
           setBootstrapped(true)
         }
       }
@@ -83,7 +115,7 @@ export function BootstrapGate() {
     void bootstrap()
 
     return () => {
-      mounted = false
+      run.cancel()
     }
   }, [navigation])
 
