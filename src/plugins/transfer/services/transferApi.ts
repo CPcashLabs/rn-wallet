@@ -393,13 +393,17 @@ export async function createSendTokenOrder(input: {
   }
 }
 
-export async function getReceivingOrder(orderSn: string) {
-  const response = await apiClient.get<ApiEnvelope<ReceivingShowPayload>>(`/api/order/member/receiving/show-v2/${orderSn}`)
+export async function getReceivingOrder(orderSn: string, signal?: AbortSignal) {
+  const response = await apiClient.get<ApiEnvelope<ReceivingShowPayload>>(`/api/order/member/receiving/show-v2/${orderSn}`, {
+    signal,
+  })
   return toOrderDetail(unwrapEnvelope(response.data))
 }
 
-export async function getOrderDetail(orderSn: string) {
-  const response = await apiClient.get<ApiEnvelope<OrderShowPayload>>(`/api/order/member/order/cp-cash-show/${orderSn}`)
+export async function getOrderDetail(orderSn: string, signal?: AbortSignal) {
+  const response = await apiClient.get<ApiEnvelope<OrderShowPayload>>(`/api/order/member/order/cp-cash-show/${orderSn}`, {
+    signal,
+  })
   const data = unwrapEnvelope(response.data)
   if (data == null) {
     throw new Error("Order detail not found")

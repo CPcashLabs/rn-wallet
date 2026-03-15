@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { ScrollView, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
@@ -17,6 +17,12 @@ import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { AppStatusHero } from "@/shared/ui/AppStatusHero"
+import {
+  resolveTxPayStatusCountdownEndAt,
+  shouldDisableTxPayStatusRefresh,
+  startTxPayStatusCountdown,
+  startTxPayStatusPoller,
+} from "@/plugins/transfer/screens/txPayStatusTimers"
 
 type Props = NativeStackScreenProps<TransferStackParamList, "TxPayStatusScreen">
 type StatusDetail = Awaited<ReturnType<typeof getOrderDetail>> | Awaited<ReturnType<typeof getPublicTxStatusDetail>>
@@ -44,6 +50,14 @@ export function TxPayStatusScreen({ navigation, route }: Props) {
   const [detail, setDetail] = useState<StatusDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [countdownLeft, setCountdownLeft] = useState(0)
+  const mountedRef = useRef(true)
+  const refreshOrderRef = useRef<() => Promise<boolean>>(async () => false)
+  const refreshContextKey = useMemo(
+    () => (publicAccess ? `public:${publicBaseUrl ?? ""}:${publicTxid ?? ""}` : `private:${orderSn ?? ""}`),
+    [orderSn, publicAccess, publicBaseUrl, publicTxid],
+  )
+  const refreshContextKeyRef = useRef(refreshContextKey)
+  refreshContextKeyRef.current = refreshContextKey
 
   const progress = useMemo(() => {
     return resolveOrderProgress({
@@ -54,14 +68,20 @@ export function TxPayStatusScreen({ navigation, route }: Props) {
   }, [detail?.status, detail?.statusName, detail?.txid])
 
   const refreshOrder = useCallback(async () => {
+    const contextKeyAtStart = refreshContextKeyRef.current
+
     if (publicAccess) {
       if (!publicTxid) {
         throw new Error("missingPublicTxid")
       }
 
       const order = await getPublicTxStatusDetail(publicTxid, publicBaseUrl)
+      if (!mountedRef.current || contextKeyAtStart !== refreshContextKeyRef.current) {
+        return false
+      }
+
       setDetail(order)
-      return
+      return true
     }
 
     if (!orderSn) {
@@ -69,8 +89,23 @@ export function TxPayStatusScreen({ navigation, route }: Props) {
     }
 
     const order = await getOrderDetail(orderSn)
+    if (!mountedRef.current || contextKeyAtStart !== refreshContextKeyRef.current) {
+      return false
+    }
+
     setDetail(order)
+    return true
   }, [orderSn, publicAccess, publicBaseUrl, publicTxid])
+
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
+
+  useEffect(() => {
+    refreshOrderRef.current = refreshOrder
+  }, [refreshOrder])
 
   useEffect(() => {
     if ((publicAccess && !publicTxid) || (!publicAccess && !orderSn)) {
@@ -80,10 +115,10 @@ export function TxPayStatusScreen({ navigation, route }: Props) {
       return
     }
 
-    let mounted = true
     const countdownKey = !publicAccess && orderSn ? resolveCountdownStorageKey(orderSn) : null
-    let timer: ReturnType<typeof setInterval> | null = null
-    let poller: ReturnType<typeof setInterval> | null = null
+    let clearCountdown = () => {}
+    let clearPoller = () => {}
+    let cancelled = false
 
     void (async () => {
       setLoading(true)
@@ -91,46 +126,56 @@ export function TxPayStatusScreen({ navigation, route }: Props) {
       try {
         await refreshOrder()
       } finally {
-        if (mounted) {
+        if (!cancelled && mountedRef.current) {
           setLoading(false)
         }
       }
 
+      if (cancelled) {
+        return
+      }
+
       const existing = countdownKey ? getNumber(countdownKey) : null
-      const shouldStartCountdown = Boolean(!publicAccess && countdownKey && (params?.pay || (existing !== null && existing > Date.now())))
+      const countdownEndAt = resolveTxPayStatusCountdownEndAt({
+        durationMs: DEFAULT_COUNTDOWN_MS,
+        existingEndAt: existing,
+        shouldStart: Boolean(!publicAccess && countdownKey && (params?.pay || (existing !== null && existing > Date.now()))),
+      })
 
-      if (shouldStartCountdown && countdownKey) {
-        const endAt = existing && existing > Date.now() ? existing : Date.now() + DEFAULT_COUNTDOWN_MS
-        setNumber(countdownKey, endAt)
-        setCountdownLeft(Math.max(0, endAt - Date.now()))
+      if (countdownEndAt && countdownKey) {
+        setNumber(countdownKey, countdownEndAt)
+        clearCountdown = startTxPayStatusCountdown({
+          endAt: countdownEndAt,
+          onExpire: () => {
+            removeItem(countdownKey)
+          },
+          onTick: next => {
+            if (cancelled || !mountedRef.current) {
+              return
+            }
 
-        timer = setInterval(() => {
-          const next = Math.max(0, endAt - Date.now())
-          if (!mounted) {
+            setCountdownLeft(next)
+          },
+        })
+      } else if (mountedRef.current) {
+        setCountdownLeft(0)
+      }
+
+      clearPoller = startTxPayStatusPoller({
+        getTask: () => () => {
+          if (cancelled) {
             return
           }
 
-          setCountdownLeft(next)
-
-          if (next === 0) {
-            removeItem(countdownKey)
-          }
-        }, 1000)
-      }
-
-      poller = setInterval(() => {
-        void refreshOrder()
-      }, 5000)
+          void refreshOrderRef.current()
+        },
+      })
     })()
 
     return () => {
-      mounted = false
-      if (timer) {
-        clearInterval(timer)
-      }
-      if (poller) {
-        clearInterval(poller)
-      }
+      cancelled = true
+      clearCountdown()
+      clearPoller()
     }
   }, [fallbackPath, orderSn, params?.pay, publicAccess, publicTxid, refreshOrder])
 
@@ -154,6 +199,11 @@ export function TxPayStatusScreen({ navigation, route }: Props) {
 
     resetToAuthStack()
   }, [authenticated])
+
+  const refreshDisabled = shouldDisableTxPayStatusRefresh({
+    countdownLeft,
+    loading,
+  })
 
   return (
     <HomeScaffold canGoBack onBack={navigation.goBack} title={t("transfer.status.title")} scroll={false}>
@@ -199,7 +249,7 @@ export function TxPayStatusScreen({ navigation, route }: Props) {
         </SectionCard>
 
         <View style={styles.actions}>
-          <SecondaryButton label={t("transfer.status.refresh")} onPress={() => void refreshOrder()} disabled={loading} />
+          <SecondaryButton label={t("transfer.status.refresh")} onPress={() => void refreshOrder()} disabled={refreshDisabled} />
           <PrimaryButton label={t("transfer.status.done")} onPress={() => void handleDone()} disabled={loading} />
         </View>
       </ScrollView>

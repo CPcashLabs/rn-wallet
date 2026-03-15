@@ -16,6 +16,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { checkTransferNetwork, getOrderDetail, getReceivingOrder, submitShipOrder } from "@/plugins/transfer/services/transferApi"
+import {
+  getTransferConfirmRetryDelay,
+  isAbortLikeError,
+  waitForTransferConfirmRetry,
+} from "@/plugins/transfer/components/transferConfirmRetry"
 import { isCancelledAction } from "@/plugins/transfer/utils/order"
 import { NativeCapabilityUnavailableError } from "@/shared/errors"
 import { walletAdapter } from "@/shared/native/walletAdapter"
@@ -32,6 +37,7 @@ export type TransferConfirmSuccess = {
 }
 
 type SharedProps = {
+  enabled?: boolean
   onClose: () => void
   onCompleted: (result: TransferConfirmSuccess) => void
   orderSn: string
@@ -44,7 +50,19 @@ type ModalProps = SharedProps & {
 
 type OrderDetail = Awaited<ReturnType<typeof getReceivingOrder>>
 
-function useTransferConfirmController({ onCompleted, orderSn, variant }: Omit<SharedProps, "onClose">) {
+async function loadTransferConfirmOrder(orderSn: string, signal: AbortSignal) {
+  try {
+    return await getReceivingOrder(orderSn, signal)
+  } catch (error) {
+    if (isAbortLikeError(error) || signal.aborted) {
+      throw error
+    }
+
+    return getOrderDetail(orderSn, signal)
+  }
+}
+
+function useTransferConfirmController({ enabled = true, onCompleted, orderSn, variant }: Omit<SharedProps, "onClose">) {
   const { t } = useTranslation()
   const { showToast } = useToast()
   const walletCapability = walletAdapter.getCapability()
@@ -62,50 +80,61 @@ function useTransferConfirmController({ onCompleted, orderSn, variant }: Omit<Sh
   }, [])
 
   useEffect(() => {
-    let cancelled = false
+    if (!enabled) {
+      return
+    }
 
     const MAX_RETRIES = 10
-    const BASE_DELAY_MS = 1500
+    const retryController = new AbortController()
 
     void (async () => {
-      setLoading(true)
-      setDetail(null)
+      if (mountedRef.current) {
+        setLoading(true)
+        setDetail(null)
+      }
 
       for (let attempt = 0; attempt < MAX_RETRIES; attempt += 1) {
-        if (cancelled) {
+        if (retryController.signal.aborted) {
           return
         }
 
         try {
-          const order = await getReceivingOrder(orderSn).catch(() => getOrderDetail(orderSn))
+          const order = await loadTransferConfirmOrder(orderSn, retryController.signal)
 
-          if (!cancelled) {
+          if (!retryController.signal.aborted && mountedRef.current) {
             setDetail(order)
             setLoading(false)
           }
           return
-        } catch {
-          if (cancelled) {
+        } catch (error) {
+          if (isAbortLikeError(error) || retryController.signal.aborted) {
             return
           }
 
           if (attempt < MAX_RETRIES - 1) {
-            const delay = BASE_DELAY_MS * Math.pow(1.3, attempt)
-            await new Promise(resolve => setTimeout(resolve, delay))
+            try {
+              await waitForTransferConfirmRetry(getTransferConfirmRetryDelay(attempt), retryController.signal)
+            } catch (sleepError) {
+              if (isAbortLikeError(sleepError) || retryController.signal.aborted) {
+                return
+              }
+
+              throw sleepError
+            }
           }
         }
       }
 
-      if (!cancelled) {
+      if (!retryController.signal.aborted && mountedRef.current) {
         setLoading(false)
         Alert.alert(t("common.errorTitle"), t("transfer.confirm.loadFailed"))
       }
     })()
 
     return () => {
-      cancelled = true
+      retryController.abort()
     }
-  }, [orderSn, t])
+  }, [enabled, orderSn, t])
 
   const handleSubmit = useCallback(async () => {
     if (!detail) {
@@ -280,6 +309,7 @@ function TransferConfirmBody(props: {
 export function TransferConfirmScreenView(props: SharedProps) {
   const { t } = useTranslation()
   const controller = useTransferConfirmController({
+    enabled: props.enabled,
     onCompleted: props.onCompleted,
     orderSn: props.orderSn,
     variant: props.variant,
@@ -305,6 +335,7 @@ export function TransferConfirmModal(props: ModalProps) {
   const insets = useSafeAreaInsets()
   const { t } = useTranslation()
   const controller = useTransferConfirmController({
+    enabled: props.visible,
     onCompleted: props.onCompleted,
     orderSn: props.orderSn,
     variant: props.variant,
