@@ -1,4 +1,4 @@
-import React, { type PropsWithChildren, useEffect, useRef, useState } from "react"
+import React, { type PropsWithChildren, useCallback, useEffect, useRef, useState } from "react"
 
 import { DefaultTheme } from "@react-navigation/native"
 import { NavigationContainer } from "@react-navigation/native"
@@ -7,6 +7,7 @@ import { Linking, useColorScheme } from "react-native"
 import { describeRootRouteDescriptor, type RootRouteDescriptor } from "@/app/navigation/routeDescriptor"
 import { resolveDeepLink } from "@/app/navigation/deepLinkRouting"
 import { getCurrentRouteDescriptor, navigationRef, resetToAuthStack, resetToRootRoutes, resetToSupportScreen } from "@/app/navigation/navigationRef"
+import { drainQueuedNavigationUrls, type QueuedUrlSource } from "@/app/providers/navigationQueue"
 import { setNetworkUnavailableHandler, setUnauthorizedHandler } from "@/shared/api/interceptors"
 import { getString } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
@@ -33,35 +34,67 @@ export function NavigationProvider({ children }: PropsWithChildren) {
   const authenticatedRef = useRef(authenticated)
   const navigationReadyRef = useRef(false)
   const pendingUrlRef = useRef<string | null>(null)
+  const pendingProtectedUrlRef = useRef(pendingProtectedUrl)
 
-  const processUrl = (url: string | null) => {
-    if (!url || !bootstrappedRef.current || !navigationReadyRef.current || !navigationRef.isReady()) {
-      return false
-    }
+  const syncPendingProtectedUrl = useCallback(
+    (url: string | null) => {
+      pendingProtectedUrlRef.current = url
+      setPendingProtectedUrl(url)
+    },
+    [setPendingProtectedUrl],
+  )
 
-    const resolution = resolveDeepLink(url, authenticatedRef.current)
-    if (resolution.pendingProtectedUrl) {
-      setPendingProtectedUrl(resolution.pendingProtectedUrl)
-    }
-
-    const wechatInterceptorRoute = resolution.routes.find((route): route is RootRouteDescriptor<"SupportStack"> => {
-      if (route.name !== "SupportStack") {
+  const processUrl = useCallback(
+    (url: string | null, source: "incoming" | "protected" = "incoming") => {
+      if (!url || !bootstrappedRef.current || !navigationReadyRef.current || !navigationRef.isReady()) {
         return false
       }
 
-      return (route.params as RootStackParamList["SupportStack"] | undefined)?.screen === "WechatInterceptorScreen"
-    })
-    const targetPath =
-      wechatInterceptorRoute?.params?.screen === "WechatInterceptorScreen"
-        ? wechatInterceptorRoute.params.params?.targetPath
-        : undefined
-    if (targetPath) {
-      persistWechatTargetPath(targetPath)
-    }
+      const resolution = resolveDeepLink(url, authenticatedRef.current)
+      if (resolution.pendingProtectedUrl) {
+        syncPendingProtectedUrl(resolution.pendingProtectedUrl)
+      } else if (source === "protected" && pendingProtectedUrlRef.current === url) {
+        syncPendingProtectedUrl(null)
+        if (getString(KvStorageKeys.OriginalTargetPath) === url) {
+          clearPersistedWechatTargetPath()
+        }
+      }
 
-    resetToRootRoutes(resolution.routes, resolution.index)
-    return true
-  }
+      const wechatInterceptorRoute = resolution.routes.find((route): route is RootRouteDescriptor<"SupportStack"> => {
+        if (route.name !== "SupportStack") {
+          return false
+        }
+
+        return (route.params as RootStackParamList["SupportStack"] | undefined)?.screen === "WechatInterceptorScreen"
+      })
+      const targetPath =
+        wechatInterceptorRoute?.params?.screen === "WechatInterceptorScreen"
+          ? wechatInterceptorRoute.params.params?.targetPath
+          : undefined
+      if (targetPath) {
+        persistWechatTargetPath(targetPath)
+      }
+
+      resetToRootRoutes(resolution.routes, resolution.index)
+      return true
+    },
+    [syncPendingProtectedUrl],
+  )
+
+  const drainQueuedUrls = useCallback(
+    () =>
+      drainQueuedNavigationUrls({
+        canProcess: () => bootstrappedRef.current && navigationReadyRef.current && navigationRef.isReady(),
+        clearPendingIncomingUrl: () => {
+          pendingUrlRef.current = null
+        },
+        getPendingIncomingUrl: () => pendingUrlRef.current,
+        getPendingProtectedUrl: () => pendingProtectedUrlRef.current,
+        isAuthenticated: () => authenticatedRef.current,
+        processUrl,
+      }),
+    [processUrl],
+  )
 
   useEffect(() => {
     setUnauthorizedHandler(resetToAuthStack)
@@ -91,28 +124,16 @@ export function NavigationProvider({ children }: PropsWithChildren) {
       setUnauthorizedHandler(null)
       setNetworkUnavailableHandler(null)
     }
-  }, [setPendingProtectedUrl, setRecoverableRoute])
+  }, [setRecoverableRoute])
 
   useEffect(() => {
     bootstrappedRef.current = isBootstrapped
     authenticatedRef.current = authenticated
     navigationReadyRef.current = navigationReady
+    pendingProtectedUrlRef.current = pendingProtectedUrl
 
-    if (authenticated && pendingProtectedUrl) {
-      setPendingProtectedUrl(null)
-
-      if (!processUrl(pendingProtectedUrl)) {
-        setPendingProtectedUrl(pendingProtectedUrl)
-      } else if (getString(KvStorageKeys.OriginalTargetPath) === pendingProtectedUrl) {
-        clearPersistedWechatTargetPath()
-      }
-      return
-    }
-
-    if (pendingUrlRef.current && processUrl(pendingUrlRef.current)) {
-      pendingUrlRef.current = null
-    }
-  }, [authenticated, isBootstrapped, navigationReady, pendingProtectedUrl, setPendingProtectedUrl])
+    drainQueuedUrls()
+  }, [authenticated, drainQueuedUrls, isBootstrapped, navigationReady, pendingProtectedUrl])
 
   useEffect(() => {
     let mounted = true
@@ -123,23 +144,19 @@ export function NavigationProvider({ children }: PropsWithChildren) {
       }
 
       pendingUrlRef.current = url
-      if (processUrl(url)) {
-        pendingUrlRef.current = null
-      }
+      drainQueuedUrls()
     })
 
     const subscription = Linking.addEventListener("url", event => {
       pendingUrlRef.current = event.url
-      if (processUrl(event.url)) {
-        pendingUrlRef.current = null
-      }
+      drainQueuedUrls()
     })
 
     return () => {
       mounted = false
       subscription.remove()
     }
-  }, [])
+  }, [drainQueuedUrls])
 
   return (
     <NavigationContainer
