@@ -101,7 +101,7 @@ export function TransferAddressScreen({ navigation, route }: Props) {
   const [address, setAddress] = useState(route.params.initialAddress ?? (shouldReuseDraftAddress ? draftRecipientAddress : ""))
   const deferredAddress = useDeferredValueCompat(address, 100)
   const [recentEntries, setRecentEntries] = useState<RecentEntry[]>([])
-  const [loadingRecent, setLoadingRecent] = useState(true)
+  const [isRecentLoading, setIsRecentLoading] = useState(true)
 
   const sendChainName = resolveChainNameById(chainId)
   const regexes = useMemo(
@@ -186,7 +186,7 @@ export function TransferAddressScreen({ navigation, route }: Props) {
     let mounted = true
 
     void (async () => {
-      setLoadingRecent(true)
+      setIsRecentLoading(true)
       try {
         const result = await getRecentTransferEntries({
           sendChainName,
@@ -202,7 +202,7 @@ export function TransferAddressScreen({ navigation, route }: Props) {
         }
       } finally {
         if (mounted) {
-          setLoadingRecent(false)
+          setIsRecentLoading(false)
         }
       }
     })()
@@ -444,7 +444,7 @@ export function TransferAddressScreen({ navigation, route }: Props) {
 
         <SectionTitle title={t("transfer.address.recent")} />
         <AppListCard>
-          {loadingRecent ? (
+          {isRecentLoading ? (
             <AppEmptyState body={t("transfer.address.loadingRecent")} title={t("common.loading")} />
           ) : recentEntries.length === 0 ? (
             <AppEmptyState body={t("transfer.address.noRecent")} title={t("transfer.address.noRecentTitle")} />
