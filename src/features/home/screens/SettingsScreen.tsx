@@ -131,8 +131,6 @@ export function SettingsScreen({ navigation }: Props) {
           onPress={() => navigation.navigate("NodeSetupScreen")}
         />
         <SettingsRow label={t("settingsHub.email.notificationTitle")} onPress={() => navigation.navigate("EmailNotificationScreen")} />
-        <SettingsRow label={t("settingsHub.help.title")} onPress={() => navigation.navigate("HelpCenterScreen")} />
-        <SettingsRow label={t("settingsHub.about.title")} onPress={() => navigation.navigate("AboutScreen")} />
       </AppCard>
 
       <AppButton label={t("home.settings.logout")} onPress={() => void logout()} tone="danger" />

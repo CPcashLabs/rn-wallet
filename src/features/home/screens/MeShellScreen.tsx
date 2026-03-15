@@ -56,19 +56,9 @@ export function MeShellScreen({ navigation }: Props) {
           }}
         />
         <MenuRow label={t("settingsHub.invite.title")} onPress={() => navigation.navigate("InviteHomeScreen")} />
-        <MenuRow label={t("home.me.settings")} last onPress={() => navigation.navigate("SettingsHomeScreen")} />
-      </AppListCard>
-
-      <AppListCard style={styles.listCard}>
-        <MenuRow
-          last
-          label={t("home.me.messages")}
-          onPress={() => {
-            ;(navigation.getParent()?.getParent() as any)?.navigate("MessageStack", {
-              screen: "MessageScreen",
-            })
-          }}
-        />
+        <MenuRow label={t("home.me.settings")} onPress={() => navigation.navigate("SettingsHomeScreen")} />
+        <MenuRow label={t("settingsHub.help.title")} onPress={() => navigation.navigate("HelpCenterScreen")} />
+        <MenuRow label={t("settingsHub.about.title")} last onPress={() => navigation.navigate("AboutScreen")} />
       </AppListCard>
     </HomeScaffold>
   )
