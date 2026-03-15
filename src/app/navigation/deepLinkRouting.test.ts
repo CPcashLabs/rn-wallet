@@ -69,6 +69,25 @@ describe("resolveDeepLink", () => {
     ])
   })
 
+  it("canonicalizes nested query targets before they reach navigation params", () => {
+    const resolution = resolveDeepLink(
+      `app://wechat-interceptor?target=${encodeURIComponent("app://receive?payChain=BTT&chain_color=%23FFAA00&ignored=1")}`,
+      true,
+    )
+
+    expect(resolution.routes).toMatchObject([
+      {
+        name: "SupportStack",
+        params: {
+          screen: "WechatInterceptorScreen",
+          params: {
+            targetPath: "/receive?payChain=BTT&chainColor=%23FFAA00",
+          },
+        },
+      },
+    ])
+  })
+
   it("rejects receive links with invalid optional query parameters", () => {
     const resolution = resolveDeepLink("app://receive?payChain=BTT&chain_color=rgba(0,0,0,1)", true)
 
@@ -80,6 +99,12 @@ describe("resolveDeepLink", () => {
         },
       },
     ])
+  })
+
+  it("stores canonical protected deep links instead of raw external input", () => {
+    const resolution = resolveDeepLink("app://receive?payChain=BTT&chain_color=%23FFAA00&ignored=1", false)
+
+    expect(resolution.pendingProtectedUrl).toBe("/receive?payChain=BTT&chainColor=%23FFAA00")
   })
 
   it("accepts safe order deep links", () => {
@@ -95,6 +120,22 @@ describe("resolveDeepLink", () => {
           screen: "TxPayStatusScreen",
           params: {
             orderSn: "ORDER_123",
+          },
+        },
+      },
+    ])
+  })
+
+  it("drops query strings from not-found diagnostics", () => {
+    const resolution = resolveDeepLink("https://evil.example/orders/ORDER_123?token=secret&payload=%0Aboom", true)
+
+    expect(resolution.routes).toMatchObject([
+      {
+        name: "SupportStack",
+        params: {
+          screen: "NotFoundScreen",
+          params: {
+            path: "https://evil.example/orders/ORDER_123",
           },
         },
       },

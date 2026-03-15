@@ -20,6 +20,8 @@ const ALLOWED_WEB_HOSTS = new Set([
 ])
 
 const CONTROL_CHARACTERS_PATTERN = /[\u0000-\u001F\u007F]/g
+const SAFE_DIAGNOSTIC_HOST_PATTERN = /^[A-Za-z0-9.-]+(?::\d+)?$/
+const SAFE_PUBLIC_BASE_URL_PATTERN = /^https?:\/\/[A-Za-z0-9.-]+(?::\d+)?$/i
 const SAFE_ROUTE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/
 const SAFE_INVITE_CODE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/
 const SAFE_CHAIN_NAME_PATTERN = /^[A-Za-z][A-Za-z0-9_-]{0,31}$/
@@ -35,6 +37,87 @@ type InviteScreenName =
   | "InviteCodeScreen"
   | "InvitePromotionScreen"
   | "InviteHowItWorksScreen"
+
+type NestedScreenParams = {
+  screen?: string
+  params?: Record<string, unknown> | NestedScreenParams
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object"
+}
+
+function stripControlCharacters(value: string) {
+  return value.replace(CONTROL_CHARACTERS_PATTERN, "")
+}
+
+function hasControlCharacters(value: string) {
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index)
+    if (code <= 0x1f || code === 0x7f) {
+      return true
+    }
+  }
+
+  return false
+}
+
+function truncateWithEllipsis(value: string, maxLength: number) {
+  if (value.length <= maxLength) {
+    return value
+  }
+
+  return `${value.slice(0, maxLength - 1)}…`
+}
+
+function buildRelativeDeepLink(
+  pathSegments: string[],
+  queryEntries: Array<[string, string | undefined]> = [],
+) {
+  const path = pathSegments.length ? `/${pathSegments.map(segment => encodeURIComponent(segment)).join("/")}` : "/"
+  const query = new URLSearchParams()
+
+  for (const [key, value] of queryEntries) {
+    if (value) {
+      query.set(key, value)
+    }
+  }
+
+  const serializedQuery = query.toString()
+
+  return serializedQuery ? `${path}?${serializedQuery}` : path
+}
+
+function buildAbsoluteDeepLink(
+  baseUrl: string | undefined,
+  pathSegments: string[],
+  queryEntries: Array<[string, string | undefined]> = [],
+) {
+  const relativePath = buildRelativeDeepLink(pathSegments, queryEntries)
+
+  if (!baseUrl) {
+    return relativePath
+  }
+
+  return `${baseUrl.replace(/\/+$/, "")}${relativePath}`
+}
+
+function asNestedScreenParams(value: unknown) {
+  return isRecord(value) ? (value as NestedScreenParams) : undefined
+}
+
+function readRecordString(record: Record<string, unknown> | undefined, key: string) {
+  const value = record?.[key]
+  return typeof value === "string" ? value : undefined
+}
+
+function readRecordBoolean(record: Record<string, unknown> | undefined, key: string) {
+  return record?.[key] === true
+}
+
+function readPublicBaseUrl(value: unknown) {
+  return typeof value === "string" && SAFE_PUBLIC_BASE_URL_PATTERN.test(value) ? value.replace(/\/+$/, "") : undefined
+}
 
 function toResolution(routes: RootRouteDescriptor[], index = routes.length - 1): DeepLinkResolution {
   return {
@@ -226,7 +309,169 @@ function toWechatInterceptor(targetPath?: string): RootRouteDescriptor<"SupportS
   }
 }
 
-function withAuth(routes: RootRouteDescriptor[], url: string, authenticated: boolean, index = routes.length - 1): DeepLinkResolution {
+function serializeAuthDeepLink(route: RootRouteDescriptor<"AuthStack">) {
+  const params = asNestedScreenParams(route.params)
+  const screenParams = isRecord(params?.params) ? (params.params as Record<string, unknown>) : undefined
+  const inviteCode = readInviteCode(readRecordString(screenParams, "inviteCode"))
+
+  if (params?.screen !== "LoginScreen" || !inviteCode) {
+    return undefined
+  }
+
+  return buildRelativeDeepLink(["invite"], [["code", inviteCode]])
+}
+
+function serializeMainTabsDeepLink(route: RootRouteDescriptor<"MainTabs">) {
+  const params = asNestedScreenParams(route.params)
+  const nestedParams = asNestedScreenParams(params?.params)
+  const screenParams = isRecord(nestedParams?.params) ? (nestedParams.params as Record<string, unknown>) : undefined
+
+  if (params?.screen === "HomeTab" && nestedParams?.screen === "HomeShellScreen") {
+    const inviteCode = readInviteCode(readRecordString(screenParams, "inviteCode"))
+    return inviteCode ? buildRelativeDeepLink(["invite"], [["code", inviteCode]]) : undefined
+  }
+
+  if (params?.screen !== "MeTab") {
+    return undefined
+  }
+
+  switch (nestedParams?.screen) {
+    case "InviteHomeScreen":
+      return buildRelativeDeepLink(["invite"])
+    case "InviteCodeScreen":
+      return buildRelativeDeepLink(["invite", "invitecode"])
+    case "InvitePromotionScreen":
+      return buildRelativeDeepLink(["invite", "promotion"])
+    case "InviteHowItWorksScreen":
+      return buildRelativeDeepLink(["invite", "how-it-works"])
+    default:
+      return undefined
+  }
+}
+
+function serializeOrdersDeepLink(route: RootRouteDescriptor<"OrdersStack">) {
+  const params = asNestedScreenParams(route.params)
+  const screenParams = isRecord(params?.params) ? (params.params as Record<string, unknown>) : undefined
+  const orderSn = readRouteId(readRecordString(screenParams, "orderSn"))
+
+  switch (params?.screen) {
+    case "OrderDetailScreen":
+      return orderSn ? buildRelativeDeepLink(["orders", orderSn]) : undefined
+    case "OrderVoucherScreen":
+      return orderSn ? buildRelativeDeepLink(["order-voucher", orderSn]) : undefined
+    case "DigitalReceiptScreen":
+      return orderSn ? buildRelativeDeepLink(["digitalreceipt", orderSn]) : undefined
+    case "FlowProofScreen":
+      return orderSn ? buildRelativeDeepLink(["flowproof", orderSn]) : undefined
+    case "RefundDetailScreen":
+      return orderSn ? buildRelativeDeepLink(["refund", orderSn]) : undefined
+    case "SplitDetailScreen":
+      return orderSn ? buildRelativeDeepLink(["txlogs", "splitdetail", orderSn]) : undefined
+    case "OrderBillScreen":
+      return buildRelativeDeepLink(["orderbill"])
+    default:
+      return undefined
+  }
+}
+
+function serializeTransferDeepLink(route: RootRouteDescriptor<"TransferStack">) {
+  const params = asNestedScreenParams(route.params)
+  const screenParams = isRecord(params?.params) ? (params.params as Record<string, unknown>) : undefined
+  const publicBaseUrl = readPublicBaseUrl(readRecordString(screenParams, "publicBaseUrl"))
+
+  if (params?.screen === "TxPayStatusScreen") {
+    const orderSn = readRouteId(readRecordString(screenParams, "orderSn"))
+    if (orderSn) {
+      return buildRelativeDeepLink(["orders", orderSn, "status"])
+    }
+
+    const publicTxid = readTxid(readRecordString(screenParams, "publicTxid"))
+    const publicAccess = readRecordBoolean(screenParams, "publicAccess")
+
+    if (publicAccess && publicTxid) {
+      return buildAbsoluteDeepLink(publicBaseUrl, ["share"], [["txid", publicTxid]])
+    }
+
+    return undefined
+  }
+
+  if (params?.screen === "SendPaymentInfoScreen") {
+    const orderSn = readRouteId(readRecordString(screenParams, "orderSn"))
+    const publicAccess = readRecordBoolean(screenParams, "publicAccess")
+
+    if (publicAccess && orderSn) {
+      return buildAbsoluteDeepLink(publicBaseUrl, ["send"], [["share", orderSn]])
+    }
+  }
+
+  return undefined
+}
+
+function serializeReceiveDeepLink(route: RootRouteDescriptor<"ReceiveStack">) {
+  const params = asNestedScreenParams(route.params)
+  const screenParams = isRecord(params?.params) ? (params.params as Record<string, unknown>) : undefined
+
+  if (params?.screen !== "ReceiveHomeScreen") {
+    return undefined
+  }
+
+  const payChain = readPayChain(readRecordString(screenParams, "payChain"))
+  const copouch = readWalletAddress(readRecordString(screenParams, "copouch"))
+  const cowallet = readWalletAddress(readRecordString(screenParams, "cowallet"))
+  const multisigWalletId = readRouteId(readRecordString(screenParams, "multisigWalletId"))
+  const collapse = readReceiveCollapse(readRecordString(screenParams, "collapse"))
+  const chainColor = readChainColor(readRecordString(screenParams, "chainColor"))
+  const receiveMode = readReceiveMode(readRecordString(screenParams, "receiveMode"))
+
+  return buildRelativeDeepLink(["receive"], [
+    ["payChain", payChain],
+    ["copouch", cowallet ? undefined : copouch],
+    ["cowallet", cowallet],
+    ["multisigWalletId", multisigWalletId],
+    ["collapse", collapse],
+    ["chainColor", chainColor],
+    ["receiveMode", receiveMode],
+  ])
+}
+
+function serializeCopouchDeepLink(route: RootRouteDescriptor<"CopouchStack">) {
+  const params = asNestedScreenParams(route.params)
+  const screenParams = isRecord(params?.params) ? (params.params as Record<string, unknown>) : undefined
+  const id = readRouteId(readRecordString(screenParams, "id"))
+
+  if (params?.screen !== "CopouchDetailScreen" || !id) {
+    return undefined
+  }
+
+  return buildRelativeDeepLink(["copouch", id])
+}
+
+function serializeRoutesAsDeepLink(routes: RootRouteDescriptor[]) {
+  const route = routes[routes.length - 1]
+
+  if (!route) {
+    return undefined
+  }
+
+  switch (route.name) {
+    case "AuthStack":
+      return serializeAuthDeepLink(route as RootRouteDescriptor<"AuthStack">)
+    case "MainTabs":
+      return serializeMainTabsDeepLink(route as RootRouteDescriptor<"MainTabs">)
+    case "OrdersStack":
+      return serializeOrdersDeepLink(route as RootRouteDescriptor<"OrdersStack">)
+    case "TransferStack":
+      return serializeTransferDeepLink(route as RootRouteDescriptor<"TransferStack">)
+    case "ReceiveStack":
+      return serializeReceiveDeepLink(route as RootRouteDescriptor<"ReceiveStack">)
+    case "CopouchStack":
+      return serializeCopouchDeepLink(route as RootRouteDescriptor<"CopouchStack">)
+    default:
+      return undefined
+  }
+}
+
+function withAuth(routes: RootRouteDescriptor[], authenticated: boolean, index = routes.length - 1): DeepLinkResolution {
   if (authenticated) {
     return toResolution(routes, index)
   }
@@ -234,7 +479,7 @@ function withAuth(routes: RootRouteDescriptor[], url: string, authenticated: boo
   return {
     routes: [toLogin()],
     index: 0,
-    pendingProtectedUrl: url,
+    pendingProtectedUrl: serializeRoutesAsDeepLink(routes),
   }
 }
 
@@ -288,12 +533,10 @@ function readString(value?: string) {
 function readBoundedString(value: string | undefined, maxLength: number) {
   const trimmed = readString(value)
 
-  if (!trimmed || trimmed.length > maxLength || CONTROL_CHARACTERS_PATTERN.test(trimmed)) {
-    CONTROL_CHARACTERS_PATTERN.lastIndex = 0
+  if (!trimmed || trimmed.length > maxLength || hasControlCharacters(trimmed)) {
     return undefined
   }
 
-  CONTROL_CHARACTERS_PATTERN.lastIndex = 0
   return trimmed
 }
 
@@ -354,17 +597,50 @@ function sanitizeDiagnosticPath(value?: string) {
     return undefined
   }
 
-  const withoutControls = value.replace(CONTROL_CHARACTERS_PATTERN, "").trim()
+  const withoutControls = stripControlCharacters(value).trim()
 
   if (!withoutControls) {
     return undefined
   }
 
-  if (withoutControls.length <= MAX_DIAGNOSTIC_PATH_LENGTH) {
-    return withoutControls
+  if (withoutControls.startsWith("/")) {
+    return truncateWithEllipsis(buildRelativeDeepLink(deepLinkAdapter.parse(`https://share.cpcash.app${withoutControls}`).pathSegments), MAX_DIAGNOSTIC_PATH_LENGTH)
   }
 
-  return `${withoutControls.slice(0, MAX_DIAGNOSTIC_PATH_LENGTH - 1)}…`
+  const parsed = deepLinkAdapter.parse(withoutControls)
+
+  if (!parsed.isValid) {
+    return "invalid-link"
+  }
+
+  const scheme = parsed.scheme?.toLowerCase()
+
+  if (scheme === "http" || scheme === "https") {
+    const host = parsed.host?.toLowerCase()
+    if (!host || !SAFE_DIAGNOSTIC_HOST_PATTERN.test(host)) {
+      return "invalid-link"
+    }
+
+    return truncateWithEllipsis(`${scheme}://${host}${buildRelativeDeepLink(parsed.pathSegments)}`, MAX_DIAGNOSTIC_PATH_LENGTH)
+  }
+
+  if (scheme === "app" || scheme === "cpcash") {
+    const head = readBoundedString(stripControlCharacters(parsed.host ?? ""), 128)
+    const pathSegments = [head, ...parsed.pathSegments.map(segment => readBoundedString(stripControlCharacters(segment), 128))].filter(
+      (segment): segment is string => Boolean(segment),
+    )
+
+    if (!pathSegments.length) {
+      return `${scheme}://`
+    }
+
+    const [first, ...rest] = pathSegments
+    const path = rest.length ? `/${rest.map(segment => encodeURIComponent(segment)).join("/")}` : ""
+
+    return truncateWithEllipsis(`${scheme}://${encodeURIComponent(first)}${path}`, MAX_DIAGNOSTIC_PATH_LENGTH)
+  }
+
+  return "unsupported-link"
 }
 
 function readValidatedQueryValue<T extends string>(
@@ -411,7 +687,9 @@ export function sanitizeWechatTargetPath(value?: string) {
     return undefined
   }
 
-  return trimmed
+  const canonicalTargetPath = serializeRoutesAsDeepLink(resolveDeepLink(trimmed, true).routes)
+
+  return canonicalTargetPath
 }
 
 export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkResolution {
@@ -435,11 +713,11 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
       }
 
       if (segments.length === 2) {
-        return withAuth([toHomeTab(), toOrderDetail(orderSn)], url, authenticated, 1)
+        return withAuth([toHomeTab(), toOrderDetail(orderSn)], authenticated, 1)
       }
 
       if (segments.length === 3 && segments[2]?.toLowerCase() === "status") {
-        return withAuth([toHomeTab(), toTxPayStatus(orderSn)], url, authenticated, 1)
+        return withAuth([toHomeTab(), toTxPayStatus(orderSn)], authenticated, 1)
       }
 
       return toNotFound(url)
@@ -451,7 +729,7 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
         return toNotFound(url)
       }
 
-      return withAuth([toHomeTab(), toOrderStackScreen("OrderVoucherScreen", orderSn)], url, authenticated, 1)
+      return withAuth([toHomeTab(), toOrderStackScreen("OrderVoucherScreen", orderSn)], authenticated, 1)
     }
 
     case "digitalreceipt": {
@@ -460,7 +738,7 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
         return toNotFound(url)
       }
 
-      return withAuth([toHomeTab(), toOrderStackScreen("DigitalReceiptScreen", orderSn)], url, authenticated, 1)
+      return withAuth([toHomeTab(), toOrderStackScreen("DigitalReceiptScreen", orderSn)], authenticated, 1)
     }
 
     case "flowproof": {
@@ -469,7 +747,7 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
         return toNotFound(url)
       }
 
-      return withAuth([toHomeTab(), toOrderStackScreen("FlowProofScreen", orderSn)], url, authenticated, 1)
+      return withAuth([toHomeTab(), toOrderStackScreen("FlowProofScreen", orderSn)], authenticated, 1)
     }
 
     case "refund": {
@@ -478,7 +756,7 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
         return toNotFound(url)
       }
 
-      return withAuth([toHomeTab(), toOrderStackScreen("RefundDetailScreen", orderSn)], url, authenticated, 1)
+      return withAuth([toHomeTab(), toOrderStackScreen("RefundDetailScreen", orderSn)], authenticated, 1)
     }
 
     case "orderbill": {
@@ -486,7 +764,7 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
         return toNotFound(url)
       }
 
-      return withAuth([toHomeTab(), toOrderBill()], url, authenticated, 1)
+      return withAuth([toHomeTab(), toOrderBill()], authenticated, 1)
     }
 
     case "txlogs": {
@@ -497,15 +775,15 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
       }
 
       if (section === "orderdetail") {
-        return withAuth([toHomeTab(), toOrderDetail(orderSn)], url, authenticated, 1)
+        return withAuth([toHomeTab(), toOrderDetail(orderSn)], authenticated, 1)
       }
 
       if (section === "txpaystatus") {
-        return withAuth([toHomeTab(), toTxPayStatus(orderSn)], url, authenticated, 1)
+        return withAuth([toHomeTab(), toTxPayStatus(orderSn)], authenticated, 1)
       }
 
       if (section === "splitdetail") {
-        return withAuth([toHomeTab(), toOrderStackScreen("SplitDetailScreen", orderSn)], url, authenticated, 1)
+        return withAuth([toHomeTab(), toOrderStackScreen("SplitDetailScreen", orderSn)], authenticated, 1)
       }
 
       return toNotFound(url)
@@ -520,7 +798,7 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
         return toNotFound(url)
       }
 
-      return withAuth([toMeTab(), toCopouchDetail(id)], url, authenticated, 1)
+      return withAuth([toMeTab(), toCopouchDetail(id)], authenticated, 1)
     }
 
     case "invite": {
@@ -540,7 +818,7 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
           return toResolution([toHomeTab(inviteCode)], 0)
         }
 
-        return withAuth([toMeTab("InviteHomeScreen")], url, authenticated)
+        return withAuth([toMeTab("InviteHomeScreen")], authenticated)
       }
 
       if (segments.length !== 2) {
@@ -557,7 +835,7 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
         return toNotFound(url)
       }
 
-      return withAuth([toMeTab(inviteScreen)], url, authenticated)
+      return withAuth([toMeTab(inviteScreen)], authenticated)
     }
 
     // These deep-link variants intentionally resolve to the same receive flow.
@@ -601,7 +879,6 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
             receiveMode: receiveMode ?? undefined,
           }),
         ],
-        url,
         authenticated,
         1,
       )
