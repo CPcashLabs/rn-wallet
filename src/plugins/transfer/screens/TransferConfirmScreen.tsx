@@ -5,7 +5,8 @@ import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import { FieldRow, PageEmpty, PrimaryButton, SecondaryButton, SectionCard } from "@/shared/ui/AppFlowUi"
-import { checkTransferNetwork, getOrderDetail, submitShipOrder } from "@/plugins/transfer/services/transferApi"
+import { checkTransferNetwork, getOrderDetail, getReceivingOrder } from "@/plugins/transfer/services/transferApi"
+import { shipTransferOrder } from "@/plugins/transfer/services/transferOrderApi"
 import { isCancelledAction, makeMockTxid } from "@/plugins/transfer/utils/order"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { walletAdapter } from "@/shared/native/walletAdapter"
@@ -24,33 +25,45 @@ export function TransferConfirmScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
   const { showToast } = useToast()
-  const walletAddress = useWalletStore(state => state.address)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
-  const [detail, setDetail] = useState<Awaited<ReturnType<typeof getOrderDetail>> | null>(null)
+  const [detail, setDetail] = useState<Awaited<ReturnType<typeof getReceivingOrder>> | null>(null)
 
-  const variant = route.name === "TransferConfirmNormalScreen" ? "normal" : "default"
   const receiveAddressLabel = useMemo(() => detail?.receiveAddress || detail?.depositAddress || "-", [detail])
 
   useEffect(() => {
     let mounted = true
 
+    const MAX_RETRIES = 10
+    const BASE_DELAY_MS = 1500
+
     void (async () => {
       setLoading(true)
-      try {
-        const order = await getOrderDetail(route.params.orderSn)
 
-        if (mounted) {
-          setDetail(order)
+      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        if (!mounted) return
+
+        try {
+          const order = await getReceivingOrder(route.params.orderSn).catch(() => getOrderDetail(route.params.orderSn))
+
+          if (mounted) {
+            setDetail(order)
+            setLoading(false)
+          }
+          return
+        } catch {
+          if (!mounted) return
+
+          if (attempt < MAX_RETRIES - 1) {
+            const delay = BASE_DELAY_MS * Math.pow(1.3, attempt)
+            await new Promise(resolve => setTimeout(resolve, delay))
+          }
         }
-      } catch {
-        if (mounted) {
-          Alert.alert(t("common.errorTitle"), t("transfer.confirm.loadFailed"))
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false)
-        }
+      }
+
+      if (mounted) {
+        setLoading(false)
+        Alert.alert(t("common.errorTitle"), t("transfer.confirm.loadFailed"))
       }
     })()
 
@@ -88,11 +101,10 @@ export function TransferConfirmScreen({ navigation, route }: Props) {
 
       const txid = makeMockTxid(signResult.data.signature)
 
-      await submitShipOrder({
+      await shipTransferOrder({
         orderSn: detail.orderSn,
         txid,
-        address: walletAddress ?? detail.receiveAddress,
-        variant,
+        success: true,
       })
 
       navigation.replace("TxPayStatusScreen", {
@@ -109,7 +121,7 @@ export function TransferConfirmScreen({ navigation, route }: Props) {
     } finally {
       setSubmitting(false)
     }
-  }, [detail, navigation, t, variant, walletAddress])
+  }, [detail, navigation, t])
 
   if (!loading && !detail) {
     return (
