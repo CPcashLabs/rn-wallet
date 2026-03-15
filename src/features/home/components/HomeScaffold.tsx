@@ -24,7 +24,7 @@ export function HomeScaffold(props: {
   const theme = useAppTheme()
   const insets = useSafeAreaInsets()
   const backgroundColor = props.backgroundColor ?? theme.colors.background
-  const headerBackgroundColor = props.headerBackgroundColor ?? theme.colors.surfaceElevated ?? theme.colors.surface
+  const headerBackgroundColor = props.headerBackgroundColor ?? theme.colors.glassStrong ?? theme.colors.surfaceElevated ?? theme.colors.surface
   const headerTintColor = props.headerTintColor ?? theme.colors.text
   const backTintColor = theme.colors.primary
   const titleAlign = props.titleAlign ?? (props.canGoBack ? "center" : "left")
@@ -93,13 +93,13 @@ export function HomeScaffold(props: {
         styles.header,
         isLargeTitle ? styles.headerLarge : null,
         {
-          borderBottomColor: theme.colors.border,
+          borderColor: theme.colors.glassBorder ?? theme.colors.border,
           backgroundColor: headerBackgroundColor,
           shadowColor: theme.colors.shadow,
-          shadowOpacity: theme.isDark ? 0.16 : 0.06,
-          shadowRadius: 14,
+          shadowOpacity: theme.isDark ? 0.16 : 0.08,
+          shadowRadius: 18,
           shadowOffset: { width: 0, height: 8 },
-          elevation: 2,
+          elevation: 4,
         },
       ]}
     >
@@ -124,13 +124,13 @@ export function HomeScaffold(props: {
         styles.header,
         isLargeTitle ? styles.headerLarge : null,
         {
-          borderBottomColor: theme.colors.border,
+          borderColor: theme.colors.glassBorder ?? theme.colors.border,
           backgroundColor: headerBackgroundColor,
           shadowColor: theme.colors.shadow,
-          shadowOpacity: theme.isDark ? 0.16 : 0.06,
-          shadowRadius: 14,
+          shadowOpacity: theme.isDark ? 0.16 : 0.08,
+          shadowRadius: 18,
           shadowOffset: { width: 0, height: 8 },
-          elevation: 2,
+          elevation: 4,
         },
       ]}
     >
@@ -155,7 +155,7 @@ export function HomeScaffold(props: {
         <View
           style={{
             backgroundColor,
-            paddingTop: insets.top,
+            paddingTop: insets.top + 10,
             paddingLeft: insets.left,
             paddingRight: insets.right,
           }}
@@ -163,10 +163,11 @@ export function HomeScaffold(props: {
       ) : (
         <View
           style={{
-            backgroundColor: headerBackgroundColor,
-            paddingTop: insets.top,
-            paddingLeft: insets.left,
-            paddingRight: insets.right,
+            backgroundColor,
+            paddingTop: insets.top + 8,
+            paddingBottom: 6,
+            paddingLeft: insets.left + 12,
+            paddingRight: insets.right + 12,
           }}
         >
           {header}
@@ -215,18 +216,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    minHeight: 58,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 16,
+    minHeight: 56,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 22,
+    paddingHorizontal: 14,
     paddingVertical: 4,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
   headerLarge: {
-    minHeight: 72,
-    paddingTop: 10,
-    paddingBottom: 12,
+    minHeight: 64,
+    paddingTop: 8,
+    paddingBottom: 10,
   },
   left: {
     flexDirection: "row",
@@ -283,9 +285,9 @@ const styles = StyleSheet.create({
     textAlign: "left",
   },
   titleLarge: {
-    fontSize: 30,
-    lineHeight: 34,
-    letterSpacing: -0.8,
+    fontSize: 28,
+    lineHeight: 32,
+    letterSpacing: -0.7,
     fontWeight: "700",
   },
   titleCenter: {
@@ -316,6 +318,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     padding: 16,
+    paddingBottom: 28,
     gap: 12,
   },
 })

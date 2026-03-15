@@ -18,7 +18,6 @@ import { useBalanceStore } from "@/shared/store/useBalanceStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
-import { APP_CARD_RADIUS } from "@/shared/ui/AppCard"
 import { AppleBrandMark } from "@/shared/ui/AppleBrandMark"
 
 import type { HomeTabStackParamList } from "@/app/navigation/types"
@@ -171,8 +170,16 @@ export function HomeShellScreen({ navigation, route }: Props) {
   return (
     <HomeScaffold hideHeader title={t("home.shell.title")}>
       <View style={styles.heroRow}>
-        <View style={styles.brandCluster}>
-          <AppleBrandMark size={58} tone="light" />
+        <View
+          style={[
+            styles.brandPlate,
+            {
+              backgroundColor: theme.colors.glass,
+              borderColor: theme.colors.glassBorder,
+            },
+          ]}
+        >
+          <AppleBrandMark size={50} tone="auto" />
           <View style={styles.brandMeta}>
             <Text style={[styles.brandTitle, { color: theme.colors.text }]}>
               {walletAddress ? formatAddress(walletAddress) : t("home.shell.defaultNickname")}
@@ -188,24 +195,35 @@ export function HomeShellScreen({ navigation, route }: Props) {
         style={[
           styles.balanceCard,
           {
-            backgroundColor: theme.isDark ? theme.colors.surfaceElevated ?? theme.colors.surface : theme.colors.brand,
-            borderColor: theme.isDark ? theme.colors.border : "rgba(255,255,255,0.12)",
+            backgroundColor: theme.colors.glassStrong,
+            borderColor: theme.colors.glassBorder,
+            shadowColor: theme.colors.shadow,
+            shadowOpacity: theme.isDark ? 0.18 : 0.08,
+            shadowRadius: 18,
+            shadowOffset: { width: 0, height: 10 },
+            elevation: 3,
           },
         ]}
       >
-        <View style={[styles.balanceGlow, styles.balanceGlowPrimary, { backgroundColor: theme.colors.primary }]} />
-        <View style={[styles.balanceGlow, styles.balanceGlowSecondary, { backgroundColor: "rgba(255,255,255,0.26)" }]} />
+        <View style={[styles.balanceGlow, styles.balanceGlowPrimary, { backgroundColor: theme.colors.primarySoft }]} />
+        <View style={[styles.balanceGlow, styles.balanceGlowSecondary, { backgroundColor: theme.colors.glassOverlay }]} />
         <View style={styles.balanceHeader}>
-          <Text style={styles.balanceLabel}>{t("home.shell.walletBalance")}</Text>
-          <Pressable onPress={handleToggleBalance} style={styles.balanceToggle}>
-            <Text style={styles.balanceToggleText}>{showBalance ? t("home.shell.hide") : t("home.shell.show")}</Text>
+          <Text style={[styles.balanceLabel, { color: theme.colors.mutedText }]}>{t("home.shell.walletBalance")}</Text>
+          <Pressable
+            onPress={handleToggleBalance}
+            style={[styles.balanceToggle, { backgroundColor: theme.colors.primarySoft, borderColor: theme.colors.glassBorder }]}
+          >
+            <Text style={[styles.balanceToggleText, { color: theme.colors.primary }]}>{showBalance ? t("home.shell.hide") : t("home.shell.show")}</Text>
           </Pressable>
         </View>
 
-        <Text style={styles.balanceValue}>{showBalance ? formatCurrency(displayedBalanceValue) : "*****"}</Text>
+        <Text style={[styles.balanceValue, { color: theme.colors.text }]}>{showBalance ? formatCurrency(displayedBalanceValue) : "*****"}</Text>
 
-        <Pressable onPress={() => navigation.navigate("TotalAssetsScreen")} style={styles.totalAssetsButton}>
-          <Text style={styles.totalAssetsButtonText}>{t("home.shell.openTotalAssets")}</Text>
+        <Pressable
+          onPress={() => navigation.navigate("TotalAssetsScreen")}
+          style={[styles.totalAssetsButton, { backgroundColor: theme.colors.glass, borderColor: theme.colors.glassBorder }]}
+        >
+          <Text style={[styles.totalAssetsButtonText, { color: theme.colors.text }]}>{t("home.shell.openTotalAssets")}</Text>
         </Pressable>
       </View>
 
@@ -229,18 +247,26 @@ function ActionButton(props: { label: string; onPress: () => void; symbol: strin
       style={({ pressed }) => [
         styles.actionButton,
         {
-          backgroundColor: theme.colors.surfaceElevated ?? theme.colors.surface,
-          borderColor: theme.colors.border,
+          backgroundColor: theme.colors.glass,
+          borderColor: theme.colors.glassBorder,
           shadowColor: theme.colors.shadow,
-          shadowOpacity: theme.isDark ? 0.12 : 0.08,
-          shadowRadius: 14,
-          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: theme.isDark ? 0.12 : 0.05,
+          shadowRadius: 16,
+          shadowOffset: { width: 0, height: 10 },
           elevation: 2,
         },
         pressed ? styles.actionButtonPressed : null,
       ]}
     >
-      <View style={[styles.actionIconShell, { backgroundColor: theme.colors.primarySoft ?? `${theme.colors.primary}14` }]}>
+      <View
+        style={[
+          styles.actionIconShell,
+          {
+            backgroundColor: theme.colors.primarySoft ?? `${theme.colors.primary}14`,
+            borderColor: theme.colors.glassBorder,
+          },
+        ]}
+      >
         <Text style={[styles.actionSymbol, { color: theme.colors.primary }]}>{props.symbol}</Text>
       </View>
       <Text style={[styles.actionLabel, { color: theme.colors.text }]}>{props.label}</Text>
@@ -252,8 +278,16 @@ const styles = StyleSheet.create({
   heroRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+  },
+  brandPlate: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 24,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   brandCluster: {
     flexDirection: "row",
@@ -276,8 +310,8 @@ const styles = StyleSheet.create({
   },
   balanceCard: {
     borderRadius: 28,
-    padding: 18,
-    gap: 10,
+    padding: 20,
+    gap: 12,
     borderWidth: StyleSheet.hairlineWidth,
     overflow: "hidden",
   },
@@ -286,18 +320,18 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   balanceGlowPrimary: {
-    width: 180,
-    height: 180,
-    right: -40,
-    top: -90,
-    opacity: 0.45,
+    width: 220,
+    height: 220,
+    right: -80,
+    top: -120,
+    opacity: 0.7,
   },
   balanceGlowSecondary: {
-    width: 120,
-    height: 120,
-    left: -30,
-    bottom: -50,
-    opacity: 0.18,
+    width: 140,
+    height: 140,
+    left: -40,
+    bottom: -60,
+    opacity: 0.9,
   },
   balanceHeader: {
     flexDirection: "row",
@@ -306,38 +340,36 @@ const styles = StyleSheet.create({
   },
   balanceLabel: {
     fontSize: 14,
-    color: "#FFFFFF",
     fontWeight: "600",
   },
   balanceToggle: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.18)",
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   balanceToggleText: {
     fontSize: 12,
-    color: "#FFFFFF",
     fontWeight: "600",
   },
   balanceValue: {
-    fontSize: 28,
-    color: "#FFFFFF",
-    fontWeight: "800",
+    fontSize: 34,
+    lineHeight: 38,
+    letterSpacing: -1,
+    fontWeight: "700",
     fontVariant: ["tabular-nums"],
   },
   totalAssetsButton: {
     alignSelf: "flex-start",
     marginTop: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   totalAssetsButtonText: {
-    fontSize: 12,
-    color: "#FFFFFF",
-    fontWeight: "700",
+    fontSize: 13,
+    fontWeight: "600",
   },
   actionRow: {
     flexDirection: "row",
@@ -345,35 +377,38 @@ const styles = StyleSheet.create({
   },
   actionGrid: {
     flexDirection: "row",
-    gap: 12,
+    gap: 10,
   },
   actionButton: {
     flex: 1,
     minWidth: 0,
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: APP_CARD_RADIUS,
-    minHeight: 118,
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
+    borderRadius: 24,
+    minHeight: 108,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 14,
+    paddingHorizontal: 14,
     paddingVertical: 16,
   },
   actionButtonPressed: {
     transform: [{ scale: 0.985 }],
   },
   actionIconShell: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
+    width: 46,
+    height: 46,
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
     justifyContent: "center",
   },
   actionSymbol: {
-    fontSize: 24,
+    fontSize: 23,
     fontWeight: "600",
   },
   actionLabel: {
     fontSize: 15,
     fontWeight: "600",
+    textAlign: "center",
   },
 })

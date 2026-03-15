@@ -4,6 +4,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
 import { getFocusedRouteNameFromRoute } from "@react-navigation/native"
 import { StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { HomeTabStackNavigator } from "@/app/navigation/HomeTabStackNavigator"
 import { SettingsStackNavigator } from "@/app/navigation/SettingsStackNavigator"
@@ -16,18 +17,26 @@ const Tab = createBottomTabNavigator<MainTabParamList>()
 
 export function MainTabNavigator() {
   const theme = useAppTheme()
+  const insets = useSafeAreaInsets()
   const { t } = useTranslation()
   const baseTabBarStyle = {
-    backgroundColor: theme.colors.surfaceElevated ?? theme.colors.surface,
+    backgroundColor: theme.colors.glassStrong ?? theme.colors.surfaceElevated ?? theme.colors.surface,
     borderTopWidth: 0,
-    height: 74,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.glassBorder ?? theme.colors.border,
+    marginHorizontal: 16,
+    marginBottom: Math.max(insets.bottom, 10),
+    marginTop: 10,
+    height: 64 + Math.max(insets.bottom, 8),
     paddingTop: 8,
-    paddingBottom: 10,
+    paddingBottom: Math.max(insets.bottom, 10),
+    borderRadius: 28,
+    overflow: "hidden" as const,
     shadowColor: theme.colors.shadow,
-    shadowOpacity: theme.isDark ? 0.22 : 0.08,
-    shadowRadius: 18,
+    shadowOpacity: theme.isDark ? 0.22 : 0.1,
+    shadowRadius: 20,
     shadowOffset: { width: 0, height: -6 } as const,
-    elevation: 8,
+    elevation: 10,
   }
 
   return (
@@ -86,15 +95,15 @@ function ProfileTabIcon(props: { color: string; focused: boolean }) {
 const styles = StyleSheet.create({
   tabBarLabel: {
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   tabBarItem: {
     paddingVertical: 2,
   },
   profileIconShell: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
   },

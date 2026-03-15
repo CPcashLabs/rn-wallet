@@ -15,7 +15,7 @@ export function SegmentedTabs<T extends string>(props: {
   const theme = useAppTheme()
 
   return (
-    <View style={[styles.segmentWrap, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+    <View style={[styles.segmentWrap, { backgroundColor: theme.colors.glassStrong, borderColor: theme.colors.glassBorder }]}>
       {props.options.map(item => {
         const active = item.value === props.value
 
@@ -26,11 +26,12 @@ export function SegmentedTabs<T extends string>(props: {
             style={[
               styles.segmentItem,
               {
-                backgroundColor: active ? theme.colors.primary : "transparent",
+                backgroundColor: active ? theme.colors.primarySoft : "transparent",
+                borderColor: active ? theme.colors.primary : "transparent",
               },
             ]}
           >
-            <Text style={[styles.segmentText, { color: active ? "#FFFFFF" : theme.colors.text }]}>{item.label}</Text>
+            <Text style={[styles.segmentText, { color: active ? theme.colors.primary : theme.colors.text }]}>{item.label}</Text>
           </Pressable>
         )
       })}
@@ -55,16 +56,16 @@ export function ReceiveOrderCard(props: {
   const theme = useAppTheme()
 
   return (
-    <SectionCard>
+    <SectionCard style={[styles.receiveCard, { backgroundColor: theme.colors.glassStrong, borderColor: theme.colors.glassBorder }]}>
       <View style={styles.titleRow}>
-        <View style={[styles.dot, { backgroundColor: props.accentColor || theme.colors.primary }]} />
+        <View style={[styles.dot, { backgroundColor: props.accentColor || theme.colors.primary, borderColor: theme.colors.glassBorder }]} />
         <View style={styles.titleMeta}>
           <Text style={[styles.cardTitle, { color: theme.colors.text }]}>{props.title}</Text>
           <Text style={[styles.cardSubtitle, { color: theme.colors.mutedText }]}>{props.subtitle}</Text>
         </View>
       </View>
 
-      <View style={[styles.codeBox, { borderColor: theme.colors.border, backgroundColor: theme.colors.background }]}>
+      <View style={[styles.codeBox, { borderColor: theme.colors.glassBorder, backgroundColor: theme.colors.glass }]}>
         {props.qrMatrix ? (
           <QrMatrixView matrix={props.qrMatrix} />
         ) : (
@@ -135,14 +136,15 @@ const styles = StyleSheet.create({
   segmentWrap: {
     padding: 4,
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 18,
+    borderRadius: 22,
     flexDirection: "row",
     gap: 6,
   },
   segmentItem: {
     flex: 1,
     minHeight: 40,
-    borderRadius: 14,
+    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 12,
@@ -150,6 +152,9 @@ const styles = StyleSheet.create({
   segmentText: {
     fontSize: 14,
     fontWeight: "700",
+  },
+  receiveCard: {
+    gap: 16,
   },
   titleRow: {
     flexDirection: "row",
@@ -160,6 +165,7 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   titleMeta: {
     flex: 1,
@@ -174,7 +180,7 @@ const styles = StyleSheet.create({
   },
   codeBox: {
     minHeight: 164,
-    borderRadius: 18,
+    borderRadius: 24,
     borderWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
     justifyContent: "center",
@@ -205,15 +211,18 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   metaBlock: {
-    gap: 8,
+    gap: 0,
   },
   infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "flex-start",
     gap: 12,
+    paddingVertical: 10,
   },
   infoLabel: {
     fontSize: 13,
+    maxWidth: "42%",
   },
   infoValue: {
     flex: 1,
