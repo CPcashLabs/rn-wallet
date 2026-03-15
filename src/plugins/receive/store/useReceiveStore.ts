@@ -154,10 +154,6 @@ export const useReceiveStore = create<ReceiveStoreState>((set, get) => ({
       ])
 
       run.commit(() => {
-        if (activeReceiveStoreContextKey !== contextKey) {
-          return
-        }
-
         set({
           config,
           personalOrder: pickMarkedOrder(personalOrders),
@@ -172,9 +168,7 @@ export const useReceiveStore = create<ReceiveStoreState>((set, get) => ({
       throw error
     } finally {
       run.commit(() => {
-        if (activeReceiveStoreContextKey === contextKey) {
-          set({ loading: false })
-        }
+        set({ loading: false })
       })
     }
   },
@@ -200,7 +194,7 @@ export const useReceiveStore = create<ReceiveStoreState>((set, get) => ({
         multisigWalletId: input.multisigWalletId,
       })
 
-      if (!run.isCurrent() || activeReceiveStoreContextKey !== contextKey) {
+      if (!run.isCurrent()) {
         return null
       }
 
@@ -209,15 +203,7 @@ export const useReceiveStore = create<ReceiveStoreState>((set, get) => ({
           ? await waitForTraceDetail(result.orderSn, run.signal)
           : await waitForReceivingOrder(result.serialNumber, run.signal)
 
-      if (!run.isCurrent() || activeReceiveStoreContextKey !== contextKey) {
-        return null
-      }
-
       run.commit(() => {
-        if (activeReceiveStoreContextKey !== contextKey) {
-          return
-        }
-
         if (input.variant === "short") {
           set({ personalOrder: current })
         } else {
@@ -227,16 +213,14 @@ export const useReceiveStore = create<ReceiveStoreState>((set, get) => ({
 
       return current
     } catch (error) {
-      if (!run.isCurrent() || activeReceiveStoreContextKey !== contextKey || isAbortLikeError(error)) {
+      if (!run.isCurrent() || isAbortLikeError(error)) {
         return null
       }
 
       throw error
     } finally {
       run.commit(() => {
-        if (activeReceiveStoreContextKey === contextKey) {
-          set({ creating: false })
-        }
+        set({ creating: false })
       })
     }
   },
