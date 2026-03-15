@@ -338,6 +338,8 @@ const home = {
       loadFailed: "Failed to load transfer order data.",
       channelMissingTitle: "Transfer channel is missing",
       channelMissingBody: "Please reselect the network and recipient address before creating an order.",
+      creatingTitle: "Creating transfer order",
+      creatingBody: "The confirm send sheet will open automatically after the order is ready.",
       createFailed: "Failed to create order.",
       submitFailed: "Failed to create order.",
     },
@@ -1165,6 +1167,8 @@ const message = {
   preview: {
     title: "Recent Messages",
     openAll: "View All",
+    emptyTitle: "No messages yet",
+    emptyBody: "Order and system notices will appear here after they arrive.",
     loadFailedTitle: "Failed to load message preview",
     loadFailedBody: "Try again later, or open Messages to check the latest notifications.",
   },
@@ -1220,6 +1224,7 @@ const orders = {
     emptyBody: "There are no orders for the current filters.",
     loadMore: "Load More",
     refresh: "Reload",
+    updatedWithCount: "{{count}} new transaction records loaded",
   },
   detail: {
     title: "Order Detail",

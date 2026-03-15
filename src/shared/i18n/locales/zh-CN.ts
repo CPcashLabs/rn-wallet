@@ -338,6 +338,8 @@ const home = {
       loadFailed: "下单页数据加载失败。",
       channelMissingTitle: "缺少转账通道",
       channelMissingBody: "请先重新选择网络和收款地址，再继续创建订单。",
+      creatingTitle: "正在创建转账订单",
+      creatingBody: "订单创建成功后，将自动弹出确认发送浮窗。",
       createFailed: "创建订单失败。",
       submitFailed: "创建订单失败。",
     },
@@ -1163,6 +1165,8 @@ const message = {
   preview: {
     title: "最近消息",
     openAll: "查看全部",
+    emptyTitle: "还没有任何消息",
+    emptyBody: "订单与系统通知到达后会显示在这里。",
     loadFailedTitle: "消息预览加载失败",
     loadFailedBody: "稍后重试，或进入消息中心查看最新通知。",
   },
@@ -1218,6 +1222,7 @@ const orders = {
     emptyBody: "筛选条件下还没有可展示的订单。",
     loadMore: "加载更多",
     refresh: "重新加载",
+    updatedWithCount: "已更新 {{count}} 条交易记录",
   },
   detail: {
     title: "订单详情",
