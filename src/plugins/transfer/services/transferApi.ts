@@ -2,6 +2,7 @@ import axios from "axios"
 
 import { type ApiEnvelope, unwrapEnvelope } from "@/shared/api/envelope"
 import { toNumber, toTimestamp } from "@/shared/api/normalize"
+import { buildOAuthTokenRequestBody } from "@/shared/api/oauth"
 import { apiClient } from "@/shared/api/client"
 import { normalizePinnedNetworkBaseUrl, resolveApiBaseUrl } from "@/shared/config/runtime"
 export {
@@ -205,10 +206,7 @@ async function requestGuestAccessToken(baseUrl?: string) {
     return guestAccessTokenCache.accessToken
   }
 
-  const body = new URLSearchParams()
-  body.append("client_id", "MEMBER")
-  body.append("client_secret", "123456")
-  body.append("grant_type", "guest")
+  const body = buildOAuthTokenRequestBody("guest")
 
   const client = axios.create({
     baseURL: normalizedBaseUrl,

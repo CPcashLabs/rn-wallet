@@ -1,5 +1,6 @@
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { apiClient, authClient } from "@/shared/api/client"
+import { buildOAuthTokenRequestBody } from "@/shared/api/oauth"
 import type { PasskeyHistoryItem } from "@/shared/types/auth"
 
 import type { AddressValidationResult, AuthTokens, PasswordRules } from "@/features/auth/types"
@@ -82,12 +83,10 @@ export async function getPasswordRules() {
 
 export async function signInWithPassword(address: string, password: string) {
   const sanitizedAddress = sanitizeAddress(address)
-  const body = new URLSearchParams()
-  body.append("client_id", "MEMBER")
-  body.append("client_secret", "123456")
-  body.append("grant_type", "address_password")
-  body.append("address", sanitizedAddress)
-  body.append("password", password)
+  const body = buildOAuthTokenRequestBody("address_password", {
+    address: sanitizedAddress,
+    password,
+  })
 
   const response = await authClient.post<ApiEnvelope<AuthTokenPayload> | AuthTokenPayload>("/api/auth/oauth2/token", body.toString())
 
@@ -96,13 +95,11 @@ export async function signInWithPassword(address: string, password: string) {
 
 export async function signInWithMessageSignature(params: { signature: string; address: string; message: string }) {
   const sanitizedAddress = sanitizeAddress(params.address)
-  const body = new URLSearchParams()
-  body.append("client_id", "MEMBER")
-  body.append("client_secret", "123456")
-  body.append("grant_type", "message_signature")
-  body.append("signature", params.signature)
-  body.append("address", sanitizedAddress)
-  body.append("message", params.message)
+  const body = buildOAuthTokenRequestBody("message_signature", {
+    signature: params.signature,
+    address: sanitizedAddress,
+    message: params.message,
+  })
 
   const response = await authClient.post<ApiEnvelope<AuthTokenPayload> | AuthTokenPayload>("/api/auth/oauth2/token", body.toString())
 
