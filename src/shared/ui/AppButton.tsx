@@ -20,9 +20,9 @@ export const AppButton = React.memo(function AppButton(props: AppButtonProps) {
   const variant = props.variant ?? "primary"
   const tone = props.tone ?? "default"
   const disabled = Boolean(props.disabled || props.loading)
-  const primaryColor = tone === "danger" ? "#DC2626" : theme.colors.primary
-  const secondaryTextColor = tone === "danger" ? "#DC2626" : theme.colors.text
-  const secondaryBorderColor = tone === "danger" ? "#FECACA" : theme.colors.border
+  const primaryColor = tone === "danger" ? theme.colors.danger : theme.colors.primary
+  const secondaryTextColor = tone === "danger" ? theme.colors.danger : theme.colors.text
+  const secondaryBorderColor = tone === "danger" ? theme.colors.dangerBorder : theme.colors.border
 
   return (
     <Pressable

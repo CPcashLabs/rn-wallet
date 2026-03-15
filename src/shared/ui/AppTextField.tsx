@@ -47,7 +47,7 @@ export const AppTextField = React.memo(function AppTextField(props: AppTextField
     backgroundTone === "surface"
       ? theme.colors.surfaceElevated ?? theme.colors.surface
       : theme.colors.surfaceMuted ?? theme.colors.background
-  const helperColor = error ? "#DC2626" : theme.colors.mutedText
+  const helperColor = error ? theme.colors.danger : theme.colors.mutedText
   const resolvedInputStyle = useMemo(() => {
     return [
       styles.input,
@@ -69,7 +69,7 @@ export const AppTextField = React.memo(function AppTextField(props: AppTextField
           preset.container,
           {
             backgroundColor: resolvedBackgroundColor,
-            borderColor: error ? "#DC2626" : theme.colors.border,
+            borderColor: error ? theme.colors.danger : theme.colors.border,
             alignItems: multiline ? "flex-start" : "center",
             shadowColor: theme.colors.shadow,
             shadowOpacity: theme.isDark ? 0.08 : 0.04,
