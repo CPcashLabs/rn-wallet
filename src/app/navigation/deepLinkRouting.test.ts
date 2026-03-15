@@ -1,6 +1,16 @@
 import { resolveDeepLink } from "@/app/navigation/deepLinkRouting"
 
 describe("resolveDeepLink", () => {
+  const originalApiBaseUrl = (globalThis as { __CPCASH_API_BASE_URL__?: string }).__CPCASH_API_BASE_URL__
+
+  beforeEach(() => {
+    ;(globalThis as { __CPCASH_API_BASE_URL__?: string }).__CPCASH_API_BASE_URL__ = "https://cp.cash"
+  })
+
+  afterAll(() => {
+    ;(globalThis as { __CPCASH_API_BASE_URL__?: string }).__CPCASH_API_BASE_URL__ = originalApiBaseUrl
+  })
+
   it("rejects encoded path separators in order identifiers", () => {
     const resolution = resolveDeepLink("app://orders/order%2F123", true)
 
@@ -85,6 +95,24 @@ describe("resolveDeepLink", () => {
           screen: "TxPayStatusScreen",
           params: {
             orderSn: "ORDER_123",
+          },
+        },
+      },
+    ])
+  })
+
+  it("rewrites legacy share hosts onto the pinned public API origin", () => {
+    const resolution = resolveDeepLink("https://share.cpcash.app/send?share=ORDER_123", false)
+
+    expect(resolution.routes).toMatchObject([
+      {
+        name: "TransferStack",
+        params: {
+          screen: "SendPaymentInfoScreen",
+          params: {
+            orderSn: "ORDER_123",
+            publicAccess: true,
+            publicBaseUrl: "https://cp.cash",
           },
         },
       },

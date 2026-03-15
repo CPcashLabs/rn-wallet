@@ -1,4 +1,5 @@
 import type { RootRouteDescriptor } from "@/app/navigation/routeDescriptor"
+import { resolveApiBaseUrl } from "@/shared/config/runtime"
 import { deepLinkAdapter } from "@/shared/native"
 
 export type DeepLinkResolution = {
@@ -266,6 +267,18 @@ function normalizeSegments(url: string) {
     parsed,
     segments: parsed.host ? [parsed.host, ...parsed.pathSegments] : parsed.pathSegments,
   }
+}
+
+function resolvePublicBaseUrl(scheme?: string | null, host?: string | null) {
+  if ((scheme !== "http" && scheme !== "https") || !host) {
+    return undefined
+  }
+
+  if (host === "share.cpcash.app") {
+    return resolveApiBaseUrl()
+  }
+
+  return `${scheme}://${host}`
 }
 
 function readString(value?: string) {
@@ -608,8 +621,7 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
     }
 
     case "send": {
-      const publicBaseUrl =
-        parsed.scheme === "http" || parsed.scheme === "https" ? `${parsed.scheme}://${parsed.host}` : undefined
+      const publicBaseUrl = resolvePublicBaseUrl(parsed.scheme, parsed.host)
 
       if (segments.length === 2 && segments[1]?.toLowerCase() === "detail") {
         const txid = readValidatedQueryValue(parsed.query, ["txid"], readTxid)
@@ -654,8 +666,7 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
         return toNotFound(url)
       }
 
-      const publicBaseUrl =
-        parsed.scheme === "http" || parsed.scheme === "https" ? `${parsed.scheme}://${parsed.host}` : undefined
+      const publicBaseUrl = resolvePublicBaseUrl(parsed.scheme, parsed.host)
 
       return toResolution([toPublicTxPayStatus(txid, publicBaseUrl)], 0)
     }

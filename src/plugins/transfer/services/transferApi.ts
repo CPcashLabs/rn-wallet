@@ -3,7 +3,7 @@ import axios from "axios"
 import { type ApiEnvelope, unwrapEnvelope } from "@/shared/api/envelope"
 import { toNumber, toTimestamp } from "@/shared/api/normalize"
 import { apiClient } from "@/shared/api/client"
-import { resolveApiBaseUrl } from "@/shared/config/runtime"
+import { normalizePinnedNetworkBaseUrl, resolveApiBaseUrl } from "@/shared/config/runtime"
 export {
   getTransferChannels,
   getTransferGasEstimate,
@@ -192,7 +192,7 @@ export type SendOrderLogItem = {
 
 function normalizeBaseUrl(value?: string) {
   const baseUrl = value?.trim() || resolveApiBaseUrl()
-  return baseUrl.replace(/\/+$/, "")
+  return normalizePinnedNetworkBaseUrl(baseUrl)
 }
 
 async function requestGuestAccessToken(baseUrl?: string) {
@@ -298,7 +298,7 @@ function toOrderDetail(payload: OrderShowPayload | ReceivingShowPayload): Transf
 }
 
 function deriveShareUrl(orderSn: string) {
-  return `https://share.cpcash.app/send?share=${orderSn}`
+  return `${resolveApiBaseUrl()}/send?share=${encodeURIComponent(orderSn)}`
 }
 
 export async function getRecentTransferEntries(input: {
