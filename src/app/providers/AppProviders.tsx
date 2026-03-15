@@ -15,8 +15,8 @@ export function AppProviders({ children }: PropsWithChildren) {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <ErrorBoundaryProvider>
-          <I18nProvider>
+        <I18nProvider>
+          <ErrorBoundaryProvider>
             <SocketProvider>
               <QueryProvider>
                 <ThemeProvider>
@@ -26,8 +26,8 @@ export function AppProviders({ children }: PropsWithChildren) {
                 </ThemeProvider>
               </QueryProvider>
             </SocketProvider>
-          </I18nProvider>
-        </ErrorBoundaryProvider>
+          </ErrorBoundaryProvider>
+        </I18nProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   )
