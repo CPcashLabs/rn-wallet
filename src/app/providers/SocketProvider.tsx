@@ -13,6 +13,15 @@ function isForeground(status: AppStateStatus) {
   return status === "active"
 }
 
+function clearReconnectTimer(timerRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>) {
+  if (!timerRef.current) {
+    return
+  }
+
+  clearTimeout(timerRef.current)
+  timerRef.current = null
+}
+
 function parseSocketPayload(raw: string) {
   try {
     const parsed = JSON.parse(raw) as { type?: unknown; data?: unknown }
@@ -46,15 +55,6 @@ export function SocketProvider({ children }: PropsWithChildren) {
   }, [accessToken])
 
   useEffect(() => {
-    const clearReconnectTimer = () => {
-      if (!reconnectTimerRef.current) {
-        return
-      }
-
-      clearTimeout(reconnectTimerRef.current)
-      reconnectTimerRef.current = null
-    }
-
     const scheduleReconnect = () => {
       if (reconnectTimerRef.current || !shouldReconnectRef.current || !accessTokenRef.current) {
         return
@@ -76,7 +76,7 @@ export function SocketProvider({ children }: PropsWithChildren) {
 
       switch (event.type) {
         case "open":
-          clearReconnectTimer()
+          clearReconnectTimer(reconnectTimerRef)
           socketStore.setConnected(true)
           return
         case "message": {
@@ -99,27 +99,18 @@ export function SocketProvider({ children }: PropsWithChildren) {
     })
 
     return () => {
-      clearReconnectTimer()
+      clearReconnectTimer(reconnectTimerRef)
       unsubscribe()
     }
   }, [])
 
   useEffect(() => {
-    const clearReconnectTimer = () => {
-      if (!reconnectTimerRef.current) {
-        return
-      }
-
-      clearTimeout(reconnectTimerRef.current)
-      reconnectTimerRef.current = null
-    }
-
     const syncConnection = () => {
       const shouldConnect = isBootstrapped && Boolean(accessTokenRef.current) && isForeground(appStateRef.current)
       shouldReconnectRef.current = shouldConnect
 
       if (!shouldConnect || !accessTokenRef.current) {
-        clearReconnectTimer()
+        clearReconnectTimer(reconnectTimerRef)
         void websocketAdapter.disconnect()
         useSocketStore.getState().reset()
         return
@@ -137,7 +128,7 @@ export function SocketProvider({ children }: PropsWithChildren) {
 
     return () => {
       shouldReconnectRef.current = false
-      clearReconnectTimer()
+      clearReconnectTimer(reconnectTimerRef)
       subscription.remove()
       void websocketAdapter.disconnect()
       useSocketStore.getState().reset()
