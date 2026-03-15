@@ -205,7 +205,7 @@ function ChannelRow(props: {
             <Text style={[styles.logoText, { color: theme.colors.text }]}>{props.item.title.slice(0, 2).toUpperCase()}</Text>
           </View>
         ) : (
-          <View style={[styles.channelDot, { backgroundColor: props.item.receiveChainColor || theme.colors.primary }]} />
+          <View style={[styles.channelDot, { backgroundColor: props.item.receiveChainColor || theme.colors.success }]} />
         )
       }
       onPress={props.onPress}
@@ -214,8 +214,8 @@ function ChannelRow(props: {
       <View style={styles.titleRow}>
         <Text style={[styles.rowTitle, { color: theme.colors.text }]}>{props.item.title}</Text>
         {props.item.isRebate ? (
-          <View style={styles.rebateBadge}>
-            <Text style={styles.rebateBadgeText}>{t("transfer.selectToken.rebate")}</Text>
+          <View style={[styles.rebateBadge, { backgroundColor: theme.colors.warningSoft }]}>
+            <Text style={[styles.rebateBadgeText, { color: theme.colors.warning }]}>{t("transfer.selectToken.rebate")}</Text>
           </View>
         ) : null}
         {props.selected ? (
@@ -295,13 +295,11 @@ const styles = StyleSheet.create({
   },
   rebateBadge: {
     borderRadius: 999,
-    backgroundColor: "#FFF1E9",
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
   rebateBadgeText: {
     fontSize: 11,
-    color: "#E37318",
     fontWeight: "700",
   },
   selectedBadge: {

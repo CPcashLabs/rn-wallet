@@ -303,7 +303,7 @@ export function TransferOrderScreen({ navigation, route }: Props) {
   const selectedCoin = selectedOption ? balanceCoins.find(item => item.code === selectedOption.sendCoinCode) : null
 
   return (
-    <>
+    <View style={styles.screenRoot}>
       <HomeScaffold canGoBack onBack={navigation.goBack} title={t("transfer.order.title")} scroll={false}>
         <ScrollView bounces={false} contentContainerStyle={styles.content}>
           <SectionCard>
@@ -371,11 +371,14 @@ export function TransferOrderScreen({ navigation, route }: Props) {
           variant={confirmVariant}
         />
       ) : null}
-    </>
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
+  screenRoot: {
+    flex: 1,
+  },
   content: {
     padding: 16,
     gap: 12,
@@ -402,7 +405,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   errorText: {
-    color: "#DC2626",
     fontSize: 12,
     lineHeight: 18,
   },

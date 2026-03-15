@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react"
 
-import { Animated, Easing, Modal, StyleSheet, Text, View } from "react-native"
+import { Animated, Easing, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 
 import { useAppTheme } from "@/shared/theme/useAppTheme"
@@ -81,48 +81,48 @@ export function TransferOrderCreatingOverlay({ visible }: Props) {
   })
 
   return (
-    <Modal animationType="fade" statusBarTranslucent transparent visible>
-      <View style={styles.backdrop}>
-        <AppCard style={styles.card}>
-          <View style={styles.animationWrap}>
-            <Animated.View
-              style={[
-                styles.halo,
-                {
-                  backgroundColor: theme.colors.primarySoft ?? "rgba(10,132,255,0.16)",
-                  opacity: haloOpacity,
-                  transform: [{ scale: haloScale }],
-                },
-              ]}
-            />
-            <Animated.View
-              style={[
-                styles.ring,
-                {
-                  borderColor: theme.colors.primary,
-                  borderTopColor: "transparent",
-                  transform: [{ rotate: rotation }],
-                },
-              ]}
-            >
-              <View style={[styles.dot, { backgroundColor: theme.colors.primary }]} />
-            </Animated.View>
-          </View>
-          <Text style={[styles.title, { color: theme.colors.text }]}>{t("transfer.order.creatingTitle")}</Text>
-          <Text style={[styles.body, { color: theme.colors.mutedText }]}>{t("transfer.order.creatingBody")}</Text>
-        </AppCard>
-      </View>
-    </Modal>
+    <View style={styles.backdrop}>
+      <AppCard style={styles.card}>
+        <View style={styles.animationWrap}>
+          <Animated.View
+            style={[
+              styles.halo,
+              {
+                backgroundColor: theme.colors.primarySoft ?? "rgba(10,132,255,0.16)",
+                opacity: haloOpacity,
+                transform: [{ scale: haloScale }],
+              },
+            ]}
+          />
+          <Animated.View
+            style={[
+              styles.ring,
+              {
+                borderColor: theme.colors.primary,
+                borderTopColor: "transparent",
+                transform: [{ rotate: rotation }],
+              },
+            ]}
+          >
+            <View style={[styles.dot, { backgroundColor: theme.colors.primary }]} />
+          </Animated.View>
+        </View>
+        <Text style={[styles.title, { color: theme.colors.text }]}>{t("transfer.order.creatingTitle")}</Text>
+        <Text style={[styles.body, { color: theme.colors.mutedText }]}>{t("transfer.order.creatingBody")}</Text>
+      </AppCard>
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
   backdrop: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
     padding: 24,
     backgroundColor: "rgba(15,23,42,0.22)",
+    zIndex: 40,
+    elevation: 40,
   },
   card: {
     width: "100%",

@@ -8,6 +8,7 @@ import { resetToAuthStack, resetToMainTabs, resetToSupportScreen } from "@/app/n
 import type { TransferStackParamList } from "@/app/navigation/types"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { formatDateTime } from "@/features/home/utils/format"
+import { readAuthSession } from "@/shared/api/auth-session"
 import { FieldRow, PrimaryButton, SecondaryButton, SectionCard } from "@/shared/ui/AppFlowUi"
 import { getOrderDetail, getPublicTxStatusDetail } from "@/plugins/transfer/services/transferApi"
 import { formatAmount, resolveCountdownStorageKey, resolveOrderProgress } from "@/plugins/transfer/utils/order"
@@ -133,15 +134,26 @@ export function TxPayStatusScreen({ navigation, route }: Props) {
     }
   }, [fallbackPath, orderSn, params?.pay, publicAccess, publicTxid, refreshOrder])
 
-  const handleDone = () => {
-    if (authenticated) {
+  const handleDone = useCallback(async () => {
+    let hasSession = authenticated
+
+    if (!hasSession) {
+      const persistedSession = await readAuthSession()
+      hasSession = Boolean(persistedSession?.accessToken)
+
+      if (persistedSession?.accessToken) {
+        useAuthStore.getState().setSession(persistedSession)
+      }
+    }
+
+    if (hasSession) {
       setBoolean(KvStorageKeys.HomePageNeedRefresh, true)
       resetToMainTabs()
       return
     }
 
     resetToAuthStack()
-  }
+  }, [authenticated])
 
   return (
     <HomeScaffold canGoBack onBack={navigation.goBack} title={t("transfer.status.title")} scroll={false}>
@@ -188,7 +200,7 @@ export function TxPayStatusScreen({ navigation, route }: Props) {
 
         <View style={styles.actions}>
           <SecondaryButton label={t("transfer.status.refresh")} onPress={() => void refreshOrder()} disabled={loading} />
-          <PrimaryButton label={t("transfer.status.done")} onPress={handleDone} disabled={loading} />
+          <PrimaryButton label={t("transfer.status.done")} onPress={() => void handleDone()} disabled={loading} />
         </View>
       </ScrollView>
     </HomeScaffold>

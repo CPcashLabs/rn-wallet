@@ -5,7 +5,6 @@ import {
   Alert,
   Animated,
   Easing,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -333,71 +332,69 @@ export function TransferConfirmModal(props: ModalProps) {
   }
 
   return (
-    <Modal animationType="fade" statusBarTranslucent transparent visible>
-      <View style={styles.modalRoot}>
-        <Animated.View style={[styles.modalBackdrop, { opacity: sheetOpacity }]}>
-          <Pressable disabled={controller.submitting} onPress={dismiss} style={StyleSheet.absoluteFillObject} />
-        </Animated.View>
+    <View style={styles.modalRoot}>
+      <Animated.View style={[styles.modalBackdrop, { opacity: sheetOpacity }]}>
+        <Pressable disabled={controller.submitting} onPress={dismiss} style={StyleSheet.absoluteFillObject} />
+      </Animated.View>
 
-        <Animated.View
+      <Animated.View
+        style={[
+          styles.sheetSurface,
+          {
+            backgroundColor: theme.colors.background,
+            borderColor: theme.colors.border,
+            top: Math.max(insets.top + 12, 28),
+            paddingBottom: Math.max(insets.bottom + 8, 16),
+            transform: [{ translateY: sheetTranslateY }],
+          },
+        ]}
+      >
+        <View
           style={[
-            styles.sheetSurface,
+            styles.sheetHeader,
             {
-              backgroundColor: theme.colors.background,
-              borderColor: theme.colors.border,
-              marginTop: Math.max(insets.top + 12, 28),
-              paddingBottom: Math.max(insets.bottom + 8, 16),
-              transform: [{ translateY: sheetTranslateY }],
+              backgroundColor: theme.colors.surfaceElevated ?? theme.colors.surface,
+              borderBottomColor: theme.colors.border,
             },
           ]}
         >
-          <View
-            style={[
-              styles.sheetHeader,
-              {
-                backgroundColor: theme.colors.surfaceElevated ?? theme.colors.surface,
-                borderBottomColor: theme.colors.border,
-              },
-            ]}
-          >
-            <View style={styles.sheetHeaderSide}>
-              <Pressable disabled={controller.submitting} hitSlop={8} onPress={dismiss} style={styles.backButton}>
-                <Text style={[styles.backChevron, { color: theme.colors.primary }]}>‹</Text>
-                <Text style={[styles.backText, { color: theme.colors.primary }]}>{t("common.back")}</Text>
-              </Pressable>
-            </View>
-            <Text numberOfLines={1} style={[styles.sheetTitle, { color: theme.colors.text }]}>
-              {t("transfer.confirm.title")}
-            </Text>
-            <View style={[styles.sheetHeaderSide, styles.sheetHeaderSideRight]}>
-              <Pressable
-                disabled={controller.submitting}
-                hitSlop={8}
-                onPress={dismiss}
-                style={[
-                  styles.closeButton,
-                  {
-                    backgroundColor: theme.colors.surfaceMuted,
-                    borderColor: theme.colors.border,
-                  },
-                ]}
-              >
-                <Text style={[styles.closeButtonText, { color: theme.colors.text }]}>{t("common.close")}</Text>
-              </Pressable>
-            </View>
+          <View style={styles.sheetHeaderSide}>
+            <Pressable disabled={controller.submitting} hitSlop={8} onPress={dismiss} style={styles.backButton}>
+              <Text style={[styles.backChevron, { color: theme.colors.primary }]}>‹</Text>
+              <Text style={[styles.backText, { color: theme.colors.primary }]}>{t("common.back")}</Text>
+            </Pressable>
           </View>
+          <Text numberOfLines={1} style={[styles.sheetTitle, { color: theme.colors.text }]}>
+            {t("transfer.confirm.title")}
+          </Text>
+          <View style={[styles.sheetHeaderSide, styles.sheetHeaderSideRight]}>
+            <Pressable
+              disabled={controller.submitting}
+              hitSlop={8}
+              onPress={dismiss}
+              style={[
+                styles.closeButton,
+                {
+                  backgroundColor: theme.colors.surfaceMuted,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+            >
+              <Text style={[styles.closeButtonText, { color: theme.colors.text }]}>{t("common.close")}</Text>
+            </Pressable>
+          </View>
+        </View>
 
-          <TransferConfirmBody
-            bottomInset={Math.max(insets.bottom + 20, 28)}
-            detail={controller.detail}
-            loading={controller.loading}
-            onClose={dismiss}
-            onSubmit={() => void controller.onSubmit()}
-            submitting={controller.submitting}
-          />
-        </Animated.View>
-      </View>
-    </Modal>
+        <TransferConfirmBody
+          bottomInset={Math.max(insets.bottom + 20, 28)}
+          detail={controller.detail}
+          loading={controller.loading}
+          onClose={dismiss}
+          onSubmit={() => void controller.onSubmit()}
+          submitting={controller.submitting}
+        />
+      </Animated.View>
+    </View>
   )
 }
 
@@ -447,15 +444,19 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   modalRoot: {
-    flex: 1,
-    justifyContent: "flex-end",
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 30,
+    elevation: 30,
   },
   modalBackdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(15,23,42,0.22)",
   },
   sheetSurface: {
-    flex: 1,
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     borderWidth: StyleSheet.hairlineWidth,
