@@ -259,6 +259,7 @@ function TransferConfirmBody(props: {
 }
 
 export function TransferConfirmScreenView(props: SharedProps) {
+  const { t } = useTranslation()
   const controller = useTransferConfirmController({
     onCompleted: props.onCompleted,
     orderSn: props.orderSn,
@@ -266,7 +267,7 @@ export function TransferConfirmScreenView(props: SharedProps) {
   })
 
   return (
-    <HomeScaffold canGoBack onBack={props.onClose} scroll={false} title={useTranslation().t("transfer.confirm.title")}>
+    <HomeScaffold canGoBack onBack={props.onClose} scroll={false} title={t("transfer.confirm.title")}>
       <TransferConfirmBody
         detail={controller.detail}
         loading={controller.loading}

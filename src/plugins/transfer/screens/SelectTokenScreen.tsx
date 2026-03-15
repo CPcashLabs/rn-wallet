@@ -5,6 +5,7 @@ import { Alert, FlatList, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
+import { navigateRoot } from "@/app/navigation/navigationRef"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { useTransferDraftStore } from "@/plugins/transfer/store/useTransferDraftStore"
 import { getTransferChannels } from "@/shared/exchange/services/exchangeApi"
@@ -87,7 +88,7 @@ export function SelectTokenScreen({ navigation, route }: Props) {
   const handleSelectChannel = useCallback(
     (item: ChannelItem) => {
       if (intent === "receive") {
-        ;(navigation.getParent() as any)?.navigate("ReceiveStack", {
+        navigateRoot("ReceiveStack", {
           screen: "ReceiveHomeScreen",
           params: {
             payChain: item.receiveChainName,

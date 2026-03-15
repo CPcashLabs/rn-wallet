@@ -52,6 +52,7 @@ export function TransferOrderScreen({ navigation, route }: Props) {
   const [gasLimit, setGasLimit] = useState(0)
   const [quotedOption, setQuotedOption] = useState<TransferOrderOption | null>(null)
   const [confirmOrderSn, setConfirmOrderSn] = useState<string | null>(null)
+  const [confirmVisible, setConfirmVisible] = useState(false)
 
   const sendChainName = resolveChainNameById(chainId)
   const isNormalRoute = route.name === "TransferOrderNormalScreen"
@@ -221,7 +222,17 @@ export function TransferOrderScreen({ navigation, route }: Props) {
 
   const resolvedOption = quotedOption && selectedOption && quotedOption.sendCoinCode === selectedOption.sendCoinCode ? quotedOption : selectedOption
 
+  useEffect(() => {
+    setConfirmOrderSn(null)
+    setConfirmVisible(false)
+  }, [note, recipientAddress, resolvedOption?.recvCoinCode, resolvedOption?.sendCoinCode, sendAmount])
+
   const handleSubmit = useCallback(async () => {
+    if (confirmOrderSn) {
+      setConfirmVisible(true)
+      return
+    }
+
     if (!resolvedOption || validationMessage) {
       Alert.alert(t("common.errorTitle"), validationMessage || t("transfer.order.noOption"))
       return
@@ -245,6 +256,7 @@ export function TransferOrderScreen({ navigation, route }: Props) {
         recvCoinCode: resolvedOption.recvCoinCode,
       })
       setConfirmOrderSn(result.orderSn)
+      setConfirmVisible(true)
     } catch (error) {
       const maybeResponse = Reflect.get(error as object, "response") as { data?: { code?: number } } | undefined
       if (maybeResponse?.data?.code === 60013) {
@@ -264,10 +276,12 @@ export function TransferOrderScreen({ navigation, route }: Props) {
     setOrderDraft,
     t,
     validationMessage,
+    confirmOrderSn,
   ])
 
   const handleConfirmCompleted = useCallback(
     ({ orderSn, walletId }: TransferConfirmSuccess) => {
+      setConfirmVisible(false)
       setConfirmOrderSn(null)
       navigation.navigate("TxPayStatusScreen", {
         orderSn,
@@ -348,10 +362,10 @@ export function TransferOrderScreen({ navigation, route }: Props) {
       </HomeScaffold>
 
       <TransferOrderCreatingOverlay visible={submitting} />
-      {confirmOrderSn ? (
+      {confirmOrderSn && confirmVisible ? (
         <TransferConfirmModal
           visible
-          onClose={() => setConfirmOrderSn(null)}
+          onClose={() => setConfirmVisible(false)}
           onCompleted={handleConfirmCompleted}
           orderSn={confirmOrderSn}
           variant={confirmVariant}
