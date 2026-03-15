@@ -1,4 +1,4 @@
-import React, { type PropsWithChildren, useEffect, useRef } from "react"
+import React, { type PropsWithChildren, useCallback, useEffect, useRef } from "react"
 
 import { AppState, type AppStateStatus } from "react-native"
 
@@ -7,20 +7,12 @@ import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useSocketStore } from "@/shared/store/useSocketStore"
 import { websocketAdapter } from "@/shared/native/websocketAdapter"
 import { authenticateSocketConnection, isInternalSocketEvent } from "@/app/providers/socketAuth"
+import { invalidateReconnectAttempt, scheduleReconnectAttempt } from "@/app/providers/socketReconnect"
 
 const RECONNECT_DELAY_MS = 1_500
 
 function isForeground(status: AppStateStatus) {
   return status === "active"
-}
-
-function clearReconnectTimer(timerRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>) {
-  if (!timerRef.current) {
-    return
-  }
-
-  clearTimeout(timerRef.current)
-  timerRef.current = null
 }
 
 function parseSocketPayload(raw: string) {
@@ -47,48 +39,66 @@ export function SocketProvider({ children }: PropsWithChildren) {
   const accessToken = useAuthStore(state => state.session?.accessToken ?? null)
   const isBootstrapped = useAuthStore(state => state.isBootstrapped)
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const reconnectGenerationRef = useRef(0)
   const appStateRef = useRef<AppStateStatus>(AppState.currentState)
   const accessTokenRef = useRef<string | null>(accessToken)
   const shouldReconnectRef = useRef(false)
 
-  useEffect(() => {
-    accessTokenRef.current = accessToken
-  }, [accessToken])
+  const invalidateReconnect = useCallback(() => {
+    invalidateReconnectAttempt(reconnectTimerRef, reconnectGenerationRef)
+  }, [])
 
-  useEffect(() => {
-    const authenticateSocket = async () => {
-      const socketStore = useSocketStore.getState()
-      const authenticated = await authenticateSocketConnection(websocketAdapter, accessTokenRef.current)
-      if (authenticated) {
-        socketStore.setConnected(true)
-        return
-      }
+  const authenticateSocket = useCallback(async () => {
+    const reconnectGeneration = reconnectGenerationRef.current
+    const socketStore = useSocketStore.getState()
+    const authenticated = await authenticateSocketConnection(websocketAdapter, accessTokenRef.current)
 
-      socketStore.setConnected(false)
+    if (reconnectGeneration !== reconnectGenerationRef.current) {
+      return
     }
 
-    const scheduleReconnect = () => {
-      if (reconnectTimerRef.current || !shouldReconnectRef.current || !accessTokenRef.current) {
-        return
-      }
+    if (authenticated) {
+      socketStore.setConnected(true)
+      return
+    }
 
-      reconnectTimerRef.current = setTimeout(() => {
-        reconnectTimerRef.current = null
+    socketStore.setConnected(false)
+  }, [])
 
-        if (!shouldReconnectRef.current || !accessTokenRef.current || !isForeground(appStateRef.current)) {
-          return
-        }
-
+  const scheduleReconnect = useCallback(() => {
+    scheduleReconnectAttempt({
+      delayMs: RECONNECT_DELAY_MS,
+      timerRef: reconnectTimerRef,
+      generationRef: reconnectGenerationRef,
+      canReconnect: () =>
+        Boolean(shouldReconnectRef.current && accessTokenRef.current && isForeground(appStateRef.current)),
+      onReconnect: () => {
         void websocketAdapter.connect(resolveWebSocketUrl())
-      }, RECONNECT_DELAY_MS)
+      },
+    })
+  }, [])
+
+  const syncConnection = useCallback(() => {
+    const shouldConnect = isBootstrapped && Boolean(accessTokenRef.current) && isForeground(appStateRef.current)
+    shouldReconnectRef.current = shouldConnect
+    invalidateReconnect()
+
+    if (!shouldConnect || !accessTokenRef.current) {
+      void websocketAdapter.disconnect()
+      useSocketStore.getState().reset()
+      return
     }
 
+    void websocketAdapter.connect(resolveWebSocketUrl())
+  }, [invalidateReconnect, isBootstrapped])
+
+  useEffect(() => {
     const unsubscribe = websocketAdapter.subscribe(event => {
       const socketStore = useSocketStore.getState()
 
       switch (event.type) {
         case "open":
-          clearReconnectTimer(reconnectTimerRef)
+          invalidateReconnect()
           void authenticateSocket()
           return
         case "message": {
@@ -111,28 +121,12 @@ export function SocketProvider({ children }: PropsWithChildren) {
     })
 
     return () => {
-      clearReconnectTimer(reconnectTimerRef)
+      invalidateReconnect()
       unsubscribe()
     }
-  }, [])
+  }, [authenticateSocket, invalidateReconnect, scheduleReconnect])
 
   useEffect(() => {
-    const syncConnection = () => {
-      const shouldConnect = isBootstrapped && Boolean(accessTokenRef.current) && isForeground(appStateRef.current)
-      shouldReconnectRef.current = shouldConnect
-
-      if (!shouldConnect || !accessTokenRef.current) {
-        clearReconnectTimer(reconnectTimerRef)
-        void websocketAdapter.disconnect()
-        useSocketStore.getState().reset()
-        return
-      }
-
-      void websocketAdapter.connect(resolveWebSocketUrl())
-    }
-
-    syncConnection()
-
     const subscription = AppState.addEventListener("change", nextState => {
       appStateRef.current = nextState
       syncConnection()
@@ -140,12 +134,17 @@ export function SocketProvider({ children }: PropsWithChildren) {
 
     return () => {
       shouldReconnectRef.current = false
-      clearReconnectTimer(reconnectTimerRef)
+      invalidateReconnect()
       subscription.remove()
       void websocketAdapter.disconnect()
       useSocketStore.getState().reset()
     }
-  }, [isBootstrapped, accessToken])
+  }, [invalidateReconnect, syncConnection])
+
+  useEffect(() => {
+    accessTokenRef.current = accessToken
+    syncConnection()
+  }, [accessToken, syncConnection])
 
   return children
 }
