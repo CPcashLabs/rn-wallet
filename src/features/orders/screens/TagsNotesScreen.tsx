@@ -188,7 +188,7 @@ export function TagsNotesScreen({ navigation, route }: Props) {
                       style={[
                         styles.tag,
                         {
-                          backgroundColor: active ? "#DFF7F3" : theme.colors.background,
+                          backgroundColor: active ? theme.colors.successSoft : theme.colors.background,
                           borderColor: active ? theme.colors.primary : theme.colors.border,
                           opacity: !active && !canAddMore ? 0.5 : 1,
                         },

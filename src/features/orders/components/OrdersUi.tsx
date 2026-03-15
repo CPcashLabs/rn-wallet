@@ -122,7 +122,7 @@ function OrderStatusBadge(props: {
       style={[
         styles.statusBadge,
         {
-          backgroundColor: isDanger ? "rgba(220,38,38,0.12)" : theme.colors.primarySoft ?? `${theme.colors.primary}14`,
+          backgroundColor: isDanger ? theme.colors.dangerSoft : theme.colors.primarySoft ?? `${theme.colors.primary}14`,
         },
       ]}
     >
@@ -130,7 +130,7 @@ function OrderStatusBadge(props: {
         style={[
           styles.statusBadgeText,
           {
-            color: isDanger ? "#DC2626" : theme.colors.primary,
+            color: isDanger ? theme.colors.danger : theme.colors.primary,
           },
         ]}
       >

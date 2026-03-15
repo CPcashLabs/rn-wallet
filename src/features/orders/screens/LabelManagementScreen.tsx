@@ -113,7 +113,7 @@ export function LabelManagementScreen({ navigation }: Props) {
           <View key={label.id} style={[styles.row, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
             <Text style={[styles.rowTitle, { color: theme.colors.text }]}>{label.name}</Text>
             <Pressable onPress={() => handleDelete(label)}>
-              <Text style={[styles.deleteText, { color: "#DC2626" }]}>{t("orders.labels.delete")}</Text>
+              <Text style={[styles.deleteText, { color: theme.colors.danger }]}>{t("orders.labels.delete")}</Text>
             </Pressable>
           </View>
         ))}

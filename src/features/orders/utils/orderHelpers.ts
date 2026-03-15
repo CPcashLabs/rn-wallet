@@ -123,14 +123,14 @@ export function resolveOrderListStatusBadge(t: Translator, status: number): { la
 
   if (status === OrderStatus.BuyerPaying) {
     return {
-      label: t("orders.status.paying"),
+      label: t("orders.status.pending"),
       tone: "active",
     }
   }
 
-  if (status === OrderStatus.SellerPaying) {
+  if (status === OrderStatus.BuyerPaid || status === OrderStatus.SellerPaying) {
     return {
-      label: t("orders.status.depositing"),
+      label: t("orders.status.inProgress"),
       tone: "active",
     }
   }

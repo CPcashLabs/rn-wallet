@@ -51,27 +51,25 @@ export function OrderDetailScreen({ navigation, route }: Props) {
 
   const loadOrderDetail = useCallback(async () => {
     setLoading(true)
-    void (async () => {
-      try {
-        const [response, binding] = await Promise.all([getOrderDetail(orderSn), findOrderLabels(orderSn).catch(() => null)])
-        setDetail(response)
-        setLabelBinding(
-          binding ?? {
-            notes: response.note,
-            notesImageUrl: response.notesImageUrl,
-            labels: [],
-          },
-        )
-      } catch (error) {
-        setDetail(null)
-        setLabelBinding(EMPTY_LABEL_BINDING)
-        presentError(error, {
-          fallbackKey: "orders.detail.loadFailed",
-        })
-      } finally {
-        setLoading(false)
-      }
-    })()
+    try {
+      const [response, binding] = await Promise.all([getOrderDetail(orderSn), findOrderLabels(orderSn).catch(() => null)])
+      setDetail(response)
+      setLabelBinding(
+        binding ?? {
+          notes: response.note,
+          notesImageUrl: response.notesImageUrl,
+          labels: [],
+        },
+      )
+    } catch (error) {
+      setDetail(null)
+      setLabelBinding(EMPTY_LABEL_BINDING)
+      presentError(error, {
+        fallbackKey: "orders.detail.loadFailed",
+      })
+    } finally {
+      setLoading(false)
+    }
   }, [orderSn, presentError])
 
   useFocusEffect(
@@ -175,8 +173,8 @@ export function OrderDetailScreen({ navigation, route }: Props) {
               {previewLabels.length > 0 ? (
                 <View style={styles.tagWrap}>
                   {previewLabels.map(label => (
-                    <View key={label.id} style={styles.tagChip}>
-                      <Text style={styles.tagChipText}>{label.name}</Text>
+                    <View key={label.id} style={[styles.tagChip, { backgroundColor: theme.colors.successSoft }]}>
+                      <Text style={[styles.tagChipText, { color: theme.colors.success }]}>{label.name}</Text>
                     </View>
                   ))}
                   {labelBinding.labels.length > previewLabels.length ? (
@@ -334,12 +332,10 @@ const styles = StyleSheet.create({
   },
   tagChip: {
     borderRadius: 999,
-    backgroundColor: "#DFF7F3",
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
   tagChipText: {
-    color: "#0F766E",
     fontSize: 12,
     fontWeight: "700",
   },
