@@ -7,7 +7,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { navigateRoot, resetToAuthStack } from "@/app/navigation/navigationRef"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { clearAuthSession } from "@/shared/api/auth-session"
-import { getCurrentLanguage } from "@/shared/i18n"
+import { getCurrentLanguage, getLanguagePreference } from "@/shared/i18n"
 import { resetProfileSyncSession } from "@/shared/session/profileSyncSession"
 import { getJson, getNumber, setString } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
@@ -38,11 +38,13 @@ export function SettingsScreen({ navigation }: Props) {
   const { t } = useTranslation()
   const themeMode = useThemeStore(state => state.themeMode)
   const currentLanguage = getCurrentLanguage()
+  const languagePreference = getLanguagePreference()
   const isPasskeyLogin = useAuthStore(state => state.loginType) === "passkey"
   const chainId = useWalletStore(state => state.chainId) ?? DEFAULT_WALLET_CHAIN_ID
   const profile = useUserStore(state => state.profile)
   const selectedCurrency = getJson<SelectedCurrency>(KvStorageKeys.SelectedCurrency)
   const rpcIndex = getNumber(KvStorageKeys.WalletRpcIndex) ?? 0
+  const languageLabelKey = languagePreference === "system" ? "home.settings.languageOptions.system" : `home.settings.languageOptions.${currentLanguage}`
 
   const switchNetwork = () => {
     const nextChainId = chainId === "199" ? "1029" : "199"
@@ -88,7 +90,7 @@ export function SettingsScreen({ navigation }: Props) {
           {" · "}
           {t(`home.settings.networkOptions.${chainId === "199" ? "mainnet" : "testnet"}`)}
           {" · "}
-          {t(`home.settings.languageOptions.${currentLanguage}`)}
+          {t(languageLabelKey)}
         </Text>
       </AppCard>
 
@@ -118,7 +120,7 @@ export function SettingsScreen({ navigation }: Props) {
         />
         <SettingsRow
           icon="globe"
-          detail={t(`home.settings.languageOptions.${currentLanguage}`)}
+          detail={t(languageLabelKey)}
           label={t("home.settings.language")}
           onPress={() => navigation.navigate("LanguageScreen")}
         />

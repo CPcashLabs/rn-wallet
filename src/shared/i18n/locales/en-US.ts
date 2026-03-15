@@ -216,6 +216,7 @@ const home = {
       dark: "Dark",
     },
     languageOptions: {
+      system: "System",
       "zh-CN": "简体中文",
       "en-US": "English",
     },

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react"
 
-import { ActivityIndicator, Pressable, Text } from "react-native"
+import { ActivityIndicator, Text } from "react-native"
 import { useTranslation } from "react-i18next"
 
 import { HeaderTextAction, HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { getChainList, getExchangeRates, type ExchangeRateItem } from "@/features/settings/services/settingsApi"
-import { getCurrentLanguage, setLanguage } from "@/shared/i18n"
+import { getCurrentLanguage, getLanguagePreference, setLanguagePreference } from "@/shared/i18n"
+import { SYSTEM_LANGUAGE_PREFERENCE, type LanguagePreference } from "@/shared/i18n/languagePreference"
 import { getJson, getNumber, setJson, setNumber } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 import { useBalanceStore } from "@/shared/store/useBalanceStore"
@@ -22,17 +23,33 @@ type SelectedCurrency = {
 export function LanguageScreen({ navigation }: StackProps<"LanguageScreen">) {
   const { t } = useTranslation()
   const currentLanguage = getCurrentLanguage()
+  const languagePreference = getLanguagePreference()
 
-  const handleSelect = async (language: "zh-CN" | "en-US") => {
-    await setLanguage(language)
+  const handleSelect = async (language: LanguagePreference) => {
+    await setLanguagePreference(language)
     navigation.goBack()
   }
 
   return (
     <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.language.title")}>
       <ListCard>
-        <Row hideDivider={currentLanguage === "en-US"} label={t("settingsHub.language.zhCN")} onPress={() => void handleSelect("zh-CN")} selected={currentLanguage === "zh-CN"} />
-        <Row hideDivider label={t("settingsHub.language.enUS")} onPress={() => void handleSelect("en-US")} selected={currentLanguage === "en-US"} />
+        <Row
+          detail={languagePreference === SYSTEM_LANGUAGE_PREFERENCE ? t(`home.settings.languageOptions.${currentLanguage}`) : undefined}
+          label={t("home.settings.languageOptions.system")}
+          onPress={() => void handleSelect(SYSTEM_LANGUAGE_PREFERENCE)}
+          selected={languagePreference === SYSTEM_LANGUAGE_PREFERENCE}
+        />
+        <Row
+          label={t("home.settings.languageOptions.zh-CN")}
+          onPress={() => void handleSelect("zh-CN")}
+          selected={languagePreference === "zh-CN"}
+        />
+        <Row
+          hideDivider
+          label={t("home.settings.languageOptions.en-US")}
+          onPress={() => void handleSelect("en-US")}
+          selected={languagePreference === "en-US"}
+        />
       </ListCard>
     </HomeScaffold>
   )

@@ -216,6 +216,7 @@ const home = {
       dark: "深色",
     },
     languageOptions: {
+      system: "跟随系统",
       "zh-CN": "简体中文",
       "en-US": "English",
     },
