@@ -1,12 +1,12 @@
 import React from "react"
 
-import { StyleSheet, Text, View } from "react-native"
+import { Pressable, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
-import { useProfileSync } from "@/features/home/hooks/useProfileSync"
 import { UserAvatar } from "@/features/home/components/UserAvatar"
+import { useProfileSync } from "@/features/home/hooks/useProfileSync"
 import { formatAddress } from "@/features/home/utils/format"
 import { navigateRoot } from "@/app/navigation/navigationRef"
 import { useAuthStore } from "@/shared/store/useAuthStore"
@@ -36,62 +36,120 @@ export function MeShellScreen({ navigation }: Props) {
   const inviteBound = Boolean(profile?.inviteBound)
 
   return (
-    <HomeScaffold title={t("home.tabs.me")}>
-      <AppCard style={styles.profileCard}>
-        <UserAvatar cacheVersion={avatarVersion} label={displayName} size={58} uri={avatar} />
-        <View style={styles.profileMeta}>
-          <Text style={[styles.name, { color: theme.colors.text }]}>{displayName}</Text>
-          <Text style={[styles.address, { color: theme.colors.mutedText }]}>{formatAddress(address)}</Text>
-          <View style={styles.statusRow}>
-            <StatusPill label={inviteBound ? t("home.me.inviteBound") : t("home.me.inviteUnbound")} tone={inviteBound ? "primary" : "neutral"} />
-            <StatusPill label={loginType === "passkey" ? "Passkey" : "Wallet"} tone="neutral" />
-          </View>
+    <HomeScaffold backgroundColor={theme.colors.background} hideHeader title={t("home.tabs.me")}>
+      <View style={styles.page}>
+        <View style={styles.topActions}>
+          <TopActionButton icon="help" onPress={() => navigation.navigate("HelpCenterScreen")} />
+          <TopActionButton icon="gear" onPress={() => navigation.navigate("SettingsHomeScreen")} />
         </View>
-      </AppCard>
 
-      <Text style={[styles.sectionTitle, { color: theme.colors.mutedText }]}>{t("home.me.personal")}</Text>
-      <AppListCard style={styles.listCard}>
-        <MenuRow body={t("home.personal.title")} icon="person" label={t("home.me.personal")} onPress={() => navigation.navigate("PersonalScreen")} />
-        <MenuRow
-          body={t("home.me.addressBook")}
-          icon="addressBook"
-          label={t("home.me.addressBook")}
-          onPress={() => {
-            navigateRoot("AddressBookStack", {
-              screen: "AddressBookListScreen",
-            })
-          }}
-        />
-        <MenuRow
-          body={t("home.me.recordsBody")}
-          icon="book"
-          label={t("home.me.records")}
-          onPress={() => {
-            navigateRoot("OrdersStack", {
-              screen: "TxlogsScreen",
-            })
-          }}
-        />
-        <MenuRow body={t("settingsHub.invite.bindTitle")} icon="invite" label={t("settingsHub.invite.title")} onPress={() => navigation.navigate("InviteHomeScreen")} />
-      </AppListCard>
+        <Pressable
+          onPress={() => navigation.navigate("PersonalScreen")}
+          style={({ pressed }) => [
+            styles.heroPressable,
+            {
+              transform: [{ scale: pressed ? 0.992 : 1 }],
+            },
+          ]}
+        >
+          <AppCard
+            backgroundColor={theme.isDark ? theme.colors.surfaceElevated : "#EAF2FF"}
+            borderColor={theme.isDark ? theme.colors.border : "rgba(255,255,255,0.84)"}
+            overflow="hidden"
+            style={styles.heroCard}
+          >
+            <View style={[styles.heroGlow, styles.heroGlowPrimary, { backgroundColor: theme.colors.primarySoft ?? `${theme.colors.primary}1F` }]} />
+            <View style={[styles.heroGlow, styles.heroGlowSecondary, { backgroundColor: theme.colors.infoSoft ?? `${theme.colors.primary}12` }]} />
 
-      <Text style={[styles.sectionTitle, { color: theme.colors.mutedText }]}>{t("home.me.settings")}</Text>
-      <AppListCard style={styles.listCard}>
-        <MenuRow body={t("home.settings.title")} icon="gear" label={t("home.me.settings")} onPress={() => navigation.navigate("SettingsHomeScreen")} />
-        <MenuRow body={t("settingsHub.help.needHelp")} icon="help" label={t("settingsHub.help.title")} onPress={() => navigation.navigate("HelpCenterScreen")} />
-        <MenuRow body={t("settingsHub.about.title")} icon="info" label={t("settingsHub.about.title")} last onPress={() => navigation.navigate("AboutScreen")} />
-      </AppListCard>
+            <View style={styles.profileCard}>
+              <View style={[styles.avatarShell, { backgroundColor: theme.colors.surfaceElevated ?? theme.colors.surface }]}>
+                <UserAvatar cacheVersion={avatarVersion} label={displayName} size={72} uri={avatar} />
+              </View>
+
+              <View style={styles.profileMeta}>
+                <Text numberOfLines={1} style={[styles.name, { color: theme.colors.text }]}>
+                  {displayName}
+                </Text>
+                <Text numberOfLines={1} style={[styles.address, { color: theme.colors.mutedText }]}>
+                  {formatAddress(address) || "--"}
+                </Text>
+                <Text style={[styles.profileHint, { color: theme.colors.mutedText }]}>{t("home.me.personal")}</Text>
+                <View style={styles.statusRow}>
+                  <StatusPill label={inviteBound ? t("home.me.inviteBound") : t("home.me.inviteUnbound")} tone={inviteBound ? "primary" : "neutral"} />
+                  <StatusPill label={loginType === "passkey" ? "Passkey" : "Wallet"} tone="neutral" />
+                </View>
+              </View>
+
+              <Text style={[styles.heroArrow, { color: theme.colors.mutedText }]}>›</Text>
+            </View>
+          </AppCard>
+        </Pressable>
+
+        <AppListCard style={styles.listCard}>
+          <MenuRow
+            icon="addressBook"
+            label={t("home.me.addressBook")}
+            onPress={() => {
+              navigateRoot("AddressBookStack", {
+                screen: "AddressBookListScreen",
+              })
+            }}
+          />
+          <MenuRow
+            icon="book"
+            label={t("home.me.records")}
+            onPress={() => {
+              navigateRoot("OrdersStack", {
+                screen: "TxlogsScreen",
+              })
+            }}
+          />
+          <MenuRow icon="invite" label={t("settingsHub.invite.title")} last onPress={() => navigation.navigate("InviteHomeScreen")} />
+        </AppListCard>
+
+        <AppListCard style={styles.listCard}>
+          <MenuRow icon="gear" label={t("home.me.settings")} onPress={() => navigation.navigate("SettingsHomeScreen")} />
+          <MenuRow icon="help" label={t("settingsHub.help.title")} onPress={() => navigation.navigate("HelpCenterScreen")} />
+          <MenuRow icon="info" label={t("settingsHub.about.title")} last onPress={() => navigation.navigate("AboutScreen")} />
+        </AppListCard>
+      </View>
     </HomeScaffold>
   )
 }
 
-function MenuRow(props: { label: string; body: string; icon: AppGlyphName; badge?: string; onPress: () => void; last?: boolean }) {
+function TopActionButton(props: { icon: AppGlyphName; onPress: () => void }) {
+  const theme = useAppTheme()
+
+  return (
+    <Pressable
+      onPress={props.onPress}
+      style={({ pressed }) => [
+        styles.topActionButton,
+        {
+          backgroundColor: theme.colors.glassStrong ?? theme.colors.surface,
+          borderColor: theme.colors.glassBorder ?? theme.colors.border,
+          shadowColor: theme.colors.shadow,
+          shadowOpacity: theme.isDark ? 0.16 : 0.06,
+          shadowRadius: 14,
+          shadowOffset: { width: 0, height: 8 },
+          elevation: 2,
+          transform: [{ scale: pressed ? 0.97 : 1 }],
+        },
+      ]}
+    >
+      <AppGlyph backgroundColor="transparent" name={props.icon} size={20} tintColor={theme.colors.text} />
+    </Pressable>
+  )
+}
+
+function MenuRow(props: { label: string; icon: AppGlyphName; badge?: string; onPress: () => void; last?: boolean }) {
   const theme = useAppTheme()
 
   return (
     <AppListRow
       hideDivider={props.last}
       left={<AppGlyph name={props.icon} />}
+      minHeight={64}
       onPress={props.onPress}
       right={
         props.badge ? (
@@ -103,8 +161,8 @@ function MenuRow(props: { label: string; body: string; icon: AppGlyphName; badge
           </View>
         ) : undefined
       }
-      subtitle={props.body}
       title={props.label}
+      titleStyle={styles.rowTitle}
     />
   )
 }
@@ -122,22 +180,87 @@ function StatusPill(props: { label: string; tone: "primary" | "neutral" }) {
 }
 
 const styles = StyleSheet.create({
+  page: {
+    gap: 16,
+    paddingBottom: 28,
+  },
+  topActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 10,
+    marginBottom: 4,
+  },
+  topActionButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  heroPressable: {
+    marginTop: 2,
+  },
+  heroCard: {
+    minHeight: 152,
+  },
+  heroGlow: {
+    position: "absolute",
+    borderRadius: 999,
+  },
+  heroGlowPrimary: {
+    width: 214,
+    height: 214,
+    right: -72,
+    top: -124,
+    opacity: 0.9,
+  },
+  heroGlowSecondary: {
+    width: 150,
+    height: 150,
+    left: -48,
+    bottom: -80,
+    opacity: 0.84,
+  },
   profileCard: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
+    gap: 16,
+    minHeight: 116,
+  },
+  avatarShell: {
+    width: 88,
+    height: 88,
+    borderRadius: 30,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#0F172A",
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 2,
   },
   profileMeta: {
     flex: 1,
     minWidth: 0,
-    gap: 4,
+    gap: 6,
   },
   name: {
-    fontSize: 19,
+    fontSize: 24,
     fontWeight: "700",
   },
   address: {
+    fontSize: 14,
+  },
+  profileHint: {
     fontSize: 13,
+    fontWeight: "500",
+  },
+  heroArrow: {
+    fontSize: 30,
+    lineHeight: 30,
+    fontWeight: "300",
+    marginLeft: 4,
   },
   statusRow: {
     flexDirection: "row",
@@ -146,14 +269,11 @@ const styles = StyleSheet.create({
   },
   listCard: {
     gap: 0,
+    borderRadius: 28,
   },
-  sectionTitle: {
-    fontSize: 13,
+  rowTitle: {
+    fontSize: 17,
     fontWeight: "600",
-    letterSpacing: 0.4,
-    textTransform: "uppercase",
-    paddingHorizontal: 4,
-    paddingTop: 4,
   },
   rowRight: {
     flexDirection: "row",
