@@ -1,5 +1,5 @@
 import { type ApiEnvelope, unwrapEnvelope } from "@/shared/api/envelope"
-import { toNumber, toTimestamp } from "@/shared/api/normalize"
+import { toNumber, toStringValue, toTimestamp } from "@/shared/api/normalize"
 import { apiClient } from "@/shared/api/client"
 import { resolveRuntimeEnv } from "@/shared/config/runtime"
 
@@ -41,13 +41,22 @@ type TraceShowPayload = TraceListItemPayload & {
 
 type TraceChildPayload = {
   order_sn?: string
+  serial_number?: string
   status?: number | string
   status_name?: string
   amount?: number | string
+  recv_amount?: number | string
+  recv_actual_amount?: number | string
   coin_name?: string
+  recv_coin_name?: string
+  recv_coin_symbol?: string
+  send_coin_name?: string
   created_at?: number | string
   from_address?: string
+  payment_address?: string
+  address?: string
   txid?: string
+  send_tx_id?: string
 }
 
 type TraceStatisticsPayload = {
@@ -55,6 +64,10 @@ type TraceStatisticsPayload = {
   order_count?: number | string
   send_actual_fee_amount?: number | string
   recv_actual_amount?: number | string
+  recv_amount?: number | string
+  amount?: number | string
+  fee_amount?: number | string
+  actual_amount?: number | string
 }
 
 type BeautifulAddressPayload = {
@@ -266,16 +279,18 @@ export async function getTraceChildLogs(input: { orderSn: string; page?: number;
     },
   })
 
-  return unwrapEnvelope(response.data).map<ReceiveLog>(item => ({
-    orderSn: String(item.order_sn ?? ""),
-    status: toNumber(item.status),
-    statusName: String(item.status_name ?? ""),
-    amount: toNumber(item.amount),
-    coinName: String(item.coin_name ?? ""),
-    createdAt: toTimestamp(item.created_at),
-    fromAddress: String(item.from_address ?? ""),
-    txid: String(item.txid ?? ""),
-  }))
+  return unwrapEnvelope(response.data)
+    .map<ReceiveLog>(item => ({
+      orderSn: toStringValue(item.order_sn ?? item.serial_number),
+      status: toNumber(item.status),
+      statusName: toStringValue(item.status_name),
+      amount: toNumber(item.recv_actual_amount ?? item.recv_amount ?? item.amount),
+      coinName: toStringValue(item.recv_coin_name ?? item.recv_coin_symbol ?? item.coin_name ?? item.send_coin_name),
+      createdAt: toTimestamp(item.created_at),
+      fromAddress: toStringValue(item.payment_address ?? item.from_address ?? item.address),
+      txid: toStringValue(item.txid ?? item.send_tx_id),
+    }))
+    .sort((left, right) => (right.createdAt ?? 0) - (left.createdAt ?? 0))
 }
 
 export async function getTraceChildStatistics(input: { orderSn: string }) {
@@ -288,10 +303,10 @@ export async function getTraceChildStatistics(input: { orderSn: string }) {
   const payload = unwrapEnvelope(response.data)
 
   return {
-    receiptAmount: toNumber(payload.receipt_amount),
+    receiptAmount: toNumber(payload.receipt_amount ?? payload.recv_amount ?? payload.amount),
     orderCount: toNumber(payload.order_count),
-    sendActualFeeAmount: toNumber(payload.send_actual_fee_amount),
-    recvActualAmount: toNumber(payload.recv_actual_amount),
+    sendActualFeeAmount: toNumber(payload.send_actual_fee_amount ?? payload.fee_amount),
+    recvActualAmount: toNumber(payload.recv_actual_amount ?? payload.actual_amount ?? payload.recv_amount),
   } satisfies ReceiveTraceStatistics
 }
 

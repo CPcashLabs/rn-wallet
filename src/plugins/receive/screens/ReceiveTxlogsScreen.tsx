@@ -6,6 +6,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import type { ReceiveStackParamList } from "@/app/navigation/types"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { formatDateTime } from "@/features/home/utils/format"
 import { InfoRow } from "@/plugins/receive/components/ReceiveUi"
 import {
   getTraceChildLogs,
@@ -118,10 +119,12 @@ export function ReceiveTxlogsScreen({ navigation, route }: Props) {
 
         <SectionCard>
           <Text style={[styles.title, { color: theme.colors.text }]}>{t("receive.logs.stats")}</Text>
-          <InfoRow label={t("receive.logs.orderCount")} value={String(stats?.orderCount ?? 0)} />
-          <InfoRow label={t("receive.logs.receiptAmount")} value={String(stats?.receiptAmount ?? 0)} />
-          <InfoRow label={t("receive.logs.recvActualAmount")} value={String(stats?.recvActualAmount ?? 0)} />
-          <InfoRow label={t("receive.logs.sendActualFeeAmount")} value={String(stats?.sendActualFeeAmount ?? 0)} />
+          <View style={styles.statsGrid}>
+            <StatisticTile label={t("receive.logs.orderCount")} value={String(stats?.orderCount ?? 0)} />
+            <StatisticTile label={t("receive.logs.receiptAmount")} value={String(stats?.receiptAmount ?? 0)} />
+            <StatisticTile label={t("receive.logs.recvActualAmount")} value={String(stats?.recvActualAmount ?? 0)} />
+            <StatisticTile label={t("receive.logs.sendActualFeeAmount")} value={String(stats?.sendActualFeeAmount ?? 0)} />
+          </View>
         </SectionCard>
 
         {loading ? (
@@ -133,21 +136,39 @@ export function ReceiveTxlogsScreen({ navigation, route }: Props) {
           </SectionCard>
         ) : null}
 
-        {logs.map(item => {
+        {logs.map((item, index) => {
           const logKey = buildLogKey(item)
           return (
-            <SectionCard key={logKey}>
+            <SectionCard
+              key={`${logKey}:${index}`}
+              style={[
+                styles.logCard,
+                newLogKeys.includes(logKey)
+                  ? { borderColor: theme.colors.primary, backgroundColor: theme.colors.glassStrong }
+                  : null,
+              ]}
+            >
               <View style={styles.logHeader}>
                 <Text style={[styles.title, { color: theme.colors.text }]}>{item.statusName || t("receive.logs.pending")}</Text>
                 {newLogKeys.includes(logKey) ? (
-                  <View style={[styles.newBadge, { backgroundColor: theme.colors.primary }]}>
-                    <Text style={styles.newBadgeText}>{t("receive.logs.new")}</Text>
+                  <View
+                    style={[
+                      styles.newBadge,
+                      {
+                        backgroundColor: theme.colors.primarySoft,
+                        borderColor: theme.colors.primary,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.newBadgeText, { color: theme.colors.primary }]}>{t("receive.logs.new")}</Text>
                   </View>
                 ) : null}
               </View>
-              <Text style={[styles.body, { color: theme.colors.mutedText }]}>
-                {item.amount} {item.coinName}
-              </Text>
+              {item.orderSn ? <InfoRow label={t("receive.logs.orderSn")} value={item.orderSn} /> : null}
+              <InfoRow label={t("receive.logs.createdAt")} value={formatDateTime(item.createdAt)} />
+              <View style={[styles.amountPlate, { backgroundColor: theme.colors.glass, borderColor: theme.colors.glassBorder }]}>
+                <Text style={[styles.amountValue, { color: theme.colors.text }]}>{`${item.amount} ${item.coinName}`.trim() || "-"}</Text>
+              </View>
               <Text style={[styles.body, { color: theme.colors.mutedText }]}>{item.fromAddress || item.txid || "-"}</Text>
             </SectionCard>
           )
@@ -164,8 +185,27 @@ export function ReceiveTxlogsScreen({ navigation, route }: Props) {
   )
 }
 
+function StatisticTile(props: { label: string; value: string }) {
+  const theme = useAppTheme()
+
+  return (
+    <View
+      style={[
+        styles.statTile,
+        {
+          backgroundColor: theme.colors.glass,
+          borderColor: theme.colors.glassBorder,
+        },
+      ]}
+    >
+      <Text style={[styles.statLabel, { color: theme.colors.mutedText }]}>{props.label}</Text>
+      <Text style={[styles.statValue, { color: theme.colors.text }]}>{props.value}</Text>
+    </View>
+  )
+}
+
 function buildLogKey(item: ReceiveLog) {
-  return `${item.orderSn}:${item.txid || item.createdAt || item.amount}:${item.status}`
+  return `${item.orderSn}:${item.txid}:${item.createdAt}:${item.amount}:${item.coinName}:${item.fromAddress}:${item.status}`
 }
 
 const styles = StyleSheet.create({
@@ -176,6 +216,28 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 15,
     fontWeight: "700",
+  },
+  statsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  statTile: {
+    minWidth: "46%",
+    flex: 1,
+    gap: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  statLabel: {
+    fontSize: 12,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: "700",
+    letterSpacing: -0.4,
   },
   body: {
     fontSize: 13,
@@ -193,13 +255,27 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 12,
   },
+  logCard: {
+    gap: 14,
+  },
+  amountPlate: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  amountValue: {
+    fontSize: 15,
+    fontWeight: "700",
+    letterSpacing: -0.2,
+  },
   newBadge: {
     borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
   newBadgeText: {
-    color: "#FFFFFF",
     fontSize: 11,
     fontWeight: "700",
   },

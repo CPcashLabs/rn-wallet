@@ -100,7 +100,7 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
   const currentVariant = activeCollapseKey === "individuals" ? "short" : "long"
   const currentOrderType = activeCollapseKey === "individuals" ? "TRACE" : "TRACE_LONG_TERM"
   const dynamicColor = config?.payChainColor || route.params?.chainColor || theme.colors.success
-  const surfaceColor = "#F4F4F1"
+  const surfaceColor = theme.colors.glass
   const qrSource = isNormalReceive ? receiveAddress : currentOrder?.address || receiveAddress
 
   const subtitle = useMemo(() => {
@@ -422,7 +422,7 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
       return (
         <View style={styles.loadingWrap}>
           <ActivityIndicator color={dynamicColor} />
-          <Text style={[styles.loadingText, { color: "#5F6672" }]}>{t("receive.home.loading")}</Text>
+          <Text style={[styles.loadingText, { color: theme.colors.mutedText }]}>{t("receive.home.loading")}</Text>
         </View>
       )
     }
@@ -430,10 +430,19 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
     if (!showingNormal && !showingTrace) {
       return (
         <View style={styles.emptyWrap}>
-          <Text style={styles.emptyTitle}>{t("receive.home.emptyTitle")}</Text>
-          <Text style={styles.emptyBody}>{t("receive.home.emptyBody")}</Text>
+          <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>{t("receive.home.emptyTitle")}</Text>
+          <Text style={[styles.emptyBody, { color: theme.colors.mutedText }]}>{t("receive.home.emptyBody")}</Text>
           {!isNormalReceive ? (
-            <Pressable style={[styles.pillAction, { backgroundColor: dynamicColor }]} onPress={handleRefreshCurrent}>
+            <Pressable
+              style={[
+                styles.pillAction,
+                {
+                  backgroundColor: dynamicColor,
+                  borderColor: theme.isDark ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.52)",
+                },
+              ]}
+              onPress={handleRefreshCurrent}
+            >
               <Text style={styles.pillActionText}>
                 {creating
                   ? t("common.loading")
@@ -449,30 +458,53 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
 
     return (
       <View style={styles.detailWrap}>
-        <Text style={styles.supportText}>{subtitle}</Text>
-        <View style={styles.qrOuter}>
-          {qrMatrix ? <QrPreview matrix={qrMatrix} /> : <Text style={styles.addressText}>{activeAddress || "-"}</Text>}
+        <Text style={[styles.supportText, { color: theme.colors.mutedText }]}>{subtitle}</Text>
+        <View
+          style={[
+            styles.qrOuter,
+            {
+              borderColor: theme.colors.glassBorder,
+              backgroundColor: theme.colors.glassStrong,
+              shadowColor: theme.colors.shadow,
+            },
+          ]}
+        >
+          {qrMatrix ? <QrPreview matrix={qrMatrix} /> : <Text style={[styles.addressText, { color: theme.colors.text }]}>{activeAddress || "-"}</Text>}
         </View>
         {!showingNormal ? (
-          <View style={styles.countdownRow}>
-            <Text style={styles.countdownIcon}>◷</Text>
-            <Text style={styles.countdownText}>{countdownText}</Text>
+          <View style={[styles.countdownRow, { backgroundColor: theme.colors.glass, borderColor: theme.colors.glassBorder }]}>
+            <Text style={[styles.countdownIcon, { color: dynamicColor }]}>◷</Text>
+            <Text style={[styles.countdownText, { color: theme.colors.text }]}>{countdownText}</Text>
           </View>
         ) : null}
-        <View style={[styles.addressPanel, { backgroundColor: surfaceColor }]}>
-          <Text style={styles.addressLabel}>{t("receive.home.addressField")}</Text>
-          <Text style={styles.addressValue}>{formatAddressMultiline(activeAddress || "-")}</Text>
+        <View
+          style={[
+            styles.addressPanel,
+            {
+              backgroundColor: surfaceColor,
+              borderColor: theme.colors.glassBorder,
+            },
+          ]}
+        >
+          <Text style={[styles.addressLabel, { color: theme.colors.mutedText }]}>{t("receive.home.addressField")}</Text>
+          <Text style={[styles.addressValue, { color: theme.colors.text }]}>{formatAddressMultiline(activeAddress || "-")}</Text>
         </View>
         <View style={styles.actionRow}>
           <ActionButton label={t("receive.home.share")} onPress={handleShare} />
           <ActionButton label={t("receive.home.copy")} onPress={() => void handleCopy()} />
         </View>
-        <View style={styles.depositRow}>
-          <Text style={styles.depositLabel}>{t("receive.home.minimumDeposit")}</Text>
-          <Text style={styles.depositValue}>{minimumDepositText}</Text>
+        <View style={[styles.depositRow, { backgroundColor: theme.colors.glass, borderColor: theme.colors.glassBorder }]}>
+          <Text style={[styles.depositLabel, { color: theme.colors.mutedText }]}>{t("receive.home.minimumDeposit")}</Text>
+          <Text style={[styles.depositValue, { color: theme.colors.text }]}>{minimumDepositText}</Text>
         </View>
         <Pressable
-          style={styles.recordRow}
+          style={[
+            styles.recordRow,
+            {
+              backgroundColor: theme.colors.glass,
+              borderColor: theme.colors.glassBorder,
+            },
+          ]}
           onPress={() => {
             if (!cardOrder?.orderSn) {
               showToast({ message: t("receive.home.emptyBody"), tone: "warning" })
@@ -485,9 +517,9 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
             })
           }}
         >
-          <Text style={styles.recordIcon}>▣</Text>
-          <Text style={styles.recordText}>{t("receive.home.logs")}</Text>
-          <Text style={styles.recordArrow}>›</Text>
+          <Text style={[styles.recordIcon, { color: dynamicColor }]}>▣</Text>
+          <Text style={[styles.recordText, { color: theme.colors.text }]}>{t("receive.home.logs")}</Text>
+          <Text style={[styles.recordArrow, { color: theme.colors.mutedText }]}>›</Text>
         </Pressable>
       </View>
     )
@@ -498,12 +530,12 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
       canGoBack
       onBack={navigation.goBack}
       title={t("receive.home.title")}
-      backgroundColor={dynamicColor}
-      headerBackgroundColor={dynamicColor}
-      headerTintColor="#FFFFFF"
       right={
-        <Pressable onPress={handleMoreMenu} style={styles.moreButton}>
-          <Text style={styles.moreButtonText}>•••</Text>
+        <Pressable
+          onPress={handleMoreMenu}
+          style={[styles.moreButton, { backgroundColor: theme.colors.glass, borderColor: theme.colors.glassBorder }]}
+        >
+          <Text style={[styles.moreButtonText, { color: theme.colors.primary }]}>•••</Text>
         </Pressable>
       }
       contentContainerStyle={styles.scaffoldContent}
@@ -537,18 +569,39 @@ function CollapseCard(props: {
   onPress: () => void
   children?: React.ReactNode
 }) {
+  const theme = useAppTheme()
+
   return (
-    <View style={[styles.collapseCard, props.expanded ? styles.collapseCardExpanded : null]}>
+    <View
+      style={[
+        styles.collapseCard,
+        {
+          backgroundColor: theme.colors.glassStrong,
+          borderColor: theme.colors.glassBorder,
+          shadowColor: theme.colors.shadow,
+          shadowOpacity: props.expanded ? (theme.isDark ? 0.2 : 0.08) : theme.isDark ? 0.14 : 0.05,
+        },
+        props.expanded ? styles.collapseCardExpanded : null,
+      ]}
+    >
       <Pressable onPress={props.onPress} style={styles.collapseHeader}>
         <View style={styles.collapseTitleRow}>
-          <Text style={styles.collapseIcon}>{props.expanded ? "▣" : "◫"}</Text>
-          <Text style={styles.collapseTitle}>{props.title}</Text>
+          <View
+            style={[
+              styles.collapseIconDot,
+              {
+                backgroundColor: props.expanded ? theme.colors.primarySoft : theme.colors.glassOverlay,
+                borderColor: props.expanded ? theme.colors.primary : theme.colors.glassBorder,
+              },
+            ]}
+          />
+          <Text style={[styles.collapseTitle, { color: theme.colors.text }]}>{props.title}</Text>
         </View>
-        <Text style={[styles.collapseArrow, props.expanded ? styles.collapseArrowExpanded : null]}>⌃</Text>
+        <Text style={[styles.collapseArrow, { color: theme.colors.mutedText }, props.expanded ? styles.collapseArrowExpanded : null]}>⌃</Text>
       </Pressable>
       {props.expanded ? (
         <View style={styles.drawerFrame}>
-          <View style={styles.collapseBody}>{props.children}</View>
+          <View style={[styles.collapseBody, { borderTopColor: theme.colors.glassBorder }]}>{props.children}</View>
         </View>
       ) : null}
     </View>
@@ -593,12 +646,13 @@ function ActionButton(props: { label: string; onPress: () => void }) {
         style={[
           styles.actionButton,
           {
-            borderColor: theme.colors.border,
-            backgroundColor: theme.colors.surface,
+            borderColor: theme.colors.glassBorder,
+            backgroundColor: theme.colors.glass,
+            shadowColor: theme.colors.shadow,
           },
         ]}
       >
-        <Text style={styles.actionButtonText}>{props.label}</Text>
+        <Text style={[styles.actionButtonText, { color: theme.colors.text }]}>{props.label}</Text>
       </View>
     </Pressable>
   )
@@ -636,27 +690,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.16)",
+    borderWidth: StyleSheet.hairlineWidth,
   },
   moreButtonText: {
-    color: "#FFFFFF",
     fontSize: FONT.bodyLarge,
     fontWeight: "700",
     letterSpacing: 1.5,
   },
   collapseCard: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 28,
+    borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: SPACE.md,
     paddingVertical: SPACE.md,
-    shadowColor: "#7A5A00",
-    shadowOpacity: 0.08,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 10 },
     elevation: 4,
   },
   collapseCardExpanded: {
-    shadowOpacity: 0.12,
     elevation: 6,
   },
   collapseHeader: {
@@ -670,18 +720,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: SPACE.sm,
   },
-  collapseIcon: {
-    fontSize: FONT.title,
-    color: "#1F2937",
+  collapseIconDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   collapseTitle: {
     fontSize: FONT.title,
     fontWeight: "600",
-    color: "#121926",
   },
   collapseArrow: {
     fontSize: FONT.title,
-    color: "#8B9098",
     transform: [{ rotate: "0deg" }],
   },
   collapseArrowExpanded: {
@@ -691,7 +741,6 @@ const styles = StyleSheet.create({
     marginTop: SPACE.sm,
     paddingTop: SPACE.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#DFE3E8",
   },
   drawerFrame: {
     overflow: "hidden",
@@ -703,16 +752,12 @@ const styles = StyleSheet.create({
     fontSize: FONT.subhead,
     lineHeight: 21,
     textAlign: "center",
-    color: "#232B37",
   },
   qrOuter: {
     alignSelf: "center",
-    borderWidth: 1,
-    borderColor: "#C7CCD3",
+    borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 24,
     padding: SPACE.md,
-    backgroundColor: "#FFFFFF",
-    shadowColor: "#0F172A",
     shadowOpacity: 0.06,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
@@ -736,37 +781,38 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: SPACE.xs,
+    alignSelf: "center",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
   countdownIcon: {
     fontSize: FONT.bodyLarge,
-    color: "#212121",
   },
   countdownText: {
     fontSize: FONT.title,
     fontWeight: "700",
-    color: "#212121",
     letterSpacing: 0.8,
   },
   addressPanel: {
     borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: SPACE.md,
     paddingVertical: SPACE.md,
     gap: SPACE.xs,
   },
   addressLabel: {
     fontSize: FONT.footnote,
-    color: "#8B9098",
   },
   addressValue: {
     fontSize: FONT.bodyLarge,
     lineHeight: 24,
     fontWeight: "600",
-    color: "#2E3137",
   },
   addressText: {
     fontSize: FONT.bodyLarge,
     lineHeight: 24,
-    color: "#2E3137",
     textAlign: "center",
   },
   actionRow: {
@@ -782,53 +828,55 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     minHeight: 44,
-    borderRadius: 14,
-    borderWidth: 1,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: SPACE.sm,
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
   },
   actionButtonText: {
     fontSize: FONT.subhead,
-    color: "#111111",
     fontWeight: "600",
   },
   depositRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 18,
+    paddingHorizontal: SPACE.md,
+    paddingVertical: 12,
   },
   depositLabel: {
     fontSize: FONT.subhead,
-    color: "#8B9098",
   },
   depositValue: {
     fontSize: FONT.subhead,
-    color: "#111111",
     fontWeight: "600",
   },
   recordRow: {
-    minHeight: 64,
+    minHeight: 60,
     flexDirection: "row",
     alignItems: "center",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#E5E7EB",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 20,
     gap: SPACE.sm,
-    paddingTop: SPACE.md,
+    paddingHorizontal: SPACE.md,
+    paddingVertical: 14,
   },
   recordIcon: {
     fontSize: FONT.title,
-    color: "#242B36",
   },
   recordText: {
     flex: 1,
     fontSize: FONT.title,
-    color: "#111111",
     fontWeight: "500",
   },
   recordArrow: {
     fontSize: FONT.headline,
-    color: "#8B9098",
   },
   emptyWrap: {
     gap: SPACE.sm,
@@ -838,17 +886,16 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: FONT.bodyLarge,
     fontWeight: "700",
-    color: "#111827",
   },
   emptyBody: {
     fontSize: FONT.body,
     lineHeight: 22,
     textAlign: "center",
-    color: "#68707D",
   },
   pillAction: {
     minHeight: 46,
     borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: SPACE.md,
