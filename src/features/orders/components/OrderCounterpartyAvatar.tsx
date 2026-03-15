@@ -1,9 +1,9 @@
-import { Buffer } from "buffer"
 import React from "react"
 
 import { Image, StyleSheet, View } from "react-native"
 
 import type { OrderListItem } from "@/features/orders/services/ordersApi"
+import { createJazziconSpec, resolveJazziconSeed } from "@/features/orders/utils/jazzicon"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 const SEND_CODE_TYPES = new Set(["SEND", "SEND_RECEIVE"])
@@ -17,10 +17,6 @@ const ADDRESS_FROM_PAYMENT_TYPES = new Set([
   "TRACE_CHILD",
   "SEND_TOKEN_RECEIVE",
 ])
-
-const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-const BASE58_INDEX: Record<string, number> = Object.fromEntries(BASE58_ALPHABET.split("").map((char, index) => [char, index]))
-const DEFAULT_SEED = 0x13579bdf
 
 type Props = {
   item: OrderListItem
@@ -156,10 +152,7 @@ function AddressAvatar(props: {
   const theme = useAppTheme()
   const [imageFailed, setImageFailed] = React.useState(false)
   const normalizedUri = props.uri?.trim() || ""
-  const generatedModel = React.useMemo(
-    () => createGeneratedAvatarModel(props.seedSource, theme.isDark),
-    [props.seedSource, theme.isDark],
-  )
+  const jazzicon = React.useMemo(() => createJazziconSpec(props.size, resolveJazziconSeed(props.seedSource)), [props.seedSource, props.size])
 
   React.useEffect(() => {
     setImageFailed(false)
@@ -183,7 +176,39 @@ function AddressAvatar(props: {
     )
   }
 
-  return <AbstractAvatar model={generatedModel} size={props.size} />
+  return (
+    <View
+      style={[
+        styles.avatarShell,
+        {
+          width: props.size,
+          height: props.size,
+          borderRadius: props.size / 2,
+          backgroundColor: jazzicon.background,
+          borderColor: theme.colors.glassBorder,
+        },
+      ]}
+    >
+      {jazzicon.shapes.map((shape, index) => (
+        <View
+          key={`${shape.fill}-${shape.rotateDeg}-${index}`}
+          style={[
+            styles.jazziconShape,
+            {
+              width: props.size,
+              height: props.size,
+              backgroundColor: shape.fill,
+              transform: [
+                { translateX: shape.translateX },
+                { translateY: shape.translateY },
+                { rotate: shape.rotateDeg },
+              ],
+            },
+          ]}
+        />
+      ))}
+    </View>
+  )
 }
 
 function AbstractAvatar(props: {
@@ -278,147 +303,6 @@ function resolveAvatarAddress(item: Pick<OrderListItem, "orderType" | "paymentAd
   return item.receiveAddress || item.transferAddress || item.depositAddress || item.paymentAddress
 }
 
-function createGeneratedAvatarModel(seedSource: string, isDark: boolean): AbstractAvatarModel {
-  const seed = createAddressSeed(seedSource)
-  const next = createSeededRandom(seed)
-  const hue = Math.floor(next() * 360)
-  const rotate = pickNumber(next, -42, 42)
-
-  return {
-    backgroundColor: toHsl(hue, 88, isDark ? 54 : 58),
-    bandColor: toHsl((hue + 30 + Math.floor(next() * 72)) % 360, 82, isDark ? 68 : 64),
-    bandWidth: pickNumber(next, 0.18, 0.26),
-    bandTop: pickNumber(next, -0.18, -0.08),
-    bandLeft: pickNumber(next, 0.16, 0.62),
-    bandRotate: rotate,
-    blobColor: toHsl((hue + 150 + Math.floor(next() * 54)) % 360, 74, isDark ? 46 : 49),
-    blobSize: pickNumber(next, 0.42, 0.62),
-    blobTop: pickNumber(next, -0.1, 0.16),
-    blobLeft: pickNumber(next, -0.16, 0.2),
-    accentColor: toHsl((hue + 232 + Math.floor(next() * 72)) % 360, 84, isDark ? 70 : 66),
-    accentWidth: pickNumber(next, 0.24, 0.42),
-    accentHeight: pickNumber(next, 0.2, 0.36),
-    accentRadius: pickNumber(next, 0.08, 0.16),
-    accentTop: pickNumber(next, 0.38, 0.64),
-    accentLeft: pickNumber(next, 0.22, 0.6),
-    accentRotate: pickNumber(next, -40, 40),
-    dotColor: toHsl((hue + 300 + Math.floor(next() * 48)) % 360, 74, isDark ? 30 : 34),
-    dotSize: pickNumber(next, 0.14, 0.2),
-    dotTop: pickNumber(next, 0.08, 0.66),
-    dotLeft: pickNumber(next, 0.08, 0.66),
-  }
-}
-
-function createAddressSeed(source: string) {
-  const normalized = source.trim()
-
-  if (!normalized) {
-    return DEFAULT_SEED
-  }
-
-  if (normalized.startsWith("T")) {
-    const tronHexAddress = tronToEthereumHex(normalized)
-
-    if (tronHexAddress) {
-      return parseHexSeed(tronHexAddress)
-    }
-  }
-
-  if (normalized.startsWith("0x")) {
-    return parseHexSeed(normalized)
-  }
-
-  return hashString(normalized) || DEFAULT_SEED
-}
-
-function parseHexSeed(value: string) {
-  if (!value.startsWith("0x") || value.length < 10) {
-    return hashString(value) || DEFAULT_SEED
-  }
-
-  const parsed = Number.parseInt(value.slice(2, 10), 16)
-  return Number.isFinite(parsed) ? parsed >>> 0 : hashString(value) || DEFAULT_SEED
-}
-
-function tronToEthereumHex(address: string) {
-  try {
-    const decoded = decodeBase58(address)
-
-    if (decoded.length !== 25) {
-      return ""
-    }
-
-    return `0x${Buffer.from(decoded.slice(1, 21)).toString("hex")}`
-  } catch {
-    return ""
-  }
-}
-
-function decodeBase58(value: string) {
-  const bytes: number[] = [0]
-
-  for (const char of value) {
-    const carryValue = BASE58_INDEX[char]
-
-    if (carryValue === undefined) {
-      throw new Error("invalid base58")
-    }
-
-    let carry = carryValue
-
-    for (let index = 0; index < bytes.length; index += 1) {
-      const result = bytes[index] * 58 + carry
-      bytes[index] = result & 0xff
-      carry = result >> 8
-    }
-
-    while (carry > 0) {
-      bytes.push(carry & 0xff)
-      carry >>= 8
-    }
-  }
-
-  for (const char of value) {
-    if (char !== "1") {
-      break
-    }
-
-    bytes.push(0)
-  }
-
-  return Uint8Array.from(bytes.reverse())
-}
-
-function hashString(value: string) {
-  let hash = 2166136261
-
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index)
-    hash = Math.imul(hash, 16777619)
-  }
-
-  return hash >>> 0
-}
-
-function createSeededRandom(seed: number) {
-  let state = seed >>> 0 || DEFAULT_SEED
-
-  return function next() {
-    state ^= state << 13
-    state ^= state >>> 17
-    state ^= state << 5
-    return ((state >>> 0) % 1000) / 1000
-  }
-}
-
-function pickNumber(next: () => number, min: number, max: number) {
-  return min + (max - min) * next()
-}
-
-function toHsl(hue: number, saturation: number, lightness: number) {
-  return `hsl(${hue}, ${saturation}%, ${lightness}%)`
-}
-
 const styles = StyleSheet.create({
   imageShell: {
     backgroundColor: "#E2E8F0",
@@ -428,6 +312,11 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     position: "relative",
     borderWidth: StyleSheet.hairlineWidth,
+  },
+  jazziconShape: {
+    position: "absolute",
+    top: 0,
+    left: 0,
   },
   band: {
     position: "absolute",
