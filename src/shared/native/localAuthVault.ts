@@ -3,6 +3,7 @@ import { Wallet, id } from "ethers"
 
 import { getSecureItem, setSecureItem } from "@/shared/storage/secureStorage"
 import { getJson, setJson } from "@/shared/storage/kvStorage"
+import { parseWalletImportInput } from "@/shared/native/walletImport"
 
 const PASSKEY_CREDENTIALS_KEY = "auth.local_passkey_credentials"
 const LOCAL_WALLET_KEY = "auth.local_wallet_private_key"
@@ -129,6 +130,19 @@ export async function getOrCreateLocalWallet() {
     chainId: DEFAULT_CHAIN_ID,
     providerName: "Local Test Wallet",
     privateKey,
+  }
+}
+
+export async function importLocalWallet(secret: string) {
+  const importedWallet = parseWalletImportInput(secret)
+  await setSecureItem(LOCAL_WALLET_KEY, importedWallet.privateKey)
+
+  return {
+    address: importedWallet.address,
+    chainId: DEFAULT_CHAIN_ID,
+    providerName: importedWallet.type === "mnemonic" ? "Imported Mnemonic Wallet" : "Imported Private Key Wallet",
+    privateKey: importedWallet.privateKey,
+    importedType: importedWallet.type,
   }
 }
 

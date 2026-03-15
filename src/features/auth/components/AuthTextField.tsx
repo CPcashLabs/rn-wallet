@@ -15,6 +15,9 @@ export function AuthTextField(props: {
   autoCapitalize?: "none" | "sentences" | "words" | "characters"
   autoCorrect?: boolean
   error?: string | null
+  helperText?: string | null
+  multiline?: boolean
+  numberOfLines?: number
   rightSlot?: React.ReactNode
 }) {
   return (
@@ -24,8 +27,11 @@ export function AuthTextField(props: {
         autoCorrect={props.autoCorrect}
         editable={props.editable}
         error={props.error}
+        helperText={props.helperText}
         keyboardType={props.keyboardType}
         label={props.label}
+        multiline={props.multiline}
+        numberOfLines={props.numberOfLines}
         onChangeText={props.onChangeText}
         placeholder={props.placeholder}
         rightSlot={props.rightSlot}

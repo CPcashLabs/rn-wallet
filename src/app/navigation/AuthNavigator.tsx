@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack"
 import { FirstSetPasswordScreen } from "@/features/auth/screens/FirstSetPasswordScreen"
 import { ForgotPasswordAddressScreen } from "@/features/auth/screens/ForgotPasswordAddressScreen"
 import { ForgotPasswordEmailScreen } from "@/features/auth/screens/ForgotPasswordEmailScreen"
+import { ImportWalletLoginScreen } from "@/features/auth/screens/ImportWalletLoginScreen"
 import { LoggedInSetPasswordScreen } from "@/features/auth/screens/LoggedInSetPasswordScreen"
 import { LoginScreen } from "@/features/auth/screens/LoginScreen"
 import { PasskeyIntroScreen } from "@/features/auth/screens/PasskeyIntroScreen"
@@ -20,6 +21,7 @@ export function AuthNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="LoginScreen" component={LoginScreen} />
+      <Stack.Screen name="ImportWalletLoginScreen" component={ImportWalletLoginScreen} />
       <Stack.Screen name="PasskeySignupScreen" component={PasskeySignupScreen} />
       <Stack.Screen name="PasskeyIntroScreen" component={PasskeyIntroScreen} />
       <Stack.Screen name="PasswordLoginScreen" component={PasswordLoginScreen} />

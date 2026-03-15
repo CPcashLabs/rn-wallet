@@ -176,6 +176,11 @@ export function LoginScreen({ navigation, route }: Props) {
       >
         <AuthButton label={t("auth.login.passkeyButton")} loading={loadingType === "passkey"} onPress={() => void handlePasskeyLogin()} />
         <AuthButton label={t("auth.login.walletButton")} loading={loadingType === "wallet"} onPress={() => void handleWalletLogin()} variant="secondary" />
+        <AuthButton
+          label={t("auth.login.importSecretButton")}
+          onPress={() => navigation.navigate("ImportWalletLoginScreen", { inviteCode })}
+          variant="secondary"
+        />
 
         <Pressable onPress={() => navigation.navigate("PasswordLoginScreen", { inviteCode })} style={styles.textAction}>
           <Text style={[styles.link, { color: theme.colors.primary }]}>
