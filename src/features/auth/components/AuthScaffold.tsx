@@ -9,6 +9,7 @@ import {
   Text,
   View,
 } from "react-native"
+import { useTranslation } from "react-i18next"
 import { SafeAreaView } from "react-native-safe-area-context"
 
 import { useAppTheme } from "@/shared/theme/useAppTheme"
@@ -22,6 +23,7 @@ export function AuthScaffold(props: {
   onBack?: () => void
   headerContent?: React.ReactNode
 }) {
+  const { t } = useTranslation()
   const theme = useAppTheme()
 
   return (
@@ -57,7 +59,7 @@ export function AuthScaffold(props: {
               {props.canGoBack ? (
                 <Pressable onPress={props.onBack} style={styles.backButton}>
                   <Text style={[styles.backText, { color: theme.colors.primary }]}>
-                    ‹ 返回
+                    {`‹ ${t("common.back")}`}
                   </Text>
                 </Pressable>
               ) : null}

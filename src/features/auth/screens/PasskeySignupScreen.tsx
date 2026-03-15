@@ -14,10 +14,12 @@ import { resetToMainTabs } from "@/app/navigation/navigationRef"
 import type { AuthStackParamList } from "@/app/navigation/types"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { passkeyAdapter } from "@/shared/native"
+import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 type Props = NativeStackScreenProps<AuthStackParamList, "PasskeySignupScreen">
 
 export function PasskeySignupScreen({ navigation, route }: Props) {
+  const theme = useAppTheme()
   const { t } = useTranslation()
   const { presentError, presentMessage } = useErrorPresenter()
   const inviteCode = route.params?.inviteCode
@@ -103,7 +105,7 @@ export function PasskeySignupScreen({ navigation, route }: Props) {
         value={nickname}
       />
 
-      <Text style={styles.linkText} onPress={() => navigation.navigate("PasskeyIntroScreen")}>
+      <Text style={[styles.linkText, { color: theme.colors.success }]} onPress={() => navigation.navigate("PasskeyIntroScreen")}>
         {t("auth.passkeySignup.helpLink")}
       </Text>
 
@@ -116,7 +118,6 @@ const styles = StyleSheet.create({
   linkText: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#0F766E",
     textAlign: "center",
   },
 })

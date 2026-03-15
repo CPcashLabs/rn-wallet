@@ -1,3 +1,4 @@
+import { syncCurrentUserProfile } from "@/features/home/hooks/useProfileSync"
 import { writeAuthSession } from "@/shared/api/auth-session"
 import { resetProfileSyncSession } from "@/shared/session/profileSyncSession"
 import { useAuthStore } from "@/shared/store/useAuthStore"
@@ -33,4 +34,6 @@ export async function persistAuthenticatedSession(input: AuthenticatedSessionInp
     address: input.address,
     chainId: walletState.chainId ?? DEFAULT_WALLET_CHAIN_ID,
   })
+
+  void syncCurrentUserProfile()
 }
