@@ -163,6 +163,8 @@ const home = {
   me: {
     personal: "个人资料",
     addressBook: "地址簿",
+    records: "交易记录",
+    recordsBody: "查看转账与收款记录",
     messages: "消息中心",
     settings: "设置",
     tags: "标签备注",
@@ -1177,12 +1179,15 @@ const orders = {
   },
   status: {
     pending: "待支付",
+    paying: "正在付款",
     buyerPaid: "买方已支付",
     processing: "卖方处理中",
+    depositing: "正在存款",
     confirming: "待确认",
     finished: "已完成",
     broadcasting: "广播中",
     refunded: "已退款",
+    failed: "失败",
     closed: "已关闭",
   },
   filters: {

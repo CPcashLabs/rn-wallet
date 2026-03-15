@@ -163,6 +163,8 @@ const home = {
   me: {
     personal: "Personal Info",
     addressBook: "Address Book",
+    records: "Transaction Records",
+    recordsBody: "Review transfer and receive history",
     messages: "Messages",
     settings: "Settings",
     tags: "Tags & Notes",
@@ -1179,12 +1181,15 @@ const orders = {
   },
   status: {
     pending: "Pending",
+    paying: "Paying",
     buyerPaid: "Buyer Paid",
     processing: "Processing",
+    depositing: "Depositing",
     confirming: "Confirming",
     finished: "Finished",
     broadcasting: "Broadcasting",
     refunded: "Refunded",
+    failed: "Failed",
     closed: "Closed",
   },
   filters: {
