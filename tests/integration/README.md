@@ -7,6 +7,7 @@ Integration tests verify contracts across multiple modules without placing those
 ```text
 tests/integration/
   setup.ts
+  app/
   shared/
     api/
     i18n/
@@ -40,3 +41,6 @@ Use the same ownership model as the runtime code:
 - `shared/i18n/i18n-language.integration.test.ts`
 - `shared/storage/storage-auth-store.integration.test.ts`
 - `shared/theme/theme-persistence.integration.test.ts`
+- `features/auth/auth-session-orchestrator.integration.test.ts`
+- `features/support/support-navigation.integration.test.ts`
+- `app/navigation/bootstrap-run-coordinator.integration.test.ts`
