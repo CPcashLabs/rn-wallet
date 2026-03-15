@@ -12,7 +12,7 @@ import { useBalanceStore } from "@/shared/store/useBalanceStore"
 import { DEFAULT_WALLET_CHAIN_ID, useWalletStore } from "@/shared/store/useWalletStore"
 import { resetRpcProvider } from "@/shared/web3/balanceService"
 
-import { Card, DEFAULT_RATES, LOCAL_NODE_MAP, Row, type StackProps, styles } from "@/features/settings/screens/settingsShared"
+import { Card, DEFAULT_RATES, ListCard, LOCAL_NODE_MAP, Row, type StackProps, styles } from "@/features/settings/screens/settingsShared"
 
 type SelectedCurrency = {
   currency: string
@@ -30,10 +30,10 @@ export function LanguageScreen({ navigation }: StackProps<"LanguageScreen">) {
 
   return (
     <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.language.title")}>
-      <Card>
-        <Row detail={currentLanguage === "zh-CN" ? t("settingsHub.language.selected") : undefined} label={t("settingsHub.language.zhCN")} onPress={() => void handleSelect("zh-CN")} />
-        <Row detail={currentLanguage === "en-US" ? t("settingsHub.language.selected") : undefined} label={t("settingsHub.language.enUS")} onPress={() => void handleSelect("en-US")} />
-      </Card>
+      <ListCard>
+        <Row hideDivider={currentLanguage === "en-US"} label={t("settingsHub.language.zhCN")} onPress={() => void handleSelect("zh-CN")} selected={currentLanguage === "zh-CN"} />
+        <Row hideDivider label={t("settingsHub.language.enUS")} onPress={() => void handleSelect("en-US")} selected={currentLanguage === "en-US"} />
+      </ListCard>
     </HomeScaffold>
   )
 }
@@ -72,11 +72,17 @@ export function UnitScreen({ navigation }: StackProps<"UnitScreen">) {
       title={t("settingsHub.unit.title")}
     >
       {loading ? <ActivityIndicator /> : null}
-      <Card>
+      <ListCard>
         {rates.map(item => (
-          <Row detail={selectedCurrency.currency === item.currency ? t("settingsHub.language.selected") : undefined} key={item.currency} label={`${item.currency} (${item.symbol})`} onPress={() => setSelectedCurrency(item)} />
+          <Row
+            hideDivider={item.currency === rates[rates.length - 1]?.currency}
+            key={item.currency}
+            label={`${item.currency} (${item.symbol})`}
+            onPress={() => setSelectedCurrency(item)}
+            selected={selectedCurrency.currency === item.currency}
+          />
         ))}
-      </Card>
+      </ListCard>
     </HomeScaffold>
   )
 }
@@ -116,7 +122,14 @@ export function NodeSetupScreen({ navigation }: StackProps<"NodeSetupScreen">) {
       <Card>
         <Text style={styles.sectionLabel}>{t("settingsHub.node.description")}</Text>
         {nodes.map((node, index) => (
-          <Row detail={selectedIndex === index ? t("settingsHub.language.selected") : t("settingsHub.node.nodeDetail", { index: index + 1 })} key={node} label={node} onPress={() => handleSelect(index)} />
+          <Row
+            detail={selectedIndex === index ? undefined : t("settingsHub.node.nodeDetail", { index: index + 1 })}
+            hideDivider={index === nodes.length - 1}
+            key={node}
+            label={node}
+            onPress={() => handleSelect(index)}
+            selected={selectedIndex === index}
+          />
         ))}
       </Card>
     </HomeScaffold>

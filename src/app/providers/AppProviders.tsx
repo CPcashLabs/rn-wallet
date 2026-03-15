@@ -8,7 +8,6 @@ import { I18nProvider } from "@/app/providers/I18nProvider"
 import { NavigationProvider } from "@/app/providers/NavigationProvider"
 import { QueryProvider } from "@/app/providers/QueryProvider"
 import { SocketProvider } from "@/app/providers/SocketProvider"
-import { StoreProvider } from "@/app/providers/StoreProvider"
 import { ThemeProvider } from "@/app/providers/ThemeProvider"
 import { ToastProvider } from "@/shared/toast/ToastProvider"
 
@@ -18,17 +17,15 @@ export function AppProviders({ children }: PropsWithChildren) {
       <SafeAreaProvider>
         <ErrorBoundaryProvider>
           <I18nProvider>
-            <StoreProvider>
-              <SocketProvider>
-                <QueryProvider>
-                  <ThemeProvider>
-                    <ToastProvider>
-                      <NavigationProvider>{children}</NavigationProvider>
-                    </ToastProvider>
-                  </ThemeProvider>
-                </QueryProvider>
-              </SocketProvider>
-            </StoreProvider>
+            <SocketProvider>
+              <QueryProvider>
+                <ThemeProvider>
+                  <ToastProvider>
+                    <NavigationProvider>{children}</NavigationProvider>
+                  </ToastProvider>
+                </ThemeProvider>
+              </QueryProvider>
+            </SocketProvider>
           </I18nProvider>
         </ErrorBoundaryProvider>
       </SafeAreaProvider>

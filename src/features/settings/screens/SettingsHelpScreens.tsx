@@ -7,31 +7,35 @@ import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { sendFeedback } from "@/features/settings/services/settingsApi"
 import { getGuideLinks, openExternalUrl } from "@/features/settings/utils/settingsHub"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
+import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { useToast } from "@/shared/toast/useToast"
+import { AppleBrandMark } from "@/shared/ui/AppleBrandMark"
 import { AppTextField } from "@/shared/ui/AppTextField"
 
-import { Card, type GuideListScreenProps, PrimaryButton, Row, type StackProps, styles } from "@/features/settings/screens/settingsShared"
+import { Card, type GuideListScreenProps, ListCard, PrimaryButton, Row, type StackProps, styles } from "@/features/settings/screens/settingsShared"
 
 export function HelpCenterScreen({ navigation }: StackProps<"HelpCenterScreen">) {
   const { t } = useTranslation()
+  const theme = useAppTheme()
 
   return (
     <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.help.title")}>
       <Card>
-        <Text style={styles.sectionLabel}>{t("settingsHub.help.needHelp")}</Text>
+        <Text style={[styles.sectionLabel, { color: theme.colors.mutedText }]}>{t("settingsHub.help.needHelp")}</Text>
         <PrimaryButton label="Telegram" onPress={() => void openExternalUrl("https://t.me/CPcashWallet")} />
-        <Text style={styles.emailValue}>support@cp.cash</Text>
+        <Text style={[styles.emailValue, { color: theme.colors.text }]}>support@cp.cash</Text>
       </Card>
-      <Card>
-        <Row label={t("settingsHub.help.faq")} onPress={() => navigation.navigate("FAQScreen")} />
-        <Row label={t("settingsHub.help.userGuide")} onPress={() => navigation.navigate("UserGuideScreen")} />
-      </Card>
+      <ListCard>
+        <Row icon="help" label={t("settingsHub.help.faq")} onPress={() => navigation.navigate("FAQScreen")} />
+        <Row hideDivider icon="book" label={t("settingsHub.help.userGuide")} onPress={() => navigation.navigate("UserGuideScreen")} />
+      </ListCard>
     </HomeScaffold>
   )
 }
 
 export function FAQScreen({ navigation }: StackProps<"FAQScreen">) {
   const { t } = useTranslation()
+  const theme = useAppTheme()
   const items = [
     { title: t("settingsHub.faq.crossChainTitle"), body: t("settingsHub.faq.crossChainBody") },
     { title: t("settingsHub.faq.paymentAddressTitle"), body: t("settingsHub.faq.paymentAddressBody") },
@@ -43,8 +47,8 @@ export function FAQScreen({ navigation }: StackProps<"FAQScreen">) {
     <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.faq.title")}>
       {items.map(item => (
         <Card key={item.title}>
-          <Text style={styles.questionTitle}>{item.title}</Text>
-          <Text style={styles.answerText}>{item.body}</Text>
+          <Text style={[styles.questionTitle, { color: theme.colors.text }]}>{item.title}</Text>
+          <Text style={[styles.answerText, { color: theme.colors.mutedText }]}>{item.body}</Text>
         </Card>
       ))}
       <PrimaryButton label={t("settingsHub.faq.receiveDiff")} onPress={() => navigation.navigate("ReceiveDiffScreen")} />
@@ -54,6 +58,7 @@ export function FAQScreen({ navigation }: StackProps<"FAQScreen">) {
 
 export function ReceiveDiffScreen({ navigation }: StackProps<"ReceiveDiffScreen">) {
   const { t } = useTranslation()
+  const theme = useAppTheme()
   const rows = [
     [t("settingsHub.receiveDiff.purpose"), t("settingsHub.receiveDiff.individualTemporary"), t("settingsHub.receiveDiff.businessFixed")],
     [t("settingsHub.receiveDiff.feature"), t("settingsHub.receiveDiff.privacy"), t("settingsHub.receiveDiff.public")],
@@ -64,12 +69,12 @@ export function ReceiveDiffScreen({ navigation }: StackProps<"ReceiveDiffScreen"
   return (
     <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.receiveDiff.title")}>
       <Card>
-        <Text style={styles.sectionLabel}>{t("settingsHub.receiveDiff.subtitle")}</Text>
+        <Text style={[styles.sectionLabel, { color: theme.colors.mutedText }]}>{t("settingsHub.receiveDiff.subtitle")}</Text>
         {rows.map(item => (
           <View key={item[0]} style={styles.diffRow}>
-            <Text style={styles.diffCellLabel}>{item[0]}</Text>
-            <Text style={styles.diffCell}>{item[1]}</Text>
-            <Text style={styles.diffCell}>{item[2]}</Text>
+            <Text style={[styles.diffCellLabel, { color: theme.colors.text }]}>{item[0]}</Text>
+            <Text style={[styles.diffCell, { color: theme.colors.mutedText }]}>{item[1]}</Text>
+            <Text style={[styles.diffCell, { color: theme.colors.mutedText }]}>{item[2]}</Text>
           </View>
         ))}
       </Card>
@@ -79,6 +84,7 @@ export function ReceiveDiffScreen({ navigation }: StackProps<"ReceiveDiffScreen"
 
 export function AboutScreen({ navigation }: StackProps<"AboutScreen">) {
   const { t } = useTranslation()
+  const theme = useAppTheme()
   const links = [
     { title: t("settingsHub.about.privacy"), url: "https://support-cpcash.tawk.help/article/privacy-policy-crosspay" },
     { title: t("settingsHub.about.terms"), url: "https://support-cpcash.tawk.help/article/terms-of-services" },
@@ -89,15 +95,19 @@ export function AboutScreen({ navigation }: StackProps<"AboutScreen">) {
   return (
     <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.about.title")}>
       <Card>
-        <Text style={styles.brandTitle}>CPcash Wallet</Text>
+        <View style={localStyles.brandCard}>
+          <AppleBrandMark size={60} tone="light" />
+          <Text style={[styles.brandTitle, { color: theme.colors.text }]}>CPcash Wallet</Text>
+          <Text style={[localStyles.brandBody, { color: theme.colors.mutedText }]}>Apple-style wallet workspace</Text>
+        </View>
       </Card>
-      <Card>
+      <ListCard>
         {links.map(item => (
-          <Row key={item.title} label={item.title} onPress={() => void openExternalUrl(item.url)} />
+          <Row icon="info" key={item.title} label={item.title} onPress={() => void openExternalUrl(item.url)} />
         ))}
-        <Row label={t("settingsHub.about.feedback")} onPress={() => navigation.navigate("FeedbackScreen")} />
-        <Row label={t("settingsHub.about.licenses")} onPress={() => navigation.navigate("LicensesScreen")} />
-      </Card>
+        <Row icon="edit" label={t("settingsHub.about.feedback")} onPress={() => navigation.navigate("FeedbackScreen")} />
+        <Row hideDivider icon="book" label={t("settingsHub.about.licenses")} onPress={() => navigation.navigate("LicensesScreen")} />
+      </ListCard>
     </HomeScaffold>
   )
 }
@@ -106,6 +116,7 @@ export function FeedbackScreen({ navigation }: StackProps<"FeedbackScreen">) {
   const { t } = useTranslation()
   const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
+  const theme = useAppTheme()
   const [content, setContent] = useState("")
   const [loading, setLoading] = useState(false)
 
@@ -136,6 +147,7 @@ export function FeedbackScreen({ navigation }: StackProps<"FeedbackScreen">) {
           value={content}
         />
       </Card>
+      <Text style={[localStyles.feedbackHint, { color: theme.colors.mutedText }]}>iOS-style feedback card with concise, focused notes works best.</Text>
       <PrimaryButton disabled={!content.trim()} label={t("settingsHub.feedback.submit")} loading={loading} onPress={() => void handleSubmit()} />
     </HomeScaffold>
   )
@@ -143,11 +155,12 @@ export function FeedbackScreen({ navigation }: StackProps<"FeedbackScreen">) {
 
 export function LicensesScreen({ navigation }: StackProps<"LicensesScreen">) {
   const { t } = useTranslation()
+  const theme = useAppTheme()
 
   return (
     <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.about.licenses")}>
       <Card>
-        <Text style={styles.answerText}>{t("settingsHub.licenses.body")}</Text>
+        <Text style={[styles.answerText, { color: theme.colors.mutedText }]}>{t("settingsHub.licenses.body")}</Text>
       </Card>
     </HomeScaffold>
   )
@@ -158,12 +171,12 @@ export function UserGuideScreen({ navigation }: StackProps<"UserGuideScreen">) {
 
   return (
     <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.guide.title")}>
-      <Card>
-        <Row label={t("settingsHub.guide.wallet")} onPress={() => navigation.navigate("WalletGuideDetailScreen")} />
-        <Row label={t("settingsHub.guide.faq")} onPress={() => navigation.navigate("FAQGuideDetailScreen")} />
-        <Row label={t("settingsHub.guide.knowledge")} onPress={() => navigation.navigate("KnowledgeGuideDetailScreen")} />
-        <Row label={t("settingsHub.guide.safety")} onPress={() => navigation.navigate("SafetyGuideDetailScreen")} />
-      </Card>
+      <ListCard>
+        <Row icon="wallet" label={t("settingsHub.guide.wallet")} onPress={() => navigation.navigate("WalletGuideDetailScreen")} />
+        <Row icon="help" label={t("settingsHub.guide.faq")} onPress={() => navigation.navigate("FAQGuideDetailScreen")} />
+        <Row icon="book" label={t("settingsHub.guide.knowledge")} onPress={() => navigation.navigate("KnowledgeGuideDetailScreen")} />
+        <Row hideDivider icon="lock" label={t("settingsHub.guide.safety")} onPress={() => navigation.navigate("SafetyGuideDetailScreen")} />
+      </ListCard>
       <PrimaryButton label={t("settingsHub.help.title")} onPress={() => navigation.navigate("HelpCenterScreen")} />
     </HomeScaffold>
   )
@@ -175,11 +188,11 @@ function GuideListScreen(props: GuideListScreenProps) {
 
   return (
     <HomeScaffold canGoBack onBack={props.navigation.goBack} title={t(props.titleKey)}>
-      <Card>
+      <ListCard>
         {links.map(item => (
-          <Row key={item.url} label={item.title} onPress={() => void openExternalUrl(item.url)} />
+          <Row hideDivider={item.url === links[links.length - 1]?.url} icon="book" key={item.url} label={item.title} onPress={() => void openExternalUrl(item.url)} />
         ))}
-      </Card>
+      </ListCard>
     </HomeScaffold>
   )
 }
@@ -198,4 +211,21 @@ export function KnowledgeGuideDetailScreen(props: StackProps<"KnowledgeGuideDeta
 
 export function SafetyGuideDetailScreen(props: StackProps<"SafetyGuideDetailScreen">) {
   return <GuideListScreen {...props} section="safety" titleKey="settingsHub.guide.safety" />
+}
+
+const localStyles = {
+  brandCard: {
+    alignItems: "center" as const,
+    gap: 12,
+    paddingVertical: 8,
+  },
+  brandBody: {
+    fontSize: 13,
+    lineHeight: 20,
+  },
+  feedbackHint: {
+    fontSize: 12,
+    lineHeight: 18,
+    paddingHorizontal: 4,
+  },
 }

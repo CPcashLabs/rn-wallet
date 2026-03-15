@@ -11,7 +11,8 @@ import { useUserStore } from "@/shared/store/useUserStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { AppCard, APP_LIST_ROW_MIN_HEIGHT } from "@/shared/ui/AppCard"
 import { AppButton } from "@/shared/ui/AppButton"
-import { AppListRow } from "@/shared/ui/AppList"
+import { AppGlyph, type AppGlyphName } from "@/shared/ui/AppGlyph"
+import { AppListCard, AppListRow } from "@/shared/ui/AppList"
 
 export type StackProps<T extends keyof SettingsStackParamList> = NativeStackScreenProps<SettingsStackParamList, T>
 
@@ -41,8 +42,50 @@ export function Card(props: { children: React.ReactNode }) {
   return <AppCard>{props.children}</AppCard>
 }
 
-export function Row(props: { label: string; detail?: string; onPress?: () => void; children?: React.ReactNode }) {
-  return <AppListRow onPress={props.onPress} right={props.children} subtitle={props.detail} title={props.label} />
+export function ListCard(props: { children: React.ReactNode }) {
+  return <AppListCard>{props.children}</AppListCard>
+}
+
+export function SectionHeader(props: { title: string; detail?: string }) {
+  const theme = useAppTheme()
+
+  return (
+    <View style={styles.sectionHeader}>
+      <Text style={[styles.sectionHeaderTitle, { color: theme.colors.mutedText }]}>{props.title}</Text>
+      {props.detail ? <Text style={[styles.sectionHeaderDetail, { color: theme.colors.mutedText }]}>{props.detail}</Text> : null}
+    </View>
+  )
+}
+
+export function Row(props: {
+  label: string
+  detail?: string
+  onPress?: () => void
+  children?: React.ReactNode
+  icon?: AppGlyphName
+  selected?: boolean
+  hideDivider?: boolean
+}) {
+  const theme = useAppTheme()
+  const accessory =
+    props.children !== undefined ? (
+      props.children
+    ) : props.detail || props.selected || props.onPress ? (
+      <View style={styles.rowAccessory}>
+        {props.detail ? <Text style={[styles.rowAccessoryText, { color: theme.colors.mutedText }]}>{props.detail}</Text> : null}
+        {props.selected ? <Text style={[styles.rowCheckmark, { color: theme.colors.primary }]}>✓</Text> : props.onPress ? <Text style={[styles.rowChevron, { color: theme.colors.mutedText }]}>›</Text> : null}
+      </View>
+    ) : undefined
+
+  return (
+    <AppListRow
+      hideDivider={props.hideDivider}
+      left={props.icon ? <AppGlyph name={props.icon} /> : undefined}
+      onPress={props.onPress}
+      right={accessory}
+      title={props.label}
+    />
+  )
 }
 
 export function PrimaryButton(props: { label: string; disabled?: boolean; loading?: boolean; onPress: () => void }) {
@@ -63,7 +106,7 @@ export const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#475569",
+    color: "#6E6E73",
   },
   input: {
     minHeight: 48,
@@ -89,41 +132,41 @@ export const styles = StyleSheet.create({
   },
   helperText: {
     fontSize: 12,
-    color: "#64748B",
+    color: "#6E6E73",
     lineHeight: 18,
   },
   centerMuted: {
     textAlign: "center",
     fontSize: 13,
-    color: "#64748B",
+    color: "#6E6E73",
   },
   emailValue: {
     textAlign: "center",
     fontSize: 20,
     fontWeight: "700",
-    color: "#0F172A",
+    color: "#111111",
   },
   inlineTextButton: {
     alignSelf: "flex-end",
   },
   inlineTextButtonLabel: {
-    color: "#0F766E",
-    fontWeight: "700",
+    color: "#0A84FF",
+    fontWeight: "600",
   },
   headerLink: {
-    color: "#0F766E",
-    fontWeight: "700",
+    color: "#0A84FF",
+    fontWeight: "600",
     fontSize: 14,
   },
   questionTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#0F172A",
+    color: "#111111",
   },
   answerText: {
     fontSize: 14,
     lineHeight: 22,
-    color: "#334155",
+    color: "#3A3A3C",
     flex: 1,
   },
   diffRow: {
@@ -134,18 +177,18 @@ export const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     fontWeight: "600",
-    color: "#0F172A",
+    color: "#111111",
   },
   diffCell: {
     flex: 1,
     fontSize: 13,
-    color: "#334155",
+    color: "#3A3A3C",
   },
   brandTitle: {
     textAlign: "center",
     fontSize: 22,
-    fontWeight: "800",
-    color: "#0F172A",
+    fontWeight: "700",
+    color: "#111111",
   },
   levelRow: {
     flexDirection: "row",
@@ -158,17 +201,17 @@ export const styles = StyleSheet.create({
     height: 38,
     borderRadius: 19,
     borderWidth: 1,
-    borderColor: "#CBD5E1",
+    borderColor: "rgba(60,60,67,0.18)",
     alignItems: "center",
     justifyContent: "center",
   },
   levelChipActive: {
-    backgroundColor: "#0F766E",
-    borderColor: "#0F766E",
+    backgroundColor: "#0A84FF",
+    borderColor: "#0A84FF",
   },
   levelChipText: {
-    color: "#0F172A",
-    fontWeight: "700",
+    color: "#111111",
+    fontWeight: "600",
   },
   levelChipTextActive: {
     color: "#FFFFFF",
@@ -184,25 +227,25 @@ export const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingBottom: 6,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#CBD5E1",
+    borderBottomColor: "rgba(60,60,67,0.18)",
   },
   tableHeadCell: {
     flex: 1,
     textAlign: "center",
-    fontWeight: "700",
-    color: "#475569",
+    fontWeight: "600",
+    color: "#6E6E73",
   },
   tableRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#E2E8F0",
+    borderBottomColor: "rgba(60,60,67,0.12)",
   },
   tableCell: {
     flex: 1,
     textAlign: "center",
-    color: "#0F172A",
+    color: "#111111",
   },
   bulletRow: {
     flexDirection: "row",
@@ -212,6 +255,38 @@ export const styles = StyleSheet.create({
   bulletDot: {
     fontSize: 18,
     lineHeight: 22,
-    color: "#0F766E",
+    color: "#0A84FF",
+  },
+  sectionHeader: {
+    gap: 3,
+    paddingHorizontal: 4,
+    paddingBottom: 2,
+  },
+  sectionHeaderTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  sectionHeaderDetail: {
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  rowAccessory: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  rowAccessoryText: {
+    fontSize: 13,
+  },
+  rowChevron: {
+    fontSize: 22,
+    lineHeight: 22,
+    fontWeight: "300",
+  },
+  rowCheckmark: {
+    fontSize: 16,
+    fontWeight: "700",
   },
 })
