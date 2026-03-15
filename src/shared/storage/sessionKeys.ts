@@ -11,6 +11,7 @@ export enum KvStorageKeys {
   WalletRpcIndex = "wallet.rpc_index",
   PasskeyHistory = "auth.passkey_history",
   UserProfile = "auth.user_profile",
+  UserAvatarCache = "auth.user_avatar_cache",
   VerificationCodeCountdownEndAt = "auth.verification_code_countdown_end_at",
   EmailBindCountdownEndAt = "auth.email_bind_countdown_end_at",
   EmailUnbindCountdownEndAt = "auth.email_unbind_countdown_end_at",
@@ -27,6 +28,7 @@ export enum KvStorageKeys {
   OriginalTargetPath = "support.original_target_path",
   ReceiveGuideDismissed = "receive.guide.dismissed",
   ReceiveShowedList = "receive.showed_list",
+  ReceiveChainColorCache = "receive.chain_color_cache",
   CopouchSortByAmount = "copouch.sort_by_amount",
   CopouchGuideDismissedWalletIds = "copouch.guide.dismissed_wallet_ids",
 }

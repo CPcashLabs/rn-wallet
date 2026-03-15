@@ -63,7 +63,7 @@ export function MeShellScreen({ navigation }: Props) {
 
             <View style={styles.profileCard}>
               <View style={[styles.avatarShell, { backgroundColor: theme.colors.surfaceElevated ?? theme.colors.surface }]}>
-                <UserAvatar cacheVersion={avatarVersion} label={displayName} size={72} uri={avatar} />
+                <UserAvatar accountKey={address} cacheVersion={avatarVersion} label={displayName} size={72} uri={avatar} />
               </View>
 
               <View style={styles.profileMeta}>

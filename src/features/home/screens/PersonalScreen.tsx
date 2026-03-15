@@ -116,7 +116,7 @@ export function PersonalScreen({ navigation }: Props) {
           onPress={handleAvatarPress}
           right={
             <View style={styles.rowRight}>
-              <UserAvatar cacheVersion={avatarVersion} label={nickname} size={32} uri={avatar} />
+              <UserAvatar accountKey={address} cacheVersion={avatarVersion} label={nickname} size={32} uri={avatar} />
               <Text style={[styles.rowValue, { color: theme.colors.mutedText }]}>{uploading ? t("common.loading") : "›"}</Text>
             </View>
           }

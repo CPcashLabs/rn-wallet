@@ -112,6 +112,7 @@ export function HomeShellScreen({ navigation, route }: Props) {
     })
 
     return () => {
+      balanceValueAnim.stopAnimation()
       balanceValueAnim.removeListener(listenerId)
     }
   }, [balanceValueAnim])
@@ -354,14 +355,13 @@ function ActionButton(props: { label: string; onPress: () => void; symbol: strin
 
 const styles = StyleSheet.create({
   topBar: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    marginBottom: 12,
+    alignSelf: "flex-end",
+    marginBottom: 10,
   },
   topBarAction: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 14,
     borderWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
     justifyContent: "center",
