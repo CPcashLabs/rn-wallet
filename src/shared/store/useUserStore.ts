@@ -56,6 +56,29 @@ function mergeProfiles(current: UserProfile | null, remote: UserProfile) {
   return merged
 }
 
+function areProfilesEqual(left: UserProfile | null, right: UserProfile | null) {
+  if (left === right) {
+    return true
+  }
+
+  if (!left || !right) {
+    return false
+  }
+
+  const keys = new Set<keyof UserProfile>([
+    ...Object.keys(left),
+    ...Object.keys(right),
+  ] as (keyof UserProfile)[])
+
+  for (const key of keys) {
+    if (left[key] !== right[key]) {
+      return false
+    }
+  }
+
+  return true
+}
+
 const initialProfile = readPersistedProfile()
 
 export const useUserStore = create<UserState>(set => ({
@@ -64,6 +87,11 @@ export const useUserStore = create<UserState>(set => ({
   mergeRemoteProfile: profile =>
     set(state => {
       const nextProfile = mergeProfiles(state.profile, profile)
+
+      if (areProfilesEqual(state.profile, nextProfile)) {
+        return state
+      }
+
       persistProfile(nextProfile)
 
       return {

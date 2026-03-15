@@ -13,6 +13,7 @@ import { DEFAULT_WALLET_CHAIN_ID, useWalletStore } from "@/shared/store/useWalle
 
 import type { RootStackParamList } from "@/app/navigation/types"
 import { BootScreen } from "@/app/screens/BootScreen"
+import { syncCurrentUserProfile } from "@/features/home/hooks/useProfileSync"
 import { resolveSupportRoute } from "@/features/support/utils/supportRoutes"
 
 type Navigation = NativeStackNavigationProp<RootStackParamList, "BootstrapGate">
@@ -24,54 +25,57 @@ export function BootstrapGate() {
     let mounted = true
 
     const bootstrap = async () => {
+      const { clearSession, setBootstrapped, setSession } = useAuthStore.getState()
+      const { setWalletState } = useWalletStore.getState()
+      const persistedChainId = getString(KvStorageKeys.WalletChainId) ?? DEFAULT_WALLET_CHAIN_ID
+
       try {
         await Promise.all([hydrateI18n(), hydrateThemePreference()])
 
         const session = await readAuthSession()
-        const persistedChainId = getString(KvStorageKeys.WalletChainId) ?? DEFAULT_WALLET_CHAIN_ID
         if (!mounted) return
 
-        const authStore = useAuthStore.getState()
         if (session?.accessToken) {
-          authStore.setSession(session)
-          useWalletStore.getState().setWalletState({
+          setSession(session)
+          setWalletState({
             status: session.address ? "connected" : "idle",
             address: session.address ?? null,
             chainId: persistedChainId,
           })
+          void syncCurrentUserProfile()
           navigation.reset({
             index: 0,
             routes: [{ name: "MainTabs", params: { screen: "HomeTab" } }],
           })
-          return
+        } else {
+          clearSession()
+          setWalletState({
+            status: "idle",
+            address: null,
+            chainId: persistedChainId,
+          })
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "AuthStack", params: { screen: "LoginScreen" } }],
+          })
         }
-
-        authStore.clearSession()
-        useWalletStore.getState().setWalletState({
-          status: "idle",
-          address: null,
-          chainId: persistedChainId,
-        })
-        navigation.reset({
-          index: 0,
-          routes: [{ name: "AuthStack", params: { screen: "LoginScreen" } }],
-        })
       } catch {
-        if (!mounted) return
-        useAuthStore.getState().clearSession()
-        useWalletStore.getState().setWalletState({
-          status: "idle",
-          address: null,
-          chainId: getString(KvStorageKeys.WalletChainId) ?? DEFAULT_WALLET_CHAIN_ID,
-        })
-        const supportRoute = resolveSupportRoute("bootstrap_failed")
-        navigation.reset({
-          index: 0,
-          routes: [{ name: "SupportStack", params: supportRoute }],
-        })
+        if (mounted) {
+          clearSession()
+          setWalletState({
+            status: "idle",
+            address: null,
+            chainId: persistedChainId,
+          })
+          const supportRoute = resolveSupportRoute("bootstrap_failed")
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "SupportStack", params: supportRoute }],
+          })
+        }
       } finally {
         if (mounted) {
-          useAuthStore.getState().setBootstrapped(true)
+          setBootstrapped(true)
         }
       }
     }

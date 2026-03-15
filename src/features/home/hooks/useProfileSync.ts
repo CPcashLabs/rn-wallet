@@ -1,15 +1,10 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 
 import { getCurrentUserProfile } from "@/features/home/services/homeApi"
-import {
-  getProfileSyncInFlightRequest,
-  hasProfileSyncHydratedThisSession,
-  resetProfileSyncSession,
-  runProfileSync,
-} from "@/shared/session/profileSyncSession"
+import { resetProfileSyncSession, runProfileSync } from "@/shared/session/profileSyncSession"
 import { useUserStore } from "@/shared/store/useUserStore"
 
-async function syncProfile(force = false) {
+export async function syncCurrentUserProfile(force = false) {
   return runProfileSync(async () => {
     try {
       const profile = await getCurrentUserProfile()
@@ -26,21 +21,10 @@ export function useProfileSync() {
   const profile = useUserStore(state => state.profile)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
-  useEffect(() => {
-    if (hasProfileSyncHydratedThisSession() || getProfileSyncInFlightRequest()) {
-      return
-    }
-
-    setIsRefreshing(true)
-    void syncProfile().finally(() => {
-      setIsRefreshing(false)
-    })
-  }, [])
-
   const refresh = async () => {
     setIsRefreshing(true)
     try {
-      await syncProfile(true)
+      await syncCurrentUserProfile(true)
     } finally {
       setIsRefreshing(false)
     }
