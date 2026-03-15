@@ -5,6 +5,7 @@ import { useFocusEffect } from "@react-navigation/native"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 
+import { navigateRoot } from "@/app/navigation/navigationRef"
 import { getCopouchDetail, getCopouchOwners, markCopouchFirstEnterSeen, type CopouchDetail, type CopouchOwner } from "@/plugins/copouch/services/copouchApi"
 import { CopouchScaffold } from "@/plugins/copouch/components/CopouchScaffold"
 import { useCopouchStore } from "@/plugins/copouch/store/useCopouchStore"
@@ -200,7 +201,7 @@ export function CopouchDetailScreen({ navigation, route }: Props) {
             <ActionButton
               label={t("copouch.detail.transfer")}
               onPress={() =>
-                (navigation.getParent() as any)?.navigate("TransferStack", {
+                navigateRoot("TransferStack", {
                   screen: "SelectTokenScreen",
                   params: {
                     intent: "transfer",
@@ -213,7 +214,7 @@ export function CopouchDetailScreen({ navigation, route }: Props) {
             <ActionButton
               label={t("copouch.detail.receive")}
               onPress={() =>
-                (navigation.getParent() as any)?.navigate("TransferStack", {
+                navigateRoot("TransferStack", {
                   screen: "SelectTokenScreen",
                   params: {
                     intent: "receive",

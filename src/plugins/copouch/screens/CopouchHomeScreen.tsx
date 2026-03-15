@@ -6,6 +6,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 
 import { describeCopouchEligibilityError } from "@/plugins/copouch/services/copouchApi"
+import { navigateRoot } from "@/app/navigation/navigationRef"
 import { useCopouchStore } from "@/plugins/copouch/store/useCopouchStore"
 import { CopouchScaffold } from "@/plugins/copouch/components/CopouchScaffold"
 import { formatCurrency } from "@/features/home/utils/format"
@@ -99,7 +100,7 @@ export function CopouchHomeScreen({ navigation }: Props) {
         {
           text: t("copouch.home.claimBtt"),
           onPress: () => {
-            ;(navigation.getParent() as any)?.navigate("TransferStack", {
+            navigateRoot("TransferStack", {
               screen: "BttClaimScreen",
             })
           },
@@ -174,7 +175,7 @@ export function CopouchHomeScreen({ navigation }: Props) {
         <View style={styles.headerActions}>
           <Pressable
             onPress={() => {
-              ;(navigation.getParent() as any)?.navigate("TransferStack", {
+              navigateRoot("TransferStack", {
                 screen: "BttClaimScreen",
               })
             }}

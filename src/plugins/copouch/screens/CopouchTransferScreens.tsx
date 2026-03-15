@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next"
 import { Text, View } from "react-native"
 
 import type { CopouchStackParamList } from "@/app/navigation/types"
+import { navigateRoot } from "@/app/navigation/navigationRef"
 import { CopouchScaffold } from "@/plugins/copouch/components/CopouchScaffold"
 import {
   AvatarBadge,
@@ -23,6 +24,8 @@ import {
   createBridgeTransferOrder,
   createNormalTransferOrder,
 } from "@/shared/exchange/services/orderCreationApi"
+import { TransferConfirmModal, type TransferConfirmSuccess, type TransferConfirmVariant } from "@/plugins/transfer/components/TransferConfirmPanel"
+import { TransferOrderCreatingOverlay } from "@/plugins/transfer/components/TransferOrderCreatingOverlay"
 import {
   getTransferChannels,
   getTransferGasEstimate,
@@ -72,6 +75,8 @@ function CopouchTransferScreen(props: {
   const [gasLimit, setGasLimit] = useState(0)
   const [quotedOption, setQuotedOption] = useState<TransferOrderOption | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [confirmOrder, setConfirmOrder] = useState<{ orderSn: string; variant: TransferConfirmVariant } | null>(null)
+  const [confirmVisible, setConfirmVisible] = useState(false)
 
   useEffect(() => {
     void reload().catch(() => null)
@@ -248,9 +253,19 @@ function CopouchTransferScreen(props: {
     return ""
   }, [amount, availableBalance, destinationAddress, detail, numericAmount, resolvedOption, selectedChannel, t])
 
+  useEffect(() => {
+    setConfirmOrder(null)
+    setConfirmVisible(false)
+  }, [amount, destinationAddress, note, resolvedOption?.recvCoinCode, resolvedOption?.sendCoinCode, selectedChannel?.key])
+
   const handleSubmit = async () => {
     if (validationMessage) {
       presentMessage(validationMessage)
+      return
+    }
+
+    if (confirmOrder) {
+      setConfirmVisible(true)
       return
     }
 
@@ -279,12 +294,11 @@ function CopouchTransferScreen(props: {
               multisigWalletId: props.route.params.id,
             })
 
-      ;(props.navigation.getParent() as any)?.navigate("TransferStack", {
-        screen: selectedChannel.channelType === "normal" ? "TransferConfirmNormalScreen" : "TransferConfirmScreen",
-        params: {
-          orderSn: order.orderSn,
-        },
+      setConfirmOrder({
+        orderSn: order.orderSn,
+        variant: selectedChannel.channelType === "normal" ? "normal" : "default",
       })
+      setConfirmVisible(true)
     } catch (error) {
       presentError(error, {
         fallbackKey: "copouch.transfer.submitFailed",
@@ -294,72 +308,113 @@ function CopouchTransferScreen(props: {
     }
   }
 
+  const handleConfirmCompleted = ({ orderSn, walletId }: TransferConfirmSuccess) => {
+    setConfirmVisible(false)
+    setConfirmOrder(null)
+    navigateRoot("TransferStack", {
+      screen: "TxPayStatusScreen",
+      params: {
+        orderSn,
+        pay: true,
+        walletId,
+      },
+    })
+  }
+
   return (
-    <CopouchScaffold
-      canGoBack
-      onBack={props.navigation.goBack}
-      title={props.mode === "withdraw" ? t("copouch.transfer.withdrawTitle") : t("copouch.transfer.depositTitle")}
-    >
-      <WalletGuard
-        invalidBody={t("copouch.transfer.invalidBody")}
-        invalidTitle={t("copouch.transfer.invalidTitle")}
-        invalidAccess={invalidAccess}
-        loading={loading}
-        loadingBody={t("copouch.transfer.loading")}
+    <>
+      <CopouchScaffold
+        canGoBack
+        onBack={props.navigation.goBack}
+        title={props.mode === "withdraw" ? t("copouch.transfer.withdrawTitle") : t("copouch.transfer.depositTitle")}
       >
-        <SectionCard>
-          <Text style={[styles.inputLabel, { color: theme.colors.text }]}>{t("copouch.transfer.destination")}</Text>
-          <View style={styles.destinationCard}>
-            <AvatarBadge
-              avatarText={(destinationTitle || destinationAddress || "?").slice(0, 1).toUpperCase()}
-              label={destinationTitle}
-              sublabel={formatAddress(destinationAddress)}
-            />
-          </View>
-        </SectionCard>
-
-        <SectionCard>
-          <Text style={[styles.inputLabel, { color: theme.colors.text }]}>{t("copouch.transfer.assetLabel")}</Text>
-          {optionsLoading || assetLoading ? (
-            <LoadingCard body={t("copouch.transfer.assetLoading")} />
-          ) : (
-            <View style={styles.filterWrap}>
-              {options.map(option => (
-                <FilterChip key={`${option.sendCoinCode}:${option.recvCoinCode}`} active={selectedOptionCode === option.sendCoinCode} label={option.sendCoinCode} onPress={() => setSelectedOptionCode(option.sendCoinCode)} />
-              ))}
+        <WalletGuard
+          invalidBody={t("copouch.transfer.invalidBody")}
+          invalidTitle={t("copouch.transfer.invalidTitle")}
+          invalidAccess={invalidAccess}
+          loading={loading}
+          loadingBody={t("copouch.transfer.loading")}
+        >
+          <SectionCard>
+            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>{t("copouch.transfer.destination")}</Text>
+            <View style={styles.destinationCard}>
+              <AvatarBadge
+                avatarText={(destinationTitle || destinationAddress || "?").slice(0, 1).toUpperCase()}
+                label={destinationTitle}
+                sublabel={formatAddress(destinationAddress)}
+              />
             </View>
-          )}
-          <Text style={[styles.helperText, { color: theme.colors.mutedText }]}>
-            {t("copouch.transfer.availableBalance", { amount: formatAmount(availableBalance), symbol: selectedOption?.sendCoinCode || "--" })}
-          </Text>
-        </SectionCard>
+          </SectionCard>
 
-        <SectionCard>
-          <Text style={[styles.inputLabel, { color: theme.colors.text }]}>{t("copouch.transfer.amountLabel")}</Text>
-          <AppTextField
-            backgroundTone="background"
-            keyboardType="decimal-pad"
-            onChangeText={value => setAmount(parseDecimalInput(value))}
-            placeholder={t("copouch.transfer.amountPlaceholder")}
-            value={amount}
-          />
-          <Text style={[styles.inputLabel, { color: theme.colors.text }]}>{t("copouch.transfer.noteLabel")}</Text>
-          <AppTextField
-            backgroundTone="background"
-            multiline
-            onChangeText={setNote}
-            placeholder={t("copouch.transfer.notePlaceholder")}
-            value={note}
-          />
-          <FieldRow label={t("copouch.transfer.estimate")} value={formatAmount(resolvedOption?.recvEstimateAmount ?? numericAmount)} />
-          <FieldRow label={t("copouch.transfer.gasLimit")} value={gasLimit > 0 ? String(gasLimit) : "--"} />
-          <FieldRow label={t("copouch.transfer.direction")} value={props.mode === "withdraw" ? t("copouch.transfer.directionOut") : t("copouch.transfer.directionIn")} />
-          {validationMessage ? <Text style={[styles.helperText, { color: "#DC2626" }]}>{validationMessage}</Text> : null}
-        </SectionCard>
+          <SectionCard>
+            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>{t("copouch.transfer.assetLabel")}</Text>
+            {optionsLoading || assetLoading ? (
+              <LoadingCard body={t("copouch.transfer.assetLoading")} />
+            ) : (
+              <View style={styles.filterWrap}>
+                {options.map(option => (
+                  <FilterChip
+                    key={`${option.sendCoinCode}:${option.recvCoinCode}`}
+                    active={selectedOptionCode === option.sendCoinCode}
+                    label={option.sendCoinCode}
+                    onPress={() => setSelectedOptionCode(option.sendCoinCode)}
+                  />
+                ))}
+              </View>
+            )}
+            <Text style={[styles.helperText, { color: theme.colors.mutedText }]}>
+              {t("copouch.transfer.availableBalance", {
+                amount: formatAmount(availableBalance),
+                symbol: selectedOption?.sendCoinCode || "--",
+              })}
+            </Text>
+          </SectionCard>
 
-        <PrimaryButton disabled={Boolean(validationMessage) || submitting} label={submitting ? t("common.loading") : t("copouch.transfer.next")} onPress={() => void handleSubmit()} />
-      </WalletGuard>
-    </CopouchScaffold>
+          <SectionCard>
+            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>{t("copouch.transfer.amountLabel")}</Text>
+            <AppTextField
+              backgroundTone="background"
+              keyboardType="decimal-pad"
+              onChangeText={value => setAmount(parseDecimalInput(value))}
+              placeholder={t("copouch.transfer.amountPlaceholder")}
+              value={amount}
+            />
+            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>{t("copouch.transfer.noteLabel")}</Text>
+            <AppTextField
+              backgroundTone="background"
+              multiline
+              onChangeText={setNote}
+              placeholder={t("copouch.transfer.notePlaceholder")}
+              value={note}
+            />
+            <FieldRow label={t("copouch.transfer.estimate")} value={formatAmount(resolvedOption?.recvEstimateAmount ?? numericAmount)} />
+            <FieldRow label={t("copouch.transfer.gasLimit")} value={gasLimit > 0 ? String(gasLimit) : "--"} />
+            <FieldRow
+              label={t("copouch.transfer.direction")}
+              value={props.mode === "withdraw" ? t("copouch.transfer.directionOut") : t("copouch.transfer.directionIn")}
+            />
+            {validationMessage ? <Text style={[styles.helperText, { color: "#DC2626" }]}>{validationMessage}</Text> : null}
+          </SectionCard>
+
+          <PrimaryButton
+            disabled={Boolean(validationMessage) || submitting}
+            label={submitting ? t("common.loading") : t("copouch.transfer.next")}
+            onPress={() => void handleSubmit()}
+          />
+        </WalletGuard>
+      </CopouchScaffold>
+
+      <TransferOrderCreatingOverlay visible={submitting} />
+      {confirmOrder && confirmVisible ? (
+        <TransferConfirmModal
+          visible
+          onClose={() => setConfirmVisible(false)}
+          onCompleted={handleConfirmCompleted}
+          orderSn={confirmOrder.orderSn}
+          variant={confirmOrder.variant}
+        />
+      ) : null}
+    </>
   )
 }
 

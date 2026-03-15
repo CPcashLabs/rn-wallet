@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next"
 import { Pressable, Text, View } from "react-native"
 
 import type { CopouchStackParamList } from "@/app/navigation/types"
+import { navigateRoot } from "@/app/navigation/navigationRef"
 import { CopouchScaffold } from "@/plugins/copouch/components/CopouchScaffold"
 import {
   LoadingCard,
@@ -198,7 +199,7 @@ export function CopouchBillListScreen({ navigation, route }: StackProps<"Copouch
             <Pressable
               key={item.orderSn}
               onPress={() =>
-                (navigation.getParent() as any)?.navigate("OrdersStack", {
+                navigateRoot("OrdersStack", {
                   screen: "OrderDetailScreen",
                   params: {
                     orderSn: item.orderSn,
