@@ -10,19 +10,14 @@ import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 type Props = React.ComponentProps<typeof HomeScaffold>
 
-export function CopouchScaffold({ right, ...props }: Props) {
+export function CopouchScaffold({ children, right, ...props }: Props) {
   const pluginRuntime = usePluginRuntime()
 
   return (
-    <HomeScaffold
-      {...props}
-      right={
-        <View style={styles.headerActions}>
-          {right}
-          {!pluginRuntime ? <CopouchCloseButton /> : null}
-        </View>
-      }
-    />
+    <HomeScaffold {...props} right={!pluginRuntime ? <CopouchCloseButton /> : null}>
+      {right ? <View style={styles.topActionsRow}>{right}</View> : null}
+      {children}
+    </HomeScaffold>
   )
 }
 
@@ -38,10 +33,10 @@ function CopouchCloseButton() {
 }
 
 const styles = StyleSheet.create({
-  headerActions: {
+  topActionsRow: {
     flexDirection: "row",
+    justifyContent: "flex-end",
     alignItems: "center",
-    gap: 12,
   },
   closeButton: {
     paddingVertical: 4,

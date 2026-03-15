@@ -322,7 +322,7 @@ function CopouchTransferScreen(props: {
   }
 
   return (
-    <>
+    <View style={{ flex: 1 }}>
       <CopouchScaffold
         canGoBack
         onBack={props.navigation.goBack}
@@ -393,7 +393,7 @@ function CopouchTransferScreen(props: {
               label={t("copouch.transfer.direction")}
               value={props.mode === "withdraw" ? t("copouch.transfer.directionOut") : t("copouch.transfer.directionIn")}
             />
-            {validationMessage ? <Text style={[styles.helperText, { color: "#DC2626" }]}>{validationMessage}</Text> : null}
+            {validationMessage ? <Text style={[styles.helperText, { color: theme.colors.danger }]}>{validationMessage}</Text> : null}
           </SectionCard>
 
           <PrimaryButton
@@ -414,7 +414,7 @@ function CopouchTransferScreen(props: {
           variant={confirmOrder.variant}
         />
       ) : null}
-    </>
+    </View>
   )
 }
 

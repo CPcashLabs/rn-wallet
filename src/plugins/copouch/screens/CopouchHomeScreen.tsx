@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next"
 
 import { describeCopouchEligibilityError } from "@/plugins/copouch/services/copouchApi"
 import { navigateRoot } from "@/app/navigation/navigationRef"
+import { HeaderTextAction } from "@/features/home/components/HomeScaffold"
 import { useCopouchStore } from "@/plugins/copouch/store/useCopouchStore"
 import { CopouchScaffold } from "@/plugins/copouch/components/CopouchScaffold"
 import { formatCurrency } from "@/features/home/utils/format"
@@ -83,6 +84,16 @@ export function CopouchHomeScreen({ navigation }: Props) {
     })
   }, [bttBalance, finishedCount, t, walletLimit])
 
+  const openBttClaim = () => {
+    navigateRoot("TransferStack", {
+      screen: "BttClaimScreen",
+    })
+  }
+
+  const openFaq = () => {
+    navigation.navigate("CopouchFaqScreen")
+  }
+
   const handleOpenCreate = () => {
     if (cooldownUntil && cooldownUntil > Date.now()) {
       showToast({ message: t("copouch.home.cooldown"), tone: "warning" })
@@ -99,11 +110,7 @@ export function CopouchHomeScreen({ navigation }: Props) {
         { text: t("common.cancel"), style: "cancel" },
         {
           text: t("copouch.home.claimBtt"),
-          onPress: () => {
-            navigateRoot("TransferStack", {
-              screen: "BttClaimScreen",
-            })
-          },
+          onPress: openBttClaim,
         },
       ])
       return
@@ -173,18 +180,8 @@ export function CopouchHomeScreen({ navigation }: Props) {
       title={t("copouch.home.title")}
       right={
         <View style={styles.headerActions}>
-          <Pressable
-            onPress={() => {
-              navigateRoot("TransferStack", {
-                screen: "BttClaimScreen",
-              })
-            }}
-          >
-            <Text style={[styles.headerActionText, { color: theme.colors.primary }]}>{t("copouch.home.claimBtt")}</Text>
-          </Pressable>
-          <Pressable onPress={() => navigation.navigate("CopouchFaqScreen")}>
-            <Text style={[styles.headerActionText, { color: theme.colors.primary }]}>{t("copouch.home.faq")}</Text>
-          </Pressable>
+          <HeaderTextAction label={t("copouch.home.claimBtt")} onPress={openBttClaim} />
+          <HeaderTextAction label={t("copouch.home.faq")} onPress={openFaq} />
         </View>
       }
     >
@@ -290,11 +287,9 @@ export function CopouchHomeScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   headerActions: {
     flexDirection: "row",
-    gap: 16,
-  },
-  headerActionText: {
-    fontSize: 13,
-    fontWeight: "700",
+    justifyContent: "flex-end",
+    flexWrap: "wrap",
+    gap: 8,
   },
   summaryTitle: {
     fontSize: 15,

@@ -162,6 +162,7 @@ export function CopouchMemberScreen({ navigation, route }: StackProps<"CopouchMe
 }
 
 export function CopouchDeleteMemberScreen({ navigation, route }: StackProps<"CopouchDeleteMemberScreen">) {
+  const theme = useAppTheme()
   const { t } = useTranslation()
   const { presentError, presentMessage } = useErrorPresenter()
   const { showToast } = useToast()
@@ -259,8 +260,21 @@ export function CopouchDeleteMemberScreen({ navigation, route }: StackProps<"Cop
                       sublabel={formatAddress(owner.walletAddress)}
                     />
                     {owner.status === 1 ? (
-                      <Pressable disabled={deleting} onPress={() => confirmDelete(owner)} style={[styles.inlineAction, deleting && styles.disabledAction]}>
-                        <Text style={styles.inlineActionText}>{deleting ? t("common.loading") : t("copouch.member.deleteAction")}</Text>
+                      <Pressable
+                        disabled={deleting}
+                        onPress={() => confirmDelete(owner)}
+                        style={[
+                          styles.inlineAction,
+                          {
+                            backgroundColor: theme.colors.infoSoft,
+                            borderColor: theme.colors.infoBorder,
+                          },
+                          deleting && styles.disabledAction,
+                        ]}
+                      >
+                        <Text style={[styles.inlineActionText, { color: theme.colors.info }]}>
+                          {deleting ? t("common.loading") : t("copouch.member.deleteAction")}
+                        </Text>
                       </Pressable>
                     ) : badgeKey ? (
                       <StatusBadge label={t(badgeKey)} tone={owner.status === 2 ? "warning" : "success"} />

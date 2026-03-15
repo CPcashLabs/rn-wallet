@@ -7,6 +7,7 @@ import { Pressable, Text, View } from "react-native"
 
 import type { CopouchStackParamList } from "@/app/navigation/types"
 import { navigateRoot } from "@/app/navigation/navigationRef"
+import { HeaderTextAction } from "@/features/home/components/HomeScaffold"
 import { CopouchScaffold } from "@/plugins/copouch/components/CopouchScaffold"
 import {
   LoadingCard,
@@ -146,9 +147,11 @@ export function CopouchBillListScreen({ navigation, route }: StackProps<"Copouch
       canGoBack
       onBack={navigation.goBack}
       right={
-        <Pressable disabled={exporting} onPress={() => void handleExport()}>
-          <Text style={[styles.headerAction, { color: theme.colors.primary }]}>{exporting ? t("common.loading") : t("copouch.bill.export")}</Text>
-        </Pressable>
+        <HeaderTextAction
+          disabled={exporting}
+          label={exporting ? t("common.loading") : t("copouch.bill.export")}
+          onPress={() => void handleExport()}
+        />
       }
       title={t("copouch.bill.title")}
     >
@@ -213,7 +216,7 @@ export function CopouchBillListScreen({ navigation, route }: StackProps<"Copouch
                   <Text style={[styles.rowTitle, { color: theme.colors.text }]}>
                     {resolveTransactionTitle(t, item.transactionType, item.orderType)}
                   </Text>
-                  <Text style={[styles.billAmount, { color: amount.incoming ? "#0F766E" : theme.colors.text }]}>{amount.label}</Text>
+                  <Text style={[styles.billAmount, { color: amount.incoming ? theme.colors.success : theme.colors.text }]}>{amount.label}</Text>
                 </View>
                 <Text style={[styles.helperText, { color: theme.colors.mutedText }]}>{formatAddress(resolveBillCounterparty(item))}</Text>
                 <Text style={[styles.helperText, { color: theme.colors.mutedText }]}>{formatDateTime(item.createdAt)}</Text>
@@ -297,9 +300,7 @@ export function CopouchRemindScreen({ navigation, route }: StackProps<"CopouchRe
       canGoBack
       onBack={navigation.goBack}
       right={
-        <Pressable onPress={() => void markAllCopouchEventsRead().then(() => loadEvents())}>
-          <Text style={[styles.headerAction, { color: theme.colors.primary }]}>{t("copouch.remind.readAll")}</Text>
-        </Pressable>
+        <HeaderTextAction label={t("copouch.remind.readAll")} onPress={() => void markAllCopouchEventsRead().then(() => loadEvents())} />
       }
       title={t("copouch.remind.title")}
     >
@@ -331,6 +332,7 @@ export function CopouchRemindScreen({ navigation, route }: StackProps<"CopouchRe
 }
 
 export function CopouchBalanceScreen({ navigation, route }: StackProps<"CopouchBalanceScreen">) {
+  const theme = useAppTheme()
   const { t } = useTranslation()
   const { presentError } = useErrorPresenter()
   const chainId = useWalletStore(state => state.chainId)
@@ -429,7 +431,7 @@ export function CopouchBalanceScreen({ navigation, route }: StackProps<"CopouchB
                 <View key={member.memberId} style={styles.memberStatCard}>
                   <View style={styles.rowBetween}>
                     <Text style={styles.rowTitle}>{member.nickname || t("copouch.member.unknown")}</Text>
-                    <Text style={[styles.billAmount, { color: member.balanceAmount >= 0 ? "#0F766E" : "#B91C1C" }]}>
+                    <Text style={[styles.billAmount, { color: member.balanceAmount >= 0 ? theme.colors.success : theme.colors.danger }]}>
                       {formatAmount(member.balanceAmount)}
                     </Text>
                   </View>

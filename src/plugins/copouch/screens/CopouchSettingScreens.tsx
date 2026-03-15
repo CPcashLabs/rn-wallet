@@ -197,6 +197,7 @@ export function CopouchSetNameScreen({ navigation, route }: StackProps<"CopouchS
 }
 
 export function CopouchBgSettingScreen({ navigation, route }: StackProps<"CopouchBgSettingScreen">) {
+  const theme = useAppTheme()
   const { t } = useTranslation()
   const { presentError, presentMessage } = useErrorPresenter()
   const { showToast } = useToast()
@@ -260,7 +261,7 @@ export function CopouchBgSettingScreen({ navigation, route }: StackProps<"Copouc
                     styles.backgroundCard,
                     {
                       backgroundColor: palette.card,
-                      borderColor: active ? "#0F766E" : "transparent",
+                      borderColor: active ? theme.colors.success : "transparent",
                     },
                   ]}
                 >

@@ -187,9 +187,9 @@ export function StatusBadge(props: { label: string; tone?: "success" | "warning"
   const theme = useAppTheme()
   const palette =
     props.tone === "success"
-      ? { background: "#E8F7EE", border: "#9BD2AF", text: "#177245" }
+      ? { background: theme.colors.successSoft, border: theme.colors.successBorder, text: theme.colors.success }
       : props.tone === "warning"
-        ? { background: "#FFF4E5", border: "#F0BF7A", text: "#A75A00" }
+        ? { background: theme.colors.warningSoft, border: theme.colors.warningBorder, text: theme.colors.warning }
         : { background: theme.colors.surface, border: theme.colors.border, text: theme.colors.mutedText }
 
   return (
@@ -353,14 +353,11 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 12,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#EFF6FF",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#93C5FD",
   },
   inlineActionText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#1D4ED8",
   },
   disabledAction: {
     opacity: 0.5,
@@ -419,10 +416,6 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
     color: "#0F172A",
-  },
-  headerAction: {
-    fontSize: 13,
-    fontWeight: "700",
   },
   filterWrap: {
     flexDirection: "row",
