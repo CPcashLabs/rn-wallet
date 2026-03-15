@@ -1,5 +1,7 @@
 import { Contract, Interface, Wallet, ZeroAddress, formatUnits } from "ethers"
 
+import { type ApiEnvelope, unwrapEnvelope } from "@/shared/api/envelope"
+import { toNumber } from "@/shared/api/normalize"
 import { apiClient } from "@/shared/api/client"
 import { getCoinList, resolveChainNameById, type WalletCoin } from "@/shared/api/walletAssets"
 import { ApiError } from "@/shared/errors"
@@ -7,12 +9,6 @@ import { getLocalPasskeyWallet, getOrCreateLocalWallet } from "@/shared/native/l
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { fetchOnChainBalances, getRpcProvider } from "@/shared/web3/balanceService"
-
-type ApiEnvelope<T> = {
-  code: number
-  message: string
-  data: T
-}
 
 type CopouchListPayloadItem = {
   id?: string | number
@@ -289,10 +285,6 @@ const SAFE_NETWORKS: Record<number, { safeSingletonAddress: string; safeProxyFac
   },
 }
 
-function unwrapEnvelope<T>(payload: ApiEnvelope<T>) {
-  return payload.data
-}
-
 function unwrapListEnvelope<T>(payload: ApiEnvelope<CopouchListEnvelope<T>> | ApiEnvelope<T[]>) {
   const data = unwrapEnvelope(payload as ApiEnvelope<CopouchListEnvelope<T>>)
 
@@ -311,19 +303,6 @@ function unwrapListEnvelope<T>(payload: ApiEnvelope<CopouchListEnvelope<T>> | Ap
     page: toNumber(data?.page) || 1,
     perPage: toNumber(data?.per_page) || 0,
   }
-}
-
-function toNumber(value: unknown) {
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? value : 0
-  }
-
-  if (typeof value === "string" && value.trim()) {
-    const parsed = Number(value)
-    return Number.isFinite(parsed) ? parsed : 0
-  }
-
-  return 0
 }
 
 function toCopouchWallet(payload: CopouchListPayloadItem, totalValue = 0): CopouchWallet {

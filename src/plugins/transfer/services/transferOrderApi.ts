@@ -1,10 +1,6 @@
+import { type ApiEnvelope, unwrapEnvelope } from "@/shared/api/envelope"
 import { apiClient } from "@/shared/api/client"
-
-type ApiEnvelope<T> = {
-  code: number
-  message: string
-  data: T
-}
+import { requestCoinAllowList, requestCpCashAllowList, requestCpCashShow } from "@/shared/exchange/services/exchangeClient"
 
 type BridgeAllowListPayload = {
   chain_name: string
@@ -309,10 +305,6 @@ export type TransferOrderDetail = {
   multisigWalletAddress?: string | null
 }
 
-function unwrapEnvelope<T>(payload: ApiEnvelope<T>) {
-  return payload.data
-}
-
 const FIXED_TRANSFER_GAS_LIMIT = 100_000
 
 function toDetailedBridgeExchangePair(payload: DetailedBridgeExchangePairPayload, chainName: string): DetailedBridgeExchangePair {
@@ -477,15 +469,12 @@ export async function getBridgeChannelDetail(input: {
   sendChainName: string
   receiveChainName: string
 }) {
-  const response = await apiClient.get<ApiEnvelope<BridgeAllowListPayload[]>>("/api/seller/member/exchange/cp-cash-allow-list", {
-    params: {
-      group_by_type: 1,
-      send_coin_symbol: "USDT",
-      send_chain_name: input.sendChainName,
-    },
+  const response = await requestCpCashAllowList<BridgeAllowListPayload>({
+    group_by_type: 1,
+    send_chain_name: input.sendChainName,
   })
 
-  const channel = unwrapEnvelope(response.data).find(item => item.chain_name === input.receiveChainName)
+  const channel = response.find(item => item.chain_name === input.receiveChainName)
 
   if (!channel) {
     throw new Error(`Bridge channel ${input.receiveChainName} not found`)
@@ -497,15 +486,13 @@ export async function getBridgeChannelDetail(input: {
 export async function getNormalChannelDetail(input: {
   chainName: string
 }) {
-  const response = await apiClient.get<ApiEnvelope<NormalAllowListPayload[]>>("/api/system/member/coinallow/allow-list", {
-    params: {
-      chain_name: input.chainName,
-      is_send_allowed: true,
-      is_recv_allowed: true,
-    },
+  const response = await requestCoinAllowList<NormalAllowListPayload>({
+    chain_name: input.chainName,
+    is_send_allowed: true,
+    is_recv_allowed: true,
   })
 
-  const channel = unwrapEnvelope(response.data).find(item => item.chain_name === input.chainName)
+  const channel = response.find(item => item.chain_name === input.chainName)
 
   if (!channel) {
     throw new Error(`Normal channel ${input.chainName} not found`)
@@ -520,16 +507,14 @@ export async function getTransferQuote(input: {
   recvAmount: number
   rateType?: 0 | 1
 }) {
-  const response = await apiClient.get<ApiEnvelope<TransferQuotePayload>>("/api/seller/member/exchange/cp-cash-show", {
-    params: {
-      send_coin_code: input.sendCoinCode,
-      recv_coin_code: input.recvCoinCode,
-      recv_amount: input.recvAmount,
-      rate_type: input.rateType ?? 1,
-    },
+  const response = await requestCpCashShow<TransferQuotePayload>({
+    send_coin_code: input.sendCoinCode,
+    recv_coin_code: input.recvCoinCode,
+    recv_amount: input.recvAmount,
+    rate_type: input.rateType ?? 1,
   })
 
-  return toTransferQuote(unwrapEnvelope(response.data))
+  return toTransferQuote(response)
 }
 
 export async function getTransferGas(input: {

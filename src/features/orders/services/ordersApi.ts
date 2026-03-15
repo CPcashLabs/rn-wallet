@@ -1,10 +1,6 @@
+import { type ApiEnvelope } from "@/shared/api/envelope"
+import { toNumber, toStringValue, toTimestamp } from "@/shared/api/normalize"
 import { apiClient } from "@/shared/api/client"
-
-type ApiEnvelope<T> = {
-  code: number | string
-  message: string
-  data: T
-}
 
 type PagedApiEnvelope<T> = ApiEnvelope<T[]> & {
   total?: number
@@ -354,45 +350,6 @@ export type RangeQuery = {
 }
 
 export type OrderTypeFilter = "RECEIPT" | "PAYMENT" | "SEND" | "SEND_TOKEN" | "NATIVE"
-
-function toNumber(value: unknown) {
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? value : 0
-  }
-
-  if (typeof value === "string" && value.trim()) {
-    const parsed = Number(value)
-    return Number.isFinite(parsed) ? parsed : 0
-  }
-
-  return 0
-}
-
-function toTimestamp(value: unknown) {
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? value : null
-  }
-
-  if (typeof value === "string" && value.trim()) {
-    const numeric = Number(value)
-    if (Number.isFinite(numeric) && numeric > 0) {
-      return numeric
-    }
-
-    const parsed = Date.parse(value)
-    return Number.isFinite(parsed) ? parsed : null
-  }
-
-  return null
-}
-
-function toStringValue(value: unknown) {
-  if (value === null || value === undefined) {
-    return ""
-  }
-
-  return String(value)
-}
 
 function serializeParams(params: Record<string, unknown>) {
   const search = new URLSearchParams()
@@ -854,3 +811,13 @@ export async function uploadOrderNoteImage(image: UploadableImage) {
 
   return resolveUploadedFileUrl(response.data.data)
 }
+
+export {
+  buildOrderBillCacheKey,
+  buildOrderLogsCacheKey,
+  countNewOrderRecords,
+  readOrderBillCache,
+  readOrderLogsCache,
+  writeOrderBillCache,
+  writeOrderLogsCache,
+} from "@/features/orders/services/orderRecordsCache"

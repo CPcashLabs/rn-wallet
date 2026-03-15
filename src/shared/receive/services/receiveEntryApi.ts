@@ -1,13 +1,10 @@
+import { type ApiEnvelope, unwrapEnvelope } from "@/shared/api/envelope"
+import { toNumber } from "@/shared/api/normalize"
 import { apiClient } from "@/shared/api/client"
 import { getCoinList, resolveChainNameById, type WalletChainName } from "@/shared/api/walletAssets"
 import { resolveRuntimeEnv } from "@/shared/config/runtime"
+import { requestCpCashAllowList, requestCpCashShow, type RuntimeEnvName } from "@/shared/exchange/services/exchangeClient"
 import { DEFAULT_WALLET_CHAIN_ID } from "@/shared/store/useWalletStore"
-
-type ApiEnvelope<T> = {
-  code: number
-  message: string
-  data: T
-}
 
 type ReceiveAllowPairPayload = {
   recv_coin_code?: string
@@ -64,23 +61,6 @@ export type BttClaimStatus = {
   threshold: number
 }
 
-function unwrapEnvelope<T>(payload: ApiEnvelope<T>) {
-  return payload.data
-}
-
-function toNumber(value: unknown) {
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? value : 0
-  }
-
-  if (typeof value === "string" && value.trim()) {
-    const parsed = Number(value)
-    return Number.isFinite(parsed) ? parsed : 0
-  }
-
-  return 0
-}
-
 function uniqueValues(values: Array<string | null | undefined>) {
   return values.filter((value, index, array): value is string => Boolean(value) && array.indexOf(value) === index)
 }
@@ -88,20 +68,15 @@ function uniqueValues(values: Array<string | null | undefined>) {
 async function requestReceiveAllowList(input: {
   sendChainName: string
   recvChainName?: string
-  env: "dev" | "test" | "preview" | "prod"
+  env: RuntimeEnvName
 }) {
-  const response = await apiClient.get<ApiEnvelope<ReceiveAllowPayload[]>>("/api/seller/member/exchange/cp-cash-allow-list", {
-    params: {
-      group_by_type: 0,
-      recv_coin_symbol: "USDT",
-      send_coin_symbol: "USDT",
-      send_chain_name: input.sendChainName,
-      ...(input.recvChainName ? { recv_chain_name: input.recvChainName } : {}),
-      env: input.env,
-    },
+  return requestCpCashAllowList<ReceiveAllowPayload>({
+    group_by_type: 0,
+    recv_coin_symbol: "USDT",
+    send_chain_name: input.sendChainName,
+    recv_chain_name: input.recvChainName,
+    env: input.env,
   })
-
-  return unwrapEnvelope(response.data)
 }
 
 export async function getReceiveConfig(input: { payChain?: string; chainId?: string | number | null }) {
@@ -153,16 +128,12 @@ export async function getReceiveConfig(input: { payChain?: string; chainId?: str
 
   const sendCoins = await getCoinList(selectedSendChainName as WalletChainName)
 
-  const exchangeShowResponse = await apiClient.get<ApiEnvelope<ReceiveExchangePayload>>("/api/seller/member/exchange/cp-cash-show", {
-    params: {
-      send_coin_code: firstPair.send_coin_code,
-      recv_coin_code: firstPair.recv_coin_code,
-      rate_type: 1,
-      env,
-    },
+  const exchange = await requestCpCashShow<ReceiveExchangePayload>({
+    send_coin_code: firstPair.send_coin_code,
+    recv_coin_code: firstPair.recv_coin_code,
+    rate_type: 1,
+    env,
   })
-
-  const exchange = unwrapEnvelope(exchangeShowResponse.data)
   const sendCoinMeta = sendCoins.find(item => item.code === firstPair.send_coin_code)
 
   return {

@@ -1,16 +1,11 @@
-import { apiClient } from "@/shared/api/client"
+import { toNumber } from "@/shared/api/normalize"
 import { getCoinList, resolveChainNameById, type WalletChainName } from "@/shared/api/walletAssets"
-
-type ApiEnvelope<T> = {
-  code: number
-  message: string
-  data: T
-}
-
-type RebatePairPayload = {
-  recv_coin_code: string
-  send_coin_code: string
-}
+import {
+  requestCoinAllowList,
+  requestCpCashAllowList,
+  requestCpCashShow,
+  requestRebateExchangePairs,
+} from "@/shared/exchange/services/exchangeClient"
 
 type BridgeAllowListPayload = {
   chain_name: string
@@ -107,23 +102,6 @@ export type TransferQuote = {
   sellerId: number
 }
 
-function unwrapEnvelope<T>(payload: ApiEnvelope<T>) {
-  return payload.data
-}
-
-function toNumber(value: unknown) {
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? value : 0
-  }
-
-  if (typeof value === "string" && value.trim()) {
-    const parsed = Number(value)
-    return Number.isFinite(parsed) ? parsed : 0
-  }
-
-  return 0
-}
-
 function toTransferQuote(payload: ExchangeShowPayload): TransferQuote {
   return {
     feeAmount: toNumber(payload.fee_amount),
@@ -140,36 +118,25 @@ function toTransferQuote(payload: ExchangeShowPayload): TransferQuote {
   }
 }
 
-async function getRebateExchangePairs() {
-  const response = await apiClient.get<ApiEnvelope<RebatePairPayload[]>>("/api/fund/member/order-rebate-claim/list-exchange-pair")
-  return unwrapEnvelope(response.data)
-}
-
 export async function getTransferChannels(chainId?: string | number | null, intent: "transfer" | "receive" = "transfer") {
   const sendChainName = resolveChainNameById(chainId)
   const bridgeSendChains = intent === "receive" ? Array.from(new Set([sendChainName, "BTT", "BTT_TEST"])) : [sendChainName]
   const [rebatesResult, bridgeAllowListResults, normalAllowListResult] = await Promise.all([
-    getRebateExchangePairs()
+    requestRebateExchangePairs()
       .then(data => ({ ok: true as const, data }))
       .catch(error => ({ ok: false as const, error })),
     Promise.allSettled(
       bridgeSendChains.map(sendChain =>
-        apiClient.get<ApiEnvelope<BridgeAllowListPayload[]>>("/api/seller/member/exchange/cp-cash-allow-list", {
-          params: {
-            group_by_type: 1,
-            send_coin_symbol: "USDT",
-            send_chain_name: sendChain,
-          },
+        requestCpCashAllowList<BridgeAllowListPayload>({
+          group_by_type: 1,
+          send_chain_name: sendChain,
         }),
       ),
     ),
-    apiClient
-      .get<ApiEnvelope<NormalAllowListPayload[]>>("/api/system/member/coinallow/allow-list", {
-        params: {
-          is_send_allowed: true,
-          is_recv_allowed: true,
-        },
-      })
+    requestCoinAllowList<NormalAllowListPayload>({
+      is_send_allowed: true,
+      is_recv_allowed: true,
+    })
       .then(data => ({ ok: true as const, data }))
       .catch(error => ({ ok: false as const, error })),
   ])
@@ -184,14 +151,14 @@ export async function getTransferChannels(chainId?: string | number | null, inte
   })
   const normalAllowList = normalAllowListResult.ok ? normalAllowListResult.data : null
 
-  if (bridgeAllowLists.length === 0 && !normalAllowList?.data) {
+  if (bridgeAllowLists.length === 0 && !normalAllowList?.length) {
     throw (normalAllowListResult.ok ? rebatesResult.ok ? new Error("receive_channel_unavailable") : rebatesResult.error : normalAllowListResult.error)
   }
 
   const rebateCoinCodes = new Set(rebates.map(item => item.recv_coin_code))
   const bridgeMap = new Map<string, TransferChannel>()
 
-  bridgeAllowLists.flatMap(response => unwrapEnvelope(response.data)).forEach(item => {
+  bridgeAllowLists.flat().forEach(item => {
     if (!item.chain_name || bridgeMap.has(item.chain_name)) {
       return
     }
@@ -210,7 +177,7 @@ export async function getTransferChannels(chainId?: string | number | null, inte
     })
   })
 
-  const normalChannels = (normalAllowList?.data ? unwrapEnvelope(normalAllowList.data) : [])
+  const normalChannels = (normalAllowList ?? [])
     .filter(item => item.chain_name === sendChainName)
     .map(item => ({
       key: `normal:${item.chain_name}`,
@@ -236,30 +203,23 @@ export async function getTransferOrderOptions(input: {
   const [coinList, bridgeAllowList, normalAllowList] = await Promise.all([
     getCoinList(input.sendChainName as WalletChainName),
     input.channelType === "bridge"
-      ? apiClient.get<ApiEnvelope<BridgeAllowListPayload[]>>("/api/seller/member/exchange/cp-cash-allow-list", {
-          params: {
-            group_by_type: 1,
-            send_coin_symbol: "USDT",
-            send_chain_name: input.sendChainName,
-          },
+      ? requestCpCashAllowList<BridgeAllowListPayload>({
+          group_by_type: 1,
+          send_chain_name: input.sendChainName,
         })
       : Promise.resolve(null),
     input.channelType === "normal"
-      ? apiClient.get<ApiEnvelope<NormalAllowListPayload[]>>("/api/system/member/coinallow/allow-list", {
-          params: {
-            chain_name: input.sendChainName,
-            is_send_allowed: true,
-            is_recv_allowed: true,
-          },
+      ? requestCoinAllowList<NormalAllowListPayload>({
+          chain_name: input.sendChainName,
+          is_send_allowed: true,
+          is_recv_allowed: true,
         })
       : Promise.resolve(null),
   ])
   const coinLookup = new Map(coinList.map(item => [item.code, item]))
 
-  const bridgeChannel =
-    bridgeAllowList?.data ? unwrapEnvelope(bridgeAllowList.data).find(item => item.chain_name === input.receiveChainName) : null
-  const normalChannel =
-    normalAllowList?.data ? unwrapEnvelope(normalAllowList.data).find(item => item.chain_name === input.sendChainName) : null
+  const bridgeChannel = bridgeAllowList?.find(item => item.chain_name === input.receiveChainName) ?? null
+  const normalChannel = normalAllowList?.find(item => item.chain_name === input.sendChainName) ?? null
 
   const pairOptions =
     bridgeChannel?.exchange_pairs?.map<TransferOrderOption>(item => {
@@ -321,14 +281,12 @@ export async function getTransferQuote(input: {
   recvAmount: number
   rateType?: 0 | 1
 }) {
-  const response = await apiClient.get<ApiEnvelope<ExchangeShowPayload>>("/api/seller/member/exchange/cp-cash-show", {
-    params: {
-      send_coin_code: input.sendCoinCode,
-      recv_coin_code: input.recvCoinCode,
-      recv_amount: input.recvAmount,
-      rate_type: input.rateType ?? 1,
-    },
+  const response = await requestCpCashShow<ExchangeShowPayload>({
+    send_coin_code: input.sendCoinCode,
+    recv_coin_code: input.recvCoinCode,
+    recv_amount: input.recvAmount,
+    rate_type: input.rateType ?? 1,
   })
 
-  return toTransferQuote(unwrapEnvelope(response.data))
+  return toTransferQuote(response)
 }
