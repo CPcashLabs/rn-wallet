@@ -11,6 +11,7 @@ export type WebSocketAdapterEvent =
 export interface WebSocketAdapter {
   getCapability(): CapabilityDescriptor
   connect(url: string): Promise<AdapterResult<void>>
+  send(data: string): Promise<AdapterResult<void>>
   disconnect(code?: number, reason?: string): Promise<AdapterResult<void>>
   subscribe(listener: (event: WebSocketAdapterEvent) => void): () => void
   isConnected(): boolean
@@ -166,6 +167,27 @@ export const websocketAdapter: WebSocketAdapter = {
       return {
         ok: false,
         error: error instanceof Error ? error : new Error("Failed to create WebSocket connection."),
+      }
+    }
+  },
+  async send(data) {
+    if (!activeSocket || activeSocket.readyState !== WebSocket.OPEN) {
+      return {
+        ok: false,
+        error: new Error("WebSocket connection is not open."),
+      }
+    }
+
+    try {
+      activeSocket.send(data)
+      return {
+        ok: true,
+        data: undefined,
+      }
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof Error ? error : new Error("Failed to send WebSocket message."),
       }
     }
   },

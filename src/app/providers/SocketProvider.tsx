@@ -6,6 +6,7 @@ import { resolveWebSocketUrl } from "@/shared/config/runtime"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useSocketStore } from "@/shared/store/useSocketStore"
 import { websocketAdapter } from "@/shared/native/websocketAdapter"
+import { authenticateSocketConnection, isInternalSocketEvent } from "@/app/providers/socketAuth"
 
 const RECONNECT_DELAY_MS = 1_500
 
@@ -55,6 +56,17 @@ export function SocketProvider({ children }: PropsWithChildren) {
   }, [accessToken])
 
   useEffect(() => {
+    const authenticateSocket = async () => {
+      const socketStore = useSocketStore.getState()
+      const authenticated = await authenticateSocketConnection(websocketAdapter, accessTokenRef.current)
+      if (authenticated) {
+        socketStore.setConnected(true)
+        return
+      }
+
+      socketStore.setConnected(false)
+    }
+
     const scheduleReconnect = () => {
       if (reconnectTimerRef.current || !shouldReconnectRef.current || !accessTokenRef.current) {
         return
@@ -67,7 +79,7 @@ export function SocketProvider({ children }: PropsWithChildren) {
           return
         }
 
-        void websocketAdapter.connect(resolveWebSocketUrl(accessTokenRef.current))
+        void websocketAdapter.connect(resolveWebSocketUrl())
       }, RECONNECT_DELAY_MS)
     }
 
@@ -77,11 +89,11 @@ export function SocketProvider({ children }: PropsWithChildren) {
       switch (event.type) {
         case "open":
           clearReconnectTimer(reconnectTimerRef)
-          socketStore.setConnected(true)
+          void authenticateSocket()
           return
         case "message": {
           const parsed = parseSocketPayload(event.data)
-          if (parsed.type === "pong") {
+          if (isInternalSocketEvent(parsed.type)) {
             return
           }
 
@@ -116,7 +128,7 @@ export function SocketProvider({ children }: PropsWithChildren) {
         return
       }
 
-      void websocketAdapter.connect(resolveWebSocketUrl(accessTokenRef.current))
+      void websocketAdapter.connect(resolveWebSocketUrl())
     }
 
     syncConnection()

@@ -150,12 +150,18 @@ function toWebSocketOrigin(value: string) {
   return `wss://${normalized.replace(/^\/+/, "")}`
 }
 
-export function resolveWebSocketUrl(accessToken?: string) {
-  const base = `${toWebSocketOrigin(resolveAuthBaseUrl())}/ws`
+export function resolveWebSocketUrl() {
+  return `${toWebSocketOrigin(resolveAuthBaseUrl())}/ws`
+}
 
-  if (!accessToken) {
-    return base
+export function buildWebSocketAuthMessage(accessToken: string) {
+  const normalizedToken = accessToken.trim()
+  if (!normalizedToken) {
+    throw new Error("WebSocket access token is required.")
   }
 
-  return `${base}?access_token=${encodeURIComponent(accessToken)}`
+  return JSON.stringify({
+    type: "authenticate",
+    access_token: normalizedToken,
+  })
 }
