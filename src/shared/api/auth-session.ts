@@ -1,5 +1,6 @@
 import { z } from "zod"
 
+import { throwIfAborted } from "@/shared/async/taskController"
 import { getSecureItem, removeSecureItem, setSecureItem } from "@/shared/storage/secureStorage"
 import { SecureStorageKeys } from "@/shared/storage/sessionKeys"
 import type { AuthSession, TokenPair } from "@/shared/types/auth"
@@ -39,21 +40,23 @@ function getAuthSessionState(): AuthSessionState {
   return globalWithState[AUTH_SESSION_STATE_KEY] as AuthSessionState
 }
 
-export async function readAuthSession(): Promise<AuthSession | null> {
+export async function readAuthSession(signal?: AbortSignal): Promise<AuthSession | null> {
   return withAuthSessionLock(async () => {
+    throwIfAborted(signal, "Auth session read aborted.")
     const state = getAuthSessionState()
     const persistedVersion = await getSecureItem(SecureStorageKeys.AuthSessionVersion)
+    throwIfAborted(signal, "Auth session read aborted.")
 
     if (state.cache !== undefined && state.cacheVersion === persistedVersion) {
       return cloneSession(state.cache)
     }
 
-    const { session, version } = await readPersistedAuthSession(persistedVersion)
+    const { session, version } = await readPersistedAuthSession(persistedVersion, signal)
     state.cache = session
     state.cacheVersion = version
 
     return cloneSession(session)
-  })
+  }, signal)
 }
 
 export async function writeAuthSession(session: AuthSession) {
@@ -87,8 +90,8 @@ export async function clearAuthSession() {
   })
 }
 
-export async function readTokenPair(): Promise<TokenPair | null> {
-  const session = await readAuthSession()
+export async function readTokenPair(signal?: AbortSignal): Promise<TokenPair | null> {
+  const session = await readAuthSession(signal)
   if (!session) {
     return null
   }
@@ -107,9 +110,13 @@ function safeParseMeta(raw: string) {
   }
 }
 
-function withAuthSessionLock<T>(task: () => Promise<T>): Promise<T> {
+function withAuthSessionLock<T>(task: () => Promise<T>, signal?: AbortSignal): Promise<T> {
   const state = getAuthSessionState()
-  const next = state.queue.then(task, task)
+  const runTask = () => {
+    throwIfAborted(signal, "Auth session task aborted.")
+    return task()
+  }
+  const next = state.queue.then(runTask, runTask)
   state.queue = next.then(
     () => undefined,
     () => undefined,
@@ -144,12 +151,17 @@ function createSessionVersion() {
   return `${Date.now()}:${Math.random().toString(36).slice(2, 10)}`
 }
 
-async function readPersistedAuthSession(currentVersion?: string | null): Promise<{
+async function readPersistedAuthSession(
+  currentVersion?: string | null,
+  signal?: AbortSignal,
+): Promise<{
   session: SessionRecord | null
   version: string | undefined
 }> {
   let resolvedVersion = currentVersion ?? undefined
+  throwIfAborted(signal, "Auth session read aborted.")
   const canonicalRaw = await getSecureItem(SecureStorageKeys.AuthSession)
+  throwIfAborted(signal, "Auth session read aborted.")
   if (canonicalRaw) {
     const canonical = safeParseSession(canonicalRaw)
     if (canonical) {
@@ -162,6 +174,7 @@ async function readPersistedAuthSession(currentVersion?: string | null): Promise
 
       const nextVersion = createSessionVersion()
       await setSecureItem(SecureStorageKeys.AuthSessionVersion, nextVersion)
+      throwIfAborted(signal, "Auth session read aborted.")
 
       return {
         session: canonical,
@@ -174,10 +187,11 @@ async function readPersistedAuthSession(currentVersion?: string | null): Promise
       removeSecureItem(SecureStorageKeys.AuthSession),
       setSecureItem(SecureStorageKeys.AuthSessionVersion, nextVersion),
     ])
+    throwIfAborted(signal, "Auth session read aborted.")
     resolvedVersion = nextVersion
   }
 
-  const legacySession = await readLegacyAuthSession()
+  const legacySession = await readLegacyAuthSession(signal)
   if (!legacySession) {
     return {
       session: null,
@@ -189,6 +203,7 @@ async function readPersistedAuthSession(currentVersion?: string | null): Promise
   await setSecureItem(SecureStorageKeys.AuthSession, JSON.stringify(legacySession))
   await setSecureItem(SecureStorageKeys.AuthSessionVersion, nextVersion)
   await removeLegacySessionKeys()
+  throwIfAborted(signal, "Auth session read aborted.")
 
   return {
     session: legacySession,
@@ -196,10 +211,14 @@ async function readPersistedAuthSession(currentVersion?: string | null): Promise
   }
 }
 
-async function readLegacyAuthSession(): Promise<SessionRecord | null> {
+async function readLegacyAuthSession(signal?: AbortSignal): Promise<SessionRecord | null> {
+  throwIfAborted(signal, "Auth session read aborted.")
   const accessToken = await getSecureItem(SecureStorageKeys.AccessToken)
+  throwIfAborted(signal, "Auth session read aborted.")
   const refreshToken = await getSecureItem(SecureStorageKeys.RefreshToken)
+  throwIfAborted(signal, "Auth session read aborted.")
   const metaRaw = await getSecureItem(SecureStorageKeys.SessionMeta)
+  throwIfAborted(signal, "Auth session read aborted.")
 
   if (!accessToken || !refreshToken) {
     return null

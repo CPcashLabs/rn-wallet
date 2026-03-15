@@ -69,7 +69,7 @@ describe("auth session and interceptors integration", () => {
   it("clears persisted auth state and resets session guards on 401 responses", async () => {
     await writeAuthSession(session)
     useAuthStore.getState().setSession(session)
-    await runProfileSync(async () => {})
+    await runProfileSync(async () => true)
 
     const unauthorizedSpy = jest.fn()
     setUnauthorizedHandler(unauthorizedSpy)

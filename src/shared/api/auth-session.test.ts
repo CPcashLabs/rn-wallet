@@ -164,4 +164,13 @@ describe("auth session storage", () => {
       loginType: "password",
     })
   })
+
+  it("rejects a read when the caller aborts before entering the auth session lock", async () => {
+    const controller = new AbortController()
+    controller.abort()
+
+    await expect(readAuthSession(controller.signal)).rejects.toMatchObject({
+      name: "AbortError",
+    })
+  })
 })
