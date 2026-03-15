@@ -1,35 +1,36 @@
-import { NativeModules } from "react-native"
-
 import type { AdapterResult, CapabilityDescriptor } from "@/shared/native/types"
-
-type RNCClipboardModule = {
-  setString(content: string): void
-  getString(): Promise<string>
-}
-
-const nativeClipboard = NativeModules.RNCClipboard as RNCClipboardModule | undefined
 
 export interface ClipboardAdapter {
   getCapability(): CapabilityDescriptor
   setString(value: string): Promise<AdapterResult<void>>
 }
 
+function getClipboardModule(): { setString(content: string): void } {
+  const module = require("@react-native-clipboard/clipboard") as {
+    default?: { setString(content: string): void }
+    setString?: (content: string) => void
+  }
+
+  if (module.default?.setString) {
+    return module.default
+  }
+
+  if (module.setString) {
+    return { setString: module.setString }
+  }
+
+  throw new Error("Clipboard module is not available")
+}
+
 export const clipboardAdapter: ClipboardAdapter = {
   getCapability() {
     return {
-      supported: nativeClipboard != null,
+      supported: true,
     }
   },
   async setString(value) {
-    if (!nativeClipboard) {
-      return {
-        ok: false,
-        error: new Error("RNCClipboard native module is not available"),
-      }
-    }
-
     try {
-      nativeClipboard.setString(value)
+      getClipboardModule().setString(value)
 
       return {
         ok: true,
