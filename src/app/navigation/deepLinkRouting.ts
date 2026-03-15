@@ -91,7 +91,7 @@ function buildRelativeDeepLink(
 function buildAbsoluteDeepLink(
   baseUrl: string | undefined,
   pathSegments: string[],
-  queryEntries: Array<[string, string | undefined]> = [],
+  queryEntries: Array<[string, string | undefined]>,
 ) {
   const relativePath = buildRelativeDeepLink(pathSegments, queryEntries)
 
@@ -446,7 +446,7 @@ function serializeCopouchDeepLink(route: RootRouteDescriptor<"CopouchStack">) {
   return buildRelativeDeepLink(["copouch", id])
 }
 
-function serializeRoutesAsDeepLink(routes: RootRouteDescriptor[]) {
+export function serializeRouteDescriptorsAsDeepLink(routes: RootRouteDescriptor[]) {
   const route = routes[routes.length - 1]
 
   if (!route) {
@@ -479,7 +479,7 @@ function withAuth(routes: RootRouteDescriptor[], authenticated: boolean, index =
   return {
     routes: [toLogin()],
     index: 0,
-    pendingProtectedUrl: serializeRoutesAsDeepLink(routes),
+    pendingProtectedUrl: serializeRouteDescriptorsAsDeepLink(routes),
   }
 }
 
@@ -540,7 +540,7 @@ function readBoundedString(value: string | undefined, maxLength: number) {
   return trimmed
 }
 
-function readPatternString(value: string | undefined, pattern: RegExp, maxLength = 128) {
+function readPatternString(value: string | undefined, pattern: RegExp, maxLength: number) {
   const trimmed = readBoundedString(value, maxLength)
 
   if (!trimmed || !pattern.test(trimmed)) {
@@ -592,11 +592,7 @@ function readTxid(value?: string) {
   return readPatternString(value, SAFE_TXID_PATTERN, 66)
 }
 
-function sanitizeDiagnosticPath(value?: string) {
-  if (typeof value !== "string") {
-    return undefined
-  }
-
+function sanitizeDiagnosticPath(value: string) {
   const withoutControls = stripControlCharacters(value).trim()
 
   if (!withoutControls) {
@@ -687,7 +683,7 @@ export function sanitizeWechatTargetPath(value?: string) {
     return undefined
   }
 
-  const canonicalTargetPath = serializeRoutesAsDeepLink(resolveDeepLink(trimmed, true).routes)
+  const canonicalTargetPath = serializeRouteDescriptorsAsDeepLink(resolveDeepLink(trimmed, true).routes)
 
   return canonicalTargetPath
 }
