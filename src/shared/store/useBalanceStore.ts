@@ -7,6 +7,7 @@ import { useWalletStore } from "@/shared/store/useWalletStore"
 type BalanceMap = Record<string, number>
 
 type BalanceState = {
+  walletKey: string | null
   loading: boolean
   refreshing: boolean
   lastUpdatedAt: number | null
@@ -25,7 +26,18 @@ function withDefaultBalance(coins: WalletCoin[], previous: BalanceMap) {
   }, {})
 }
 
+function resolveWalletKey(address?: string | null, chainId?: string | number | null) {
+  const normalizedAddress = address?.trim().toLowerCase()
+
+  if (!normalizedAddress) {
+    return null
+  }
+
+  return `${normalizedAddress}::${String(chainId ?? "unknown")}`
+}
+
 export const useBalanceStore = create<BalanceState>((set, get) => ({
+  walletKey: null,
   loading: false,
   refreshing: false,
   lastUpdatedAt: null,
@@ -36,16 +48,27 @@ export const useBalanceStore = create<BalanceState>((set, get) => ({
       return
     }
 
+    const address = useWalletStore.getState().address
+    const walletKey = resolveWalletKey(address, chainId)
+    if (get().walletKey !== walletKey) {
+      set({
+        walletKey,
+        coins: [],
+        balances: {},
+        lastUpdatedAt: null,
+      })
+    }
+
     set({ loading: true })
 
     try {
       const chainName = resolveChainNameById(chainId)
       const coins = await getCoinList(chainName)
-      const address = useWalletStore.getState().address
       const snapshot = await fetchOnChainBalances({ address, chainId, coins })
       const balances = withDefaultBalance(coins, snapshot)
 
       set({
+        walletKey,
         coins,
         balances,
         lastUpdatedAt: Date.now(),
@@ -59,16 +82,18 @@ export const useBalanceStore = create<BalanceState>((set, get) => ({
       return
     }
 
+    const address = useWalletStore.getState().address
+    const walletKey = resolveWalletKey(address, chainId)
     set({ refreshing: true })
 
     try {
       const chainName = resolveChainNameById(chainId)
       const coins = await getCoinList(chainName)
-      const address = useWalletStore.getState().address
       const snapshot = await fetchOnChainBalances({ address, chainId, coins })
       const balances = withDefaultBalance(coins, snapshot)
 
       set({
+        walletKey,
         coins,
         balances,
         lastUpdatedAt: Date.now(),
@@ -88,6 +113,7 @@ export const useBalanceStore = create<BalanceState>((set, get) => ({
   },
   clear: () =>
     set({
+      walletKey: null,
       loading: false,
       refreshing: false,
       lastUpdatedAt: null,
