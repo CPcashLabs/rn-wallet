@@ -209,6 +209,13 @@ export type TransferStackParamList = {
 }
 
 export type ReceiveStackParamList = {
+  ReceiveSelectNetworkScreen:
+    | {
+        copouch?: string
+        cowallet?: string
+        multisigWalletId?: string
+      }
+    | undefined
   ReceiveHomeScreen:
     | {
         payChain?: string
@@ -345,28 +352,7 @@ type CopouchStackScreenParamList = {
   }
 }
 
-type LegacyCowalletStackScreenParamList = {
-  CowalletHomeScreen: CopouchStackScreenParamList["CopouchHomeScreen"]
-  CowalletFaqScreen: CopouchStackScreenParamList["CopouchFaqScreen"]
-  CowalletDetailScreen: CopouchStackScreenParamList["CopouchDetailScreen"]
-  CowalletMemberScreen: CopouchStackScreenParamList["CopouchMemberScreen"]
-  CowalletDeleteMemberScreen: CopouchStackScreenParamList["CopouchDeleteMemberScreen"]
-  CowalletAddMemberScreen: CopouchStackScreenParamList["CopouchAddMemberScreen"]
-  CowalletAddMemberForTeamScreen: CopouchStackScreenParamList["CopouchAddMemberForTeamScreen"]
-  CowalletAddMemberForTeamSelectScreen: CopouchStackScreenParamList["CopouchAddMemberForTeamSelectScreen"]
-  CowalletSettingScreen: CopouchStackScreenParamList["CopouchSettingScreen"]
-  CowalletSetNameScreen: CopouchStackScreenParamList["CopouchSetNameScreen"]
-  CowalletBgSettingScreen: CopouchStackScreenParamList["CopouchBgSettingScreen"]
-  CowalletBillListScreen: CopouchStackScreenParamList["CopouchBillListScreen"]
-  CowalletRemindScreen: CopouchStackScreenParamList["CopouchRemindScreen"]
-  CowalletBalanceScreen: CopouchStackScreenParamList["CopouchBalanceScreen"]
-  CowalletSendSelfScreen: CopouchStackScreenParamList["CopouchSendSelfScreen"]
-  CowalletReceiveScreen: CopouchStackScreenParamList["CopouchReceiveScreen"]
-  CowalletAllocationScreen: CopouchStackScreenParamList["CopouchAllocationScreen"]
-  CowalletViewAllocationScreen: CopouchStackScreenParamList["CopouchViewAllocationScreen"]
-}
-
-export type CopouchStackParamList = CopouchStackScreenParamList & LegacyCowalletStackScreenParamList
+export type CopouchStackParamList = CopouchStackScreenParamList
 
 export type MainTabParamList = {
   HomeTab: NavigatorScreenParams<HomeTabStackParamList> | undefined
@@ -417,7 +403,6 @@ export type RootStackParamList = {
   TransferStack: NavigatorScreenParams<TransferStackParamList>
   ReceiveStack: NavigatorScreenParams<ReceiveStackParamList>
   CopouchStack: NavigatorScreenParams<CopouchStackParamList>
-  CowalletStack: NavigatorScreenParams<CopouchStackParamList>
   PluginHost: {
     pluginId: PluginId
     pluginParams?: PluginRouteParams

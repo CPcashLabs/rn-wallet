@@ -30,7 +30,6 @@ export function RootNavigator() {
       <Stack.Screen name="TransferStack" component={TransferStackNavigator} />
       <Stack.Screen name="ReceiveStack" component={ReceiveStackNavigator} />
       <Stack.Screen name="CopouchStack" component={CopouchStackNavigator} />
-      <Stack.Screen name="CowalletStack" component={CopouchStackNavigator} />
       <Stack.Screen
         name="PluginHost"
         component={PluginHostScreen}
