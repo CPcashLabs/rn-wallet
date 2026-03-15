@@ -4,11 +4,9 @@ const QUERY_SECRET_PATTERN =
 const ABSOLUTE_URL_QUERY_PATTERN = /(https?:\/\/[^\s?#]+)\?[^#\s]+/gi
 const BEARER_TOKEN_PATTERN = /\bBearer\s+[A-Za-z0-9\-._~+/]+=*\b/gi
 const EMAIL_PATTERN = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi
-const EVM_ADDRESS_PATTERN = /\b0x[a-fA-F0-9]{40}\b/g
-const TRON_ADDRESS_PATTERN = /\bT[a-zA-Z0-9]{33}\b/g
+const EVM_ADDRESS_PATTERN = /(^|[^A-Za-z0-9_])((?:0x|0X)[A-Fa-f0-9]{40})(?=[^A-Za-z0-9_]|$)/g
+const TRON_ADDRESS_PATTERN = /(^|[^A-Za-z0-9_])(T[a-zA-Z0-9]{33})(?=[^A-Za-z0-9_]|$)/g
 const JWT_PATTERN = /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9._-]+\.[A-Za-z0-9._-]+\b/g
-const LONG_HEX_PATTERN = /\b(?:0x)?[A-Fa-f0-9]{32,}\b/g
-const PATH_SECRET_PATTERN = /(\/)(?:0x[a-fA-F0-9]{6,}|T[a-zA-Z0-9]{33}|[A-Z0-9_-]{8,}|[A-Za-z0-9_-]{16,})(?=\/|$)/g
 const MAX_LOG_STRING_LENGTH = 180
 
 type LogErrorOptions = {
@@ -37,18 +35,24 @@ function summarizeDataShape(value: unknown) {
   return typeof value
 }
 
+function redactDelimitedPattern(value: string, pattern: RegExp, replacement: string) {
+  return value.replace(pattern, (_match, prefix: string) => `${prefix}${replacement}`)
+}
+
 function sanitizeLogString(value: string) {
-  const sanitized = value
+  const withoutAddresses = redactDelimitedPattern(
+    redactDelimitedPattern(value, EVM_ADDRESS_PATTERN, "[REDACTED_EVM_ADDRESS]"),
+    TRON_ADDRESS_PATTERN,
+    "[REDACTED_TRON_ADDRESS]",
+  )
+
+  const sanitized = withoutAddresses
     .replace(CONTROL_CHARACTERS_PATTERN, " ")
     .replace(ABSOLUTE_URL_QUERY_PATTERN, "$1?[REDACTED_QUERY]")
     .replace(QUERY_SECRET_PATTERN, "$1[REDACTED]")
     .replace(BEARER_TOKEN_PATTERN, "Bearer [REDACTED]")
     .replace(EMAIL_PATTERN, "[REDACTED_EMAIL]")
-    .replace(EVM_ADDRESS_PATTERN, "[REDACTED_EVM_ADDRESS]")
-    .replace(TRON_ADDRESS_PATTERN, "[REDACTED_TRON_ADDRESS]")
     .replace(JWT_PATTERN, "[REDACTED_JWT]")
-    .replace(LONG_HEX_PATTERN, "[REDACTED_HEX]")
-    .replace(PATH_SECRET_PATTERN, "$1[REDACTED]")
     .replace(/\s+/g, " ")
     .trim()
 
