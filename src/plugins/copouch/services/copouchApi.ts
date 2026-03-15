@@ -1,6 +1,7 @@
 import { formatUnits } from "ethers"
 
 import { type ApiEnvelope, unwrapEnvelope } from "@/shared/api/envelope"
+import { mapWithConcurrency } from "@/shared/async/mapWithConcurrency"
 import { toNumber } from "@/shared/api/normalize"
 import { apiClient } from "@/shared/api/client"
 import { getCoinList, resolveChainNameById, type WalletCoin } from "@/shared/api/walletAssets"
@@ -127,6 +128,8 @@ type CopouchReallocateInfoPayload = {
   is_first_allocate?: boolean
   transaction_type?: number | string
 }
+
+const COPOUCH_OVERVIEW_BALANCE_CONCURRENCY = 4
 
 export type CopouchWallet = {
   id: string
@@ -420,8 +423,7 @@ export async function getCopouchOverview(input: { chainId?: string | number | nu
     ])
 
   const walletsPayload = unwrapEnvelope(walletsResponse.data)
-  const wallets = await Promise.all(
-    walletsPayload.map(async payload => {
+  const wallets = await mapWithConcurrency(walletsPayload, COPOUCH_OVERVIEW_BALANCE_CONCURRENCY, async payload => {
       const balances = await fetchOnChainBalances({
         address: payload.wallet_address,
         chainId: input.chainId,
@@ -429,8 +431,7 @@ export async function getCopouchOverview(input: { chainId?: string | number | nu
       })
 
       return toCopouchWallet(payload, sumWalletValue(coinList, balances))
-    }),
-  )
+    })
 
   return {
     wallets,
