@@ -1,4 +1,5 @@
 import { apiClient } from "@/shared/api/client"
+import { buildImageUploadFormDataPart, type UploadableImage } from "@/shared/api/uploadFile"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import type { UserProfile } from "@/shared/types/auth"
@@ -32,12 +33,6 @@ type UploadFilePayload =
       path?: string
       filename?: string
     }
-
-export type UploadableImage = {
-  uri: string
-  name?: string
-  mimeType?: string
-}
 
 function unwrapEnvelope<T>(payload: ApiEnvelope<T>) {
   return payload.data
@@ -96,11 +91,7 @@ export async function markWalletBackup() {
 export async function uploadProfileImage(image: UploadableImage) {
   const formData = new FormData()
 
-  formData.append("file", {
-    uri: image.uri,
-    name: image.name ?? "avatar.jpg",
-    type: image.mimeType ?? "image/jpeg",
-  } as any)
+  formData.append("file", buildImageUploadFormDataPart(image, "avatar.jpg"))
 
   const response = await apiClient.post<ApiEnvelope<UploadFilePayload>>(
     "/api/system/member/storage/upload-file",

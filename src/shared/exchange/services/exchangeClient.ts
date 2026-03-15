@@ -10,7 +10,7 @@ export type RebatePairPayload = {
 
 type CpCashAllowListParams = {
   group_by_type: 0 | 1
-  send_chain_name: string
+  send_chain_name?: string
   send_coin_symbol?: string
   recv_chain_name?: string
   recv_coin_symbol?: string

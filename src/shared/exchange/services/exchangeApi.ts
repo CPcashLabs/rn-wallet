@@ -120,19 +120,26 @@ function toTransferQuote(payload: ExchangeShowPayload): TransferQuote {
 
 export async function getTransferChannels(chainId?: string | number | null, intent: "transfer" | "receive" = "transfer") {
   const sendChainName = resolveChainNameById(chainId)
-  const bridgeSendChains = intent === "receive" ? Array.from(new Set([sendChainName, "BTT", "BTT_TEST"])) : [sendChainName]
-  const [rebatesResult, bridgeAllowListResults, normalAllowListResult] = await Promise.all([
+  const bridgeAllowListPromise =
+    intent === "receive"
+      ? requestCpCashAllowList<BridgeAllowListPayload>({
+          group_by_type: 0,
+          recv_chain_name: sendChainName,
+          recv_coin_symbol: "USDT",
+          send_coin_symbol: "USDT",
+        })
+      : requestCpCashAllowList<BridgeAllowListPayload>({
+          group_by_type: 1,
+          send_chain_name: sendChainName,
+        })
+
+  const [rebatesResult, bridgeAllowListResult, normalAllowListResult] = await Promise.all([
     requestRebateExchangePairs()
       .then(data => ({ ok: true as const, data }))
       .catch(error => ({ ok: false as const, error })),
-    Promise.allSettled(
-      bridgeSendChains.map(sendChain =>
-        requestCpCashAllowList<BridgeAllowListPayload>({
-          group_by_type: 1,
-          send_chain_name: sendChain,
-        }),
-      ),
-    ),
+    bridgeAllowListPromise
+      .then(data => ({ ok: true as const, data }))
+      .catch(error => ({ ok: false as const, error })),
     requestCoinAllowList<NormalAllowListPayload>({
       is_send_allowed: true,
       is_recv_allowed: true,
@@ -142,13 +149,7 @@ export async function getTransferChannels(chainId?: string | number | null, inte
   ])
 
   const rebates = rebatesResult.ok ? rebatesResult.data : []
-  const bridgeAllowLists = bridgeAllowListResults.flatMap(result => {
-    if (result.status !== "fulfilled") {
-      return []
-    }
-
-    return [result.value]
-  })
+  const bridgeAllowLists = bridgeAllowListResult.ok ? [bridgeAllowListResult.data] : []
   const normalAllowList = normalAllowListResult.ok ? normalAllowListResult.data : null
 
   if (bridgeAllowLists.length === 0 && !normalAllowList?.length) {

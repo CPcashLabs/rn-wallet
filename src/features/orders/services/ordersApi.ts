@@ -1,6 +1,7 @@
 import { type ApiEnvelope } from "@/shared/api/envelope"
 import { toNumber, toStringValue, toTimestamp } from "@/shared/api/normalize"
 import { apiClient } from "@/shared/api/client"
+import { buildImageUploadFormDataPart, type UploadableImage } from "@/shared/api/uploadFile"
 
 type PagedApiEnvelope<T> = ApiEnvelope<T[]> & {
   total?: number
@@ -334,12 +335,6 @@ export type OrderLabelBinding = {
   notes: string
   notesImageUrl: string
   labels: CategoryLabel[]
-}
-
-export type UploadableImage = {
-  uri: string
-  name?: string
-  mimeType?: string
 }
 
 export type RangeQuery = {
@@ -797,11 +792,7 @@ export async function bindCategoryLabel(input: {
 export async function uploadOrderNoteImage(image: UploadableImage) {
   const formData = new FormData()
 
-  formData.append("file", {
-    uri: image.uri,
-    name: image.name ?? "note.jpg",
-    type: image.mimeType ?? "image/jpeg",
-  } as any)
+  formData.append("file", buildImageUploadFormDataPart(image, "note.jpg"))
 
   const response = await apiClient.post<ApiEnvelope<UploadFilePayload>>("/api/system/member/storage/upload-file", formData, {
     headers: {
