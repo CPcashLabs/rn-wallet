@@ -51,22 +51,22 @@ jest.mock("react-native-keychain", () => ({
 }))
 
 import { SecureStorageKeys } from "@/shared/storage/sessionKeys"
-
-async function loadAuthSessionModule() {
-  return require("@/shared/api/auth-session") as typeof import("@/shared/api/auth-session")
-}
+import {
+  readAuthSession,
+  readTokenPair,
+  resetAuthSessionStateForTests,
+  writeAuthSession,
+} from "@/shared/api/auth-session"
 
 beforeEach(() => {
   mockCanonicalWriteGate = null
   mockSecureStore.clear()
   jest.clearAllMocks()
-  jest.resetModules()
+  resetAuthSessionStateForTests()
 })
 
 describe("auth session storage", () => {
   it("migrates legacy split keys into a canonical session snapshot", async () => {
-    const { readAuthSession } = await loadAuthSessionModule()
-
     mockSecureStore.set(SecureStorageKeys.AccessToken, "legacy-access")
     mockSecureStore.set(SecureStorageKeys.RefreshToken, "legacy-refresh")
     mockSecureStore.set(
@@ -98,8 +98,6 @@ describe("auth session storage", () => {
   })
 
   it("serializes concurrent write and read operations to avoid partial snapshots", async () => {
-    const { readAuthSession, readTokenPair, writeAuthSession } = await loadAuthSessionModule()
-
     mockCanonicalWriteGate = createDeferred()
 
     const writePromise = writeAuthSession({
@@ -130,6 +128,40 @@ describe("auth session storage", () => {
     await expect(readTokenPair()).resolves.toEqual({
       accessToken: "next-access",
       refreshToken: "next-refresh",
+    })
+  })
+
+  it("invalidates the in-memory cache when another runtime updates the persisted session version", async () => {
+    await writeAuthSession({
+      accessToken: "cached-access",
+      refreshToken: "cached-refresh",
+      address: "0xabc",
+      loginType: "wallet",
+    })
+
+    await expect(readAuthSession()).resolves.toEqual({
+      accessToken: "cached-access",
+      refreshToken: "cached-refresh",
+      address: "0xabc",
+      loginType: "wallet",
+    })
+
+    mockSecureStore.set(
+      SecureStorageKeys.AuthSession,
+      JSON.stringify({
+        accessToken: "external-access",
+        refreshToken: "external-refresh",
+        address: "0xdef",
+        loginType: "password",
+      }),
+    )
+    mockSecureStore.set(SecureStorageKeys.AuthSessionVersion, "external-version")
+
+    await expect(readAuthSession()).resolves.toEqual({
+      accessToken: "external-access",
+      refreshToken: "external-refresh",
+      address: "0xdef",
+      loginType: "password",
     })
   })
 })

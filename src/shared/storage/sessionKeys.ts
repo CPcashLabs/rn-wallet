@@ -1,5 +1,6 @@
 export enum SecureStorageKeys {
   AuthSession = "auth.session",
+  AuthSessionVersion = "auth.session.version",
   AccessToken = "auth.access_token",
   RefreshToken = "auth.refresh_token",
   SessionMeta = "auth.session_meta",

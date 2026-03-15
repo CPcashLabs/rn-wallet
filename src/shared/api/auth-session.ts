@@ -15,17 +15,42 @@ const sessionSchema = z.object({
 
 type SessionRecord = z.infer<typeof sessionSchema>
 
-let authSessionCache: SessionRecord | null | undefined
-let authSessionQueue: Promise<void> = Promise.resolve()
+type AuthSessionState = {
+  cache: SessionRecord | null | undefined
+  cacheVersion: string | undefined
+  queue: Promise<void>
+}
+
+const AUTH_SESSION_STATE_KEY = "__cpcashAuthSessionState__"
+
+function getAuthSessionState(): AuthSessionState {
+  const globalWithState = globalThis as typeof globalThis & {
+    [AUTH_SESSION_STATE_KEY]?: AuthSessionState
+  }
+
+  if (!globalWithState[AUTH_SESSION_STATE_KEY]) {
+    globalWithState[AUTH_SESSION_STATE_KEY] = {
+      cache: undefined,
+      cacheVersion: undefined,
+      queue: Promise.resolve(),
+    }
+  }
+
+  return globalWithState[AUTH_SESSION_STATE_KEY] as AuthSessionState
+}
 
 export async function readAuthSession(): Promise<AuthSession | null> {
   return withAuthSessionLock(async () => {
-    if (authSessionCache !== undefined) {
-      return cloneSession(authSessionCache)
+    const state = getAuthSessionState()
+    const persistedVersion = await getSecureItem(SecureStorageKeys.AuthSessionVersion)
+
+    if (state.cache !== undefined && state.cacheVersion === persistedVersion) {
+      return cloneSession(state.cache)
     }
 
-    const session = await readPersistedAuthSession()
-    authSessionCache = session
+    const { session, version } = await readPersistedAuthSession(persistedVersion)
+    state.cache = session
+    state.cacheVersion = version
 
     return cloneSession(session)
   })
@@ -33,25 +58,32 @@ export async function readAuthSession(): Promise<AuthSession | null> {
 
 export async function writeAuthSession(session: AuthSession) {
   return withAuthSessionLock(async () => {
+    const state = getAuthSessionState()
     const normalized = normalizeSession(session)
+    const version = createSessionVersion()
 
     await setSecureItem(SecureStorageKeys.AuthSession, JSON.stringify(normalized))
-    await clearLegacySessionKeys()
+    await setSecureItem(SecureStorageKeys.AuthSessionVersion, version)
+    await removeLegacySessionKeys()
 
-    authSessionCache = normalized
+    state.cache = normalized
+    state.cacheVersion = version
   })
 }
 
 export async function clearAuthSession() {
   return withAuthSessionLock(async () => {
-    authSessionCache = null
+    const state = getAuthSessionState()
+    const version = createSessionVersion()
 
     await Promise.all([
       removeSecureItem(SecureStorageKeys.AuthSession),
-      removeSecureItem(SecureStorageKeys.AccessToken),
-      removeSecureItem(SecureStorageKeys.RefreshToken),
-      removeSecureItem(SecureStorageKeys.SessionMeta),
+      removeLegacySessionKeys(),
     ])
+    await setSecureItem(SecureStorageKeys.AuthSessionVersion, version)
+
+    state.cache = null
+    state.cacheVersion = version
   })
 }
 
@@ -76,13 +108,21 @@ function safeParseMeta(raw: string) {
 }
 
 function withAuthSessionLock<T>(task: () => Promise<T>): Promise<T> {
-  const next = authSessionQueue.then(task, task)
-  authSessionQueue = next.then(
+  const state = getAuthSessionState()
+  const next = state.queue.then(task, task)
+  state.queue = next.then(
     () => undefined,
     () => undefined,
   )
 
   return next
+}
+
+export function resetAuthSessionStateForTests() {
+  const state = getAuthSessionState()
+  state.cache = undefined
+  state.cacheVersion = undefined
+  state.queue = Promise.resolve()
 }
 
 function cloneSession(session: SessionRecord | null): AuthSession | null {
@@ -100,26 +140,60 @@ function normalizeSession(session: AuthSession): SessionRecord {
   })
 }
 
-async function readPersistedAuthSession(): Promise<SessionRecord | null> {
+function createSessionVersion() {
+  return `${Date.now()}:${Math.random().toString(36).slice(2, 10)}`
+}
+
+async function readPersistedAuthSession(currentVersion?: string | null): Promise<{
+  session: SessionRecord | null
+  version: string | undefined
+}> {
+  let resolvedVersion = currentVersion ?? undefined
   const canonicalRaw = await getSecureItem(SecureStorageKeys.AuthSession)
   if (canonicalRaw) {
     const canonical = safeParseSession(canonicalRaw)
     if (canonical) {
-      return canonical
+      if (resolvedVersion) {
+        return {
+          session: canonical,
+          version: resolvedVersion,
+        }
+      }
+
+      const nextVersion = createSessionVersion()
+      await setSecureItem(SecureStorageKeys.AuthSessionVersion, nextVersion)
+
+      return {
+        session: canonical,
+        version: nextVersion,
+      }
     }
 
-    await removeSecureItem(SecureStorageKeys.AuthSession)
+    const nextVersion = createSessionVersion()
+    await Promise.all([
+      removeSecureItem(SecureStorageKeys.AuthSession),
+      setSecureItem(SecureStorageKeys.AuthSessionVersion, nextVersion),
+    ])
+    resolvedVersion = nextVersion
   }
 
   const legacySession = await readLegacyAuthSession()
   if (!legacySession) {
-    return null
+    return {
+      session: null,
+      version: resolvedVersion,
+    }
   }
 
+  const nextVersion = createSessionVersion()
   await setSecureItem(SecureStorageKeys.AuthSession, JSON.stringify(legacySession))
-  await clearLegacySessionKeys()
+  await setSecureItem(SecureStorageKeys.AuthSessionVersion, nextVersion)
+  await removeLegacySessionKeys()
 
-  return legacySession
+  return {
+    session: legacySession,
+    version: nextVersion,
+  }
 }
 
 async function readLegacyAuthSession(): Promise<SessionRecord | null> {
@@ -140,7 +214,7 @@ async function readLegacyAuthSession(): Promise<SessionRecord | null> {
   })
 }
 
-async function clearLegacySessionKeys() {
+async function removeLegacySessionKeys() {
   await Promise.all([
     removeSecureItem(SecureStorageKeys.AccessToken),
     removeSecureItem(SecureStorageKeys.RefreshToken),
