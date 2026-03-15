@@ -10,6 +10,7 @@ import { navigateRoot } from "@/app/navigation/navigationRef"
 import { HeaderTextAction } from "@/features/home/components/HomeScaffold"
 import { useCopouchStore } from "@/plugins/copouch/store/useCopouchStore"
 import { CopouchScaffold } from "@/plugins/copouch/components/CopouchScaffold"
+import { COPOUCH_WALLET_CARD_COLORS } from "@/plugins/copouch/screens/copouchPalette"
 import { formatCurrency } from "@/features/home/utils/format"
 import { PageEmpty, PrimaryButton, SecondaryButton, SectionCard } from "@/shared/ui/AppFlowUi"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
@@ -22,7 +23,6 @@ import { AppTextField } from "@/shared/ui/AppTextField"
 
 import type { CopouchStackParamList } from "@/app/navigation/types"
 
-const bgPalette = ["#DFF6F4", "#FFF1D6", "#E8EEFF", "#FCE7F3"]
 const CREATE_COOLDOWN_MS = 3_000
 
 function readActiveCreateCooldownUntil(now = Date.now()) {
@@ -249,7 +249,7 @@ export function CopouchHomeScreen({ navigation }: Props) {
                 walletBgColor: wallet.walletBgColor,
               })
             }
-            style={[styles.walletCard, { borderColor: theme.colors.border, backgroundColor: bgPalette[(wallet.walletBgColor - 1) % bgPalette.length] }]}
+            style={[styles.walletCard, { borderColor: theme.colors.border, backgroundColor: COPOUCH_WALLET_CARD_COLORS[(wallet.walletBgColor - 1) % COPOUCH_WALLET_CARD_COLORS.length] }]}
           >
             <View style={styles.walletHeader}>
               <Text style={styles.walletName}>{wallet.walletName || t("copouch.home.unnamedWallet")}</Text>
@@ -289,7 +289,7 @@ export function CopouchHomeScreen({ navigation }: Props) {
             />
             <Text style={[styles.modalLabel, { color: theme.colors.mutedText }]}>{t("copouch.home.backgroundLabel")}</Text>
             <View style={styles.paletteRow}>
-              {bgPalette.map((color, index) => (
+              {COPOUCH_WALLET_CARD_COLORS.map((color, index) => (
                 <Pressable
                   key={color}
                   onPress={() => setSelectedBgColor(index + 1)}

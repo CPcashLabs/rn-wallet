@@ -1,15 +1,14 @@
 import React, { useCallback, useEffect, useState } from "react"
 
-import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 import { Pressable, Text, View } from "react-native"
 
-import type { CopouchStackParamList } from "@/app/navigation/types"
 import { CopouchScaffold } from "@/plugins/copouch/components/CopouchScaffold"
+import { COPOUCH_WALLET_BG_PALETTE } from "@/plugins/copouch/screens/copouchPalette"
+import type { CopouchStackScreenProps } from "@/plugins/copouch/screens/copouchScreenProps"
 import {
   AvatarBadge,
   WalletGuard,
-  bgPalette,
   loadCopouchOwnersWithGuard,
   styles,
   useCopouchWalletDetail,
@@ -28,9 +27,7 @@ import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { AppTextField } from "@/shared/ui/AppTextField"
 
-type StackProps<T extends keyof CopouchStackParamList> = NativeStackScreenProps<CopouchStackParamList, T>
-
-export function CopouchSettingScreen({ navigation, route }: StackProps<"CopouchSettingScreen">) {
+export function CopouchSettingScreen({ navigation, route }: CopouchStackScreenProps<"CopouchSettingScreen">) {
   const { t } = useTranslation()
   const { presentError } = useErrorPresenter()
   const { detail, loading, invalidAccess, reload, setDetail } = useCopouchWalletDetail(route.params.id)
@@ -70,7 +67,7 @@ export function CopouchSettingScreen({ navigation, route }: StackProps<"CopouchS
       >
         {detail ? (
           <>
-            <View style={[styles.heroCard, { backgroundColor: (bgPalette[detail.walletBgColor] ?? bgPalette[1]).card }]}>
+            <View style={[styles.heroCard, { backgroundColor: (COPOUCH_WALLET_BG_PALETTE[detail.walletBgColor] ?? COPOUCH_WALLET_BG_PALETTE[1]).card }]}>
               <Text style={styles.walletHeroTitle}>{detail.walletName || t("copouch.home.unnamedWallet")}</Text>
               <Text style={styles.walletHeroSub}>{formatAddress(detail.walletAddress, 10, 6)}</Text>
               <View style={styles.avatarRow}>
@@ -128,7 +125,7 @@ export function CopouchSettingScreen({ navigation, route }: StackProps<"CopouchS
   )
 }
 
-export function CopouchSetNameScreen({ navigation, route }: StackProps<"CopouchSetNameScreen">) {
+export function CopouchSetNameScreen({ navigation, route }: CopouchStackScreenProps<"CopouchSetNameScreen">) {
   const theme = useAppTheme()
   const { t } = useTranslation()
   const { presentError, presentMessage } = useErrorPresenter()
@@ -196,7 +193,7 @@ export function CopouchSetNameScreen({ navigation, route }: StackProps<"CopouchS
   )
 }
 
-export function CopouchBgSettingScreen({ navigation, route }: StackProps<"CopouchBgSettingScreen">) {
+export function CopouchBgSettingScreen({ navigation, route }: CopouchStackScreenProps<"CopouchBgSettingScreen">) {
   const theme = useAppTheme()
   const { t } = useTranslation()
   const { presentError, presentMessage } = useErrorPresenter()
@@ -249,7 +246,7 @@ export function CopouchBgSettingScreen({ navigation, route }: StackProps<"Copouc
       >
         <SectionCard>
           <View style={styles.paletteColumn}>
-            {Object.entries(bgPalette).map(([id, palette]) => {
+            {Object.entries(COPOUCH_WALLET_BG_PALETTE).map(([id, palette]) => {
               const numericId = Number(id)
               const active = numericId === selectedColor
 

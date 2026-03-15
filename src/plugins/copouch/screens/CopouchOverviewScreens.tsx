@@ -1,14 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { useFocusEffect } from "@react-navigation/native"
-import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 import { Pressable, Text, View } from "react-native"
 
-import type { CopouchStackParamList } from "@/app/navigation/types"
 import { navigateRoot } from "@/app/navigation/navigationRef"
 import { HeaderTextAction } from "@/features/home/components/HomeScaffold"
 import { CopouchScaffold } from "@/plugins/copouch/components/CopouchScaffold"
+import type { CopouchStackScreenProps } from "@/plugins/copouch/screens/copouchScreenProps"
 import {
   LoadingCard,
   WalletGuard,
@@ -47,9 +46,7 @@ import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
-type StackProps<T extends keyof CopouchStackParamList> = NativeStackScreenProps<CopouchStackParamList, T>
-
-export function CopouchBillListScreen({ navigation, route }: StackProps<"CopouchBillListScreen">) {
+export function CopouchBillListScreen({ navigation, route }: CopouchStackScreenProps<"CopouchBillListScreen">) {
   const theme = useAppTheme()
   const { t } = useTranslation()
   const { presentError } = useErrorPresenter()
@@ -268,7 +265,7 @@ export function CopouchBillListScreen({ navigation, route }: StackProps<"Copouch
   )
 }
 
-export function CopouchRemindScreen({ navigation, route }: StackProps<"CopouchRemindScreen">) {
+export function CopouchRemindScreen({ navigation, route }: CopouchStackScreenProps<"CopouchRemindScreen">) {
   const theme = useAppTheme()
   const { t } = useTranslation()
   const { presentError } = useErrorPresenter()
@@ -368,7 +365,7 @@ export function CopouchRemindScreen({ navigation, route }: StackProps<"CopouchRe
   )
 }
 
-export function CopouchBalanceScreen({ navigation, route }: StackProps<"CopouchBalanceScreen">) {
+export function CopouchBalanceScreen({ navigation, route }: CopouchStackScreenProps<"CopouchBalanceScreen">) {
   const theme = useAppTheme()
   const { t } = useTranslation()
   const { presentError } = useErrorPresenter()

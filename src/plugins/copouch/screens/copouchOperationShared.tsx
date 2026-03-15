@@ -17,13 +17,6 @@ import { ApiError } from "@/shared/errors"
 import { resolveErrorMessage } from "@/shared/errors/presentation"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
-export const bgPalette: Record<number, { card: string; page: string }> = {
-  1: { card: "#DFF6F4", page: "#F4FBFA" },
-  2: { card: "#FFF1D6", page: "#FFFBF2" },
-  3: { card: "#E8EEFF", page: "#F6F8FF" },
-  4: { card: "#FCE7F3", page: "#FFF5FA" },
-}
-
 export const billFilters = [
   { key: "all", titleKey: "copouch.bill.filters.all", orderTypeList: undefined },
   { key: "withdraw", titleKey: "copouch.bill.filters.withdraw", orderTypeList: ["PAYMENT_NORMAL"] },

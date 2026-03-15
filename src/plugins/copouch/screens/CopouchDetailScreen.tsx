@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next"
 import { navigateRoot } from "@/app/navigation/navigationRef"
 import { getCopouchDetail, getCopouchOwners, markCopouchFirstEnterSeen, type CopouchDetail, type CopouchOwner } from "@/plugins/copouch/services/copouchApi"
 import { CopouchScaffold } from "@/plugins/copouch/components/CopouchScaffold"
+import { COPOUCH_WALLET_BG_PALETTE } from "@/plugins/copouch/screens/copouchPalette"
 import { useCopouchStore } from "@/plugins/copouch/store/useCopouchStore"
 import { formatAddress, formatCurrency } from "@/features/home/utils/format"
 import { PageEmpty, PrimaryButton, SectionCard, SecondaryButton } from "@/shared/ui/AppFlowUi"
@@ -19,13 +20,6 @@ import { useSocketStore } from "@/shared/store/useSocketStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 import type { CopouchStackParamList } from "@/app/navigation/types"
-
-const bgPalette: Record<number, { card: string; page: string }> = {
-  1: { card: "#DFF6F4", page: "#F4FBFA" },
-  2: { card: "#FFF1D6", page: "#FFFBF2" },
-  3: { card: "#E8EEFF", page: "#F6F8FF" },
-  4: { card: "#FCE7F3", page: "#FFF5FA" },
-}
 
 type Props = NativeStackScreenProps<CopouchStackParamList, "CopouchDetailScreen">
 
@@ -41,11 +35,11 @@ export function CopouchDetailScreen({ navigation, route }: Props) {
   const [detail, setDetail] = useState<CopouchDetail | null>(null)
   const [owners, setOwners] = useState<CopouchOwner[]>([])
   const [invalidAccess, setInvalidAccess] = useState(false)
-  const [guideDismissed, setGuideDismissed] = useState(false)
+  const [isGuideDismissed, setIsGuideDismissed] = useState(false)
 
   const wallet = wallets.find(item => item.id === route.params.id)
   const walletTotalValue = wallet?.totalValue ?? detail?.totalValue ?? 0
-  const palette = bgPalette[detail?.walletBgColor ?? route.params.walletBgColor ?? 1] ?? bgPalette[1]
+  const walletPalette = COPOUCH_WALLET_BG_PALETTE[detail?.walletBgColor ?? route.params.walletBgColor ?? 1] ?? COPOUCH_WALLET_BG_PALETTE[1]
 
   const loadDetail = React.useCallback(async () => {
     setLoading(true)
@@ -58,7 +52,7 @@ export function CopouchDetailScreen({ navigation, route }: Props) {
       setInvalidAccess(false)
 
       const dismissedIds = getJson<string[]>(KvStorageKeys.CopouchGuideDismissedWalletIds) ?? []
-      setGuideDismissed(dismissedIds.includes(route.params.id) || nextDetail.firstEnterStatus !== 1)
+      setIsGuideDismissed(dismissedIds.includes(route.params.id) || nextDetail.firstEnterStatus !== 1)
 
       await refreshWalletValue(nextDetail.id, nextDetail.walletAddress)
     } catch (error) {
@@ -102,7 +96,7 @@ export function CopouchDetailScreen({ navigation, route }: Props) {
     const dismissedIds = getJson<string[]>(KvStorageKeys.CopouchGuideDismissedWalletIds) ?? []
     const next = Array.from(new Set([...dismissedIds, route.params.id]))
     setJson(KvStorageKeys.CopouchGuideDismissedWalletIds, next)
-    setGuideDismissed(true)
+    setIsGuideDismissed(true)
 
     try {
       await markCopouchFirstEnterSeen(route.params.id)
@@ -142,12 +136,12 @@ export function CopouchDetailScreen({ navigation, route }: Props) {
       canGoBack
       onBack={navigation.goBack}
       title={detail?.walletName || t("copouch.detail.title")}
-      backgroundColor={palette.page}
-      headerBackgroundColor={palette.page}
+      backgroundColor={walletPalette.page}
+      headerBackgroundColor={walletPalette.page}
       scroll={false}
     >
       <View style={styles.content}>
-        {!guideDismissed && detail ? (
+        {!isGuideDismissed && detail ? (
           <SectionCard>
             <Text style={[styles.guideTitle, { color: theme.colors.text }]}>{t("copouch.detail.guideTitle")}</Text>
             <Text style={[styles.guideBody, { color: theme.colors.mutedText }]}>{t("copouch.detail.guideBody")}</Text>
@@ -155,7 +149,7 @@ export function CopouchDetailScreen({ navigation, route }: Props) {
           </SectionCard>
         ) : null}
 
-        <View style={[styles.heroCard, { backgroundColor: palette.card }]}>
+        <View style={[styles.heroCard, { backgroundColor: walletPalette.card }]}>
           <View style={styles.heroTop}>
             <Text style={styles.ownerPill}>{t("copouch.detail.ownerCount", { count: detail?.ownerCount ?? owners.length })}</Text>
             <Text style={styles.chainText}>{detail?.chainName || "-"}</Text>

@@ -1,12 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { useFocusEffect } from "@react-navigation/native"
-import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 import { Alert, Pressable, Text, View } from "react-native"
 
-import type { CopouchStackParamList } from "@/app/navigation/types"
 import { CopouchScaffold } from "@/plugins/copouch/components/CopouchScaffold"
+import type { CopouchStackScreenProps } from "@/plugins/copouch/screens/copouchScreenProps"
 import {
   AvatarBadge,
   StatusBadge,
@@ -42,9 +41,7 @@ import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { AppTextField } from "@/shared/ui/AppTextField"
 
-type StackProps<T extends keyof CopouchStackParamList> = NativeStackScreenProps<CopouchStackParamList, T>
-
-export function CopouchMemberScreen({ navigation, route }: StackProps<"CopouchMemberScreen">) {
+export function CopouchMemberScreen({ navigation, route }: CopouchStackScreenProps<"CopouchMemberScreen">) {
   const { t } = useTranslation()
   const { presentError } = useErrorPresenter()
   const lastEvent = useSocketStore(state => state.lastEvent)
@@ -161,7 +158,7 @@ export function CopouchMemberScreen({ navigation, route }: StackProps<"CopouchMe
   )
 }
 
-export function CopouchDeleteMemberScreen({ navigation, route }: StackProps<"CopouchDeleteMemberScreen">) {
+export function CopouchDeleteMemberScreen({ navigation, route }: CopouchStackScreenProps<"CopouchDeleteMemberScreen">) {
   const theme = useAppTheme()
   const { t } = useTranslation()
   const { presentError, presentMessage } = useErrorPresenter()
@@ -338,7 +335,7 @@ export function CopouchDeleteMemberScreen({ navigation, route }: StackProps<"Cop
   )
 }
 
-export function CopouchAddMemberScreen({ navigation, route }: StackProps<"CopouchAddMemberScreen">) {
+export function CopouchAddMemberScreen({ navigation, route }: CopouchStackScreenProps<"CopouchAddMemberScreen">) {
   const theme = useAppTheme()
   const { t } = useTranslation()
   const { presentError, presentMessage } = useErrorPresenter()
@@ -432,7 +429,7 @@ export function CopouchAddMemberScreen({ navigation, route }: StackProps<"Copouc
   )
 }
 
-export function CopouchAddMemberForTeamScreen({ navigation, route }: StackProps<"CopouchAddMemberForTeamScreen">) {
+export function CopouchAddMemberForTeamScreen({ navigation, route }: CopouchStackScreenProps<"CopouchAddMemberForTeamScreen">) {
   const { t } = useTranslation()
   const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
@@ -493,7 +490,7 @@ export function CopouchAddMemberForTeamScreen({ navigation, route }: StackProps<
 export function CopouchAddMemberForTeamSelectScreen({
   navigation,
   route,
-}: StackProps<"CopouchAddMemberForTeamSelectScreen">) {
+}: CopouchStackScreenProps<"CopouchAddMemberForTeamSelectScreen">) {
   const { t } = useTranslation()
   const { presentError, presentMessage } = useErrorPresenter()
   const { showToast } = useToast()

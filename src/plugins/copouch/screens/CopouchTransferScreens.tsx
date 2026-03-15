@@ -1,12 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react"
 
-import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 import { Text, View } from "react-native"
 
-import type { CopouchStackParamList } from "@/app/navigation/types"
 import { navigateRoot } from "@/app/navigation/navigationRef"
 import { CopouchScaffold } from "@/plugins/copouch/components/CopouchScaffold"
+import type { CopouchStackScreenProps } from "@/plugins/copouch/screens/copouchScreenProps"
 import {
   AvatarBadge,
   LoadingCard,
@@ -49,14 +48,12 @@ import { useUserStore } from "@/shared/store/useUserStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { AppTextField } from "@/shared/ui/AppTextField"
-
-type StackProps<T extends keyof CopouchStackParamList> = NativeStackScreenProps<CopouchStackParamList, T>
 type TransferMode = "withdraw" | "deposit"
 
 function CopouchTransferScreen(props: {
   mode: TransferMode
-  navigation: StackProps<"CopouchSendSelfScreen">["navigation"] | StackProps<"CopouchReceiveScreen">["navigation"]
-  route: StackProps<"CopouchSendSelfScreen">["route"] | StackProps<"CopouchReceiveScreen">["route"]
+  navigation: CopouchStackScreenProps<"CopouchSendSelfScreen">["navigation"] | CopouchStackScreenProps<"CopouchReceiveScreen">["navigation"]
+  route: CopouchStackScreenProps<"CopouchSendSelfScreen">["route"] | CopouchStackScreenProps<"CopouchReceiveScreen">["route"]
 }) {
   const theme = useAppTheme()
   const { t } = useTranslation()
@@ -477,10 +474,10 @@ function CopouchTransferScreen(props: {
   )
 }
 
-export function CopouchSendSelfScreen(props: StackProps<"CopouchSendSelfScreen">) {
+export function CopouchSendSelfScreen(props: CopouchStackScreenProps<"CopouchSendSelfScreen">) {
   return <CopouchTransferScreen mode="withdraw" navigation={props.navigation} route={props.route} />
 }
 
-export function CopouchReceiveScreen(props: StackProps<"CopouchReceiveScreen">) {
+export function CopouchReceiveScreen(props: CopouchStackScreenProps<"CopouchReceiveScreen">) {
   return <CopouchTransferScreen mode="deposit" navigation={props.navigation} route={props.route} />
 }

@@ -1,11 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 
-import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 import { Pressable, Text, View } from "react-native"
 
-import type { CopouchStackParamList } from "@/app/navigation/types"
 import { CopouchScaffold } from "@/plugins/copouch/components/CopouchScaffold"
+import type { CopouchStackScreenProps } from "@/plugins/copouch/screens/copouchScreenProps"
 import {
   AvatarBadge,
   StatusBadge,
@@ -27,9 +26,7 @@ import { ApiError } from "@/shared/errors"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { useToast } from "@/shared/toast/useToast"
 
-type StackProps<T extends keyof CopouchStackParamList> = NativeStackScreenProps<CopouchStackParamList, T>
-
-export function CopouchAllocationScreen({ navigation, route }: StackProps<"CopouchAllocationScreen">) {
+export function CopouchAllocationScreen({ navigation, route }: CopouchStackScreenProps<"CopouchAllocationScreen">) {
   const { t } = useTranslation()
   const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
@@ -155,7 +152,7 @@ export function CopouchAllocationScreen({ navigation, route }: StackProps<"Copou
   )
 }
 
-export function CopouchViewAllocationScreen({ navigation, route }: StackProps<"CopouchViewAllocationScreen">) {
+export function CopouchViewAllocationScreen({ navigation, route }: CopouchStackScreenProps<"CopouchViewAllocationScreen">) {
   const { t } = useTranslation()
   const { presentError } = useErrorPresenter()
   const [loading, setLoading] = useState(true)
