@@ -656,7 +656,11 @@ export async function getOrderTxlogStatistics(input: {
 
 export async function getOrderDetail(orderSn: string) {
   const response = await apiClient.get<ApiEnvelope<OrderDetailPayload>>(`/api/order/member/order/cp-cash-show/${orderSn}`)
-  return toOrderDetail(response.data.data)
+  const data = response.data?.data
+  if (data == null) {
+    throw new Error("Order detail not found")
+  }
+  return toOrderDetail(data)
 }
 
 export async function confirmOrder(orderSn: string) {

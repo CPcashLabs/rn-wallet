@@ -601,7 +601,11 @@ export async function getReceivingStatus(lookupKey: string) {
 
 export async function getTransferOrderDetail(orderSn: string) {
   const response = await apiClient.get<ApiEnvelope<OrderDetailPayload>>(`/api/order/member/order/cp-cash-show/${orderSn}`)
-  return toTransferOrderDetail(unwrapEnvelope(response.data))
+  const data = unwrapEnvelope(response.data)
+  if (data == null) {
+    throw new Error("Order detail not found")
+  }
+  return toTransferOrderDetail(data)
 }
 
 export async function shipTransferOrder(input: {

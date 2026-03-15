@@ -758,7 +758,11 @@ export async function getReceivingOrder(orderSn: string) {
 
 export async function getOrderDetail(orderSn: string) {
   const response = await apiClient.get<ApiEnvelope<OrderShowPayload>>(`/api/order/member/order/cp-cash-show/${orderSn}`)
-  return toOrderDetail(unwrapEnvelope(response.data))
+  const data = unwrapEnvelope(response.data)
+  if (data == null) {
+    throw new Error("Order detail not found")
+  }
+  return toOrderDetail(data)
 }
 
 export async function submitShipOrder(input: {
