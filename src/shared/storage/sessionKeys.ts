@@ -34,5 +34,6 @@ export enum KvStorageKeys {
   ReceiveShowedList = "receive.showed_list",
   ReceiveChainColorCache = "receive.chain_color_cache",
   CopouchSortByAmount = "copouch.sort_by_amount",
+  CopouchCreateCooldownUntil = "copouch.create_cooldown_until",
   CopouchGuideDismissedWalletIds = "copouch.guide.dismissed_wallet_ids",
 }

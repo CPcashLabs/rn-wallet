@@ -13,6 +13,8 @@ import { CopouchScaffold } from "@/plugins/copouch/components/CopouchScaffold"
 import { formatCurrency } from "@/features/home/utils/format"
 import { PageEmpty, PrimaryButton, SecondaryButton, SectionCard } from "@/shared/ui/AppFlowUi"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
+import { getNumber, removeItem, setNumber } from "@/shared/storage/kvStorage"
+import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 import { useSocketStore } from "@/shared/store/useSocketStore"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
@@ -21,6 +23,12 @@ import { AppTextField } from "@/shared/ui/AppTextField"
 import type { CopouchStackParamList } from "@/app/navigation/types"
 
 const bgPalette = ["#DFF6F4", "#FFF1D6", "#E8EEFF", "#FCE7F3"]
+const CREATE_COOLDOWN_MS = 3_000
+
+function readActiveCreateCooldownUntil(now = Date.now()) {
+  const storedValue = getNumber(KvStorageKeys.CopouchCreateCooldownUntil)
+  return storedValue != null && storedValue > now ? storedValue : null
+}
 
 type Props = NativeStackScreenProps<CopouchStackParamList, "CopouchHomeScreen">
 
@@ -46,7 +54,31 @@ export function CopouchHomeScreen({ navigation }: Props) {
   const [modalVisible, setModalVisible] = useState(false)
   const [walletName, setWalletName] = useState("")
   const [selectedBgColor, setSelectedBgColor] = useState(1)
-  const [cooldownUntil, setCooldownUntil] = useState<number | null>(null)
+  const [cooldownUntil, setCooldownUntil] = useState<number | null>(() => readActiveCreateCooldownUntil())
+
+  useEffect(() => {
+    if (cooldownUntil == null) {
+      removeItem(KvStorageKeys.CopouchCreateCooldownUntil)
+      return
+    }
+
+    const now = Date.now()
+    if (cooldownUntil <= now) {
+      removeItem(KvStorageKeys.CopouchCreateCooldownUntil)
+      setCooldownUntil(null)
+      return
+    }
+
+    setNumber(KvStorageKeys.CopouchCreateCooldownUntil, cooldownUntil)
+    const timer = setTimeout(() => {
+      removeItem(KvStorageKeys.CopouchCreateCooldownUntil)
+      setCooldownUntil(null)
+    }, cooldownUntil - now)
+
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [cooldownUntil])
 
   useEffect(() => {
     void loadOverview().catch(error => {
@@ -58,6 +90,7 @@ export function CopouchHomeScreen({ navigation }: Props) {
 
   useFocusEffect(
     React.useCallback(() => {
+      setCooldownUntil(readActiveCreateCooldownUntil())
       void refreshOverview().catch(error => {
         presentError(error, {
           fallbackKey: "copouch.home.refreshFailed",
@@ -94,8 +127,10 @@ export function CopouchHomeScreen({ navigation }: Props) {
     navigation.navigate("CopouchFaqScreen")
   }
 
+  const isCreateCoolingDown = cooldownUntil != null && cooldownUntil > Date.now()
+
   const handleOpenCreate = () => {
-    if (cooldownUntil && cooldownUntil > Date.now()) {
+    if (isCreateCoolingDown) {
       showToast({ message: t("copouch.home.cooldown"), tone: "warning" })
       return
     }
@@ -128,7 +163,7 @@ export function CopouchHomeScreen({ navigation }: Props) {
         walletBgColor: selectedBgColor,
       })
       setModalVisible(false)
-      setCooldownUntil(Date.now() + 3_000)
+      setCooldownUntil(Date.now() + CREATE_COOLDOWN_MS)
       showToast({ message: t("copouch.home.createSubmitted", { txHash: result.txHash.slice(0, 10) }), tone: "success" })
     } catch (error) {
       if (error instanceof Error && error.message === "finishedCount") {
@@ -238,7 +273,7 @@ export function CopouchHomeScreen({ navigation }: Props) {
       <PrimaryButton
         label={creating ? t("common.loading") : refreshing ? t("copouch.home.refreshing") : t("copouch.home.createButton")}
         onPress={handleOpenCreate}
-        disabled={creating || Boolean(cooldownUntil && cooldownUntil > Date.now())}
+        disabled={creating || isCreateCoolingDown}
       />
 
       <Modal animationType="slide" transparent visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
