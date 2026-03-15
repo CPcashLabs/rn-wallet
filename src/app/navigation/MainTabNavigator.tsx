@@ -9,7 +9,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { HomeTabStackNavigator } from "@/app/navigation/HomeTabStackNavigator"
 import { SettingsStackNavigator } from "@/app/navigation/SettingsStackNavigator"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
-import { AppleBrandMark } from "@/shared/ui/AppleBrandMark"
 
 import type { MainTabParamList } from "@/app/navigation/types"
 
@@ -20,23 +19,20 @@ export function MainTabNavigator() {
   const insets = useSafeAreaInsets()
   const { t } = useTranslation()
   const baseTabBarStyle = {
-    backgroundColor: theme.colors.glassStrong ?? theme.colors.surfaceElevated ?? theme.colors.surface,
+    backgroundColor: theme.colors.surfaceElevated ?? theme.colors.surface,
     borderTopWidth: 0,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: theme.colors.glassBorder ?? theme.colors.border,
-    marginHorizontal: 16,
-    marginBottom: Math.max(insets.bottom, 10),
-    marginTop: 10,
-    height: 64 + Math.max(insets.bottom, 8),
-    paddingTop: 8,
-    paddingBottom: Math.max(insets.bottom, 10),
-    borderRadius: 28,
-    overflow: "hidden" as const,
+    borderColor: theme.colors.border,
+    height: 52 + Math.max(insets.bottom, 8),
+    paddingTop: 6,
+    paddingBottom: Math.max(insets.bottom, 8),
+    borderRadius: 0,
+    overflow: "visible" as const,
     shadowColor: theme.colors.shadow,
-    shadowOpacity: theme.isDark ? 0.22 : 0.1,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: -6 } as const,
-    elevation: 10,
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 0 } as const,
+    elevation: 0,
   }
 
   return (
@@ -56,11 +52,7 @@ export function MainTabNavigator() {
         component={HomeTabStackNavigator}
         options={{
           title: "Home",
-          tabBarIcon: ({ focused }) => (
-            <View style={{ opacity: focused ? 1 : 0.68 }}>
-              <AppleBrandMark size={22} tone={focused || theme.isDark ? "dark" : "light"} />
-            </View>
-          ),
+          tabBarIcon: ({ color, focused }) => <HomeTabIcon color={color} focused={focused} />,
           tabBarLabel: ({ color }) => <Text style={{ color, fontSize: 12 }}>{t("home.tabs.home")}</Text>,
         }}
       />
@@ -85,9 +77,20 @@ export function MainTabNavigator() {
 
 function ProfileTabIcon(props: { color: string; focused: boolean }) {
   return (
-    <View style={[styles.profileIconShell, props.focused ? { backgroundColor: `${props.color}14` } : null]}>
+    <View style={[styles.profileIconShell, { opacity: props.focused ? 1 : 0.84 }]}>
       <View style={[styles.profileHead, { borderColor: props.color }]} />
       <View style={[styles.profileShoulders, { borderColor: props.color }]} />
+    </View>
+  )
+}
+
+function HomeTabIcon(props: { color: string; focused: boolean }) {
+  return (
+    <View style={[styles.homeIconShell, { opacity: props.focused ? 1 : 0.84 }]}>
+      <View style={[styles.homeRoofLeft, { backgroundColor: props.color }]} />
+      <View style={[styles.homeRoofRight, { backgroundColor: props.color }]} />
+      <View style={[styles.homeBody, { borderColor: props.color }]} />
+      <View style={[styles.homeDoor, { backgroundColor: props.color }]} />
     </View>
   )
 }
@@ -100,10 +103,53 @@ const styles = StyleSheet.create({
   tabBarItem: {
     paddingVertical: 2,
   },
+  homeIconShell: {
+    width: 26,
+    height: 26,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  homeRoofLeft: {
+    position: "absolute",
+    width: 10,
+    height: 2,
+    borderRadius: 2,
+    top: 8,
+    left: 4,
+    transform: [{ rotate: "-38deg" }],
+  },
+  homeRoofRight: {
+    position: "absolute",
+    width: 10,
+    height: 2,
+    borderRadius: 2,
+    top: 8,
+    right: 4,
+    transform: [{ rotate: "38deg" }],
+  },
+  homeBody: {
+    position: "absolute",
+    width: 12,
+    height: 9,
+    left: 7,
+    top: 11,
+    borderWidth: 1.7,
+    borderTopWidth: 0,
+    borderBottomLeftRadius: 2.5,
+    borderBottomRightRadius: 2.5,
+  },
+  homeDoor: {
+    position: "absolute",
+    width: 3,
+    height: 5,
+    borderTopLeftRadius: 1.5,
+    borderTopRightRadius: 1.5,
+    left: 11.5,
+    top: 15,
+  },
   profileIconShell: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 26,
+    height: 26,
     alignItems: "center",
     justifyContent: "center",
   },
