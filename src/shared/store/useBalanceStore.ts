@@ -6,6 +6,11 @@ import { useWalletStore } from "@/shared/store/useWalletStore"
 
 type BalanceMap = Record<string, number>
 
+export type BalanceError = {
+  kind: "load" | "refresh"
+  message: string
+}
+
 type BalanceState = {
   walletKey: string | null
   loading: boolean
@@ -13,6 +18,7 @@ type BalanceState = {
   lastUpdatedAt: number | null
   coins: WalletCoin[]
   balances: BalanceMap
+  error: BalanceError | null
   loadCoins: (chainId?: string | number | null) => Promise<void>
   refreshCoins: (chainId?: string | number | null) => Promise<void>
   setBalanceSnapshot: (snapshot: BalanceMap) => void
@@ -36,88 +42,179 @@ function resolveWalletKey(address?: string | null, chainId?: string | number | n
   return `${normalizedAddress}::${String(chainId ?? "unknown")}`
 }
 
-export const useBalanceStore = create<BalanceState>((set, get) => ({
-  walletKey: null,
-  loading: false,
-  refreshing: false,
-  lastUpdatedAt: null,
-  coins: [],
-  balances: {},
-  loadCoins: async chainId => {
-    if (get().loading) {
-      return
+function toBalanceError(kind: BalanceError["kind"], error: unknown): BalanceError {
+  if (error instanceof Error && error.message.trim()) {
+    return {
+      kind,
+      message: error.message,
     }
+  }
 
-    const address = useWalletStore.getState().address
-    const walletKey = resolveWalletKey(address, chainId)
-    if (get().walletKey !== walletKey) {
+  if (typeof error === "string" && error.trim()) {
+    return {
+      kind,
+      message: error.trim(),
+    }
+  }
+
+  return {
+    kind,
+    message: kind === "refresh" ? "balance_refresh_failed" : "balance_load_failed",
+  }
+}
+
+export const useBalanceStore = create<BalanceState>((set, get) => {
+  let activeRequestId = 0
+
+  function startRequest() {
+    activeRequestId += 1
+    return activeRequestId
+  }
+
+  function isCurrentRequest(requestId: number) {
+    return requestId === activeRequestId
+  }
+
+  return {
+    walletKey: null,
+    loading: false,
+    refreshing: false,
+    lastUpdatedAt: null,
+    coins: [],
+    balances: {},
+    error: null,
+    loadCoins: async chainId => {
+      const address = useWalletStore.getState().address
+      const walletKey = resolveWalletKey(address, chainId)
+      const state = get()
+
+      if ((state.loading || state.refreshing) && state.walletKey === walletKey) {
+        return
+      }
+
+      const requestId = startRequest()
+      const shouldResetState = state.walletKey !== walletKey
+
       set({
         walletKey,
+        loading: true,
+        refreshing: false,
+        error: null,
+        ...(shouldResetState
+          ? {
+              coins: [],
+              balances: {},
+              lastUpdatedAt: null,
+            }
+          : {}),
+      })
+
+      try {
+        const chainName = resolveChainNameById(chainId)
+        const coins = await getCoinList(chainName)
+        const snapshot = await fetchOnChainBalances({ address, chainId, coins })
+        const balances = withDefaultBalance(coins, snapshot)
+
+        if (!isCurrentRequest(requestId)) {
+          return
+        }
+
+        set({
+          walletKey,
+          loading: false,
+          refreshing: false,
+          error: null,
+          coins,
+          balances,
+          lastUpdatedAt: Date.now(),
+        })
+      } catch (error) {
+        if (!isCurrentRequest(requestId)) {
+          return
+        }
+
+        set({
+          walletKey,
+          loading: false,
+          refreshing: false,
+          error: toBalanceError("load", error),
+        })
+      }
+    },
+    refreshCoins: async chainId => {
+      const address = useWalletStore.getState().address
+      const walletKey = resolveWalletKey(address, chainId)
+      const state = get()
+
+      if (state.walletKey !== walletKey) {
+        await get().loadCoins(chainId)
+        return
+      }
+
+      if (state.loading || state.refreshing) {
+        return
+      }
+
+      const requestId = startRequest()
+      set({
+        walletKey,
+        refreshing: true,
+        error: null,
+      })
+
+      try {
+        const chainName = resolveChainNameById(chainId)
+        const coins = await getCoinList(chainName)
+        const snapshot = await fetchOnChainBalances({ address, chainId, coins })
+        const balances = withDefaultBalance(coins, snapshot)
+
+        if (!isCurrentRequest(requestId)) {
+          return
+        }
+
+        set({
+          walletKey,
+          loading: false,
+          refreshing: false,
+          error: null,
+          coins,
+          balances,
+          lastUpdatedAt: Date.now(),
+        })
+      } catch (error) {
+        if (!isCurrentRequest(requestId)) {
+          return
+        }
+
+        set({
+          walletKey,
+          loading: false,
+          refreshing: false,
+          error: toBalanceError("refresh", error),
+        })
+      }
+    },
+    setBalanceSnapshot: snapshot => {
+      set(state => ({
+        balances: {
+          ...state.balances,
+          ...snapshot,
+        },
+        error: null,
+        lastUpdatedAt: Date.now(),
+      }))
+    },
+    clear: () => {
+      startRequest()
+      set({
+        walletKey: null,
+        loading: false,
+        refreshing: false,
+        lastUpdatedAt: null,
         coins: [],
         balances: {},
-        lastUpdatedAt: null,
+        error: null,
       })
-    }
-
-    set({ loading: true })
-
-    try {
-      const chainName = resolveChainNameById(chainId)
-      const coins = await getCoinList(chainName)
-      const snapshot = await fetchOnChainBalances({ address, chainId, coins })
-      const balances = withDefaultBalance(coins, snapshot)
-
-      set({
-        walletKey,
-        coins,
-        balances,
-        lastUpdatedAt: Date.now(),
-      })
-    } finally {
-      set({ loading: false })
-    }
-  },
-  refreshCoins: async chainId => {
-    if (get().refreshing) {
-      return
-    }
-
-    const address = useWalletStore.getState().address
-    const walletKey = resolveWalletKey(address, chainId)
-    set({ refreshing: true })
-
-    try {
-      const chainName = resolveChainNameById(chainId)
-      const coins = await getCoinList(chainName)
-      const snapshot = await fetchOnChainBalances({ address, chainId, coins })
-      const balances = withDefaultBalance(coins, snapshot)
-
-      set({
-        walletKey,
-        coins,
-        balances,
-        lastUpdatedAt: Date.now(),
-      })
-    } finally {
-      set({ refreshing: false })
-    }
-  },
-  setBalanceSnapshot: snapshot => {
-    set(state => ({
-      balances: {
-        ...state.balances,
-        ...snapshot,
-      },
-      lastUpdatedAt: Date.now(),
-    }))
-  },
-  clear: () =>
-    set({
-      walletKey: null,
-      loading: false,
-      refreshing: false,
-      lastUpdatedAt: null,
-      coins: [],
-      balances: {},
-    }),
-}))
+    },
+  }
+})

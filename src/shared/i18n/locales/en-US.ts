@@ -258,6 +258,8 @@ const home = {
     walletBalance: "Wallet Balance",
     refresh: "Refresh",
     loading: "Loading asset list...",
+    loadFailed: "Failed to load asset list.",
+    refreshFailed: "Failed to refresh asset list.",
     updatedAt: "Updated at: {{at}}",
     empty: "No assets yet.",
   },

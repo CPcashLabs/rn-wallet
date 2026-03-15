@@ -258,6 +258,8 @@ const home = {
     walletBalance: "钱包余额",
     refresh: "刷新",
     loading: "资产列表加载中...",
+    loadFailed: "资产列表加载失败。",
+    refreshFailed: "资产列表刷新失败。",
     updatedAt: "更新时间：{{at}}",
     empty: "暂无资产数据。",
   },

@@ -26,6 +26,7 @@ export function TotalAssetsScreen({ navigation }: Props) {
   const balances = useBalanceStore(state => state.balances)
   const loading = useBalanceStore(state => state.loading)
   const refreshing = useBalanceStore(state => state.refreshing)
+  const error = useBalanceStore(state => state.error)
   const lastUpdatedAt = useBalanceStore(state => state.lastUpdatedAt)
   const loadCoins = useBalanceStore(state => state.loadCoins)
   const refreshCoins = useBalanceStore(state => state.refreshCoins)
@@ -63,6 +64,12 @@ export function TotalAssetsScreen({ navigation }: Props) {
     setBoolean(KvStorageKeys.ShowBalance, next)
   }
 
+  const metaMessage = loading
+    ? t("home.totalAssets.loading")
+    : error
+      ? t(error.kind === "refresh" ? "home.totalAssets.refreshFailed" : "home.totalAssets.loadFailed")
+      : t("home.totalAssets.updatedAt", { at: formatDateTime(lastUpdatedAt) })
+
   return (
     <HomeScaffold
       canGoBack
@@ -99,9 +106,7 @@ export function TotalAssetsScreen({ navigation }: Props) {
         </View>
 
         <AppCard gap={6} padding={12} style={styles.metaCard}>
-          <Text style={[styles.metaText, { color: theme.colors.mutedText }]}>
-            {loading ? t("home.totalAssets.loading") : t("home.totalAssets.updatedAt", { at: formatDateTime(lastUpdatedAt) })}
-          </Text>
+          <Text style={[styles.metaText, { color: error ? theme.colors.danger : theme.colors.mutedText }]}>{metaMessage}</Text>
         </AppCard>
 
         <AppCard overflow="hidden" padding={0} style={styles.listCard}>

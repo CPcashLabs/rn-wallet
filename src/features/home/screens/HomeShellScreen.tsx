@@ -71,6 +71,7 @@ export function HomeShellScreen({ navigation, route }: Props) {
   const balanceWalletKey = useBalanceStore(state => state.walletKey)
   const coins = useBalanceStore(state => state.coins)
   const balances = useBalanceStore(state => state.balances)
+  const balanceError = useBalanceStore(state => state.error)
   const loadCoins = useBalanceStore(state => state.loadCoins)
   const [showBalance, setShowBalance] = useState(true)
   const inviteHandledRef = useRef(false)
@@ -297,6 +298,11 @@ export function HomeShellScreen({ navigation, route }: Props) {
         </View>
 
         <Text style={[styles.balanceValue, { color: theme.colors.text }]}>{showBalance ? formatCurrency(displayedBalanceValue) : "*****"}</Text>
+        {balanceError ? (
+          <Text style={[styles.balanceStatus, { color: theme.colors.danger }]}>
+            {t(balanceError.kind === "refresh" ? "home.totalAssets.refreshFailed" : "home.totalAssets.loadFailed")}
+          </Text>
+        ) : null}
 
         <Pressable
           onPress={() => navigation.navigate("TotalAssetsScreen")}
@@ -416,6 +422,10 @@ const styles = StyleSheet.create({
     letterSpacing: -1,
     fontWeight: "700",
     fontVariant: ["tabular-nums"],
+  },
+  balanceStatus: {
+    fontSize: 12,
+    fontWeight: "600",
   },
   totalAssetsButton: {
     alignSelf: "flex-start",
