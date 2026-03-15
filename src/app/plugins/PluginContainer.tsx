@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { PLUGIN_TRANSITION_SPEC } from "@/app/plugins/pluginPresentationSpec"
+import { stopAnimatedValueListener } from "@/shared/animation/stopAnimatedValueListener"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import type { PluginPresentation } from "@/shared/plugins/types"
 
@@ -46,8 +47,8 @@ export function PluginContainer({
     return () => {
       animationRef.current?.stop()
       animationRef.current = null
-      translateX.removeListener(translateXListenerId)
-      overlayOpacity.removeListener(overlayOpacityListenerId)
+      stopAnimatedValueListener(translateX, translateXListenerId)
+      stopAnimatedValueListener(overlayOpacity, overlayOpacityListenerId)
     }
   }, [overlayOpacity, translateX])
 

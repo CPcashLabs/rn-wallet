@@ -3,6 +3,7 @@ import React, { type PropsWithChildren, useCallback, useEffect, useMemo, useRef,
 import { Animated, Easing, Platform, StyleSheet, Text, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
+import { stopAnimatedValueListener } from "@/shared/animation/stopAnimatedValueListener"
 import { ToastContext, type ToastInput, type ToastTone } from "@/shared/toast/ToastContext"
 import type { AppTheme } from "@/shared/theme/tokens"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
@@ -73,10 +74,8 @@ export function ToastProvider({ children }: PropsWithChildren) {
       }
       animationRef.current?.stop()
       animationRef.current = null
-      opacity.stopAnimation()
-      translateY.stopAnimation()
-      opacity.removeListener(opacityListenerId)
-      translateY.removeListener(translateYListenerId)
+      stopAnimatedValueListener(opacity, opacityListenerId)
+      stopAnimatedValueListener(translateY, translateYListenerId)
     }
   }, [opacity, translateY])
 
