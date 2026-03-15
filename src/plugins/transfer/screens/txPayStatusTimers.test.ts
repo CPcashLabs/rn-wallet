@@ -66,6 +66,24 @@ describe("txPayStatusTimers", () => {
     expect(jest.getTimerCount()).toBe(0)
   })
 
+  it("allows stopping an already-cleared countdown without side effects", () => {
+    jest.useFakeTimers()
+
+    let now = 0
+    const stop = startTxPayStatusCountdown({
+      endAt: 0,
+      now: () => now,
+      onExpire: jest.fn(),
+      onTick: jest.fn(),
+    })
+
+    now = 1_000
+    stop()
+    stop()
+
+    expect(jest.getTimerCount()).toBe(0)
+  })
+
   it("always polls with the latest refresh callback", () => {
     jest.useFakeTimers()
 

@@ -78,6 +78,20 @@ describe("socketReconnect", () => {
     expect(onReconnect).toHaveBeenCalledTimes(1)
   })
 
+  it("does nothing when invalidating without an active timer", () => {
+    const generationRef = { current: 0 }
+    const timerRef = { current: null as ReturnType<typeof setTimeout> | null }
+    const clearTimeoutMock = jest.fn()
+
+    invalidateReconnectAttempt(timerRef, generationRef, {
+      setTimeout,
+      clearTimeout: clearTimeoutMock as typeof clearTimeout,
+    })
+
+    expect(generationRef.current).toBe(1)
+    expect(clearTimeoutMock).not.toHaveBeenCalled()
+  })
+
   it("does not schedule when reconnect is not allowed or a timer already exists", () => {
     const generationRef = { current: 0 }
     const timerHandle = {} as ReturnType<typeof setTimeout>

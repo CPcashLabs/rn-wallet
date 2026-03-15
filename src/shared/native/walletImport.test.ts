@@ -1,3 +1,5 @@
+import * as bip39 from "bip39"
+
 import { parseWalletImportInput, signMessageWithWalletImport, tryParseWalletImportInput, WalletImportInputError } from "@/shared/native/walletImport"
 
 describe("parseWalletImportInput", () => {
@@ -54,9 +56,23 @@ describe("parseWalletImportInput", () => {
     }
   })
 
+  it("throws an invalid-input error for malformed mnemonic phrases", () => {
+    expect(() => parseWalletImportInput("test test test")).toThrow(WalletImportInputError)
+  })
+
   it("returns null when the secret has not formed a valid mnemonic or private key", () => {
     expect(tryParseWalletImportInput("not-a-real-secret")).toBeNull()
     expect(tryParseWalletImportInput("0x1234")).toBeNull()
+  })
+
+  it("rethrows unexpected parser failures from tryParseWalletImportInput", () => {
+    const validateMnemonic = jest.spyOn(bip39, "validateMnemonic").mockImplementation(() => {
+      throw new Error("unexpected")
+    })
+
+    expect(() => tryParseWalletImportInput("test test test test")).toThrow("unexpected")
+
+    validateMnemonic.mockRestore()
   })
 
   it("signs a login message with an auto-detected imported wallet", async () => {

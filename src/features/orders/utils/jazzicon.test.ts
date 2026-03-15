@@ -81,4 +81,23 @@ describe("jazzicon", () => {
     expect(resolveJazziconSeed("0x4f53c0e06763abd049fadfff86e420f36adb58a0")).toBe(1330888928)
     expect(resolveJazziconSeed("THCeiWA8SguxxpSp3gKPiuYfSWopkLQ4hw")).toBe(1330888928)
   })
+
+  it("falls back to deterministic seeds for empty, short hex and invalid tron inputs", () => {
+    expect(resolveJazziconSeed("")).toBe(0x13579bdf)
+    expect(resolveJazziconSeed("0x123")).toBe(resolveJazziconSeed("0x123"))
+    expect(resolveJazziconSeed("T0-invalid-tron-address")).toBe(resolveJazziconSeed("T0-invalid-tron-address"))
+    expect(resolveJazziconSeed("plain-text-seed")).toBe(resolveJazziconSeed("plain-text-seed"))
+  })
+
+  it("creates deterministic shape specs for arbitrary seeds", () => {
+    const spec = createJazziconSpec(32, resolveJazziconSeed("plain-text-seed"))
+
+    expect(spec.shapes).toHaveLength(3)
+    spec.shapes.forEach(shape => {
+      expect(shape.fill.startsWith("#")).toBe(true)
+      expect(shape.rotateDeg.endsWith("deg")).toBe(true)
+      expect(Number.isFinite(shape.translateX)).toBe(true)
+      expect(Number.isFinite(shape.translateY)).toBe(true)
+    })
+  })
 })

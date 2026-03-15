@@ -54,4 +54,34 @@ describe("avatarCache", () => {
     expect(readCachedAvatarEntry("0xabc")).toBeNull()
     expect(mockRemoveAvatarFile).toHaveBeenCalledWith("file:///avatar.png")
   })
+
+  it("normalizes account keys and ignores incomplete entries", async () => {
+    await writeCachedAvatarEntry({
+      accountKey: "  0xAbC  ",
+      remoteUri: "   ",
+      localUri: "file:///avatar.png",
+    })
+
+    expect(readCachedAvatarEntry("0xabc")).toBeNull()
+
+    await removeCachedAvatarEntry("")
+    expect(mockRemoveAvatarFile).not.toHaveBeenCalled()
+  })
+
+  it("returns null for blank reads and ignores removing a missing cache entry", async () => {
+    expect(readCachedAvatarEntry("   ")).toBeNull()
+
+    await writeCachedAvatarEntry({
+      accountKey: "0xabc",
+      remoteUri: "https://cp.cash/avatar.png",
+      localUri: "file:///avatar.png",
+    })
+
+    await removeCachedAvatarEntry("0xdef")
+
+    expect(readCachedAvatarEntry("0xabc")).toMatchObject({
+      remoteUri: "https://cp.cash/avatar.png",
+    })
+    expect(mockRemoveAvatarFile).not.toHaveBeenCalled()
+  })
 })

@@ -69,4 +69,39 @@ describe("networkLogoCache", () => {
     expect(readCachedNetworkLogoEntry(logoKey)).toBeNull()
     expect(mockRemoveNetworkLogoFile).toHaveBeenCalledWith("file:///logo.png")
   })
+
+  it("normalizes keys and ignores incomplete cache entries", async () => {
+    const emptyKey = buildNetworkLogoCacheKey({
+      chainName: "   ",
+      fallbackMode: "initials",
+    })
+
+    expect(emptyKey).toBe("")
+    expect(readCachedNetworkLogoEntry("missing")).toBeNull()
+    expect(readCachedNetworkLogoEntry("")).toBeNull()
+
+    await writeCachedNetworkLogoEntry({
+      logoKey: "  V2::INITIALS::TRON  ",
+      remoteUri: "   ",
+      localUri: "file:///logo.png",
+    })
+    await removeCachedNetworkLogoEntry("")
+
+    expect(readCachedNetworkLogoEntry("v2::initials::tron")).toBeNull()
+  })
+
+  it("returns null for malformed cache entries and ignores removals of missing keys", async () => {
+    mockStorageMap.set("app.network_logo_cache", {
+      "v2::initials::tron": {
+        logoKey: "v2::initials::tron",
+        remoteUri: "https://cp.cash/logo.png",
+        localUri: "   ",
+      },
+    })
+
+    expect(readCachedNetworkLogoEntry("v2::initials::tron")).toBeNull()
+
+    await removeCachedNetworkLogoEntry("v2::initials::missing")
+    expect(mockRemoveNetworkLogoFile).not.toHaveBeenCalled()
+  })
 })

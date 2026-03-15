@@ -52,6 +52,7 @@ jest.mock("react-native-keychain", () => ({
 
 import { SecureStorageKeys } from "@/shared/storage/sessionKeys"
 import {
+  clearAuthSession,
   readAuthSession,
   readTokenPair,
   resetAuthSessionStateForTests,
@@ -172,5 +173,50 @@ describe("auth session storage", () => {
     await expect(readAuthSession(controller.signal)).rejects.toMatchObject({
       name: "AbortError",
     })
+  })
+
+  it("clears canonical sessions and returns null token pairs afterwards", async () => {
+    await writeAuthSession({
+      accessToken: "access",
+      refreshToken: "refresh",
+      address: "0xabc",
+      loginType: "wallet",
+    })
+
+    await clearAuthSession()
+
+    await expect(readAuthSession()).resolves.toBeNull()
+    await expect(readTokenPair()).resolves.toBeNull()
+    expect(mockSecureStore.has(SecureStorageKeys.AuthSession)).toBe(false)
+    expect(mockSecureStore.get(SecureStorageKeys.AuthSessionVersion)).toBeTruthy()
+  })
+
+  it("ignores invalid canonical snapshots and rotates the persisted version", async () => {
+    mockSecureStore.set(SecureStorageKeys.AuthSession, "{\"accessToken\":\"\",\"refreshToken\":\"\"}")
+    mockSecureStore.set(SecureStorageKeys.AuthSessionVersion, "stale-version")
+
+    await expect(readAuthSession()).resolves.toBeNull()
+
+    expect(mockSecureStore.has(SecureStorageKeys.AuthSession)).toBe(false)
+    expect(mockSecureStore.get(SecureStorageKeys.AuthSessionVersion)).not.toBe("stale-version")
+  })
+
+  it("creates a canonical session version when the session exists but no version is stored", async () => {
+    mockSecureStore.set(
+      SecureStorageKeys.AuthSession,
+      JSON.stringify({
+        accessToken: "canonical-access",
+        refreshToken: "canonical-refresh",
+        address: "0xabc",
+      }),
+    )
+
+    await expect(readAuthSession()).resolves.toEqual({
+      accessToken: "canonical-access",
+      refreshToken: "canonical-refresh",
+      address: "0xabc",
+    })
+
+    expect(mockSecureStore.get(SecureStorageKeys.AuthSessionVersion)).toBeTruthy()
   })
 })

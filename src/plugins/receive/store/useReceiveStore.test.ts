@@ -15,6 +15,7 @@ jest.mock("@/shared/receive/services/receiveEntryApi", () => ({
   getReceiveConfig: (...args: unknown[]) => mockGetReceiveConfig(...args),
 }))
 
+import { createAbortError } from "@/shared/async/taskController"
 import { resetReceiveStoreForTests, useReceiveStore } from "@/plugins/receive/store/useReceiveStore"
 
 type Deferred<T> = {
@@ -52,10 +53,30 @@ function buildOrder(id: string) {
   }
 }
 
+async function loadReadyReceiveHome(overrides?: { payChain?: string; chainId?: string; walletAddress?: string }) {
+  mockGetReceiveConfig.mockResolvedValue({
+    sellerId: "seller",
+    sendCoinCode: "SEND",
+    recvCoinCode: "USDT",
+    receiveMinAmount: 10,
+  })
+  mockGetRecentReceiveOrders.mockResolvedValue([])
+
+  await useReceiveStore.getState().loadHome({
+    payChain: overrides?.payChain ?? "chain",
+    chainId: overrides?.chainId ?? "1",
+    walletAddress: overrides?.walletAddress ?? "0xabc",
+  })
+}
+
 describe("useReceiveStore", () => {
   beforeEach(() => {
     jest.clearAllMocks()
     resetReceiveStoreForTests()
+  })
+
+  afterEach(() => {
+    jest.useRealTimers()
   })
 
   it("drops stale loadHome commits after the receive context changes", async () => {
@@ -173,5 +194,378 @@ describe("useReceiveStore", () => {
       remarkName: "new-TRACE",
     })
     expect(useReceiveStore.getState().creating).toBe(false)
+  })
+
+  it("keeps the existing snapshot while reloading the same receive context", async () => {
+    const deferredConfig = createDeferred<{
+      sellerId: string
+      sendCoinCode: string
+      recvCoinCode: string
+      receiveMinAmount: number
+    }>()
+
+    mockGetReceiveConfig
+      .mockResolvedValueOnce({
+        sellerId: "seller-old",
+        sendCoinCode: "OLD",
+        recvCoinCode: "USDT",
+        receiveMinAmount: 10,
+      })
+      .mockImplementationOnce(() => deferredConfig.promise)
+
+    mockGetRecentReceiveOrders.mockImplementation(async (input: { orderType: string; sendCoinCode: string }) => {
+      const scope = input.sendCoinCode === "OLD" ? "old" : "new"
+      return [buildOrder(`${scope}-${input.orderType}`)]
+    })
+
+    await useReceiveStore.getState().loadHome({
+      payChain: "same-chain",
+      chainId: "1",
+      walletAddress: "0xsame",
+    })
+
+    const reloadPromise = useReceiveStore.getState().loadHome({
+      payChain: "same-chain",
+      chainId: "1",
+      walletAddress: "0xsame",
+    })
+
+    expect(useReceiveStore.getState()).toMatchObject({
+      loading: true,
+      config: {
+        sellerId: "seller-old",
+      },
+      personalOrder: {
+        remarkName: "old-TRACE",
+      },
+      businessOrder: {
+        remarkName: "old-TRACE_LONG_TERM",
+      },
+    })
+
+    deferredConfig.resolve({
+      sellerId: "seller-new",
+      sendCoinCode: "NEW",
+      recvCoinCode: "USDT",
+      receiveMinAmount: 20,
+    })
+    await reloadPromise
+
+    expect(useReceiveStore.getState()).toMatchObject({
+      loading: false,
+      config: {
+        sellerId: "seller-new",
+      },
+      personalOrder: {
+        remarkName: "new-TRACE",
+      },
+      businessOrder: {
+        remarkName: "new-TRACE_LONG_TERM",
+      },
+    })
+  })
+
+  it("rethrows active loadHome failures and clears the loading state", async () => {
+    mockGetReceiveConfig.mockRejectedValue(new Error("config_failed"))
+
+    await expect(
+      useReceiveStore.getState().loadHome({
+        payChain: "bad-chain",
+        chainId: "1",
+        walletAddress: "0xbad",
+      }),
+    ).rejects.toThrow("config_failed")
+
+    expect(useReceiveStore.getState().loading).toBe(false)
+  })
+
+  it("returns null immediately when createOrder lacks config or wallet address", async () => {
+    await expect(
+      useReceiveStore.getState().createOrder({
+        variant: "short",
+      }),
+    ).resolves.toBeNull()
+  })
+
+  it("polls receiving status for long-lived orders after transient failures", async () => {
+    jest.useFakeTimers()
+
+    mockGetReceiveConfig.mockResolvedValue({
+      sellerId: "seller",
+      sendCoinCode: "SEND",
+      recvCoinCode: "USDT",
+      receiveMinAmount: 15,
+    })
+    mockGetRecentReceiveOrders.mockResolvedValue([])
+    mockCreateReceiveOrder.mockResolvedValue({
+      orderSn: "",
+      serialNumber: "serial-1",
+    })
+    mockGetReceivingOrderStatus.mockRejectedValueOnce(new Error("pending")).mockResolvedValueOnce(buildOrder("business"))
+
+    await useReceiveStore.getState().loadHome({
+      payChain: "chain",
+      chainId: "1",
+      walletAddress: "0xabc",
+    })
+
+    const createPromise = useReceiveStore.getState().createOrder({
+      variant: "long",
+      walletAddress: "0xabc",
+      multisigWalletId: "wallet-1",
+    })
+
+    await Promise.resolve()
+    await jest.advanceTimersByTimeAsync(1200)
+
+    await expect(createPromise).resolves.toMatchObject({
+      remarkName: "business",
+    })
+    expect(useReceiveStore.getState().businessOrder).toMatchObject({
+      remarkName: "business",
+    })
+    expect(useReceiveStore.getState().creating).toBe(false)
+  })
+
+  it("polls trace-detail orders after transient failures", async () => {
+    jest.useFakeTimers()
+
+    mockGetReceiveConfig.mockResolvedValue({
+      sellerId: "seller",
+      sendCoinCode: "SEND",
+      recvCoinCode: "USDT",
+      receiveMinAmount: 10,
+    })
+    mockGetRecentReceiveOrders.mockResolvedValue([])
+    mockCreateReceiveOrder.mockResolvedValue({
+      orderSn: "trace-1",
+      serialNumber: "serial-1",
+    })
+    mockGetTraceDetail.mockRejectedValueOnce(new Error("pending")).mockResolvedValueOnce(buildOrder("personal"))
+
+    await useReceiveStore.getState().loadHome({
+      payChain: "chain",
+      chainId: "1",
+      walletAddress: "0xabc",
+    })
+
+    const createPromise = useReceiveStore.getState().createOrder({
+      variant: "short",
+      walletAddress: "0xabc",
+    })
+
+    await Promise.resolve()
+    await jest.advanceTimersByTimeAsync(1200)
+
+    await expect(createPromise).resolves.toMatchObject({
+      remarkName: "personal",
+    })
+    expect(useReceiveStore.getState().personalOrder).toMatchObject({
+      remarkName: "personal",
+    })
+  })
+
+  it("returns null when createOrder becomes stale before polling starts", async () => {
+    await loadReadyReceiveHome({
+      payChain: "old-chain",
+      chainId: "1",
+      walletAddress: "0xold",
+    })
+
+    mockGetReceiveConfig.mockResolvedValue({
+      sellerId: "seller-new",
+      sendCoinCode: "NEW",
+      recvCoinCode: "USDT",
+      receiveMinAmount: 20,
+    })
+    mockGetRecentReceiveOrders.mockResolvedValue([])
+    mockCreateReceiveOrder.mockImplementation(async () => {
+      await useReceiveStore.getState().loadHome({
+        payChain: "new-chain",
+        chainId: "2",
+        walletAddress: "0xnew",
+      })
+
+      return {
+        orderSn: "",
+        serialNumber: "serial-stale",
+      }
+    })
+
+    await expect(
+      useReceiveStore.getState().createOrder({
+        variant: "short",
+        walletAddress: "0xold",
+      }),
+    ).resolves.toBeNull()
+  })
+
+  it("returns null when trace detail resolves after the receive context changes", async () => {
+    await loadReadyReceiveHome({
+      payChain: "old-chain",
+      chainId: "1",
+      walletAddress: "0xold",
+    })
+
+    mockGetReceiveConfig.mockResolvedValue({
+      sellerId: "seller-new",
+      sendCoinCode: "NEW",
+      recvCoinCode: "USDT",
+      receiveMinAmount: 20,
+    })
+    mockGetRecentReceiveOrders.mockResolvedValue([])
+    mockCreateReceiveOrder.mockResolvedValue({
+      orderSn: "trace-stale",
+      serialNumber: "serial-stale",
+    })
+    mockGetTraceDetail.mockImplementation(async () => {
+      await useReceiveStore.getState().loadHome({
+        payChain: "new-chain",
+        chainId: "2",
+        walletAddress: "0xnew",
+      })
+
+      return buildOrder("stale-trace")
+    })
+
+    await expect(
+      useReceiveStore.getState().createOrder({
+        variant: "short",
+        walletAddress: "0xold",
+      }),
+    ).resolves.toBeNull()
+  })
+
+  it("returns null when receiving polling aborts before the first attempt or via abort-like errors", async () => {
+    await loadReadyReceiveHome()
+
+    mockCreateReceiveOrder.mockResolvedValue({
+      get orderSn() {
+        resetReceiveStoreForTests()
+        return ""
+      },
+      serialNumber: "serial-aborted",
+    })
+
+    await expect(
+      useReceiveStore.getState().createOrder({
+        variant: "long",
+        walletAddress: "0xabc",
+      }),
+    ).resolves.toBeNull()
+
+    await loadReadyReceiveHome()
+    mockCreateReceiveOrder.mockResolvedValue({
+      orderSn: "",
+      serialNumber: "serial-abort-like",
+    })
+    mockGetReceivingOrderStatus.mockRejectedValue(createAbortError("Receive order polling aborted."))
+
+    await expect(
+      useReceiveStore.getState().createOrder({
+        variant: "long",
+        walletAddress: "0xabc",
+      }),
+    ).resolves.toBeNull()
+  })
+
+  it("returns null when receiving polling aborts after a fetch resolves", async () => {
+    await loadReadyReceiveHome()
+
+    mockCreateReceiveOrder.mockResolvedValue({
+      orderSn: "",
+      serialNumber: "serial-after-fetch",
+    })
+    mockGetReceivingOrderStatus.mockImplementation(async () => {
+      resetReceiveStoreForTests()
+      return buildOrder("after-fetch")
+    })
+
+    await expect(
+      useReceiveStore.getState().createOrder({
+        variant: "long",
+        walletAddress: "0xabc",
+      }),
+    ).resolves.toBeNull()
+  })
+
+  it("returns null when trace polling aborts before or after fetch resolution", async () => {
+    await loadReadyReceiveHome()
+
+    mockCreateReceiveOrder.mockResolvedValue({
+      get orderSn() {
+        resetReceiveStoreForTests()
+        return "trace-before-fetch"
+      },
+      serialNumber: "serial-trace-before-fetch",
+    })
+
+    await expect(
+      useReceiveStore.getState().createOrder({
+        variant: "short",
+        walletAddress: "0xabc",
+      }),
+    ).resolves.toBeNull()
+
+    await loadReadyReceiveHome()
+    mockCreateReceiveOrder.mockResolvedValue({
+      orderSn: "trace-after-fetch",
+      serialNumber: "serial-trace-after-fetch",
+    })
+    mockGetTraceDetail.mockImplementation(async () => {
+      resetReceiveStoreForTests()
+      return buildOrder("after-trace-fetch")
+    })
+
+    await expect(
+      useReceiveStore.getState().createOrder({
+        variant: "short",
+        walletAddress: "0xabc",
+      }),
+    ).resolves.toBeNull()
+  })
+
+  it("rethrows receive_order_not_ready after repeated non-error receiving failures", async () => {
+    jest.useFakeTimers()
+    await loadReadyReceiveHome()
+
+    mockCreateReceiveOrder.mockResolvedValue({
+      orderSn: "",
+      serialNumber: "serial-never-ready",
+    })
+    mockGetReceivingOrderStatus.mockRejectedValue("pending")
+
+    const createPromise = useReceiveStore.getState().createOrder({
+      variant: "long",
+      walletAddress: "0xabc",
+    })
+    const assertion = expect(createPromise).rejects.toThrow("receive_order_not_ready")
+
+    await Promise.resolve()
+    await jest.advanceTimersByTimeAsync(1200 * 8)
+
+    await assertion
+  })
+
+  it("rethrows receive_order_not_ready after repeated non-error trace failures", async () => {
+    jest.useFakeTimers()
+    await loadReadyReceiveHome()
+
+    mockCreateReceiveOrder.mockResolvedValue({
+      orderSn: "trace-never-ready",
+      serialNumber: "serial-trace-never-ready",
+    })
+    mockGetTraceDetail.mockRejectedValue("pending")
+
+    const createPromise = useReceiveStore.getState().createOrder({
+      variant: "short",
+      walletAddress: "0xabc",
+    })
+    const assertion = expect(createPromise).rejects.toThrow("receive_order_not_ready")
+
+    await Promise.resolve()
+    await jest.advanceTimersByTimeAsync(1200 * 8)
+
+    await assertion
   })
 })

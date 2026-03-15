@@ -101,4 +101,165 @@ describe("safeConsole", () => {
 
     expect(spy).toHaveBeenCalledWith("[test]", error, context)
   })
+
+  it("summarizes arrays, unknown objects and plain objects without leaking secrets", () => {
+    const longToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.payload.signature"
+    expect(sanitizeLogValue(["a", "b", "c"])).toEqual({
+      kind: "Array",
+      length: 3,
+    })
+
+    expect(
+      sanitizeLogValue({
+        name: "AxiosError",
+        message: `Bearer ${longToken} for user wallet@example.com`,
+        ok: false,
+        componentStack: "\n in Foo\n in Bar",
+        config: {
+          method: "post",
+          baseURL: "https://cp.cash",
+          url: "/api/auth?token=secret",
+          timeout: 1000,
+        },
+        response: {
+          status: 403,
+          data: {
+            foo: "bar",
+          },
+        },
+      }),
+    ).toEqual({
+      name: "AxiosError",
+      message: "Bearer [REDACTED] for user [REDACTED_EMAIL]",
+      ok: false,
+      componentStackFrames: 2,
+      config: {
+        method: "POST",
+        baseURL: "https://cp.cash",
+        url: "/api/auth?token=[REDACTED]",
+        timeout: 1000,
+      },
+      response: {
+        status: 403,
+        dataType: "object",
+      },
+      status: 403,
+    })
+
+    expect(sanitizeLogValue(new Map())).toBe("[object Map]")
+  })
+
+  it("summarizes axios payload shapes for array and null response bodies", () => {
+    expect(
+      sanitizeLogValue({
+        name: "AxiosError",
+        isAxiosError: true,
+        response: {
+          status: 200,
+          data: ["a", "b"],
+        },
+      }),
+    ).toEqual({
+      name: "AxiosError",
+      response: {
+        status: 200,
+        dataType: "array(2)",
+      },
+      status: 200,
+    })
+
+    expect(
+      sanitizeLogValue({
+        name: "AxiosError",
+        isAxiosError: true,
+        response: {
+          status: 204,
+          data: null,
+        },
+      }),
+    ).toEqual({
+      name: "AxiosError",
+      response: {
+        status: 204,
+        dataType: "null",
+      },
+      status: 204,
+    })
+  })
+
+  it("truncates overly long sanitized strings and logs production summaries without context", () => {
+    const spy = jest.spyOn(console, "error").mockImplementation(() => {})
+    const longMessage = `token=${"x".repeat(240)}`
+
+    const sanitized = sanitizeLogValue(longMessage)
+    expect(typeof sanitized).toBe("string")
+    expect((sanitized as string).endsWith("...")).toBe(true)
+
+    logErrorSafely("[prod]", new Error("wallet@example.com failed"), {
+      devMode: false,
+    })
+
+    expect(spy).toHaveBeenCalledWith("[prod]", {
+      name: "Error",
+      message: "[REDACTED_EMAIL] failed",
+    })
+  })
+
+  it("preserves null and scalar values while summarizing empty objects and error causes", () => {
+    expect(sanitizeLogValue(null)).toBeNull()
+    expect(sanitizeLogValue(123n)).toBe(123n)
+    expect(sanitizeLogValue({})).toEqual({
+      kind: "Object",
+    })
+    expect(
+      sanitizeLogValue(
+        Object.assign(new Error("failed"), {
+          status: 418,
+          cause: {
+            type: "request",
+            url: "https://cp.cash/api?code=secret",
+            baseURL: "https://cp.cash",
+          },
+        }),
+      ),
+    ).toEqual({
+      name: "Error",
+      message: "failed",
+      status: 418,
+      cause: {
+        type: "request",
+        url: "https://cp.cash/api?[REDACTED_QUERY]",
+        baseURL: "https://cp.cash",
+      },
+    })
+  })
+
+  it("keeps code, status and nested causes when summarizing plain objects", () => {
+    expect(
+      sanitizeLogValue({
+        code: 409,
+        status: 418,
+        cause: {
+          url: "https://cp.cash/api?token=secret",
+        },
+      }),
+    ).toEqual({
+      code: "409",
+      status: 418,
+      cause: {
+        url: "https://cp.cash/api?[REDACTED_QUERY]",
+      },
+    })
+  })
+
+  it("logs raw development errors without context when debug mode is enabled", () => {
+    const spy = jest.spyOn(console, "error").mockImplementation(() => {})
+    const error = new Error("boom")
+
+    logErrorSafely("[dev]", error, {
+      devMode: true,
+    })
+
+    expect(spy).toHaveBeenCalledWith("[dev]", error)
+  })
 })

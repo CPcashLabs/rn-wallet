@@ -76,6 +76,29 @@ describe("copouchTransferQuote", () => {
     expect(next.sendMinAmount).toBe(5)
   })
 
+  it("keeps the existing seller id when the quote omits it", () => {
+    const next = applyCopouchTransferQuote(
+      createOption({
+        sellerId: "seller-current",
+      }),
+      {
+        feeAmount: 0.2,
+        feeValue: 0.25,
+        recvAmount: 9.75,
+        recvCoinCode: "USDT",
+        recvCoinName: "USDT",
+        sendAmount: 10,
+        sendCoinCode: "USDT",
+        sendCoinName: "USDT",
+        sendMinAmount: 5,
+        sendMaxAmount: 100,
+        sellerId: null,
+      },
+    )
+
+    expect(next.sellerId).toBe("seller-current")
+  })
+
   it("falls back to the selected option when the quoted option is stale", () => {
     const selectedOption = createOption({
       sellerId: "seller-current",
@@ -94,5 +117,27 @@ describe("copouchTransferQuote", () => {
         "bridge:tron:USDT:USDT:11",
       ),
     ).toBe(selectedOption)
+  })
+
+  it("returns null when no option is selected and uses the fresh quoted option when keys match", () => {
+    expect(resolveCopouchTransferOption(null, null, "request-key")).toBeNull()
+
+    const quotedOption = createOption({
+      sellerId: "seller-quoted",
+      feeAmount: 0.5,
+    })
+
+    expect(
+      resolveCopouchTransferOption(
+        createOption({
+          sellerId: "seller-current",
+        }),
+        {
+          requestKey: "bridge:tron:USDT:USDT:10",
+          option: quotedOption,
+        },
+        "bridge:tron:USDT:USDT:10",
+      ),
+    ).toBe(quotedOption)
   })
 })

@@ -87,4 +87,103 @@ describe("buildImageUploadFormDataPart", () => {
       ),
     ).toThrow(UnsafeUploadFileError)
   })
+
+  it("infers image types from filenames and sanitizes fallback names", () => {
+    expect(
+      buildImageUploadFormDataPart(
+        {
+          uri: "file:///private/var/mobile/Containers/Data/Application/demo/tmp/camera-roll/photo.webp",
+          name: "../Profile Picture",
+        },
+        "  avatar backup  ",
+      ),
+    ).toEqual({
+      uri: "file:///private/var/mobile/Containers/Data/Application/demo/tmp/camera-roll/photo.webp",
+      name: "Profile_Picture.webp",
+      type: "image/webp",
+    })
+  })
+
+  it("falls back to jpeg names when mime type and extension are missing", () => {
+    expect(
+      buildImageUploadFormDataPart(
+        {
+          uri: "file:///private/var/mobile/Containers/Data/Application/demo/tmp/12345",
+          name: "  ../../  ",
+        },
+        "___",
+      ),
+    ).toEqual({
+      uri: "file:///private/var/mobile/Containers/Data/Application/demo/tmp/12345",
+      name: "image.jpg",
+      type: "image/jpeg",
+    })
+  })
+
+  it("rejects unsupported extensions and control-character uris", () => {
+    expect(() =>
+      buildImageUploadFormDataPart(
+        {
+          uri: "file:///data/user/0/com.cpcashrn/cache/picked-images/photo.bmp",
+          name: "photo.bmp",
+        },
+        "avatar.jpg",
+      ),
+    ).toThrow(UnsafeUploadFileError)
+
+    expect(() =>
+      buildImageUploadFormDataPart(
+        {
+          uri: "file:///data/user/0/com.cpcashrn/cache/picked-images/\u0000evil.png",
+          name: "evil.png",
+        },
+        "avatar.jpg",
+      ),
+    ).toThrow(UnsafeUploadFileError)
+  })
+
+  it("accepts malformed-escape cache uris by falling back to the raw decoded path", () => {
+    expect(
+      buildImageUploadFormDataPart(
+        {
+          uri: "file:///private/var/mobile/Containers/Data/Application/demo/tmp/%E0%A4%A.jpg",
+          name: "camera.jpg",
+          mimeType: "   ",
+        },
+        "avatar.jpg",
+      ),
+    ).toEqual({
+      uri: "file:///private/var/mobile/Containers/Data/Application/demo/tmp/%E0%A4%A.jpg",
+      name: "camera.jpg",
+      type: "image/jpeg",
+    })
+  })
+
+  it("rejects file uris without absolute paths", () => {
+    expect(() =>
+      buildImageUploadFormDataPart(
+        {
+          uri: "file://relative/path.jpg",
+          name: "   ",
+        },
+        "avatar.jpg",
+      ),
+    ).toThrow(UnsafeUploadFileError)
+  })
+
+  it("uses the fallback name when the original file name is missing", () => {
+    expect(
+      buildImageUploadFormDataPart(
+        {
+          uri: "file:///private/var/mobile/Containers/Data/Application/demo/tmp/fallback-image",
+          mimeType: "image/png",
+        },
+        "fallback-avatar",
+      ),
+    ).toEqual({
+      uri: "file:///private/var/mobile/Containers/Data/Application/demo/tmp/fallback-image",
+      name: "fallback-avatar.png",
+      type: "image/png",
+    })
+  })
 })

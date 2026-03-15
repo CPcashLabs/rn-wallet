@@ -35,6 +35,25 @@ describe("transferConfirmRetry", () => {
     expect(jest.getTimerCount()).toBe(0)
   })
 
+  it("rejects immediately when the signal is already aborted", async () => {
+    const controller = new AbortController()
+    controller.abort()
+
+    await expect(waitForTransferConfirmRetry(100, controller.signal)).rejects.toMatchObject({
+      name: "AbortError",
+    })
+  })
+
+  it("resolves after the requested delay when not aborted", async () => {
+    jest.useFakeTimers()
+
+    const controller = new AbortController()
+    const promise = waitForTransferConfirmRetry(250, controller.signal)
+
+    await jest.advanceTimersByTimeAsync(250)
+    await expect(promise).resolves.toBeUndefined()
+  })
+
   it("treats abort-like transport errors as cancellations", () => {
     const error = new Error("request canceled") as Error & { code?: string }
     error.name = "CanceledError"
@@ -42,5 +61,6 @@ describe("transferConfirmRetry", () => {
 
     expect(isAbortLikeError(error)).toBe(true)
     expect(isAbortLikeError(new Error("boom"))).toBe(false)
+    expect(isAbortLikeError("boom")).toBe(false)
   })
 })

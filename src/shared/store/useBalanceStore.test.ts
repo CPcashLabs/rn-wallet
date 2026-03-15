@@ -185,4 +185,218 @@ describe("useBalanceStore", () => {
       coins: newCoins,
     })
   })
+
+  it("ignores duplicate in-flight loads for the same wallet", async () => {
+    const deferredCoins = createDeferred<WalletCoin[]>()
+
+    useWalletStore.setState({
+      address: "TA1",
+      chainId: "199",
+      status: "connected",
+    })
+    mockGetCoinList.mockImplementation(() => deferredCoins.promise)
+
+    const firstLoad = useBalanceStore.getState().loadCoins("199")
+    const secondLoad = useBalanceStore.getState().loadCoins("199")
+
+    deferredCoins.resolve(oldCoins)
+    mockFetchOnChainBalances.mockResolvedValue({ OLD: 1 })
+
+    await firstLoad
+    await secondLoad
+
+    expect(mockGetCoinList).toHaveBeenCalledTimes(1)
+  })
+
+  it("allows loading balances without a resolved wallet key", async () => {
+    mockGetCoinList.mockResolvedValueOnce([])
+    mockFetchOnChainBalances.mockResolvedValueOnce({})
+
+    await useBalanceStore.getState().loadCoins()
+
+    expect(useBalanceStore.getState()).toMatchObject({
+      walletKey: null,
+      loading: false,
+      refreshing: false,
+      coins: [],
+      balances: {},
+      error: null,
+    })
+    expect(mockFetchOnChainBalances).toHaveBeenCalledWith({
+      address: null,
+      chainId: undefined,
+      coins: [],
+    })
+  })
+
+  it("refreshes through loadCoins when no snapshot exists and skips concurrent refreshes", async () => {
+    useWalletStore.setState({
+      address: "TA1",
+      chainId: "199",
+      status: "connected",
+    })
+    mockGetCoinList.mockResolvedValue(oldCoins)
+    mockFetchOnChainBalances.mockResolvedValue({ OLD: 7.5 })
+
+    await useBalanceStore.getState().refreshCoins("199")
+
+    expect(useBalanceStore.getState()).toMatchObject({
+      walletKey: "ta1::199",
+      balances: {
+        OLD: 7.5,
+      },
+    })
+
+    useBalanceStore.setState({
+      walletKey: "ta1::199",
+      refreshing: true,
+    })
+
+    await useBalanceStore.getState().refreshCoins("199")
+    expect(mockGetCoinList).toHaveBeenCalledTimes(1)
+  })
+
+  it("merges manual snapshots and normalizes string or unknown refresh errors", async () => {
+    useWalletStore.setState({
+      address: "TA1",
+      chainId: "199",
+      status: "connected",
+    })
+    useBalanceStore.setState({
+      walletKey: "ta1::199",
+      balances: {
+        OLD: 1,
+      },
+      error: {
+        kind: "load",
+        message: "previous",
+      },
+    })
+
+    useBalanceStore.getState().setBalanceSnapshot({
+      NEW: 2,
+    })
+
+    expect(useBalanceStore.getState()).toMatchObject({
+      balances: {
+        OLD: 1,
+        NEW: 2,
+      },
+      error: null,
+    })
+
+    mockGetCoinList.mockRejectedValueOnce(" refresh failed ")
+    await useBalanceStore.getState().loadCoins("199")
+    expect(useBalanceStore.getState().error).toEqual({
+      kind: "load",
+      message: "refresh failed",
+    })
+
+    useBalanceStore.setState({
+      walletKey: "ta1::199",
+      loading: false,
+      refreshing: false,
+    })
+    mockGetCoinList.mockRejectedValueOnce({})
+    await useBalanceStore.getState().refreshCoins("199")
+    expect(useBalanceStore.getState().error).toEqual({
+      kind: "refresh",
+      message: "balance_refresh_failed",
+    })
+  })
+
+  it("ignores stale load failures after the request is superseded", async () => {
+    const deferredCoins = createDeferred<WalletCoin[]>()
+
+    useWalletStore.setState({
+      address: "TA1",
+      chainId: "199",
+      status: "connected",
+    })
+    mockGetCoinList.mockImplementationOnce(() => deferredCoins.promise)
+
+    const loadPromise = useBalanceStore.getState().loadCoins("199")
+
+    expect(useBalanceStore.getState()).toMatchObject({
+      walletKey: "ta1::199",
+      loading: true,
+    })
+
+    useBalanceStore.getState().clear()
+    deferredCoins.reject(new Error("stale_load_failed"))
+    await loadPromise
+
+    expect(useBalanceStore.getState()).toMatchObject({
+      walletKey: null,
+      loading: false,
+      refreshing: false,
+      coins: [],
+      balances: {},
+      error: null,
+    })
+  })
+
+  it("refreshes an existing wallet snapshot and fills missing balances with zero", async () => {
+    useWalletStore.setState({
+      address: "TA1",
+      chainId: "199",
+      status: "connected",
+    })
+    mockGetCoinList.mockResolvedValueOnce(oldCoins)
+    mockFetchOnChainBalances.mockResolvedValueOnce({ OLD: 12.5 })
+
+    await useBalanceStore.getState().loadCoins("199")
+
+    mockGetCoinList.mockResolvedValueOnce(newCoins)
+    mockFetchOnChainBalances.mockResolvedValueOnce({})
+
+    await useBalanceStore.getState().refreshCoins("199")
+
+    expect(useBalanceStore.getState()).toMatchObject({
+      walletKey: "ta1::199",
+      loading: false,
+      refreshing: false,
+      error: null,
+      coins: newCoins,
+      balances: {
+        NEW: 0,
+      },
+    })
+  })
+
+  it("ignores stale refresh failures after the store is cleared", async () => {
+    const deferredCoins = createDeferred<WalletCoin[]>()
+
+    useWalletStore.setState({
+      address: "TA1",
+      chainId: "199",
+      status: "connected",
+    })
+    mockGetCoinList.mockResolvedValueOnce(oldCoins)
+    mockFetchOnChainBalances.mockResolvedValueOnce({ OLD: 1 })
+
+    await useBalanceStore.getState().loadCoins("199")
+
+    mockGetCoinList.mockImplementationOnce(() => deferredCoins.promise)
+
+    const refreshPromise = useBalanceStore.getState().refreshCoins("199")
+
+    expect(useBalanceStore.getState()).toMatchObject({
+      walletKey: "ta1::199",
+      refreshing: true,
+    })
+
+    useBalanceStore.getState().clear()
+    deferredCoins.reject(new Error("stale_refresh_failed"))
+    await refreshPromise
+
+    expect(useBalanceStore.getState()).toMatchObject({
+      walletKey: null,
+      loading: false,
+      refreshing: false,
+      coins: [],
+      balances: {},
+      error: null,
+    })
+  })
 })

@@ -26,6 +26,18 @@ describe("socketAuth", () => {
   it("treats auth ack and pong messages as internal events", () => {
     expect(isInternalSocketEvent("pong")).toBe(true)
     expect(isInternalSocketEvent("authenticated")).toBe(true)
+    expect(isInternalSocketEvent("  AUTH-OK  ")).toBe(true)
     expect(isInternalSocketEvent("messageRefresh")).toBe(false)
+    expect(isInternalSocketEvent()).toBe(false)
+  })
+
+  it("skips authentication when there is no access token", async () => {
+    const send = jest.fn(async () => ({ ok: true as const, data: undefined }))
+    const disconnect = jest.fn(async () => ({ ok: true as const, data: undefined }))
+
+    await expect(authenticateSocketConnection({ send, disconnect }, null)).resolves.toBe(true)
+
+    expect(send).not.toHaveBeenCalled()
+    expect(disconnect).not.toHaveBeenCalled()
   })
 })

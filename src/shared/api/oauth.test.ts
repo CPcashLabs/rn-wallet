@@ -42,4 +42,19 @@ describe("oauth token request body", () => {
       }),
     ).toThrow("OAuth token body param is reserved: client_secret")
   })
+
+  it("rejects blank oauth grant types", () => {
+    expect(() => buildOAuthTokenRequestBody("   ")).toThrow("OAuth grant type is required.")
+  })
+
+  it("skips nullish params and stringifies primitive values", () => {
+    const body = buildOAuthTokenRequestBody("guest", {
+      attempts: 2,
+      remember: false,
+      nonce: null,
+      state: undefined,
+    })
+
+    expect(body.toString()).toBe("client_id=mobile-public-client&grant_type=guest&attempts=2&remember=false")
+  })
 })
