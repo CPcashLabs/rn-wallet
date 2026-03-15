@@ -782,12 +782,13 @@ export async function submitShipOrder(input: {
   })
 }
 
-export async function checkTransferNetwork(orderSn: string) {
-  const response = await apiClient.get<ApiEnvelope<boolean | { matched?: boolean; chain_name?: string; current_network?: string }>>(
+export async function checkTransferNetwork(input: { chainName: string; address: string }) {
+  const response = await apiClient.get<ApiEnvelope<boolean | { matched?: boolean; supported?: boolean; chain_name?: string; current_network?: string }>>(
     "/api/order/member/order/checkCurrentNetwork",
     {
       params: {
-        order_sn: orderSn,
+        chain_name: input.chainName,
+        address: input.address,
       },
     },
   )
@@ -801,7 +802,7 @@ export async function checkTransferNetwork(orderSn: string) {
   }
 
   return {
-    matched: Boolean(payload?.matched ?? false),
+    matched: Boolean(payload?.matched ?? payload?.supported ?? false),
     chainName: String(payload?.chain_name ?? payload?.current_network ?? ""),
   }
 }
