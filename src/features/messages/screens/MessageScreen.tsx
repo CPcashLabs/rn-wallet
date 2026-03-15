@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
 
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
@@ -16,6 +16,7 @@ import {
 } from "@/features/messages/utils/messagePresentation"
 import { navigateRoot } from "@/app/navigation/navigationRef"
 import { PageEmpty, SectionCard } from "@/shared/ui/AppFlowUi"
+import { createLatestTaskController } from "@/shared/async/taskController"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { useSocketStore } from "@/shared/store/useSocketStore"
 import { useToast } from "@/shared/toast/useToast"
@@ -37,35 +38,72 @@ export function MessageScreen({ navigation }: Props) {
   const [loadingMore, setLoadingMore] = useState(false)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
+  const mountedRef = useRef(true)
+  const loadTaskControllerRef = useRef(createLatestTaskController())
+  const itemsRef = useRef<MessageItem[]>([])
 
-  const loadMessages = async (nextPage = 1, mode: "replace" | "append" = "replace") => {
+  useEffect(() => {
+    itemsRef.current = items
+  }, [items])
+
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false
+      loadTaskControllerRef.current.cancel()
+    }
+  }, [])
+
+  const loadMessages = useCallback(async (nextPage = 1, mode: "replace" | "append" = "replace") => {
+    const run = loadTaskControllerRef.current.begin()
+
     if (mode === "append") {
-      setLoadingMore(true)
-    } else if (items.length > 0) {
-      setRefreshing(true)
+      if (mountedRef.current) {
+        setRefreshing(false)
+        setLoadingMore(true)
+      }
+    } else if (itemsRef.current.length > 0) {
+      if (mountedRef.current) {
+        setLoadingMore(false)
+        setRefreshing(true)
+      }
     } else {
-      setLoading(true)
+      if (mountedRef.current) {
+        setRefreshing(false)
+        setLoadingMore(false)
+        setLoading(true)
+      }
     }
 
     try {
       const response = await getMessageList({ page: nextPage, perPage: 10 })
+
+      if (!run.isCurrent() || !mountedRef.current) {
+        return
+      }
+
       setItems(current => (mode === "append" ? [...current, ...response.data] : response.data))
       setPage(response.page)
       setHasMore(response.data.length >= response.perPage)
     } catch (error) {
+      if (!run.isCurrent() || !mountedRef.current) {
+        return
+      }
+
       presentError(error, {
         fallbackKey: "message.loadFailed",
       })
     } finally {
-      setLoading(false)
-      setRefreshing(false)
-      setLoadingMore(false)
+      if (run.isCurrent() && mountedRef.current) {
+        setLoading(false)
+        setRefreshing(false)
+        setLoadingMore(false)
+      }
     }
-  }
+  }, [presentError])
 
   useEffect(() => {
     void loadMessages(1, "replace")
-  }, [])
+  }, [loadMessages])
 
   useEffect(() => {
     if (socketEvent?.type !== "messageRefresh") {
@@ -73,7 +111,7 @@ export function MessageScreen({ navigation }: Props) {
     }
 
     void loadMessages(1, "replace")
-  }, [socketEvent?.at, socketEvent?.type])
+  }, [loadMessages, socketEvent?.at, socketEvent?.type])
 
   const handleOpenItem = async (item: MessageItem) => {
     try {

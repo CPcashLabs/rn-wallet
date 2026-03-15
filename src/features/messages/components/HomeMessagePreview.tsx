@@ -5,12 +5,14 @@ import { useFocusEffect } from "@react-navigation/native"
 import { useTranslation } from "react-i18next"
 
 import { getMessageList, type MessageItem } from "@/features/messages/services/messageApi"
+import { diffHomeMessagePreviewIds, pruneHomeMessagePreviewRecord } from "@/features/messages/components/homeMessagePreviewState"
 import {
   formatRelativeTime,
   resolveMessageAmount,
   resolveMessageCoin,
   resolveMessageTitle,
 } from "@/features/messages/utils/messagePresentation"
+import { createLatestTaskController } from "@/shared/async/taskController"
 import { SectionCard } from "@/shared/ui/AppFlowUi"
 import { useSocketStore } from "@/shared/store/useSocketStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
@@ -35,6 +37,9 @@ export function HomeMessagePreview(props: { onPress: () => void }) {
   const hasHydratedRef = useRef(false)
   const itemIdsRef = useRef<string[]>([])
   const rowAnimationsRef = useRef<Record<string, RowAnimationState>>({})
+  const mountedRef = useRef(true)
+  const loadTaskControllerRef = useRef(createLatestTaskController())
+  const animationFrameRef = useRef<number | null>(null)
 
   const resolveRowAnimation = React.useCallback((id: string) => {
     const existing = rowAnimationsRef.current[id]
@@ -51,11 +56,44 @@ export function HomeMessagePreview(props: { onPress: () => void }) {
     return created
   }, [])
 
+  const clearPendingAnimationFrame = React.useCallback(() => {
+    if (animationFrameRef.current === null) {
+      return
+    }
+
+    cancelAnimationFrame(animationFrameRef.current)
+    animationFrameRef.current = null
+  }, [])
+
+  const stopRowAnimation = React.useCallback((animation: RowAnimationState) => {
+    animation.opacity.stopAnimation()
+    animation.translateY.stopAnimation()
+    animation.height.stopAnimation()
+  }, [])
+
+  const pruneRowAnimations = React.useCallback(
+    (nextIds: string[]) => {
+      const { removedIds } = diffHomeMessagePreviewIds(itemIdsRef.current, nextIds, hasHydratedRef.current)
+
+      for (const id of removedIds) {
+        const animation = rowAnimationsRef.current[id]
+        if (animation) {
+          stopRowAnimation(animation)
+        }
+      }
+
+      pruneHomeMessagePreviewRecord(rowAnimationsRef.current, nextIds)
+    },
+    [stopRowAnimation],
+  )
+
   const animateInsertedRows = React.useCallback(
     (insertedIds: string[]) => {
       if (insertedIds.length === 0) {
         return
       }
+
+      clearPendingAnimationFrame()
 
       insertedIds.forEach(id => {
         const animation = {
@@ -66,7 +104,13 @@ export function HomeMessagePreview(props: { onPress: () => void }) {
         rowAnimationsRef.current[id] = animation
       })
 
-      requestAnimationFrame(() => {
+      animationFrameRef.current = requestAnimationFrame(() => {
+        animationFrameRef.current = null
+
+        if (!mountedRef.current) {
+          return
+        }
+
         insertedIds.forEach(id => {
           const animation = rowAnimationsRef.current[id]
           if (!animation) {
@@ -93,32 +137,55 @@ export function HomeMessagePreview(props: { onPress: () => void }) {
         })
       })
     },
-    [],
+    [clearPendingAnimationFrame],
   )
 
   const loadPreview = React.useCallback(async () => {
+    const run = loadTaskControllerRef.current.begin()
+
     try {
       const response = await getMessageList({ page: 1, perPage: PREVIEW_LIMIT })
+
+      if (!run.isCurrent() || !mountedRef.current) {
+        return
+      }
+
       const nextItems = response.data.slice(0, PREVIEW_LIMIT)
       const nextIds = nextItems.map(item => item.id)
-      const insertedIds =
-        hasHydratedRef.current
-          ? nextIds.filter(id => !itemIdsRef.current.includes(id))
-          : []
+      const { insertedIds } = diffHomeMessagePreviewIds(itemIdsRef.current, nextIds, hasHydratedRef.current)
 
+      pruneRowAnimations(nextIds)
       itemIdsRef.current = nextIds
       setLoadFailed(false)
       setItems(nextItems)
       animateInsertedRows(insertedIds)
       hasHydratedRef.current = true
     } catch {
+      if (!run.isCurrent() || !mountedRef.current) {
+        return
+      }
+
       if (!hasHydratedRef.current && itemIdsRef.current.length === 0) {
         setLoadFailed(true)
       }
     } finally {
-      setReady(true)
+      if (run.isCurrent() && mountedRef.current) {
+        setReady(true)
+      }
     }
-  }, [animateInsertedRows])
+  }, [animateInsertedRows, pruneRowAnimations])
+
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false
+      clearPendingAnimationFrame()
+      loadTaskControllerRef.current.cancel()
+
+      Object.values(rowAnimationsRef.current).forEach(stopRowAnimation)
+      rowAnimationsRef.current = {}
+      itemIdsRef.current = []
+    }
+  }, [clearPendingAnimationFrame, stopRowAnimation])
 
   useFocusEffect(
     React.useCallback(() => {
