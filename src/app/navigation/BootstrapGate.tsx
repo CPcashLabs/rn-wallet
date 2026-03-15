@@ -5,6 +5,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 
 import { readAuthSession } from "@/shared/api/auth-session"
 import { hydrateI18n } from "@/shared/i18n"
+import { purgeLegacyLocalKeyMaterial } from "@/shared/native/localAuthVault"
 import { getString } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 import { hydrateThemePreference } from "@/shared/theme/themePersistence"
@@ -30,7 +31,7 @@ export function BootstrapGate() {
       const persistedChainId = getString(KvStorageKeys.WalletChainId) ?? DEFAULT_WALLET_CHAIN_ID
 
       try {
-        await Promise.all([hydrateI18n(), hydrateThemePreference()])
+        await Promise.all([hydrateI18n(), hydrateThemePreference(), purgeLegacyLocalKeyMaterial()])
 
         const session = await readAuthSession()
         if (!mounted) return

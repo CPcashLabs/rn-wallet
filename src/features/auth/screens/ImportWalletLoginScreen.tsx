@@ -24,13 +24,14 @@ export function ImportWalletLoginScreen({ navigation, route }: Props) {
   const { presentError, presentMessage } = useErrorPresenter()
   const inviteCode = route.params?.inviteCode
   const setWalletState = useWalletStore(state => state.setWalletState)
+  const walletCapability = useMemo(() => walletAdapter.getCapability(), [])
   const [secret, setSecret] = useState("")
   const [inputError, setInputError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   const disabled = useMemo(() => {
-    return !secret.trim()
-  }, [secret])
+    return !secret.trim() || !walletCapability.supported
+  }, [secret, walletCapability.supported])
 
   const handleInviteCode = async () => {
     if (!inviteCode) {
@@ -68,6 +69,11 @@ export function ImportWalletLoginScreen({ navigation, route }: Props) {
   }
 
   const submit = async () => {
+    if (!walletCapability.supported) {
+      presentMessage(walletCapability.reason ?? t("auth.errors.walletUnavailable"))
+      return
+    }
+
     if (!secret.trim()) {
       const message = t("auth.errors.importSecretRequired")
       setInputError(message)

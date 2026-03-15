@@ -1,4 +1,5 @@
 import { i18n } from "@/shared/i18n"
+import { ApiError } from "@/shared/errors"
 import { errorCodeOf, resolveErrorMessage } from "@/shared/errors/presentation"
 
 export function getAuthErrorMessage(error: unknown, fallbackKey = "auth.errors.generic") {
@@ -28,4 +29,13 @@ export function getInviteBindingMessage(error: unknown) {
   }
 
   return i18n.t("auth.errors.inviteBindFailed")
+}
+
+export function appendApiDebugSuffix(message: string, error: unknown, includeDebugDetails = __DEV__) {
+  if (!includeDebugDetails || !(error instanceof ApiError)) {
+    return message
+  }
+
+  const suffix = [`http=${error.status ?? "unknown"}`, `code=${error.code ?? "none"}`].join(" / ")
+  return `${message}\n${suffix}`
 }

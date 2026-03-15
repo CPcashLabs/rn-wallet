@@ -9,10 +9,9 @@ import { AuthScaffold } from "@/features/auth/components/AuthScaffold"
 import { AuthTextField } from "@/features/auth/components/AuthTextField"
 import { bindInviteCode, getPasswordRules, signInWithPassword, validateAddressExists } from "@/features/auth/services/authApi"
 import { persistAuthenticatedSession } from "@/features/auth/services/authSessionOrchestrator"
-import { getAuthErrorMessage, getInviteBindingMessage } from "@/features/auth/utils/authMessages"
+import { appendApiDebugSuffix, getAuthErrorMessage, getInviteBindingMessage } from "@/features/auth/utils/authMessages"
 import { resetToMainTabs } from "@/app/navigation/navigationRef"
 import type { AuthStackParamList } from "@/app/navigation/types"
-import { ApiError } from "@/shared/errors"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
@@ -104,11 +103,7 @@ export function PasswordLoginScreen({ navigation, route }: Props) {
 
       resetToMainTabs()
     } catch (error) {
-      let message = getAuthErrorMessage(error, "auth.errors.passwordLoginFailed")
-      if (error instanceof ApiError && (__DEV__ || error.status === 401)) {
-        const suffix = [`http=${error.status ?? "unknown"}`, `code=${error.code ?? "none"}`].join(" / ")
-        message = `${message}\n${suffix}`
-      }
+      const message = appendApiDebugSuffix(getAuthErrorMessage(error, "auth.errors.passwordLoginFailed"), error)
       setPasswordError(message)
       presentMessage(message)
     } finally {

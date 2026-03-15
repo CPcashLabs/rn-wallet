@@ -34,6 +34,7 @@ export function LoginScreen({ navigation, route }: Props) {
 
   const passkeyCapability = useMemo(() => passkeyAdapter.getCapability(), [])
   const walletCapability = useMemo(() => walletAdapter.getCapability(), [])
+  const walletActionsEnabled = walletCapability.supported
 
   const handleInviteCode = async () => {
     if (!inviteCode) {
@@ -182,12 +183,16 @@ export function LoginScreen({ navigation, route }: Props) {
         }
       >
         <AuthButton label={t("auth.login.passkeyButton")} loading={loadingType === "passkey"} onPress={() => void handlePasskeyLogin()} />
-        <AuthButton label={t("auth.login.walletButton")} loading={loadingType === "wallet"} onPress={() => void handleWalletLogin()} variant="secondary" />
-        <AuthButton
-          label={t("auth.login.importSecretButton")}
-          onPress={() => navigation.navigate("ImportWalletLoginScreen", { inviteCode })}
-          variant="secondary"
-        />
+        {walletActionsEnabled ? (
+          <AuthButton label={t("auth.login.walletButton")} loading={loadingType === "wallet"} onPress={() => void handleWalletLogin()} variant="secondary" />
+        ) : null}
+        {walletActionsEnabled ? (
+          <AuthButton
+            label={t("auth.login.importSecretButton")}
+            onPress={() => navigation.navigate("ImportWalletLoginScreen", { inviteCode })}
+            variant="secondary"
+          />
+        ) : null}
 
         <Pressable onPress={() => navigation.navigate("PasswordLoginScreen", { inviteCode })} style={styles.textAction}>
           <Text style={[styles.link, { color: theme.colors.primary }]}>
