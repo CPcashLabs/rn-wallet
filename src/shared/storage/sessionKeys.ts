@@ -17,6 +17,8 @@ export enum KvStorageKeys {
   ShowBalance = "home.show_balance",
   SelectedCurrency = "home.selected_currency",
   SelectedInviteLevel = "home.selected_invite_level",
+  OrdersTxlogsCache = "orders.txlogs_cache",
+  OrdersBillCache = "orders.bill_cache",
   TransferDraft = "transfer.draft",
   SelectTokenPageReload = "transfer.select_token_page_reload",
   HomePageNeedRefresh = "home.home_page_need_refresh",
