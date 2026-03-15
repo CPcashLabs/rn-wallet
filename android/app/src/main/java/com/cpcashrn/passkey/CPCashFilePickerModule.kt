@@ -25,7 +25,9 @@ import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import com.google.mlkit.vision.common.InputImage
+import java.io.File
 import java.util.Locale
+import java.util.UUID
 
 class CPCashFilePickerModule(private val reactContext: ReactApplicationContext) :
   ReactContextBaseJavaModule(reactContext) {
@@ -99,24 +101,16 @@ class CPCashFilePickerModule(private val reactContext: ReactApplicationContext) 
         return
       }
 
-      val permissionFlags = data.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION
-      if (permissionFlags != 0) {
-        try {
-          reactContext.contentResolver.takePersistableUriPermission(uri, permissionFlags)
-        } catch (_: SecurityException) {
-          // Some providers do not support persistable permissions.
-        }
-      }
-
       if (requestCode == REQUEST_CODE_SCAN_IMAGE) {
         processScannedImage(uri, promise)
         return
       }
 
-      val result = Arguments.createMap().apply {
-        putString("uri", uri.toString())
-        putString("name", queryDisplayName(uri) ?: "avatar")
-        putString("mimeType", reactContext.contentResolver.getType(uri) ?: guessMimeType(uri.toString()))
+      val result = try {
+        copyPickedImageToCache(uri)
+      } catch (error: Exception) {
+        promise.reject("persist_error", error.message ?: "Failed to persist selected image.", error)
+        return
       }
 
       promise.resolve(result)
@@ -354,8 +348,33 @@ class CPCashFilePickerModule(private val reactContext: ReactApplicationContext) 
       addCategory(Intent.CATEGORY_OPENABLE)
       type = "image/*"
       putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false)
-      addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+      addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
+  }
+
+  private fun copyPickedImageToCache(uri: Uri) = Arguments.createMap().apply {
+    val resolver = reactContext.contentResolver
+    val displayName = queryDisplayName(uri)
+    val mimeType = resolver.getType(uri)?.takeIf { it.isNotBlank() } ?: guessMimeType(uri.toString())
+    val extension = resolvePickedImageExtension(displayName, mimeType, uri)
+    val safeBaseName = sanitizeFilenameComponent(displayName?.substringBeforeLast('.', "") ?: "image", "image")
+    val cacheDirectory = File(reactContext.cacheDir, "picked-images")
+    if (!cacheDirectory.exists() && !cacheDirectory.mkdirs()) {
+      throw IllegalStateException("Failed to prepare picked image cache directory.")
+    }
+
+    val storedFilename = "picked-${UUID.randomUUID()}-$safeBaseName.$extension"
+    val destinationFile = File(cacheDirectory, storedFilename)
+
+    resolver.openInputStream(uri)?.use { input ->
+      destinationFile.outputStream().use { output ->
+        input.copyTo(output)
+      }
+    } ?: throw IllegalStateException("Failed to open the selected image stream.")
+
+    putString("uri", Uri.fromFile(destinationFile).toString())
+    putString("name", "$safeBaseName.$extension")
+    putString("mimeType", mimeType)
   }
 
   private fun queryDisplayName(uri: Uri): String? {
@@ -381,6 +400,58 @@ class CPCashFilePickerModule(private val reactContext: ReactApplicationContext) 
     }
 
     return "image/jpeg"
+  }
+
+  private fun resolvePickedImageExtension(displayName: String?, mimeType: String, uri: Uri): String {
+    val mimeExtension = MimeTypeMap.getSingleton()
+      .getExtensionFromMimeType(mimeType)
+      ?.lowercase(Locale.US)
+      .orEmpty()
+    if (mimeExtension.isNotEmpty()) {
+      return mimeExtension
+    }
+
+    val displayNameExtension = displayName
+      ?.substringAfterLast('.', "")
+      ?.trim()
+      ?.lowercase(Locale.US)
+      .orEmpty()
+    if (displayNameExtension.isNotEmpty()) {
+      return displayNameExtension
+    }
+
+    val uriExtension = MimeTypeMap.getFileExtensionFromUrl(uri.toString())
+      ?.lowercase(Locale.US)
+      .orEmpty()
+    if (uriExtension.isNotEmpty()) {
+      return uriExtension
+    }
+
+    return "jpg"
+  }
+
+  private fun sanitizeFilenameComponent(value: String, fallback: String): String {
+    val normalized = value
+      .trim()
+      .lowercase(Locale.US)
+      .ifEmpty { fallback }
+    val sanitized = buildString(normalized.length) {
+      normalized.forEach { character ->
+        append(
+          when {
+            character in 'a'..'z' || character in '0'..'9' || character == '-' || character == '_' -> character
+            else -> '_'
+          },
+        )
+      }
+    }
+      .trim('_')
+
+    if (sanitized.isEmpty()) {
+      return fallback
+    }
+
+    return sanitized.take(48)
   }
 
   private fun processScannedImage(uri: Uri, promise: Promise) {

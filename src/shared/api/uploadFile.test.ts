@@ -2,18 +2,18 @@ import { buildImageUploadFormDataPart } from "@/shared/api/uploadFile"
 import { UnsafeUploadFileError } from "@/shared/errors"
 
 describe("buildImageUploadFormDataPart", () => {
-  it("accepts picker-backed content URIs and normalizes filenames", () => {
+  it("accepts app-owned cache file URIs and normalizes filenames", () => {
     expect(
       buildImageUploadFormDataPart(
         {
-          uri: "content://media/external/images/media/42",
+          uri: "file:///data/user/0/com.cpcashrn/cache/picked-images/picked-123-avatar-profile.png",
           name: "../../avatar profile.png",
           mimeType: "image/png",
         },
         "avatar.jpg",
       ),
     ).toEqual({
-      uri: "content://media/external/images/media/42",
+      uri: "file:///data/user/0/com.cpcashrn/cache/picked-images/picked-123-avatar-profile.png",
       name: "avatar_profile.png",
       type: "image/png",
     })
@@ -49,6 +49,19 @@ describe("buildImageUploadFormDataPart", () => {
     ).toThrow(UnsafeUploadFileError)
   })
 
+  it("rejects external content URIs now that the native picker copies into app cache", () => {
+    expect(() =>
+      buildImageUploadFormDataPart(
+        {
+          uri: "content://media/external/images/media/42",
+          name: "avatar.png",
+          mimeType: "image/png",
+        },
+        "avatar.jpg",
+      ),
+    ).toThrow(UnsafeUploadFileError)
+  })
+
   it("rejects file URIs outside temp or cache directories", () => {
     expect(() =>
       buildImageUploadFormDataPart(
@@ -66,7 +79,7 @@ describe("buildImageUploadFormDataPart", () => {
     expect(() =>
       buildImageUploadFormDataPart(
         {
-          uri: "content://media/external/images/media/42",
+          uri: "file:///data/user/0/com.cpcashrn/cache/picked-images/picked-42-vector.svg",
           name: "vector.svg",
           mimeType: "image/svg+xml",
         },

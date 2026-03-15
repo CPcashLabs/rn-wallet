@@ -219,6 +219,7 @@ didOutputMetadataObjects:(NSArray<__kindof AVMetadataObject *> *)metadataObjects
 @property (nonatomic, copy, nullable) RCTPromiseRejectBlock pendingExportReject;
 @property (nonatomic, strong, nullable) NSURL *pendingExportTemporaryURL;
 - (NSURL * _Nullable)avatarCacheDirectoryURL:(NSError * _Nullable __autoreleasing *)error;
+- (NSURL * _Nullable)pickedImageCacheDirectoryURL:(NSError * _Nullable __autoreleasing *)error;
 - (NSString *)trimmedString:(NSString * _Nullable)value;
 - (NSString *)sanitizedFilenameComponent:(NSString *)value fallback:(NSString *)fallback;
 - (NSString *)sha256ForString:(NSString *)value;
@@ -726,6 +727,15 @@ RCT_EXPORT_METHOD(removeCachedImage:(NSString *)localUri
                                       suggestedName:(NSString * _Nullable)suggestedName
                                               error:(NSError * _Nullable __autoreleasing *)error
 {
+  NSError *directoryError = nil;
+  NSURL *cacheDirectoryURL = [self pickedImageCacheDirectoryURL:&directoryError];
+  if (cacheDirectoryURL == nil) {
+    if (error != nil) {
+      *error = directoryError;
+    }
+    return nil;
+  }
+
   NSString *extension = url.pathExtension.lowercaseString;
   if (extension.length == 0) {
     extension = suggestedName.pathExtension.lowercaseString;
@@ -734,10 +744,18 @@ RCT_EXPORT_METHOD(removeCachedImage:(NSString *)localUri
     extension = @"jpg";
   }
 
-  NSString *baseName = suggestedName.length > 0 ? suggestedName : NSUUID.UUID.UUIDString;
-  NSString *filename = baseName.pathExtension.length > 0 ? baseName : [baseName stringByAppendingPathExtension:extension];
-  NSString *temporaryFilename = [NSString stringWithFormat:@"%@-%@", NSUUID.UUID.UUIDString, filename];
-  NSURL *temporaryURL = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:temporaryFilename]];
+  NSString *baseName = [self trimmedString:suggestedName];
+  if (baseName.length == 0) {
+    baseName = [self trimmedString:url.lastPathComponent];
+  }
+  if (baseName.length == 0) {
+    baseName = NSUUID.UUID.UUIDString;
+  }
+
+  NSString *sanitizedBaseName = [self sanitizedFilenameComponent:[baseName stringByDeletingPathExtension] fallback:@"image"];
+  NSString *displayFilename = [NSString stringWithFormat:@"%@.%@", sanitizedBaseName, extension];
+  NSString *storedFilename = [NSString stringWithFormat:@"picked-%@-%@", NSUUID.UUID.UUIDString.lowercaseString, displayFilename];
+  NSURL *temporaryURL = [cacheDirectoryURL URLByAppendingPathComponent:storedFilename];
 
   NSFileManager *fileManager = [NSFileManager defaultManager];
   [fileManager removeItemAtURL:temporaryURL error:nil];
@@ -755,7 +773,7 @@ RCT_EXPORT_METHOD(removeCachedImage:(NSString *)localUri
 
   return @{
     @"uri": temporaryURL.absoluteString,
-    @"name": filename,
+    @"name": displayFilename,
     @"mimeType": [self mimeTypeForPathExtension:extension],
   };
 }
@@ -838,6 +856,22 @@ RCT_EXPORT_METHOD(removeCachedImage:(NSString *)localUri
   }
 
   return avatarDirectoryURL;
+}
+
+- (NSURL * _Nullable)pickedImageCacheDirectoryURL:(NSError * _Nullable __autoreleasing *)error
+{
+  NSFileManager *fileManager = [NSFileManager defaultManager];
+  NSURL *cachesDirectoryURL = [[fileManager URLsForDirectory:NSCachesDirectory inDomains:NSUserDomainMask] firstObject];
+  if (cachesDirectoryURL == nil) {
+    return nil;
+  }
+
+  NSURL *pickedImageDirectoryURL = [cachesDirectoryURL URLByAppendingPathComponent:@"CPCashPickedImageCache" isDirectory:YES];
+  if (![fileManager createDirectoryAtURL:pickedImageDirectoryURL withIntermediateDirectories:YES attributes:nil error:error]) {
+    return nil;
+  }
+
+  return pickedImageDirectoryURL;
 }
 
 - (NSString *)trimmedString:(NSString * _Nullable)value

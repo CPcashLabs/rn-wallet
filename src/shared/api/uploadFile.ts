@@ -58,10 +58,6 @@ function sanitizeUploadUri(uri: string) {
   }
 
   const lowerCased = normalized.toLowerCase()
-  if (lowerCased.startsWith("content://")) {
-    return normalized
-  }
-
   if (lowerCased.startsWith("file:///") && isTrustedLocalFileUri(normalized)) {
     return normalized
   }
