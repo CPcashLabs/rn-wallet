@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react"
 
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native"
+import { Alert, Animated, Easing, Pressable, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import { bindInviteCode } from "@/features/auth/services/authApi"
-import { useProfileSync } from "@/features/home/hooks/useProfileSync"
+import { buildHomeBalanceCacheKey, readHomeBalanceCache, writeHomeBalanceCache } from "@/features/home/services/homeBalanceCache"
 import { getInviteBindingMessage } from "@/features/auth/utils/authMessages"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { formatAddress, formatCurrency } from "@/features/home/utils/format"
@@ -31,12 +31,16 @@ export function HomeShellScreen({ navigation, route }: Props) {
   const { showToast } = useToast()
   const walletAddress = useWalletStore(state => state.address)
   const walletChainId = useWalletStore(state => state.chainId)
-  useProfileSync()
+  const balanceWalletKey = useBalanceStore(state => state.walletKey)
   const coins = useBalanceStore(state => state.coins)
   const balances = useBalanceStore(state => state.balances)
   const loadCoins = useBalanceStore(state => state.loadCoins)
   const [showBalance, setShowBalance] = useState(true)
   const inviteHandledRef = useRef(false)
+  const balanceValueAnim = useRef(new Animated.Value(0)).current
+  const displayedBalanceValueRef = useRef(0)
+  const hasAppliedLiveValueRef = useRef(false)
+  const [displayedBalanceValue, setDisplayedBalanceValue] = useState(0)
 
   const totalAssetValue = useMemo(() => {
     return coins.reduce((sum, coin) => {
@@ -44,6 +48,14 @@ export function HomeShellScreen({ navigation, route }: Props) {
       return sum + balance * coin.price
     }, 0)
   }, [balances, coins])
+  const balanceCacheKey = useMemo(
+    () =>
+      buildHomeBalanceCacheKey({
+        address: walletAddress,
+        chainId: walletChainId,
+      }),
+    [walletAddress, walletChainId],
+  )
 
   useEffect(() => {
     const persisted = getBoolean(KvStorageKeys.ShowBalance)
@@ -55,6 +67,65 @@ export function HomeShellScreen({ navigation, route }: Props) {
   useEffect(() => {
     void loadCoins(walletChainId)
   }, [loadCoins, walletAddress, walletChainId])
+
+  useEffect(() => {
+    const listenerId = balanceValueAnim.addListener(({ value }) => {
+      displayedBalanceValueRef.current = value
+      setDisplayedBalanceValue(value)
+    })
+
+    return () => {
+      balanceValueAnim.removeListener(listenerId)
+    }
+  }, [balanceValueAnim])
+
+  useEffect(() => {
+    hasAppliedLiveValueRef.current = false
+    const cachedValue = balanceCacheKey ? readHomeBalanceCache(balanceCacheKey)?.totalAssetValue ?? 0 : 0
+
+    balanceValueAnim.stopAnimation()
+    balanceValueAnim.setValue(cachedValue)
+    displayedBalanceValueRef.current = cachedValue
+    setDisplayedBalanceValue(cachedValue)
+  }, [balanceCacheKey, balanceValueAnim])
+
+  useEffect(() => {
+    if (
+      !balanceCacheKey
+      || balanceWalletKey !== balanceCacheKey
+      || coins.length === 0
+      || !Number.isFinite(totalAssetValue)
+    ) {
+      return
+    }
+
+    writeHomeBalanceCache(balanceCacheKey, {
+      totalAssetValue,
+    })
+
+    const currentValue = displayedBalanceValueRef.current
+    const nextValue = totalAssetValue
+
+    if (Math.abs(currentValue - nextValue) < 0.005) {
+      hasAppliedLiveValueRef.current = true
+      balanceValueAnim.stopAnimation()
+      balanceValueAnim.setValue(nextValue)
+      displayedBalanceValueRef.current = nextValue
+      setDisplayedBalanceValue(nextValue)
+      return
+    }
+
+    const duration = hasAppliedLiveValueRef.current ? 320 : 420
+    hasAppliedLiveValueRef.current = true
+
+    balanceValueAnim.stopAnimation()
+    Animated.timing(balanceValueAnim, {
+      toValue: nextValue,
+      duration,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start()
+  }, [balanceCacheKey, balanceValueAnim, balanceWalletKey, coins.length, totalAssetValue])
 
   useEffect(() => {
     if (!route.params?.inviteCode || inviteHandledRef.current) {
@@ -131,7 +202,7 @@ export function HomeShellScreen({ navigation, route }: Props) {
           </Pressable>
         </View>
 
-        <Text style={styles.balanceValue}>{showBalance ? formatCurrency(totalAssetValue) : "*****"}</Text>
+        <Text style={styles.balanceValue}>{showBalance ? formatCurrency(displayedBalanceValue) : "*****"}</Text>
 
         <Pressable onPress={() => navigation.navigate("TotalAssetsScreen")} style={styles.totalAssetsButton}>
           <Text style={styles.totalAssetsButtonText}>{t("home.shell.openTotalAssets")}</Text>
@@ -253,6 +324,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     color: "#FFFFFF",
     fontWeight: "800",
+    fontVariant: ["tabular-nums"],
   },
   totalAssetsButton: {
     alignSelf: "flex-start",

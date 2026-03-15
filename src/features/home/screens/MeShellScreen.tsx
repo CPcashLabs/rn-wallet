@@ -96,8 +96,8 @@ function MenuRow(props: { label: string; body: string; icon: AppGlyphName; badge
       right={
         props.badge ? (
           <View style={styles.rowRight}>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{props.badge}</Text>
+            <View style={[styles.badge, { backgroundColor: theme.colors.warningSoft }]}>
+              <Text style={[styles.badgeText, { color: theme.colors.warning }]}>{props.badge}</Text>
             </View>
             <Text style={[styles.rowArrow, { color: theme.colors.mutedText }]}>›</Text>
           </View>
@@ -166,13 +166,11 @@ const styles = StyleSheet.create({
   },
   badge: {
     borderRadius: 999,
-    backgroundColor: "#FFF1E9",
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
   badgeText: {
     fontSize: 11,
-    color: "#E37318",
     fontWeight: "700",
   },
   statusPill: {

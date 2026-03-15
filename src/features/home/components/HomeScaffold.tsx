@@ -186,7 +186,8 @@ export function HeaderTextAction(props: {
   tone?: "primary" | "danger"
 }) {
   const theme = useAppTheme()
-  const color = props.tone === "danger" ? "#DC2626" : theme.colors.primary
+  const color = props.tone === "danger" ? theme.colors.danger : theme.colors.primary
+  const backgroundColor = props.tone === "danger" ? theme.colors.dangerSoft : theme.colors.primarySoft ?? `${theme.colors.primary}14`
 
   return (
     <Pressable
@@ -196,7 +197,7 @@ export function HeaderTextAction(props: {
       style={[
         styles.headerTextAction,
         {
-          backgroundColor: theme.colors.primarySoft ?? `${theme.colors.primary}14`,
+          backgroundColor,
         },
         props.disabled ? styles.headerTextActionDisabled : null,
       ]}

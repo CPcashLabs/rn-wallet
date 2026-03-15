@@ -89,8 +89,8 @@ export function ExportPasskeyScreen({ navigation }: Props) {
     <HomeScaffold canGoBack onBack={navigation.goBack} title={t("home.export.title")}>
       <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
         {profile?.walletIsBackup ? (
-          <View style={styles.warning}>
-            <Text style={styles.warningText}>{t("home.export.alreadyDone")}</Text>
+          <View style={[styles.warning, { backgroundColor: theme.colors.warningSoft }]}>
+            <Text style={[styles.warningText, { color: theme.colors.warning }]}>{t("home.export.alreadyDone")}</Text>
           </View>
         ) : null}
 
@@ -141,13 +141,11 @@ const styles = StyleSheet.create({
   },
   warning: {
     borderRadius: 10,
-    backgroundColor: "#FFF1E9",
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
   warningText: {
     fontSize: 12,
-    color: "#E37318",
     fontWeight: "700",
   },
   subtitle: {
