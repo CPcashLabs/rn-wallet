@@ -171,7 +171,7 @@ export function MessageScreen({ navigation }: Props) {
               <Text style={[styles.amount, { color: theme.colors.text }]}>
                 {resolveMessageAmount(item)} {resolveMessageCoin(item)}
               </Text>
-              {item.status === 0 ? <View style={[styles.unreadDot, { backgroundColor: "#DC2626" }]} /> : null}
+              {item.status === 0 ? <View style={[styles.unreadDot, { backgroundColor: theme.colors.danger }]} /> : null}
             </View>
 
             <Text style={[styles.body, { color: theme.colors.mutedText }]}>{resolveMessageBody(item, t)}</Text>

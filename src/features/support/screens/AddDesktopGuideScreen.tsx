@@ -7,12 +7,14 @@ import { useTranslation } from "react-i18next"
 import { SupportPanel, SupportScaffold } from "@/features/support/components/SupportScaffold"
 import { goBackOrReset } from "@/features/support/utils/supportNavigation"
 import { getSupportGuideUrl, openSupportUrl } from "@/features/support/utils/supportLinks"
+import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 import type { SupportStackParamList } from "@/app/navigation/types"
 
 type Props = NativeStackScreenProps<SupportStackParamList, "AddDesktopGuideScreen">
 
 export function AddDesktopGuideScreen({ navigation }: Props) {
+  const theme = useAppTheme()
   const { t } = useTranslation()
 
   const openGuide = async () => {
@@ -25,7 +27,7 @@ export function AddDesktopGuideScreen({ navigation }: Props) {
 
   return (
     <SupportScaffold
-      accentColor="#14B8A6"
+      accentColor={theme.colors.successBorder}
       actions={[
         {
           label: t("support.common.openGuide"),
@@ -45,9 +47,9 @@ export function AddDesktopGuideScreen({ navigation }: Props) {
       subtitle={t("support.addDesktop.subtitle")}
       title={t("support.addDesktop.title")}
     >
-      <SupportPanel accentColor="#14B8A6" body={t("support.addDesktop.step1Body")} title={t("support.addDesktop.step1Title")} />
-      <SupportPanel accentColor="#14B8A6" body={t("support.addDesktop.step2Body")} title={t("support.addDesktop.step2Title")} />
-      <SupportPanel accentColor="#14B8A6" body={t("support.addDesktop.step3Body")} title={t("support.addDesktop.step3Title")} />
+      <SupportPanel accentColor={theme.colors.successBorder} body={t("support.addDesktop.step1Body")} title={t("support.addDesktop.step1Title")} />
+      <SupportPanel accentColor={theme.colors.successBorder} body={t("support.addDesktop.step2Body")} title={t("support.addDesktop.step2Title")} />
+      <SupportPanel accentColor={theme.colors.successBorder} body={t("support.addDesktop.step3Body")} title={t("support.addDesktop.step3Title")} />
     </SupportScaffold>
   )
 }

@@ -127,8 +127,8 @@ export function AddressBookListScreen({ navigation, route }: Props) {
       <AppListRow
         hideDivider={index === filteredEntries.length - 1}
         left={
-          <View style={[styles.chainBadge, { backgroundColor: item.chainType === "TRON" ? "#FFF1E9" : "#EBF4FF" }]}>
-            <Text style={[styles.chainBadgeText, { color: item.chainType === "TRON" ? "#E37318" : "#1D4ED8" }]}>
+          <View style={[styles.chainBadge, { backgroundColor: item.chainType === "TRON" ? theme.colors.warningSoft : theme.colors.infoSoft }]}>
+            <Text style={[styles.chainBadgeText, { color: item.chainType === "TRON" ? theme.colors.warning : theme.colors.info }]}>
               {item.chainType}
             </Text>
           </View>
@@ -140,7 +140,7 @@ export function AddressBookListScreen({ navigation, route }: Props) {
         titleStyle={styles.rowName}
       />
     ),
-    [filteredEntries.length, handleRowPress],
+    [filteredEntries.length, handleRowPress, theme.colors.info, theme.colors.infoSoft, theme.colors.warning, theme.colors.warningSoft],
   )
 
   const title = mode === "select" ? t("home.addressBook.selectTitle") : t("home.addressBook.title")

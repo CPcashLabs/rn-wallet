@@ -99,7 +99,7 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
   const currentOrder = activeCollapseKey === "individuals" ? personalOrder : businessOrder
   const currentVariant = activeCollapseKey === "individuals" ? "short" : "long"
   const currentOrderType = activeCollapseKey === "individuals" ? "TRACE" : "TRACE_LONG_TERM"
-  const dynamicColor = config?.payChainColor || route.params?.chainColor || theme.colors.primary
+  const dynamicColor = config?.payChainColor || route.params?.chainColor || theme.colors.success
   const surfaceColor = "#F4F4F1"
   const qrSource = isNormalReceive ? receiveAddress : currentOrder?.address || receiveAddress
 

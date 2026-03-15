@@ -157,7 +157,7 @@ function ChannelRow(props: {
             <Text style={[styles.logoText, { color: theme.colors.text }]}>{props.item.title.slice(0, 2).toUpperCase()}</Text>
           </View>
         ) : (
-          <View style={[styles.channelDot, { backgroundColor: props.item.receiveChainColor || theme.colors.primary }]} />
+          <View style={[styles.channelDot, { backgroundColor: props.item.receiveChainColor || theme.colors.success }]} />
         )
       }
       onPress={props.onPress}

@@ -235,8 +235,8 @@ export function AddressBookEditScreen({ navigation, route }: Props) {
 
       <AppCard>
         <Text style={[styles.label, { color: theme.colors.text }]}>{t("home.addressBook.networkLabel")}</Text>
-        <View style={[styles.networkBadge, { backgroundColor: chainType === "TRON" ? "#FFF1E9" : "#EBF4FF" }]}>
-          <Text style={[styles.networkBadgeText, { color: chainType === "TRON" ? "#E37318" : "#1D4ED8" }]}>
+        <View style={[styles.networkBadge, { backgroundColor: chainType === "TRON" ? theme.colors.warningSoft : theme.colors.infoSoft }]}>
+          <Text style={[styles.networkBadgeText, { color: chainType === "TRON" ? theme.colors.warning : theme.colors.info }]}>
             {networkDescription}
           </Text>
         </View>

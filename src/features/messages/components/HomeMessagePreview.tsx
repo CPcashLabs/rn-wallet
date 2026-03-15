@@ -187,7 +187,7 @@ export function HomeMessagePreview(props: { onPress: () => void }) {
       <View style={styles.header}>
         <View style={styles.headerTitleWrap}>
           <Text style={[styles.headerTitle, { color: theme.colors.text }]}>{t("message.preview.title")}</Text>
-          {hasUnread ? <View style={styles.unreadDot} /> : null}
+          {hasUnread ? <View style={[styles.unreadDot, { backgroundColor: theme.colors.danger }]} /> : null}
         </View>
         <Pressable onPress={props.onPress} style={styles.headerAction}>
           <Text style={[styles.headerActionText, { color: theme.colors.primary }]}>{t("message.preview.openAll")}</Text>
@@ -234,7 +234,6 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 999,
-    backgroundColor: "#DC2626",
   },
   stateWrap: {
     minHeight: PREVIEW_BODY_HEIGHT,
