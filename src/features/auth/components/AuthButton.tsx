@@ -22,9 +22,14 @@ export function AuthButton(props: {
       style={({ pressed }) => [
         styles.button,
         {
-          backgroundColor: isPrimary ? theme.colors.primary : theme.colors.surface,
+          backgroundColor: isPrimary ? theme.colors.primary : theme.colors.surfaceElevated ?? theme.colors.surface,
           borderColor: isPrimary ? theme.colors.primary : theme.colors.border,
           opacity: props.disabled || props.loading ? 0.45 : pressed ? 0.82 : 1,
+          shadowColor: theme.colors.shadow,
+          shadowOpacity: isPrimary ? (theme.isDark ? 0.2 : 0.14) : 0.04,
+          shadowRadius: isPrimary ? 16 : 10,
+          shadowOffset: { width: 0, height: isPrimary ? 10 : 6 },
+          elevation: isPrimary ? 4 : 1,
         },
       ]}
     >
@@ -48,15 +53,15 @@ export function AuthButton(props: {
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: 52,
+    minHeight: 56,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 18,
+    borderRadius: 20,
     borderWidth: 1,
     paddingHorizontal: 20,
   },
   label: {
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
   },
 })

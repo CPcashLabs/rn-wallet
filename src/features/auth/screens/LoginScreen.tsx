@@ -16,6 +16,7 @@ import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { passkeyAdapter, walletAdapter } from "@/shared/native"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppleBrandMark } from "@/shared/ui/AppleBrandMark"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import type { PasskeyHistoryItem } from "@/shared/types/auth"
 
@@ -159,8 +160,14 @@ export function LoginScreen({ navigation, route }: Props) {
   return (
     <>
       <AuthScaffold
-        title={t("auth.login.title")}
-        subtitle={t("auth.login.subtitle")}
+        headerContent={
+          <View style={styles.brandHeader}>
+            <AppleBrandMark size={80} tone="light" />
+            <Text style={[styles.brandSubtitle, { color: theme.colors.mutedText }]}>
+              {t("auth.login.subtitle")}
+            </Text>
+          </View>
+        }
         footer={
           <View style={styles.footer}>
             <Text style={[styles.footerText, { color: theme.colors.mutedText }]}>
@@ -213,6 +220,17 @@ export function LoginScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
+  brandHeader: {
+    alignItems: "center",
+    gap: 14,
+    paddingTop: 8,
+  },
+  brandSubtitle: {
+    fontSize: 14,
+    lineHeight: 22,
+    textAlign: "center",
+    paddingHorizontal: 8,
+  },
   footer: {
     flexDirection: "row",
     justifyContent: "center",

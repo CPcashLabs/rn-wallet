@@ -14,17 +14,22 @@ import { SafeAreaView } from "react-native-safe-area-context"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 export function AuthScaffold(props: {
-  title: string
+  title?: string
   subtitle?: string
   children: React.ReactNode
   footer?: React.ReactNode
   canGoBack?: boolean
   onBack?: () => void
+  headerContent?: React.ReactNode
 }) {
   const theme = useAppTheme()
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
+      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+        <View style={[styles.ambientOrb, styles.ambientOrbTop, { backgroundColor: theme.colors.primarySoft ?? `${theme.colors.primary}18` }]} />
+        <View style={[styles.ambientOrb, styles.ambientOrbBottom, { backgroundColor: theme.colors.surfaceMuted ?? theme.colors.surface }]} />
+      </View>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.flex}
@@ -38,8 +43,13 @@ export function AuthScaffold(props: {
             style={[
               styles.card,
               {
-                backgroundColor: theme.colors.surface,
+                backgroundColor: theme.colors.surfaceElevated ?? theme.colors.surface,
                 borderColor: theme.colors.border,
+                shadowColor: theme.colors.shadow,
+                shadowOpacity: theme.isDark ? 0.22 : 0.1,
+                shadowRadius: 24,
+                shadowOffset: { width: 0, height: 16 },
+                elevation: 5,
               },
             ]}
           >
@@ -47,18 +57,26 @@ export function AuthScaffold(props: {
               {props.canGoBack ? (
                 <Pressable onPress={props.onBack} style={styles.backButton}>
                   <Text style={[styles.backText, { color: theme.colors.primary }]}>
-                    返回
+                    ‹ 返回
                   </Text>
                 </Pressable>
               ) : null}
-              <Text style={[styles.title, { color: theme.colors.text }]}>
-                {props.title}
-              </Text>
-              {props.subtitle ? (
-                <Text style={[styles.subtitle, { color: theme.colors.mutedText }]}>
-                  {props.subtitle}
-                </Text>
-              ) : null}
+              {props.headerContent ? (
+                props.headerContent
+              ) : (
+                <>
+                  {props.title ? (
+                    <Text style={[styles.title, { color: theme.colors.text }]}>
+                      {props.title}
+                    </Text>
+                  ) : null}
+                  {props.subtitle ? (
+                    <Text style={[styles.subtitle, { color: theme.colors.mutedText }]}>
+                      {props.subtitle}
+                    </Text>
+                  ) : null}
+                </>
+              )}
             </View>
             <View style={styles.body}>{props.children}</View>
           </View>
@@ -87,25 +105,28 @@ const styles = StyleSheet.create({
   },
   card: {
     borderWidth: 1,
-    borderRadius: 28,
-    padding: 20,
-    gap: 24,
+    borderRadius: 32,
+    padding: 24,
+    gap: 28,
   },
   header: {
-    gap: 8,
+    gap: 10,
   },
   backButton: {
     alignSelf: "flex-start",
     marginBottom: 4,
+    paddingHorizontal: 2,
+    paddingVertical: 4,
   },
   backText: {
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   title: {
-    fontSize: 28,
-    fontWeight: "800",
-    lineHeight: 34,
+    fontSize: 32,
+    fontWeight: "700",
+    lineHeight: 38,
+    letterSpacing: -0.8,
   },
   subtitle: {
     fontSize: 14,
@@ -117,5 +138,22 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: 20,
     paddingBottom: 16,
+  },
+  ambientOrb: {
+    position: "absolute",
+    borderRadius: 999,
+  },
+  ambientOrbTop: {
+    width: 240,
+    height: 240,
+    top: -80,
+    right: -40,
+  },
+  ambientOrbBottom: {
+    width: 280,
+    height: 280,
+    bottom: -140,
+    left: -120,
+    opacity: 0.8,
   },
 })
