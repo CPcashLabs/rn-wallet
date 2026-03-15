@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 
-import { Alert, StyleSheet, Text, View } from "react-native"
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -14,11 +14,14 @@ import {
 } from "@/features/address-book/services/addressBookApi"
 import { useAddressBookStore } from "@/features/address-book/store/useAddressBookStore"
 import { HeaderTextAction, HomeScaffold } from "@/features/home/components/HomeScaffold"
-import { ApiError } from "@/shared/errors"
+import { ApiError, NativeCapabilityUnavailableError } from "@/shared/errors"
+import { errorCodeOf, resolveErrorMessage } from "@/shared/errors/presentation"
+import { scannerAdapter } from "@/shared/native"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { AppButton } from "@/shared/ui/AppButton"
 import { AppCard } from "@/shared/ui/AppCard"
 import { AppTextField } from "@/shared/ui/AppTextField"
+import { AppGlyph } from "@/shared/ui/AppGlyph"
 
 import type { AddressBookStackParamList } from "@/app/navigation/types"
 
@@ -26,6 +29,40 @@ type Props = NativeStackScreenProps<AddressBookStackParamList, "AddressBookEditS
 type AddressBookChainType = AddressBookDraft["chainType"]
 
 const MAX_NAME_LENGTH = 20
+
+function isCancelledNativeAction(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false
+  }
+
+  const code = Reflect.get(error, "code")
+  if (typeof code === "string" && code.toLowerCase().includes("cancel")) {
+    return true
+  }
+
+  return error.name.toLowerCase().includes("cancel")
+}
+
+function resolveScanErrorMessage(error: Error, t: (key: string) => string) {
+  return resolveErrorMessage(t, error, {
+    fallbackKey: "transfer.address.scanFailed",
+    codeMap: {
+      permission_denied: "transfer.address.scanPermissionDenied",
+      multiple_codes: "transfer.address.scanMultiple",
+      image_parse_failed: "transfer.address.scanImageParseFailed",
+    },
+    preferApiMessage: false,
+    preferErrorMessage: false,
+    customResolver: currentError => {
+      const code = errorCodeOf(currentError)
+      if (code === "no_code") {
+        return t("transfer.address.scanNoCode")
+      }
+
+      return undefined
+    },
+  })
+}
 
 export function AddressBookEditScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
@@ -107,6 +144,32 @@ export function AddressBookEditScreen({ navigation, route }: Props) {
   }, [addressError, chainType, deleting, name, submitting, walletAddress])
 
   const networkDescription = chainType ? t(`home.addressBook.chain.${chainType}`) : t("home.addressBook.networkPending")
+
+  const handleScan = useCallback(async () => {
+    const capability = scannerAdapter.getCapability("camera")
+    if (!capability.supported) {
+      Alert.alert(t("common.infoTitle"), t("transfer.address.scanUnavailable"))
+      return
+    }
+
+    const result = await scannerAdapter.scan()
+
+    if (!result.ok) {
+      if (isCancelledNativeAction(result.error)) {
+        return
+      }
+
+      if (result.error instanceof NativeCapabilityUnavailableError) {
+        Alert.alert(t("common.infoTitle"), t("transfer.address.scanUnavailable"))
+        return
+      }
+
+      Alert.alert(t("common.errorTitle"), resolveScanErrorMessage(result.error, t))
+      return
+    }
+
+    setWalletAddress(result.data.value)
+  }, [t])
 
   const save = async () => {
     if (!chainType) {
@@ -229,6 +292,24 @@ export function AddressBookEditScreen({ navigation, route }: Props) {
           multiline
           onChangeText={setWalletAddress}
           placeholder={t("home.addressBook.addressPlaceholder")}
+          rightSlot={(
+            <Pressable
+              disabled={loading || submitting || deleting}
+              hitSlop={8}
+              onPress={() => {
+                void handleScan()
+              }}
+              style={({ pressed }) => [
+                styles.scanButton,
+                {
+                  backgroundColor: theme.colors.primarySoft ?? `${theme.colors.primary}14`,
+                  opacity: loading || submitting || deleting ? 0.5 : pressed ? 0.78 : 1,
+                },
+              ]}
+            >
+              <AppGlyph backgroundColor="transparent" name="scan" size={18} tintColor={theme.colors.primary} />
+            </Pressable>
+          )}
           value={walletAddress}
         />
       </AppCard>
@@ -306,5 +387,12 @@ const styles = StyleSheet.create({
   networkBadgeText: {
     fontSize: 13,
     fontWeight: "700",
+  },
+  scanButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
   },
 })
