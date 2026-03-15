@@ -16,16 +16,23 @@ import {
   type ReceiveOrder,
   type ReceiveTraceStatistics,
 } from "@/plugins/receive/services/receiveApi"
+import {
+  buildNextSeenLogState,
+  buildReceiveTxlogKey,
+  createReceiveTxlogsPollController,
+} from "@/plugins/receive/screens/receiveTxlogsPolling"
 import { SectionCard } from "@/shared/ui/AppFlowUi"
 import { getJson, setJson } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { useToast } from "@/shared/toast/useToast"
 
 type Props = NativeStackScreenProps<ReceiveStackParamList, "ReceiveTxlogsScreen">
 
 export function ReceiveTxlogsScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const orderSn = route.params?.orderSn
   const [detail, setDetail] = useState<ReceiveOrder | null>(null)
   const [logs, setLogs] = useState<ReceiveLog[]>([])
@@ -40,9 +47,13 @@ export function ReceiveTxlogsScreen({ navigation, route }: Props) {
       return
     }
 
-    let active = true
+    const pollController = createReceiveTxlogsPollController()
 
     const load = async (isRefresh = false) => {
+      if (!pollController.startRequest()) {
+        return
+      }
+
       if (isRefresh) {
         setRefreshing(true)
       } else {
@@ -56,29 +67,45 @@ export function ReceiveTxlogsScreen({ navigation, route }: Props) {
           getTraceChildStatistics({ orderSn }),
         ])
 
-        if (!active) {
+        if (!pollController.canCommit()) {
           return
         }
 
         const currentSeenMap = getJson<Record<string, string[]>>(KvStorageKeys.ReceiveShowedList) ?? {}
-        const seenKeys = new Set(currentSeenMap[orderSn] ?? [])
-        const incomingKeys = nextLogs.map(buildLogKey)
-        const freshKeys = incomingKeys.filter(key => !seenKeys.has(key))
+        const { freshKeys, nextSeenMap } = buildNextSeenLogState(orderSn, nextLogs, currentSeenMap)
 
-        currentSeenMap[orderSn] = Array.from(new Set([...(currentSeenMap[orderSn] ?? []), ...incomingKeys])).slice(-200)
-        setJson(KvStorageKeys.ReceiveShowedList, currentSeenMap)
+        if (!pollController.canCommit()) {
+          return
+        }
 
+        setJson(KvStorageKeys.ReceiveShowedList, nextSeenMap)
+
+        if (!pollController.canCommit()) {
+          return
+        }
+
+        pollController.markSuccess()
         setDetail(nextDetail)
         setLogs(nextLogs)
         setStats(nextStats)
         setNewLogKeys(freshKeys)
         setLastUpdatedAt(Date.now())
       } catch {
-        if (!isRefresh && active) {
+        if (!pollController.canCommit()) {
+          return
+        }
+
+        if (isRefresh) {
+          if (pollController.shouldNotifyRefreshFailure()) {
+            showToast({ message: t("receive.logs.refreshFailed"), tone: "error" })
+          }
+        } else {
           Alert.alert(t("common.errorTitle"), t("receive.logs.loadFailed"))
         }
       } finally {
-        if (!active) {
+        pollController.finishRequest()
+
+        if (!pollController.canCommit()) {
           return
         }
 
@@ -93,10 +120,10 @@ export function ReceiveTxlogsScreen({ navigation, route }: Props) {
     }, 5000)
 
     return () => {
-      active = false
+      pollController.deactivate()
       clearInterval(timer)
     }
-  }, [orderSn, t])
+  }, [orderSn, showToast, t])
 
   return (
     <HomeScaffold canGoBack onBack={navigation.goBack} title={t("receive.logs.title")} scroll={false}>
@@ -137,7 +164,7 @@ export function ReceiveTxlogsScreen({ navigation, route }: Props) {
         ) : null}
 
         {logs.map((item, index) => {
-          const logKey = buildLogKey(item)
+          const logKey = buildReceiveTxlogKey(item)
           return (
             <SectionCard
               key={`${logKey}:${index}`}
@@ -202,10 +229,6 @@ function StatisticTile(props: { label: string; value: string }) {
       <Text style={[styles.statValue, { color: theme.colors.text }]}>{props.value}</Text>
     </View>
   )
-}
-
-function buildLogKey(item: ReceiveLog) {
-  return `${item.orderSn}:${item.txid}:${item.createdAt}:${item.amount}:${item.coinName}:${item.fromAddress}:${item.status}`
 }
 
 const styles = StyleSheet.create({
