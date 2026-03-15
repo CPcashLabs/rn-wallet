@@ -1185,6 +1185,7 @@ const orders = {
   },
   status: {
     pending: "Pending",
+    inProgress: "In Progress",
     paying: "Paying",
     buyerPaid: "Buyer Paid",
     processing: "Processing",

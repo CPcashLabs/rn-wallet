@@ -1183,6 +1183,7 @@ const orders = {
   },
   status: {
     pending: "待支付",
+    inProgress: "进行中",
     paying: "正在付款",
     buyerPaid: "买方已支付",
     processing: "卖方处理中",

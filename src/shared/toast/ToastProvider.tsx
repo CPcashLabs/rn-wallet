@@ -4,6 +4,7 @@ import { Animated, Easing, Platform, StyleSheet, Text, View } from "react-native
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { ToastContext, type ToastInput, type ToastTone } from "@/shared/toast/ToastContext"
+import type { AppTheme } from "@/shared/theme/tokens"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 type ToastItem = {
@@ -36,16 +37,16 @@ function normalizeToast(input: ToastInput, id: number): ToastItem {
   }
 }
 
-function resolveToastColors(tone: ToastTone) {
+function resolveToastColors(theme: AppTheme, tone: ToastTone) {
   switch (tone) {
     case "success":
-      return { backgroundColor: "#0F766E", borderColor: "#14B8A6" }
+      return { backgroundColor: theme.colors.success, borderColor: theme.colors.successBorder }
     case "warning":
-      return { backgroundColor: "#92400E", borderColor: "#F59E0B" }
+      return { backgroundColor: theme.colors.warningEmphasis, borderColor: theme.colors.warningBorder }
     case "error":
-      return { backgroundColor: "#991B1B", borderColor: "#F87171" }
+      return { backgroundColor: theme.colors.dangerEmphasis, borderColor: theme.colors.dangerBorder }
     default:
-      return { backgroundColor: "#111827", borderColor: "#334155" }
+      return { backgroundColor: theme.colors.toastDefaultBackground, borderColor: theme.colors.toastDefaultBorder }
   }
 }
 
@@ -191,7 +192,7 @@ export function ToastProvider({ children }: PropsWithChildren) {
     [hideToast, showToast],
   )
 
-  const toastColors = current ? resolveToastColors(current.tone) : null
+  const toastColors = current ? resolveToastColors(theme, current.tone) : null
 
   return (
     <ToastContext.Provider value={contextValue}>

@@ -15,6 +15,7 @@ export enum KvStorageKeys {
   EmailBindCountdownEndAt = "auth.email_bind_countdown_end_at",
   EmailUnbindCountdownEndAt = "auth.email_unbind_countdown_end_at",
   ShowBalance = "home.show_balance",
+  HomeBalanceCache = "home.balance_cache",
   SelectedCurrency = "home.selected_currency",
   SelectedInviteLevel = "home.selected_invite_level",
   OrdersTxlogsCache = "orders.txlogs_cache",

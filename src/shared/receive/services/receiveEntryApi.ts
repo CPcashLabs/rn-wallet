@@ -139,7 +139,7 @@ export async function getReceiveConfig(input: { payChain?: string; chainId?: str
   return {
     payChain: String(first.chain_name ?? selectedSendChainName),
     payChainFullName: String(first.chain_full_name ?? first.chain_name ?? selectedSendChainName),
-    payChainColor: String(first.chain_color ?? "#0F766E"),
+    payChainColor: String(first.chain_color ?? ""),
     payChainLogo: String(first.chain_logo ?? ""),
     sellerId: String(exchange.seller_id ?? ""),
     sendCoinCode: String(firstPair.send_coin_code ?? ""),
