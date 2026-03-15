@@ -1,6 +1,6 @@
-const DEFAULT_DEBUG_API_BASE_URL = "https://charprotocol.dev"
+const DEFAULT_DEBUG_API_BASE_URL = "https://charprotocol.com"
 const DEFAULT_RELEASE_API_BASE_URL = "https://cp.cash"
-const DEFAULT_DEBUG_PASSKEY_RP_ID = "wallet.charprotocol.dev"
+const DEFAULT_DEBUG_PASSKEY_RP_ID = "wallet.charprotocol.com"
 const DEFAULT_RELEASE_PASSKEY_RP_ID = "wallet.cp.cash"
 
 type RuntimeGlobals = typeof globalThis & {
