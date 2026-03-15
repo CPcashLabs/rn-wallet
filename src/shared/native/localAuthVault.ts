@@ -1,6 +1,7 @@
 import { Platform } from "react-native"
-import { Wallet, id } from "ethers"
+import { Contract, Interface, Wallet, id, parseUnits } from "ethers"
 
+import { getRpcProvider } from "@/shared/web3/balanceService"
 import { getSecureItem, setSecureItem } from "@/shared/storage/secureStorage"
 import { getJson, setJson } from "@/shared/storage/kvStorage"
 import { parseWalletImportInput } from "@/shared/native/walletImport"
@@ -153,6 +154,39 @@ export async function signWithLocalWallet(message: string) {
   return {
     signature: await signer.signMessage(message),
   }
+}
+
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
+const ERC20_TRANSFER_ABI = ["function transfer(address to, uint256 amount) returns (bool)"]
+const DEFAULT_ERC20_GAS_LIMIT = 100_000n
+
+export async function broadcastTransferWithLocalWallet(params: {
+  toAddress: string
+  amount: number
+  coinPrecision: number
+  contractAddress: string
+  chainId?: string | number | null
+  gasLimit?: number
+}) {
+  const { privateKey } = await getOrCreateLocalWallet()
+  const provider = getRpcProvider(params.chainId)
+  const signer = new Wallet(privateKey, provider)
+  const precision = params.coinPrecision > 0 ? params.coinPrecision : 18
+  const amountWei = parseUnits(String(params.amount), precision)
+  const isNative = !params.contractAddress || params.contractAddress.toLowerCase() === ZERO_ADDRESS
+
+  if (isNative) {
+    const tx = await signer.sendTransaction({
+      to: params.toAddress,
+      value: amountWei,
+    })
+    return { txHash: tx.hash }
+  }
+
+  const erc20 = new Contract(params.contractAddress, new Interface(ERC20_TRANSFER_ABI), signer)
+  const gasLimit = params.gasLimit ? BigInt(params.gasLimit) : DEFAULT_ERC20_GAS_LIMIT
+  const tx = await erc20.transfer(params.toAddress, amountWei, { gasLimit })
+  return { txHash: tx.hash as string }
 }
 
 export async function getLocalPasskeyWallet(rawId: string) {

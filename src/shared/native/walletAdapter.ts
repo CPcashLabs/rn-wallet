@@ -1,5 +1,5 @@
 import type { AdapterResult, CapabilityDescriptor } from "@/shared/native/types"
-import { getOrCreateLocalWallet, importLocalWallet, signWithLocalWallet } from "@/shared/native/localAuthVault"
+import { broadcastTransferWithLocalWallet, getOrCreateLocalWallet, importLocalWallet, signWithLocalWallet } from "@/shared/native/localAuthVault"
 import type { WalletImportType } from "@/shared/native/walletImport"
 
 export type WalletConnection = {
@@ -12,11 +12,21 @@ export type ImportedWalletConnection = WalletConnection & {
   importedType: WalletImportType
 }
 
+export type BroadcastTransferParams = {
+  toAddress: string
+  amount: number
+  coinPrecision: number
+  contractAddress: string
+  chainId?: string | number | null
+  gasLimit?: number
+}
+
 export interface WalletAdapter {
   getCapability(): CapabilityDescriptor
   connect(): Promise<AdapterResult<WalletConnection>>
   importSecret(secret: string): Promise<AdapterResult<ImportedWalletConnection>>
   signMessage(message: string): Promise<AdapterResult<{ signature: string }>>
+  signAndBroadcastTransfer(params: BroadcastTransferParams): Promise<AdapterResult<{ txHash: string }>>
 }
 
 export const walletAdapter: WalletAdapter = {
@@ -75,6 +85,19 @@ export const walletAdapter: WalletAdapter = {
         ok: false,
         error: error instanceof Error ? error : new Error("Wallet signature failed"),
       } as AdapterResult<{ signature: string }>
+    }
+  },
+  async signAndBroadcastTransfer(params) {
+    try {
+      return {
+        ok: true,
+        data: await broadcastTransferWithLocalWallet(params),
+      }
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof Error ? error : new Error("Transaction broadcast failed"),
+      } as AdapterResult<{ txHash: string }>
     }
   },
 }
