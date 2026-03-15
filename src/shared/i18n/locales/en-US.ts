@@ -51,6 +51,11 @@ const auth = {
     nicknamePlaceholder: "Enter a 1-12 character nickname",
     helpLink: "Learn what Passkey is",
   },
+  passkeyHistory: {
+    title: "Recent Passkeys",
+    useOther: "Use another Passkey",
+    signUp: "Create Passkey",
+  },
   passkeyIntro: {
     title: "What is Passkey?",
     subtitle: "Passkey lets you sign in without relying on browser wallet extensions.",

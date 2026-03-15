@@ -1,6 +1,7 @@
 import React from "react"
 
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native"
+import { useTranslation } from "react-i18next"
 
 import { AuthButton } from "@/features/auth/components/AuthButton"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
@@ -15,6 +16,7 @@ export function PasskeyHistoryModal(props: {
   onSignUp: () => void
 }) {
   const theme = useAppTheme()
+  const { t } = useTranslation()
 
   return (
     <Modal animationType="fade" transparent visible={props.visible} onRequestClose={props.onClose}>
@@ -30,7 +32,7 @@ export function PasskeyHistoryModal(props: {
           ]}
         >
           <Text style={[styles.title, { color: theme.colors.text }]}>
-            最近登录的 Passkey
+            {t("auth.passkeyHistory.title")}
           </Text>
 
           <View style={styles.list}>
@@ -70,12 +72,12 @@ export function PasskeyHistoryModal(props: {
               ]}
             >
               <Text style={[styles.rowTitle, { color: theme.colors.text }]}>
-                使用其他 Passkey
+                {t("auth.passkeyHistory.useOther")}
               </Text>
             </Pressable>
           </View>
 
-          <AuthButton label="注册 Passkey" onPress={props.onSignUp} variant="secondary" />
+          <AuthButton label={t("auth.passkeyHistory.signUp")} onPress={props.onSignUp} variant="secondary" />
         </Pressable>
       </Pressable>
     </Modal>

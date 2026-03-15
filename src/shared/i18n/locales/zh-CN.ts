@@ -51,6 +51,11 @@ const auth = {
     nicknamePlaceholder: "请输入 1-12 位昵称",
     helpLink: "了解 Passkey",
   },
+  passkeyHistory: {
+    title: "最近登录的 Passkey",
+    useOther: "使用其他 Passkey",
+    signUp: "注册 Passkey",
+  },
   passkeyIntro: {
     title: "什么是 Passkey",
     subtitle: "Passkey 让你不依赖浏览器钱包扩展完成登录。",
