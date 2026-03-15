@@ -4,6 +4,8 @@ import { Alert, ScrollView, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
+import { TransferConfirmModal, type TransferConfirmSuccess, type TransferConfirmVariant } from "@/plugins/transfer/components/TransferConfirmPanel"
+import { TransferOrderCreatingOverlay } from "@/plugins/transfer/components/TransferOrderCreatingOverlay"
 import { FieldRow, PageEmpty, PrimaryButton, SectionCard, SecondaryButton } from "@/shared/ui/AppFlowUi"
 import { createPaymentOrder } from "@/plugins/transfer/services/transferApi"
 import {
@@ -49,9 +51,11 @@ export function TransferOrderScreen({ navigation, route }: Props) {
   const [submitting, setSubmitting] = useState(false)
   const [gasLimit, setGasLimit] = useState(0)
   const [quotedOption, setQuotedOption] = useState<TransferOrderOption | null>(null)
+  const [confirmOrderSn, setConfirmOrderSn] = useState<string | null>(null)
 
   const sendChainName = resolveChainNameById(chainId)
   const isNormalRoute = route.name === "TransferOrderNormalScreen"
+  const confirmVariant: TransferConfirmVariant = isNormalRoute ? "normal" : "default"
 
   const selectedOption = useMemo(() => {
     return (
@@ -240,10 +244,7 @@ export function TransferOrderScreen({ navigation, route }: Props) {
         sendCoinCode: resolvedOption.sendCoinCode,
         recvCoinCode: resolvedOption.recvCoinCode,
       })
-
-      navigation.navigate(isNormalRoute ? "TransferConfirmNormalScreen" : "TransferConfirmScreen", {
-        orderSn: result.orderSn,
-      })
+      setConfirmOrderSn(result.orderSn)
     } catch (error) {
       const maybeResponse = Reflect.get(error as object, "response") as { data?: { code?: number } } | undefined
       if (maybeResponse?.data?.code === 60013) {
@@ -255,8 +256,6 @@ export function TransferOrderScreen({ navigation, route }: Props) {
       setSubmitting(false)
     }
   }, [
-    isNormalRoute,
-    navigation,
     note,
     numericAmount,
     recipientAddress,
@@ -266,6 +265,18 @@ export function TransferOrderScreen({ navigation, route }: Props) {
     t,
     validationMessage,
   ])
+
+  const handleConfirmCompleted = useCallback(
+    ({ orderSn, walletId }: TransferConfirmSuccess) => {
+      setConfirmOrderSn(null)
+      navigation.navigate("TxPayStatusScreen", {
+        orderSn,
+        pay: true,
+        walletId,
+      })
+    },
+    [navigation],
+  )
 
   if (!selectedChannel) {
     return (
@@ -278,65 +289,75 @@ export function TransferOrderScreen({ navigation, route }: Props) {
   const selectedCoin = selectedOption ? balanceCoins.find(item => item.code === selectedOption.sendCoinCode) : null
 
   return (
-    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("transfer.order.title")} scroll={false}>
-      <ScrollView bounces={false} contentContainerStyle={styles.content}>
-        <SectionCard>
-          <FieldRow label={t("transfer.order.network")} value={selectedChannel.receiveChainFullName} emphasized />
-          <FieldRow label={t("transfer.order.address")} value={recipientAddress} />
-        </SectionCard>
+    <>
+      <HomeScaffold canGoBack onBack={navigation.goBack} title={t("transfer.order.title")} scroll={false}>
+        <ScrollView bounces={false} contentContainerStyle={styles.content}>
+          <SectionCard>
+            <FieldRow label={t("transfer.order.network")} value={selectedChannel.receiveChainFullName} emphasized />
+            <FieldRow label={t("transfer.order.address")} value={recipientAddress} />
+          </SectionCard>
 
-        <SectionCard>
-          <Text style={[styles.inputLabel, { color: theme.colors.text }]}>{t("transfer.order.amountLabel")}</Text>
-          <AppTextField
-            backgroundTone="background"
-            error={validationMessage || null}
-            keyboardType="decimal-pad"
-            onChangeText={value => setOrderDraft({ sendAmount: parseDecimalInput(value) })}
-            placeholder={t("transfer.order.amountPlaceholder")}
-            value={sendAmount}
-          />
-          <FieldRow
-            label={t("transfer.order.available")}
-            value={`${formatAmount(availableBalance)} ${selectedOption?.sendCoinSymbol ?? ""}`.trim()}
-          />
-          <FieldRow
-            label={t("transfer.order.receiveEstimate")}
-            value={
-                  selectedOption?.recvCoinSymbol
-                ? `${formatAmount((resolvedOption?.recvEstimateAmount || 0) || (numericAmount || 0))} ${selectedOption.recvCoinSymbol}`
-                : `${formatAmount(numericAmount)} ${selectedOption?.sendCoinSymbol ?? ""}`.trim()
-            }
-          />
-          <FieldRow
-            label={t("transfer.order.gasLimit")}
-            value={gasLimit > 0 ? String(gasLimit) : "--"}
-          />
-          {selectedCoin ? (
-            <FieldRow label={t("transfer.order.assetChain")} value={`${selectedCoin.chainName} / ${selectedCoin.symbol}`} />
-          ) : null}
-        </SectionCard>
+          <SectionCard>
+            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>{t("transfer.order.amountLabel")}</Text>
+            <AppTextField
+              backgroundTone="background"
+              error={validationMessage || null}
+              keyboardType="decimal-pad"
+              onChangeText={value => setOrderDraft({ sendAmount: parseDecimalInput(value) })}
+              placeholder={t("transfer.order.amountPlaceholder")}
+              value={sendAmount}
+            />
+            <FieldRow
+              label={t("transfer.order.available")}
+              value={`${formatAmount(availableBalance)} ${selectedOption?.sendCoinSymbol ?? ""}`.trim()}
+            />
+            <FieldRow
+              label={t("transfer.order.receiveEstimate")}
+              value={
+                selectedOption?.recvCoinSymbol
+                  ? `${formatAmount((resolvedOption?.recvEstimateAmount || 0) || (numericAmount || 0))} ${selectedOption.recvCoinSymbol}`
+                  : `${formatAmount(numericAmount)} ${selectedOption?.sendCoinSymbol ?? ""}`.trim()
+              }
+            />
+            <FieldRow label={t("transfer.order.gasLimit")} value={gasLimit > 0 ? String(gasLimit) : "--"} />
+            {selectedCoin ? (
+              <FieldRow label={t("transfer.order.assetChain")} value={`${selectedCoin.chainName} / ${selectedCoin.symbol}`} />
+            ) : null}
+          </SectionCard>
 
-        <SectionCard>
-          <Text style={[styles.inputLabel, { color: theme.colors.text }]}>{t("transfer.order.noteLabel")}</Text>
-          <AppTextField
-            backgroundTone="background"
-            multiline
-            onChangeText={value => setOrderDraft({ note: value.slice(0, 50) })}
-            placeholder={t("transfer.order.notePlaceholder")}
-            value={note}
-          />
-        </SectionCard>
+          <SectionCard>
+            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>{t("transfer.order.noteLabel")}</Text>
+            <AppTextField
+              backgroundTone="background"
+              multiline
+              onChangeText={value => setOrderDraft({ note: value.slice(0, 50) })}
+              placeholder={t("transfer.order.notePlaceholder")}
+              value={note}
+            />
+          </SectionCard>
 
-        <View style={styles.footerButtons}>
-          <SecondaryButton label={t("common.cancel")} onPress={navigation.goBack} disabled={submitting} />
-          <PrimaryButton
-            label={submitting ? t("common.loading") : t("common.next")}
-            onPress={() => void handleSubmit()}
-            disabled={submitting || Boolean(validationMessage) || loading || options.length === 0}
-          />
-        </View>
-      </ScrollView>
-    </HomeScaffold>
+          <View style={styles.footerButtons}>
+            <SecondaryButton label={t("common.cancel")} onPress={navigation.goBack} disabled={submitting} />
+            <PrimaryButton
+              label={submitting ? t("common.loading") : t("common.next")}
+              onPress={() => void handleSubmit()}
+              disabled={submitting || Boolean(validationMessage) || loading || options.length === 0}
+            />
+          </View>
+        </ScrollView>
+      </HomeScaffold>
+
+      <TransferOrderCreatingOverlay visible={submitting} />
+      {confirmOrderSn ? (
+        <TransferConfirmModal
+          visible
+          onClose={() => setConfirmOrderSn(null)}
+          onCompleted={handleConfirmCompleted}
+          orderSn={confirmOrderSn}
+          variant={confirmVariant}
+        />
+      ) : null}
+    </>
   )
 }
 
