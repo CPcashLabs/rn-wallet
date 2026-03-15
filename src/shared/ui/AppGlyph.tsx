@@ -22,6 +22,7 @@ export type AppGlyphName =
   | "book"
   | "bubble"
   | "spark"
+  | "scan"
 
 type AppGlyphProps = {
   name: AppGlyphName
@@ -190,6 +191,16 @@ function renderGlyph(name: AppGlyphName, stroke: string) {
           <View style={[styles.sparkHorizontal, { backgroundColor: stroke }]} />
           <View style={[styles.sparkDiagonalA, { backgroundColor: stroke }]} />
           <View style={[styles.sparkDiagonalB, { backgroundColor: stroke }]} />
+        </>
+      )
+    case "scan":
+      return (
+        <>
+          <View style={[styles.scanCornerTopLeft, { borderTopColor: stroke, borderLeftColor: stroke }]} />
+          <View style={[styles.scanCornerTopRight, { borderTopColor: stroke, borderRightColor: stroke }]} />
+          <View style={[styles.scanCornerBottomLeft, { borderBottomColor: stroke, borderLeftColor: stroke }]} />
+          <View style={[styles.scanCornerBottomRight, { borderBottomColor: stroke, borderRightColor: stroke }]} />
+          <View style={[styles.scanLine, { backgroundColor: stroke }]} />
         </>
       )
   }
@@ -625,5 +636,53 @@ const styles = StyleSheet.create({
     height: 2,
     borderRadius: 1,
     transform: [{ rotate: "-45deg" }],
+  },
+  scanCornerTopLeft: {
+    position: "absolute",
+    top: 4,
+    left: 4,
+    width: 7,
+    height: 7,
+    borderTopWidth: 1.8,
+    borderLeftWidth: 1.8,
+    borderTopLeftRadius: 3,
+  },
+  scanCornerTopRight: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    width: 7,
+    height: 7,
+    borderTopWidth: 1.8,
+    borderRightWidth: 1.8,
+    borderTopRightRadius: 3,
+  },
+  scanCornerBottomLeft: {
+    position: "absolute",
+    bottom: 4,
+    left: 4,
+    width: 7,
+    height: 7,
+    borderBottomWidth: 1.8,
+    borderLeftWidth: 1.8,
+    borderBottomLeftRadius: 3,
+  },
+  scanCornerBottomRight: {
+    position: "absolute",
+    right: 4,
+    bottom: 4,
+    width: 7,
+    height: 7,
+    borderBottomWidth: 1.8,
+    borderRightWidth: 1.8,
+    borderBottomRightRadius: 3,
+  },
+  scanLine: {
+    position: "absolute",
+    top: 14,
+    left: 7,
+    width: 16,
+    height: 1.8,
+    borderRadius: 999,
   },
 })

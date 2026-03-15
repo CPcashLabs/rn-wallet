@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { Alert, Animated, Easing, Pressable, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
@@ -8,9 +8,13 @@ import { bindInviteCode } from "@/features/auth/services/authApi"
 import { buildHomeBalanceCacheKey, readHomeBalanceCache, writeHomeBalanceCache } from "@/features/home/services/homeBalanceCache"
 import { getInviteBindingMessage } from "@/features/auth/utils/authMessages"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
-import { formatAddress, formatCurrency } from "@/features/home/utils/format"
+import { formatCurrency } from "@/features/home/utils/format"
 import { HomeMessagePreview } from "@/features/messages/components/HomeMessagePreview"
+import { resolveTransferAddressFromUnknownChain } from "@/plugins/transfer/utils/address"
 import { navigateRoot } from "@/app/navigation/navigationRef"
+import { NativeCapabilityUnavailableError } from "@/shared/errors"
+import { errorCodeOf, resolveErrorMessage } from "@/shared/errors/presentation"
+import { scannerAdapter } from "@/shared/native"
 import { openPluginHost } from "@/shared/plugins/navigation"
 import { getBoolean, setBoolean } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
@@ -18,11 +22,45 @@ import { useBalanceStore } from "@/shared/store/useBalanceStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
-import { AppleBrandMark } from "@/shared/ui/AppleBrandMark"
+import { AppGlyph } from "@/shared/ui/AppGlyph"
 
 import type { HomeTabStackParamList } from "@/app/navigation/types"
 
 type Props = NativeStackScreenProps<HomeTabStackParamList, "HomeShellScreen">
+
+function isCancelledNativeAction(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false
+  }
+
+  const code = Reflect.get(error, "code")
+  if (typeof code === "string" && code.toLowerCase().includes("cancel")) {
+    return true
+  }
+
+  return error.name.toLowerCase().includes("cancel")
+}
+
+function resolveHomeScanErrorMessage(error: Error, t: (key: string) => string) {
+  return resolveErrorMessage(t, error, {
+    fallbackKey: "transfer.address.scanFailed",
+    codeMap: {
+      permission_denied: "transfer.address.scanPermissionDenied",
+      multiple_codes: "transfer.address.scanMultiple",
+      image_parse_failed: "transfer.address.scanImageParseFailed",
+    },
+    preferApiMessage: false,
+    preferErrorMessage: false,
+    customResolver: currentError => {
+      const code = errorCodeOf(currentError)
+      if (code === "no_code") {
+        return t("transfer.address.scanNoCode")
+      }
+
+      return undefined
+    },
+  })
+}
 
 export function HomeShellScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
@@ -167,28 +205,68 @@ export function HomeShellScreen({ navigation, route }: Props) {
     })
   }
 
+  const handleScan = useCallback(async () => {
+    const capability = scannerAdapter.getCapability("camera")
+    if (!capability.supported) {
+      showToast({ message: t("transfer.address.scanUnavailable"), tone: "warning" })
+      return
+    }
+
+    const result = await scannerAdapter.scan()
+
+    if (!result.ok) {
+      if (isCancelledNativeAction(result.error)) {
+        return
+      }
+
+      if (result.error instanceof NativeCapabilityUnavailableError) {
+        showToast({ message: t("transfer.address.scanUnavailable"), tone: "warning" })
+        return
+      }
+
+      showToast({ message: resolveHomeScanErrorMessage(result.error, t), tone: "error" })
+      return
+    }
+
+    const resolvedAddress = resolveTransferAddressFromUnknownChain(result.data.value)
+    if (!resolvedAddress) {
+      showToast({ message: t("home.shell.scanUnsupportedQr"), tone: "warning" })
+      return
+    }
+
+    openPluginHost({
+      pluginId: "transfer",
+      pluginParams: {
+        scannedAddress: resolvedAddress.address,
+        scannedChainType: resolvedAddress.chainType,
+        autoAdvanceToOrder: true,
+        autoSelectFirstMatching: resolvedAddress.chainType === "TRON",
+      },
+    })
+  }, [showToast, t])
+
   return (
     <HomeScaffold hideHeader title={t("home.shell.title")}>
-      <View style={styles.heroRow}>
-        <View
+      <View style={styles.topBar}>
+        <Pressable
+          accessibilityLabel={t("home.shell.scan")}
+          hitSlop={10}
+          onPress={() => void handleScan()}
           style={[
-            styles.brandPlate,
+            styles.topBarAction,
             {
               backgroundColor: theme.colors.glass,
               borderColor: theme.colors.glassBorder,
+              shadowColor: theme.colors.shadow,
+              shadowOpacity: theme.isDark ? 0.14 : 0.06,
+              shadowRadius: 16,
+              shadowOffset: { width: 0, height: 8 },
+              elevation: 2,
             },
           ]}
         >
-          <AppleBrandMark size={50} tone="auto" />
-          <View style={styles.brandMeta}>
-            <Text style={[styles.brandTitle, { color: theme.colors.text }]}>
-              {walletAddress ? formatAddress(walletAddress) : t("home.shell.defaultNickname")}
-            </Text>
-            <Text style={[styles.brandCaption, { color: theme.colors.mutedText }]}>
-              {t("home.shell.walletBalance")}
-            </Text>
-          </View>
-        </View>
+          <AppGlyph backgroundColor="transparent" name="scan" size={20} tintColor={theme.colors.text} />
+        </Pressable>
       </View>
 
       <View
@@ -275,38 +353,18 @@ function ActionButton(props: { label: string; onPress: () => void; symbol: strin
 }
 
 const styles = StyleSheet.create({
-  heroRow: {
+  topBar: {
     flexDirection: "row",
-    alignItems: "center",
+    justifyContent: "flex-end",
+    marginBottom: 12,
   },
-  brandPlate: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 24,
+  topBarAction: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
-  },
-  brandCluster: {
-    flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    flex: 1,
-    minWidth: 0,
-  },
-  brandMeta: {
-    flex: 1,
-    minWidth: 0,
-    gap: 3,
-  },
-  brandTitle: {
-    fontSize: 17,
-    fontWeight: "600",
-  },
-  brandCaption: {
-    fontSize: 13,
+    justifyContent: "center",
   },
   balanceCard: {
     borderRadius: 28,
