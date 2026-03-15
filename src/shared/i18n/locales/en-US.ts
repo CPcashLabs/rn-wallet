@@ -1,5 +1,9 @@
 const common = {
   loading: "Loading",
+  bootstrap: {
+    title: "Bootstrapping",
+    description: "Loading session, theme and language preferences.",
+  },
   unsupported: "This capability is not available in the current app version.",
   errorTitle: "Error",
   infoTitle: "Notice",

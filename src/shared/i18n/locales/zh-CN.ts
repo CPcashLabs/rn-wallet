@@ -1,5 +1,9 @@
 const common = {
   loading: "加载中",
+  bootstrap: {
+    title: "应用启动中",
+    description: "正在加载会话、主题和语言偏好。",
+  },
   unsupported: "该能力暂未在当前版本开放。",
   errorTitle: "错误",
   infoTitle: "提示",

@@ -1,6 +1,7 @@
 import React from "react"
 
 import { View } from "react-native"
+import { useTranslation } from "react-i18next"
 
 import { AppTextField } from "@/shared/ui/AppTextField"
 
@@ -19,7 +20,17 @@ export function AuthTextField(props: {
   multiline?: boolean
   numberOfLines?: number
   rightSlot?: React.ReactNode
+  secureToggleLabels?: {
+    show: string
+    hide: string
+  }
 }) {
+  const { t } = useTranslation()
+  const secureToggleLabels = React.useMemo(
+    () => props.secureToggleLabels ?? { show: t("home.shell.show"), hide: t("home.shell.hide") },
+    [props.secureToggleLabels, t],
+  )
+
   return (
     <View>
       <AppTextField
@@ -36,7 +47,7 @@ export function AuthTextField(props: {
         placeholder={props.placeholder}
         rightSlot={props.rightSlot}
         secureTextEntry={props.secureTextEntry}
-        secureToggleLabels={{ show: "显示", hide: "隐藏" }}
+        secureToggleLabels={secureToggleLabels}
         value={props.value}
         variant="auth"
       />
