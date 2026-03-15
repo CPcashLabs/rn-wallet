@@ -8,6 +8,11 @@ Integration tests verify contracts across multiple modules without placing those
 tests/integration/
   setup.ts
   shared/
+    api/
+    i18n/
+    session/
+    storage/
+    theme/
   features/
   app/
   test-helpers/
@@ -28,7 +33,10 @@ Use the same ownership model as the runtime code:
 4. Keep fixtures lightweight and local to the suite or `test-helpers/`.
 5. Name files by workflow or contract, for example `auth-session-interceptors.integration.test.ts`.
 
-## Initial Example Suites
+## Current Example Suites
 
-- `shared/auth-session-interceptors.integration.test.ts`
-- `shared/theme-persistence.integration.test.ts`
+- `shared/api/auth-session-interceptors.integration.test.ts`
+- `shared/api/api-error-mapping.integration.test.ts`
+- `shared/i18n/i18n-language.integration.test.ts`
+- `shared/storage/storage-auth-store.integration.test.ts`
+- `shared/theme/theme-persistence.integration.test.ts`

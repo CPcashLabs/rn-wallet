@@ -1,49 +1,23 @@
-import { clearAuthSession, readAuthSession, writeAuthSession } from "@/shared/api/auth-session"
+import { readAuthSession, writeAuthSession } from "@/shared/api/auth-session"
 import { registerInterceptors, setNetworkUnavailableHandler, setUnauthorizedHandler } from "@/shared/api/interceptors"
 import { AuthExpiredError, NetworkUnavailableError } from "@/shared/errors"
-import { hasProfileSyncHydratedThisSession, resetProfileSyncSession, runProfileSync } from "@/shared/session/profileSyncSession"
-import { KvStorageKeys } from "@/shared/storage/sessionKeys"
-import { removeItem, setString } from "@/shared/storage/kvStorage"
+import { setLanguagePreference } from "@/shared/i18n"
+import { hasProfileSyncHydratedThisSession, runProfileSync } from "@/shared/session/profileSyncSession"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 
-import { createFakeAxiosClient } from "../test-helpers/fakeAxiosClient"
-
-const session = {
-  accessToken: "access-token",
-  refreshToken: "refresh-token",
-  loginType: "password" as const,
-}
-
-function createAxiosError(overrides: Record<string, unknown> = {}) {
-  return {
-    name: "AxiosError",
-    message: "Request failed",
-    isAxiosError: true,
-    config: {
-      url: "/api/orders/list",
-    },
-    ...overrides,
-  }
-}
+import { passwordSession } from "../../test-helpers/authFixtures"
+import { resetAuthIntegrationState } from "../../test-helpers/authRuntime"
+import { createAxiosError } from "../../test-helpers/axiosError"
+import { createFakeAxiosClient } from "../../test-helpers/fakeAxiosClient"
 
 describe("auth session and interceptors integration", () => {
   beforeEach(async () => {
-    setUnauthorizedHandler(null)
-    setNetworkUnavailableHandler(null)
-    resetProfileSyncSession()
-    useAuthStore.setState({
-      isBootstrapped: false,
-      session: null,
-      loginType: null,
-      recentPasskeys: [],
-    })
-    await clearAuthSession()
-    removeItem(KvStorageKeys.AppLanguage)
+    await resetAuthIntegrationState()
   })
 
   it("attaches persisted auth and language headers to regular requests", async () => {
-    await writeAuthSession(session)
-    setString(KvStorageKeys.AppLanguage, "zh-CN")
+    await writeAuthSession(passwordSession)
+    await setLanguagePreference("zh-CN")
 
     const harness = createFakeAxiosClient()
     registerInterceptors(harness.client)
@@ -55,7 +29,7 @@ describe("auth session and interceptors integration", () => {
   })
 
   it("does not attach authorization headers to oauth token requests", async () => {
-    await writeAuthSession(session)
+    await writeAuthSession(passwordSession)
 
     const harness = createFakeAxiosClient()
     registerInterceptors(harness.client)
@@ -67,8 +41,8 @@ describe("auth session and interceptors integration", () => {
   })
 
   it("clears persisted auth state and resets session guards on 401 responses", async () => {
-    await writeAuthSession(session)
-    useAuthStore.getState().setSession(session)
+    await writeAuthSession(passwordSession)
+    useAuthStore.getState().setSession(passwordSession)
     await runProfileSync(async () => true)
 
     const unauthorizedSpy = jest.fn()
