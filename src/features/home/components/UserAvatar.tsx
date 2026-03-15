@@ -2,7 +2,8 @@ import React from "react"
 
 import { Image, StyleSheet, Text, View } from "react-native"
 
-import { readCachedAvatarEntry, removeCachedAvatarSource, writeCachedAvatarSource } from "@/features/home/services/avatarCache"
+import { readCachedAvatarEntry, removeCachedAvatarEntry, writeCachedAvatarEntry } from "@/features/home/services/avatarCache"
+import { cacheAvatarToFile, removeAvatarFile, supportsAvatarFileCache } from "@/features/home/services/avatarFileCache"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 type Props = {
@@ -31,37 +32,31 @@ export function UserAvatar(props: Props) {
   const normalizedAccountKey = props.accountKey?.trim().toLowerCase() || ""
   const normalizedUri = props.uri?.trim() || ""
   const resolvedUri = appendCacheVersion(normalizedUri, props.cacheVersion)
-  const cacheEntry = React.useMemo(
-    () => readCachedAvatarEntry(normalizedAccountKey),
-    [normalizedAccountKey],
-  )
+  const cacheEntry = readCachedAvatarEntry(normalizedAccountKey)
   const preferredSource = React.useMemo(() => {
-    if (cacheEntry?.avatarUri === normalizedUri && cacheEntry.resolvedUri) {
+    if (cacheEntry?.localUri) {
       return {
-        uri: cacheEntry.resolvedUri,
-        avatarUri: normalizedUri,
+        uri: cacheEntry.localUri,
+        kind: "local" as const,
+        remoteUri: cacheEntry.remoteUri || resolvedUri,
       }
     }
 
-    if (cacheEntry?.resolvedUri) {
+    const fallbackRemoteUri = resolvedUri || cacheEntry?.fallbackRemoteUri || ""
+    if (fallbackRemoteUri) {
       return {
-        uri: cacheEntry.resolvedUri,
-        avatarUri: cacheEntry.avatarUri,
-      }
-    }
-
-    if (resolvedUri) {
-      return {
-        uri: resolvedUri,
-        avatarUri: normalizedUri,
+        uri: fallbackRemoteUri,
+        kind: "remote" as const,
+        remoteUri: fallbackRemoteUri,
       }
     }
 
     return {
       uri: "",
-      avatarUri: "",
+      kind: "remote" as const,
+      remoteUri: "",
     }
-  }, [cacheEntry?.avatarUri, cacheEntry?.resolvedUri, normalizedUri, resolvedUri])
+  }, [cacheEntry?.fallbackRemoteUri, cacheEntry?.localUri, cacheEntry?.remoteUri, resolvedUri])
   const [displaySource, setDisplaySource] = React.useState(preferredSource)
 
   React.useEffect(() => {
@@ -70,39 +65,56 @@ export function UserAvatar(props: Props) {
 
   React.useEffect(() => {
     setDisplaySource(previous =>
-      previous.uri === preferredSource.uri && previous.avatarUri === preferredSource.avatarUri ? previous : preferredSource,
+      previous.uri === preferredSource.uri &&
+      previous.kind === preferredSource.kind &&
+      previous.remoteUri === preferredSource.remoteUri
+        ? previous
+        : preferredSource,
     )
     setImageFailed(false)
   }, [preferredSource])
 
   React.useEffect(() => {
-    if (!normalizedUri || !resolvedUri) {
+    if (!normalizedAccountKey || !resolvedUri || !supportsAvatarFileCache()) {
       return
     }
 
-    if (displaySource.avatarUri === normalizedUri && displaySource.uri === resolvedUri) {
+    if (cacheEntry?.remoteUri === resolvedUri && cacheEntry.localUri) {
       return
     }
 
     let cancelled = false
+    const previousLocalUri = cacheEntry?.localUri || ""
 
-    void Image.prefetch(resolvedUri)
-      .then(success => {
-        if (cancelled || !success) {
+    void cacheAvatarToFile({
+      accountKey: normalizedAccountKey,
+      remoteUri: resolvedUri,
+    })
+      .then(localUri => {
+        if (cancelled || !localUri) {
           return
         }
 
-        setDisplaySource({
-          uri: resolvedUri,
-          avatarUri: normalizedUri,
+        writeCachedAvatarEntry({
+          accountKey: normalizedAccountKey,
+          remoteUri: resolvedUri,
+          localUri,
         })
+        setDisplaySource({
+          uri: localUri,
+          kind: "local",
+          remoteUri: resolvedUri,
+        })
+        if (previousLocalUri && previousLocalUri !== localUri) {
+          void removeAvatarFile(previousLocalUri).catch(() => undefined)
+        }
       })
       .catch(() => undefined)
 
     return () => {
       cancelled = true
     }
-  }, [displaySource.avatarUri, displaySource.uri, normalizedUri, resolvedUri])
+  }, [cacheEntry?.localUri, cacheEntry?.remoteUri, normalizedAccountKey, resolvedUri])
 
   const fallbackLabel = props.label.trim().slice(0, 1).toUpperCase() || "?"
   const fontSize = Math.max(12, Math.round(props.size * 0.38))
@@ -124,17 +136,21 @@ export function UserAvatar(props: Props) {
     <Image
       fadeDuration={0}
       onError={() => {
-        setImageFailed(true)
-        if (displaySource.avatarUri === normalizedUri) {
-          removeCachedAvatarSource(normalizedAccountKey)
+        if (displaySource.kind === "local") {
+          removeCachedAvatarEntry(normalizedAccountKey)
+          void removeAvatarFile(displaySource.uri).catch(() => undefined)
+          if (resolvedUri) {
+            setDisplaySource({
+              uri: resolvedUri,
+              kind: "remote",
+              remoteUri: resolvedUri,
+            })
+            setImageFailed(false)
+            return
+          }
         }
-      }}
-      onLoad={() => {
-        writeCachedAvatarSource({
-          accountKey: normalizedAccountKey,
-          avatarUri: displaySource.avatarUri,
-          resolvedUri: displaySource.uri,
-        })
+
+        setImageFailed(true)
       }}
       source={{ uri: displaySource.uri, cache: "force-cache" }}
       style={[styles.image, shellStyle]}

@@ -1,14 +1,24 @@
 import { getJson, removeItem, setJson } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 
-type AvatarCacheEntry = {
+type StoredAvatarCacheEntry = {
   accountKey: string
-  avatarUri: string
-  resolvedUri: string
+  avatarUri?: string
+  resolvedUri?: string
+  remoteUri?: string
+  localUri?: string
   updatedAt: number
 }
 
-type AvatarCacheMap = Record<string, AvatarCacheEntry>
+export type AvatarCacheEntry = {
+  accountKey: string
+  remoteUri: string
+  localUri: string
+  fallbackRemoteUri: string
+  updatedAt: number
+}
+
+type AvatarCacheMap = Record<string, StoredAvatarCacheEntry>
 
 const MAX_AVATAR_CACHE_ENTRIES = 12
 
@@ -18,6 +28,24 @@ function normalizeAccountKey(accountKey?: string | null) {
 
 function normalizeAvatarUri(avatarUri?: string | null) {
   return avatarUri?.trim() || ""
+}
+
+function normalizeStoredEntry(accountKey: string, entry?: StoredAvatarCacheEntry | null): AvatarCacheEntry | null {
+  if (!entry) {
+    return null
+  }
+
+  const remoteUri = normalizeAvatarUri(entry.remoteUri)
+  const localUri = normalizeAvatarUri(entry.localUri)
+  const fallbackRemoteUri = normalizeAvatarUri(entry.resolvedUri || entry.remoteUri || entry.avatarUri)
+
+  return {
+    accountKey,
+    remoteUri,
+    localUri,
+    fallbackRemoteUri,
+    updatedAt: typeof entry.updatedAt === "number" ? entry.updatedAt : 0,
+  }
 }
 
 function readAvatarCacheMap() {
@@ -30,7 +58,7 @@ export function readCachedAvatarEntry(accountKey?: string | null): AvatarCacheEn
     return null
   }
 
-  return readAvatarCacheMap()[normalizedAccountKey] ?? null
+  return normalizeStoredEntry(normalizedAccountKey, readAvatarCacheMap()[normalizedAccountKey])
 }
 
 function writeAvatarCacheMap(cacheMap: AvatarCacheMap) {
@@ -47,53 +75,32 @@ function writeAvatarCacheMap(cacheMap: AvatarCacheMap) {
   setJson(KvStorageKeys.UserAvatarCache, Object.fromEntries(trimmedEntries))
 }
 
-export function readCachedAvatarSource(input: {
+export function writeCachedAvatarEntry(input: {
   accountKey?: string | null
-  avatarUri?: string | null
+  remoteUri?: string | null
+  localUri?: string | null
 }) {
   const normalizedAccountKey = normalizeAccountKey(input.accountKey)
-  const normalizedAvatarUri = normalizeAvatarUri(input.avatarUri)
+  const normalizedRemoteUri = normalizeAvatarUri(input.remoteUri)
+  const normalizedLocalUri = normalizeAvatarUri(input.localUri)
 
-  if (!normalizedAccountKey) {
-    return ""
-  }
-
-  const entry = readCachedAvatarEntry(normalizedAccountKey)
-  if (!entry) {
-    return ""
-  }
-
-  if (!normalizedAvatarUri) {
-    return entry.resolvedUri
-  }
-
-  return entry.avatarUri === normalizedAvatarUri ? entry.resolvedUri : ""
-}
-
-export function writeCachedAvatarSource(input: {
-  accountKey?: string | null
-  avatarUri?: string | null
-  resolvedUri?: string | null
-}) {
-  const normalizedAccountKey = normalizeAccountKey(input.accountKey)
-  const normalizedAvatarUri = normalizeAvatarUri(input.avatarUri)
-  const normalizedResolvedUri = normalizeAvatarUri(input.resolvedUri)
-
-  if (!normalizedAccountKey || !normalizedAvatarUri || !normalizedResolvedUri) {
+  if (!normalizedAccountKey || !normalizedRemoteUri || !normalizedLocalUri) {
     return
   }
 
   const cacheMap = readAvatarCacheMap()
   cacheMap[normalizedAccountKey] = {
     accountKey: normalizedAccountKey,
-    avatarUri: normalizedAvatarUri,
-    resolvedUri: normalizedResolvedUri,
+    avatarUri: normalizedRemoteUri,
+    resolvedUri: normalizedRemoteUri,
+    remoteUri: normalizedRemoteUri,
+    localUri: normalizedLocalUri,
     updatedAt: Date.now(),
   }
   writeAvatarCacheMap(cacheMap)
 }
 
-export function removeCachedAvatarSource(accountKey?: string | null) {
+export function removeCachedAvatarEntry(accountKey?: string | null) {
   const normalizedAccountKey = normalizeAccountKey(accountKey)
   if (!normalizedAccountKey) {
     return
