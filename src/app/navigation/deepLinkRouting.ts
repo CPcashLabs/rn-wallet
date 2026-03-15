@@ -415,6 +415,7 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
       return withAuth([toMeTab(inviteScreen)], url, authenticated)
     }
 
+    // These deep-link variants intentionally resolve to the same receive flow.
     case "receive":
     case "receive-detail":
     case "new-receive-detail": {

@@ -1,6 +1,7 @@
 import React from "react"
 
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
+import { getFocusedRouteNameFromRoute } from "@react-navigation/native"
 import { StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 
@@ -16,6 +17,18 @@ const Tab = createBottomTabNavigator<MainTabParamList>()
 export function MainTabNavigator() {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const baseTabBarStyle = {
+    backgroundColor: theme.colors.surfaceElevated ?? theme.colors.surface,
+    borderTopWidth: 0,
+    height: 74,
+    paddingTop: 8,
+    paddingBottom: 10,
+    shadowColor: theme.colors.shadow,
+    shadowOpacity: theme.isDark ? 0.22 : 0.08,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: -6 } as const,
+    elevation: 8,
+  }
 
   return (
     <Tab.Navigator
@@ -26,18 +39,7 @@ export function MainTabNavigator() {
         tabBarHideOnKeyboard: true,
         tabBarLabelStyle: styles.tabBarLabel,
         tabBarItemStyle: styles.tabBarItem,
-        tabBarStyle: {
-          backgroundColor: theme.colors.surfaceElevated ?? theme.colors.surface,
-          borderTopWidth: 0,
-          height: 74,
-          paddingTop: 8,
-          paddingBottom: 10,
-          shadowColor: theme.colors.shadow,
-          shadowOpacity: theme.isDark ? 0.22 : 0.08,
-          shadowRadius: 18,
-          shadowOffset: { width: 0, height: -6 },
-          elevation: 8,
-        },
+        tabBarStyle: baseTabBarStyle,
       }}
     >
       <Tab.Screen
@@ -56,10 +58,16 @@ export function MainTabNavigator() {
       <Tab.Screen
         name="MeTab"
         component={SettingsStackNavigator}
-        options={{
-          title: "Me",
-          tabBarIcon: ({ color, focused }) => <ProfileTabIcon color={color} focused={focused} />,
-          tabBarLabel: ({ color }) => <Text style={{ color, fontSize: 12 }}>{t("home.tabs.me")}</Text>,
+        options={({ route }) => {
+          const focusedRouteName = getFocusedRouteNameFromRoute(route) ?? "MeShellScreen"
+          const shouldHideTabBar = focusedRouteName !== "MeShellScreen"
+
+          return {
+            title: "Me",
+            tabBarIcon: ({ color, focused }) => <ProfileTabIcon color={color} focused={focused} />,
+            tabBarLabel: ({ color }) => <Text style={{ color, fontSize: 12 }}>{t("home.tabs.me")}</Text>,
+            tabBarStyle: shouldHideTabBar ? { display: "none" } : baseTabBarStyle,
+          }
         }}
       />
     </Tab.Navigator>

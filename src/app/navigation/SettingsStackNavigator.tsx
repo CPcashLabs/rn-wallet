@@ -8,30 +8,36 @@ import { PersonalScreen } from "@/features/home/screens/PersonalScreen"
 import { SettingsScreen } from "@/features/home/screens/SettingsScreen"
 import { UpdateNameScreen } from "@/features/home/screens/UpdateNameScreen"
 import {
-  AboutScreen,
   EmailBindedScreen,
   EmailHomeScreen,
   EmailNotificationScreen,
   EmailUnbindScreen,
+  VerifyEmailScreen,
+} from "@/features/settings/screens/SettingsEmailScreens"
+import {
+  AboutScreen,
   FAQGuideDetailScreen,
   FAQScreen,
   FeedbackScreen,
   HelpCenterScreen,
+  KnowledgeGuideDetailScreen,
+  LicensesScreen,
+  ReceiveDiffScreen,
+  SafetyGuideDetailScreen,
+  UserGuideScreen,
+  WalletGuideDetailScreen,
+} from "@/features/settings/screens/SettingsHelpScreens"
+import {
   InviteCodeScreen,
   InviteHomeScreen,
   InviteHowItWorksScreen,
   InvitePromotionScreen,
-  KnowledgeGuideDetailScreen,
+} from "@/features/settings/screens/SettingsInviteScreens"
+import {
   LanguageScreen,
-  LicensesScreen,
-  NodeSetupScreen,
-  ReceiveDiffScreen,
-  SafetyGuideDetailScreen,
   UnitScreen,
-  UserGuideScreen,
-  VerifyEmailScreen,
-  WalletGuideDetailScreen,
-} from "@/features/settings/screens/SettingsHubScreens"
+  NodeSetupScreen,
+} from "@/features/settings/screens/SettingsPreferenceScreens"
 
 import type { SettingsStackParamList } from "@/app/navigation/types"
 
