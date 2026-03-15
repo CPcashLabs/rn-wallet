@@ -116,6 +116,7 @@ const auth = {
     missingResetToken: "The email verification token is missing or already used.",
     loadPasswordRulesFailed: "Unable to load password rules.",
     passkeyUnsupported: "Passkey is not supported on this device.",
+    passkeyUnavailable: "Passkey sign-in is disabled until a hardware-backed native signer is available.",
     passkeyAuthFailed: "Passkey verification failed.",
     passkeyRegisterFailed: "Passkey registration failed.",
     passkeyDomainAssociationFailed: "Passkey domain verification failed. Please try again later. If it keeps failing, contact support to check the website association setup.",

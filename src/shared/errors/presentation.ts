@@ -48,6 +48,10 @@ export function resolveErrorMessage(t: Translate, error: unknown, options: Error
       return t("auth.errors.walletUnavailable")
     }
 
+    if (error.capability === "passkey") {
+      return t("auth.errors.passkeyUnavailable")
+    }
+
     return error.message || t("common.errors.capabilityUnavailable")
   }
 

@@ -9,7 +9,7 @@ import { AuthScaffold } from "@/features/auth/components/AuthScaffold"
 import { PasskeyHistoryModal } from "@/features/auth/components/PasskeyHistoryModal"
 import { bindInviteCode, saveRecentPasskey, signInWithMessageSignature, validateAddressExists } from "@/features/auth/services/authApi"
 import { persistAuthenticatedSession } from "@/features/auth/services/authSessionOrchestrator"
-import { getAuthErrorMessage, getInviteBindingMessage } from "@/features/auth/utils/authMessages"
+import { getInviteBindingMessage } from "@/features/auth/utils/authMessages"
 import { resetToMainTabs } from "@/app/navigation/navigationRef"
 import type { AuthStackParamList } from "@/app/navigation/types"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
@@ -34,6 +34,7 @@ export function LoginScreen({ navigation, route }: Props) {
 
   const passkeyCapability = useMemo(() => passkeyAdapter.getCapability(), [])
   const walletCapability = useMemo(() => walletAdapter.getCapability(), [])
+  const passkeyActionsEnabled = passkeyCapability.supported
   const walletActionsEnabled = walletCapability.supported
 
   const handleInviteCode = async () => {
@@ -107,8 +108,8 @@ export function LoginScreen({ navigation, route }: Props) {
   }
 
   const handlePasskeyLogin = async () => {
-    if (!passkeyCapability.supported) {
-      presentMessage(getAuthErrorMessage(new Error(passkeyCapability.reason), "auth.errors.passkeyUnsupported"))
+    if (!passkeyActionsEnabled) {
+      presentMessage(passkeyCapability.reason ?? t("auth.errors.passkeyUnavailable"))
       return
     }
 
@@ -170,19 +171,23 @@ export function LoginScreen({ navigation, route }: Props) {
           </View>
         }
         footer={
-          <View style={styles.footer}>
-            <Text style={[styles.footerText, { color: theme.colors.mutedText }]}>
-              {t("auth.login.needPasskey")}
-            </Text>
-            <Pressable onPress={() => navigation.navigate("PasskeySignupScreen", { inviteCode })}>
-              <Text style={[styles.link, { color: theme.colors.primary }]}>
-                {t("auth.login.signUp")}
+          passkeyActionsEnabled ? (
+            <View style={styles.footer}>
+              <Text style={[styles.footerText, { color: theme.colors.mutedText }]}>
+                {t("auth.login.needPasskey")}
               </Text>
-            </Pressable>
-          </View>
+              <Pressable onPress={() => navigation.navigate("PasskeySignupScreen", { inviteCode })}>
+                <Text style={[styles.link, { color: theme.colors.primary }]}>
+                  {t("auth.login.signUp")}
+                </Text>
+              </Pressable>
+            </View>
+          ) : undefined
         }
       >
-        <AuthButton label={t("auth.login.passkeyButton")} loading={loadingType === "passkey"} onPress={() => void handlePasskeyLogin()} />
+        {passkeyActionsEnabled ? (
+          <AuthButton label={t("auth.login.passkeyButton")} loading={loadingType === "passkey"} onPress={() => void handlePasskeyLogin()} />
+        ) : null}
         {walletActionsEnabled ? (
           <AuthButton label={t("auth.login.walletButton")} loading={loadingType === "wallet"} onPress={() => void handleWalletLogin()} variant="secondary" />
         ) : null}
@@ -200,26 +205,30 @@ export function LoginScreen({ navigation, route }: Props) {
           </Text>
         </Pressable>
 
-        <Pressable onPress={() => navigation.navigate("PasskeyIntroScreen")} style={styles.textAction}>
-          <Text style={[styles.link, { color: theme.colors.primary }]}>
-            {t("auth.login.passkeyHelp")}
-          </Text>
-        </Pressable>
+        {passkeyActionsEnabled ? (
+          <Pressable onPress={() => navigation.navigate("PasskeyIntroScreen")} style={styles.textAction}>
+            <Text style={[styles.link, { color: theme.colors.primary }]}>
+              {t("auth.login.passkeyHelp")}
+            </Text>
+          </Pressable>
+        ) : null}
       </AuthScaffold>
 
-      <PasskeyHistoryModal
-        items={recentPasskeys}
-        loading={loadingType === "passkey"}
-        onClose={() => setHistoryVisible(false)}
-        onSelect={item => void authenticatePasskey(item)}
-        onSignUp={() => {
-          setHistoryVisible(false)
-          navigation.navigate("PasskeySignupScreen", {
-            inviteCode,
-          })
-        }}
-        visible={historyVisible}
-      />
+      {passkeyActionsEnabled ? (
+        <PasskeyHistoryModal
+          items={recentPasskeys}
+          loading={loadingType === "passkey"}
+          onClose={() => setHistoryVisible(false)}
+          onSelect={item => void authenticatePasskey(item)}
+          onSignUp={() => {
+            setHistoryVisible(false)
+            navigation.navigate("PasskeySignupScreen", {
+              inviteCode,
+            })
+          }}
+          visible={historyVisible}
+        />
+      ) : null}
     </>
   )
 }

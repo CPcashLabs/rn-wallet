@@ -9,7 +9,7 @@ import { AuthScaffold } from "@/features/auth/components/AuthScaffold"
 import { AuthTextField } from "@/features/auth/components/AuthTextField"
 import { bindInviteCode, saveRecentPasskey, signInWithMessageSignature, updateNickname } from "@/features/auth/services/authApi"
 import { persistAuthenticatedSession } from "@/features/auth/services/authSessionOrchestrator"
-import { getAuthErrorMessage, getInviteBindingMessage } from "@/features/auth/utils/authMessages"
+import { getInviteBindingMessage } from "@/features/auth/utils/authMessages"
 import { resetToMainTabs } from "@/app/navigation/navigationRef"
 import type { AuthStackParamList } from "@/app/navigation/types"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
@@ -23,10 +23,17 @@ export function PasskeySignupScreen({ navigation, route }: Props) {
   const { t } = useTranslation()
   const { presentError, presentMessage } = useErrorPresenter()
   const inviteCode = route.params?.inviteCode
+  const passkeyCapability = passkeyAdapter.getCapability()
+  const passkeyActionsEnabled = passkeyCapability.supported
   const [nickname, setNickname] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
   const handleSubmit = async () => {
+    if (!passkeyActionsEnabled) {
+      presentMessage(passkeyCapability.reason ?? t("auth.errors.passkeyUnavailable"))
+      return
+    }
+
     if (!nickname.trim()) {
       presentMessage(t("auth.errors.nicknameRequired"))
       return
@@ -95,21 +102,27 @@ export function PasskeySignupScreen({ navigation, route }: Props) {
       canGoBack
       onBack={navigation.goBack}
       title={t("auth.passkeySignup.title")}
-      subtitle={t("auth.passkeySignup.subtitle")}
+      subtitle={passkeyActionsEnabled ? t("auth.passkeySignup.subtitle") : t("auth.errors.passkeyUnavailable")}
     >
-      <AuthTextField
-        autoCapitalize="words"
-        label={t("auth.passkeySignup.nicknameLabel")}
-        onChangeText={setNickname}
-        placeholder={t("auth.passkeySignup.nicknamePlaceholder")}
-        value={nickname}
-      />
+      {passkeyActionsEnabled ? (
+        <>
+          <AuthTextField
+            autoCapitalize="words"
+            label={t("auth.passkeySignup.nicknameLabel")}
+            onChangeText={setNickname}
+            placeholder={t("auth.passkeySignup.nicknamePlaceholder")}
+            value={nickname}
+          />
 
-      <Text style={[styles.linkText, { color: theme.colors.success }]} onPress={() => navigation.navigate("PasskeyIntroScreen")}>
-        {t("auth.passkeySignup.helpLink")}
-      </Text>
+          <Text style={[styles.linkText, { color: theme.colors.success }]} onPress={() => navigation.navigate("PasskeyIntroScreen")}>
+            {t("auth.passkeySignup.helpLink")}
+          </Text>
 
-      <AuthButton disabled={!nickname.trim()} label={t("common.next")} loading={submitting} onPress={() => void handleSubmit()} />
+          <AuthButton disabled={!nickname.trim()} label={t("common.next")} loading={submitting} onPress={() => void handleSubmit()} />
+        </>
+      ) : (
+        <AuthButton label={t("common.back")} onPress={navigation.goBack} variant="secondary" />
+      )}
     </AuthScaffold>
   )
 }

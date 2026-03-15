@@ -116,6 +116,7 @@ const auth = {
     missingResetToken: "邮箱验证凭证缺失或已失效。",
     loadPasswordRulesFailed: "获取密码规则失败。",
     passkeyUnsupported: "当前设备不支持 Passkey。",
+    passkeyUnavailable: "Passkey 登录因安全限制已禁用，等待原生硬件签名器接入。",
     passkeyAuthFailed: "Passkey 验证失败。",
     passkeyRegisterFailed: "Passkey 注册失败。",
     passkeyDomainAssociationFailed: "Passkey 服务校验失败，请稍后再试。如果问题持续，请联系支持检查网站关联配置。",
