@@ -1,6 +1,7 @@
 import i18n from "i18next"
 import { initReactI18next } from "react-i18next"
 
+import { throwIfAborted } from "@/shared/async/taskController"
 import { DEFAULT_LANGUAGE, isSupportedLanguage, resources } from "@/shared/i18n/resources"
 import { SYSTEM_LANGUAGE_PREFERENCE, type LanguagePreference, isLanguagePreference, resolveLanguageFromPreference } from "@/shared/i18n/languagePreference"
 import { resolveSystemLanguage } from "@/shared/i18n/systemLanguage"
@@ -24,11 +25,13 @@ void i18n.use(initReactI18next).init({
 
 export { i18n }
 
-export async function hydrateI18n() {
+export async function hydrateI18n(signal?: AbortSignal) {
+  throwIfAborted(signal, "I18n hydration aborted.")
   const nextLanguage = resolveLanguageFromPreference(readStoredLanguagePreference(), resolveSystemLanguage())
 
   if (nextLanguage !== i18n.language) {
     await i18n.changeLanguage(nextLanguage)
+    throwIfAborted(signal, "I18n hydration aborted.")
   }
 }
 

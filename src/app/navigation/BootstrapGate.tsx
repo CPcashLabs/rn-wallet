@@ -30,14 +30,15 @@ export function BootstrapGate() {
       const { clearSession, setBootstrapped, setSession } = useAuthStore.getState()
       const { setWalletState } = useWalletStore.getState()
       const persistedChainId = getString(KvStorageKeys.WalletChainId) ?? DEFAULT_WALLET_CHAIN_ID
+      const { signal } = run
 
       try {
-        await Promise.all([hydrateI18n(), hydrateThemePreference()])
+        await Promise.all([hydrateI18n(signal), hydrateThemePreference(signal)])
         if (!isCurrentRun()) {
           return
         }
 
-        const session = await readAuthSession()
+        const session = await readAuthSession(signal)
         if (!isCurrentRun()) {
           return
         }
@@ -58,7 +59,7 @@ export function BootstrapGate() {
             return
           }
 
-          void syncCurrentUserProfile()
+          void syncCurrentUserProfile(false, signal)
           navigation.reset({
             index: 0,
             routes: [{ name: "MainTabs", params: { screen: "HomeTab" } }],
