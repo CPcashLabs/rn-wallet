@@ -8,12 +8,10 @@ import { AuthScaffold } from "@/features/auth/components/AuthScaffold"
 import { AuthTextField } from "@/features/auth/components/AuthTextField"
 import { createWalletLoginMessage, finalizeWalletLogin } from "@/features/auth/services/walletLogin"
 import type { AuthStackParamList } from "@/app/navigation/types"
-import { ApiError } from "@/shared/errors"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { walletAdapter } from "@/shared/native"
 import { signMessageWithWalletImport, tryParseWalletImportInput, WalletImportInputError } from "@/shared/native/walletImport"
 import { useWalletStore } from "@/shared/store/useWalletStore"
-import { validateAddressExists } from "@/features/auth/services/authApi"
 
 type Props = NativeStackScreenProps<AuthStackParamList, "ImportWalletLoginScreen">
 
@@ -47,27 +45,6 @@ export function ImportWalletLoginScreen({ navigation, route }: Props) {
       address: detectedImport.address,
     })
   }, [detectedImport, t])
-
-  const maybeFallbackToPasswordFlow = async (address: string, error: unknown) => {
-    if (!(error instanceof ApiError) || error.status !== 401) {
-      return false
-    }
-
-    const validation = await validateAddressExists(address)
-
-    if (validation.passwordSet) {
-      navigation.navigate("PasswordLoginScreen", {
-        address,
-        inviteCode,
-      })
-      return true
-    }
-
-    navigation.navigate("FirstSetPasswordScreen", {
-      address,
-    })
-    return true
-  }
 
   const submit = async () => {
     if (!secret.trim()) {
@@ -127,25 +104,17 @@ export function ImportWalletLoginScreen({ navigation, route }: Props) {
         chainId: importedChainId,
       })
 
-      try {
-        await finalizeWalletLogin({
-          address: importedAddress,
-          signature,
-          message,
-          inviteCode,
-          onInviteBindingMessage: messageText => {
-            presentMessage(messageText, {
-              titleKey: "common.infoTitle",
-            })
-          },
-        })
-      } catch (error) {
-        const handled = await maybeFallbackToPasswordFlow(importedAddress, error)
-
-        if (!handled) {
-          throw error
-        }
-      }
+      await finalizeWalletLogin({
+        address: importedAddress,
+        signature,
+        message,
+        inviteCode,
+        onInviteBindingMessage: messageText => {
+          presentMessage(messageText, {
+            titleKey: "common.infoTitle",
+          })
+        },
+      })
     } catch (error) {
       if (error instanceof WalletImportInputError) {
         const message = error.reason === "empty" ? t("auth.errors.importSecretRequired") : t("auth.errors.invalidImportSecret")
@@ -154,6 +123,12 @@ export function ImportWalletLoginScreen({ navigation, route }: Props) {
       } else {
         presentError(error, {
           fallbackKey: "auth.errors.importLoginFailed",
+          statusMap: {
+            401: "auth.errors.importLoginFailed",
+          },
+          preferApiMessage: false,
+          preferErrorMessage: false,
+          logTag: "[auth.importWallet]",
         })
       }
     } finally {
