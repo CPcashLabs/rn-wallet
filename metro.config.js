@@ -1,17 +1,20 @@
 const path = require("path")
 
 const { getDefaultConfig, mergeConfig } = require("@react-native/metro-config")
-const exclusionList = require("metro-config/src/defaults/exclusionList")
+const { wrapWithReanimatedMetroConfig } = require("react-native-reanimated/metro-config")
 
 const ignoredRoots = ["android", "ios", ".git", ".pnpm-store", "docs", "tests", "e2e"].map(segment =>
   new RegExp(`${path.resolve(__dirname, segment).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/.*`),
 )
+const ignoredRootsBlockList = new RegExp(ignoredRoots.map(pattern => pattern.source).join("|"))
 
 const defaultConfig = getDefaultConfig(__dirname)
 
-module.exports = mergeConfig(defaultConfig, {
-  projectRoot: __dirname,
-  resolver: {
-    blockList: exclusionList(ignoredRoots),
-  },
-})
+module.exports = wrapWithReanimatedMetroConfig(
+  mergeConfig(defaultConfig, {
+    projectRoot: __dirname,
+    resolver: {
+      blockList: ignoredRootsBlockList,
+    },
+  }),
+)
