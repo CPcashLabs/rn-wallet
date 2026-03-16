@@ -5,6 +5,7 @@ export type EntryOptionKey = "create" | "import" | "watch"
 export type EntryOption = {
   key: EntryOptionKey
   labelKey: string
+  descriptionKey: string
   onPress: () => void
 }
 

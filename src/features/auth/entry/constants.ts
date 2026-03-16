@@ -1,4 +1,5 @@
 export const ENTRY_BACKGROUND = "#06070A"
+export const ENTRY_BACKGROUND_SECONDARY = "#0B0E15"
 export const ENTRY_CORE_PRIMARY = "#7C8CFF"
 export const ENTRY_CORE_SECONDARY = "#6A54FF"
 export const ENTRY_CORE_RING = "rgba(169, 181, 255, 0.22)"
@@ -6,9 +7,13 @@ export const ENTRY_TRAJECTORY_COLOR = "rgba(139, 160, 255, 0.22)"
 export const ENTRY_TRAJECTORY_SIGNAL = "rgba(207, 217, 255, 0.82)"
 export const ENTRY_TEXT_PRIMARY = "#FFFFFF"
 export const ENTRY_TEXT_SECONDARY = "rgba(255,255,255,0.72)"
-export const ENTRY_BUTTON_BACKGROUND = "rgba(12, 16, 28, 0.7)"
+export const ENTRY_TEXT_MUTED = "rgba(255,255,255,0.5)"
+export const ENTRY_BUTTON_BACKGROUND = "rgba(12, 16, 28, 0.82)"
+export const ENTRY_BUTTON_BACKGROUND_ACTIVE = "rgba(18, 24, 40, 0.92)"
 export const ENTRY_BUTTON_BORDER = "rgba(152, 166, 255, 0.2)"
+export const ENTRY_BUTTON_BORDER_ACTIVE = "rgba(176, 188, 255, 0.34)"
 export const ENTRY_BUTTON_GLOW = "rgba(106, 84, 255, 0.18)"
+export const ENTRY_BRAND_GLOW = "rgba(124, 140, 255, 0.16)"
 
 export const ENTRY_TRAJECTORY_COUNT = 24
 export const ENTRY_IDLE_BREATH_DURATION_MS = 4_500
@@ -21,5 +26,5 @@ export const ENTRY_BUTTON_STAGGER_MS = 110
 export const ENTRY_WAVE_DURATION_MS = 920
 
 export const ENTRY_TEXT_MAX_WIDTH = 320
-export const ENTRY_BUTTON_MAX_WIDTH = 268
-export const ENTRY_BUTTON_HEIGHT = 56
+export const ENTRY_BUTTON_MAX_WIDTH = 316
+export const ENTRY_BUTTON_HEIGHT = 76
