@@ -43,9 +43,14 @@ export function useErrorPresenter() {
   const presentError = useCallback(
     (error: unknown, options: PresentErrorOptions) => {
       const message = resolveErrorMessage(t, error, options)
+      const shouldLog = options.log ?? __DEV__
 
-      if (options.log) {
-        logErrorSafely(options.logTag ?? "[error]", error)
+      if (shouldLog) {
+        logErrorSafely(options.logTag ?? "[error]", error, {
+          context: {
+            resolvedMessage: message,
+          },
+        })
       }
 
       return presentMessage(message, options)

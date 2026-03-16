@@ -25,11 +25,7 @@ import {
   InviteHowItWorksScreen,
   InvitePromotionScreen,
 } from "@/features/settings/screens/SettingsInviteScreens"
-import {
-  LanguageScreen,
-  UnitScreen,
-  NodeSetupScreen,
-} from "@/features/settings/screens/SettingsPreferenceScreens"
+import { LanguageScreen, UnitScreen, NodeSetupScreen } from "@/features/settings/screens/SettingsPreferenceScreens"
 
 import type { SettingsStackParamList } from "@/app/navigation/types"
 

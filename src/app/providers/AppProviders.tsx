@@ -1,5 +1,6 @@
 import React, { type PropsWithChildren } from "react"
 
+import { DevConsoleProvider } from "@/app/providers/DevConsoleProvider"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 
@@ -20,9 +21,17 @@ export function AppProviders({ children }: PropsWithChildren) {
             <SocketProvider>
               <QueryProvider>
                 <ThemeProvider>
-                  <ToastProvider>
-                    <NavigationProvider>{children}</NavigationProvider>
-                  </ToastProvider>
+                  {__DEV__ ? (
+                    <DevConsoleProvider>
+                      <ToastProvider>
+                        <NavigationProvider>{children}</NavigationProvider>
+                      </ToastProvider>
+                    </DevConsoleProvider>
+                  ) : (
+                    <ToastProvider>
+                      <NavigationProvider>{children}</NavigationProvider>
+                    </ToastProvider>
+                  )}
                 </ThemeProvider>
               </QueryProvider>
             </SocketProvider>

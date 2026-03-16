@@ -13,6 +13,7 @@ import { appendApiDebugSuffix, getAuthErrorMessage, getInviteBindingMessage } fr
 import { resetToMainTabs } from "@/app/navigation/navigationRef"
 import type { AuthStackParamList } from "@/app/navigation/types"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
+import { logErrorSafely } from "@/shared/logging/safeConsole"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
@@ -104,6 +105,12 @@ export function PasswordLoginScreen({ navigation, route }: Props) {
       resetToMainTabs()
     } catch (error) {
       const message = appendApiDebugSuffix(getAuthErrorMessage(error, "auth.errors.passwordLoginFailed"), error)
+      logErrorSafely("[auth.passwordLogin]", error, {
+        context: {
+          address: address.trim(),
+          resolvedMessage: message,
+        },
+      })
       setPasswordError(message)
       presentMessage(message)
     } finally {
