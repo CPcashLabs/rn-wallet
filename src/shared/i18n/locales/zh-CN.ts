@@ -27,8 +27,11 @@ const auth = {
     statementVisible: "链上所有轨迹，天然可见。",
     statementPrivate: "但你的进入方式，不该被看见。",
     createWallet: "创建新钱包",
+    createWalletDescription: "生成一组新的助记词，从头开始使用。",
     importWallet: "导入已有钱包",
+    importWalletDescription: "用助记词或私钥把原来的钱包带回来。",
     watchMode: "进入观察模式",
+    watchModeDescription: "用地址和密码进入，只看链上数据与资产动态。",
   },
   login: {
     title: "CPCash Wallet",

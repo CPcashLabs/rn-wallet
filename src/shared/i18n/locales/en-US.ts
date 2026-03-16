@@ -27,8 +27,11 @@ const auth = {
     statementVisible: "Everything on-chain is visible.",
     statementPrivate: "Your access shouldn't be.",
     createWallet: "Create Wallet",
+    createWalletDescription: "Generate a new recovery phrase and start fresh.",
     importWallet: "Import Existing Wallet",
+    importWalletDescription: "Bring back a wallet with your recovery phrase or private key.",
     watchMode: "Watch Mode",
+    watchModeDescription: "Enter with wallet address and password to monitor activity privately.",
   },
   login: {
     title: "CPCash Wallet",

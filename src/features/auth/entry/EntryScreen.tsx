@@ -36,16 +36,19 @@ export function EntryScreen({ onCreateWallet, onImportWallet, onWatchMode }: Pro
       {
         key: "create",
         labelKey: "auth.entry.createWallet",
+        descriptionKey: "auth.entry.createWalletDescription",
         onPress: onCreateWallet,
       },
       {
         key: "import",
         labelKey: "auth.entry.importWallet",
+        descriptionKey: "auth.entry.importWalletDescription",
         onPress: onImportWallet,
       },
       {
         key: "watch",
         labelKey: "auth.entry.watchMode",
+        descriptionKey: "auth.entry.watchModeDescription",
         onPress: onWatchMode,
       },
     ],
