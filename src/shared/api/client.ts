@@ -31,3 +31,4 @@ export const authClient = axios.create({
 })
 
 attachRuntimeBaseUrl(authClient, resolveAuthBaseUrl)
+registerInterceptors(authClient)

@@ -2,6 +2,7 @@ import {
   resolveApiBaseUrl,
   resolveAuthBaseUrl,
   resolveOAuthClientId,
+  resolveOptionalOAuthClientSecret,
   resolvePasskeyRpId,
   resolveRuntimeEnv,
   buildWebSocketAuthMessage,
@@ -15,11 +16,13 @@ describe("websocket runtime configuration", () => {
   const runtimeGlobals = globalThis as {
     __CPCASH_API_BASE_URL__?: string
     __CPCASH_OAUTH_CLIENT_ID__?: string
+    __CPCASH_OAUTH_CLIENT_SECRET__?: string
     __CPCASH_PASSKEY_RP_ID__?: string
     __DEV__?: boolean
   }
   const originalApiBaseUrl = runtimeGlobals.__CPCASH_API_BASE_URL__
   const originalOAuthClientId = runtimeGlobals.__CPCASH_OAUTH_CLIENT_ID__
+  const originalOAuthClientSecret = runtimeGlobals.__CPCASH_OAUTH_CLIENT_SECRET__
   const originalPasskeyRpId = runtimeGlobals.__CPCASH_PASSKEY_RP_ID__
   const originalDev = runtimeGlobals.__DEV__
   const originalNodeEnv = process.env.NODE_ENV
@@ -27,6 +30,7 @@ describe("websocket runtime configuration", () => {
   beforeEach(() => {
     runtimeGlobals.__CPCASH_API_BASE_URL__ = "https://cp.cash"
     runtimeGlobals.__CPCASH_OAUTH_CLIENT_ID__ = undefined
+    runtimeGlobals.__CPCASH_OAUTH_CLIENT_SECRET__ = undefined
     runtimeGlobals.__CPCASH_PASSKEY_RP_ID__ = undefined
     runtimeGlobals.__DEV__ = true
     process.env.NODE_ENV = "test"
@@ -35,6 +39,7 @@ describe("websocket runtime configuration", () => {
   afterAll(() => {
     runtimeGlobals.__CPCASH_API_BASE_URL__ = originalApiBaseUrl
     runtimeGlobals.__CPCASH_OAUTH_CLIENT_ID__ = originalOAuthClientId
+    runtimeGlobals.__CPCASH_OAUTH_CLIENT_SECRET__ = originalOAuthClientSecret
     runtimeGlobals.__CPCASH_PASSKEY_RP_ID__ = originalPasskeyRpId
     runtimeGlobals.__DEV__ = originalDev
     process.env.NODE_ENV = originalNodeEnv
@@ -142,6 +147,13 @@ describe("websocket runtime configuration", () => {
 
     runtimeGlobals.__CPCASH_OAUTH_CLIENT_ID__ = undefined
     expect(resolveOAuthClientId()).toBe("MEMBER")
+  })
+
+  it("resolves the optional oauth client secret only when a runtime override is provided", () => {
+    expect(resolveOptionalOAuthClientSecret()).toBeNull()
+
+    runtimeGlobals.__CPCASH_OAUTH_CLIENT_SECRET__ = "  injected-secret  "
+    expect(resolveOptionalOAuthClientSecret()).toBe("injected-secret")
   })
 
   it("throws when oauth client id is missing in non-dev production mode", () => {

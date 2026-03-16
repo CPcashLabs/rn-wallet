@@ -3,11 +3,13 @@ const DEFAULT_RELEASE_API_BASE_URL = "https://cp.cash"
 const DEFAULT_DEBUG_PASSKEY_RP_ID = "wallet.charprotocol.com"
 const DEFAULT_RELEASE_PASSKEY_RP_ID = "wallet.cp.cash"
 const DEFAULT_DEVELOPMENT_OAUTH_CLIENT_ID = "MEMBER"
+const DEFAULT_DEVELOPMENT_OAUTH_CLIENT_SECRET = "123456"
 const TLS_PINNED_DOMAINS = ["cp.cash", "charprotocol.com", "charprotocol.dev"] as const
 
 type RuntimeGlobals = typeof globalThis & {
   __CPCASH_API_BASE_URL__?: string
   __CPCASH_OAUTH_CLIENT_ID__?: string
+  __CPCASH_OAUTH_CLIENT_SECRET__?: string
   __CPCASH_PASSKEY_RP_ID__?: string
   process?: {
     env?: {
@@ -127,6 +129,16 @@ function readOAuthClientIdOverride() {
   return runtimeValue.trim()
 }
 
+function readOAuthClientSecretOverride() {
+  const runtimeValue = (globalThis as RuntimeGlobals).__CPCASH_OAUTH_CLIENT_SECRET__
+
+  if (typeof runtimeValue !== "string" || !runtimeValue.trim()) {
+    return null
+  }
+
+  return runtimeValue.trim()
+}
+
 export function resolveOAuthClientId() {
   const override = readOAuthClientIdOverride()
   if (override) {
@@ -139,6 +151,20 @@ export function resolveOAuthClientId() {
   }
 
   throw new Error("Missing OAuth client id runtime config.")
+}
+
+export function resolveOptionalOAuthClientSecret() {
+  const override = readOAuthClientSecretOverride()
+  if (override) {
+    return override
+  }
+
+  const nodeEnv = (globalThis as RuntimeGlobals).process?.env?.NODE_ENV
+  if (__DEV__ && nodeEnv !== "test") {
+    return DEFAULT_DEVELOPMENT_OAUTH_CLIENT_SECRET
+  }
+
+  return null
 }
 
 function resolveDefaultApiBaseUrl() {

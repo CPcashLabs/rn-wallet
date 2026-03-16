@@ -1,4 +1,4 @@
-import { resolveOAuthClientId } from "@/shared/config/runtime"
+import { resolveOAuthClientId, resolveOptionalOAuthClientSecret } from "@/shared/config/runtime"
 
 const RESERVED_OAUTH_TOKEN_BODY_KEYS = new Set(["client_id", "client_secret", "grant_type"])
 
@@ -15,6 +15,10 @@ export function buildOAuthTokenRequestBody(
 
   const body = new URLSearchParams()
   body.append("client_id", resolveOAuthClientId())
+  const clientSecret = resolveOptionalOAuthClientSecret()
+  if (clientSecret) {
+    body.append("client_secret", clientSecret)
+  }
   body.append("grant_type", normalizedGrantType)
 
   for (const [key, value] of Object.entries(params)) {
