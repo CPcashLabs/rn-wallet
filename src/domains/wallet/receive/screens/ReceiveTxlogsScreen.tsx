@@ -4,6 +4,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View
 import { useIsFocused } from "@react-navigation/native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import type { ReceiveStackParamList } from "@/app/navigation/types"
 import {
@@ -31,6 +32,7 @@ import { useAppForeground } from "@/shared/hooks/useAppForeground"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { SectionCard } from "@/shared/ui/AppFlowUi"
 import { HomeScaffold } from "@/shared/ui/HomeScaffold"
+import { getFloatingOverlayContentInset } from "@/shared/ui/floatingInsets"
 import { SeedAddressAvatar } from "@/shared/avatar/SeedAddressAvatar"
 import { useToast } from "@/shared/toast/useToast"
 
@@ -49,6 +51,7 @@ export function ReceiveTxlogsScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
   const { showToast } = useToast()
+  const insets = useSafeAreaInsets()
   const isFocused = useIsFocused()
   const isAppForeground = useAppForeground()
   const sources = useMemo(
@@ -119,6 +122,7 @@ export function ReceiveTxlogsScreen({ navigation, route }: Props) {
   const todayGroup = dayGroups.find(item => item.dateKey === todayKey) ?? createEmptyDayGroup(todayKey)
   const historyGroups = showTodayCard ? dayGroups.filter(item => item.dateKey !== todayKey) : dayGroups
   const incomeLabel = assetCode ? `${t("receive.logs.income")}(${assetCode})` : t("receive.logs.income")
+  const contentBottomInset = getFloatingOverlayContentInset(route.name, insets.bottom)
 
   useEffect(() => {
     if (!selectedMonth || !availableMonths.includes(selectedMonth)) {
@@ -140,10 +144,11 @@ export function ReceiveTxlogsScreen({ navigation, route }: Props) {
     <HomeScaffold
       backgroundColor={theme.isDark ? theme.colors.background : "#EEF5FF"}
       hideHeader
+      reserveFloatingOverlayInset={false}
       title={t("receive.logs.title")}
       scroll={false}
     >
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: contentBottomInset }]} showsVerticalScrollIndicator={false}>
         <View style={styles.headerRow}>
           <Pressable hitSlop={8} onPress={navigation.goBack} style={styles.headerBackButton}>
             <Text style={[styles.headerBackIcon, { color: theme.colors.text }]}>‹</Text>

@@ -329,6 +329,7 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
     <HomeScaffold
       canGoBack
       onBack={props.navigation.goBack}
+      reserveFloatingOverlayInset={false}
       title={props.title}
       scroll={false}
       right={
@@ -486,6 +487,7 @@ export function OrderBillScreen({ navigation, route }: OrderBillProps) {
     <HomeScaffold
       canGoBack
       onBack={navigation.goBack}
+      reserveFloatingOverlayInset={false}
       title={t("orders.bill.title")}
       scroll={false}
       right={

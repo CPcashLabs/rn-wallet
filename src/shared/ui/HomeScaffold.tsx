@@ -22,6 +22,7 @@ export function HomeScaffold(props: {
   backTintColor?: string
   contentContainerStyle?: StyleProp<ViewStyle>
   titleAlign?: "left" | "center"
+  reserveFloatingOverlayInset?: boolean
 }) {
   const { t } = useTranslation()
   const theme = useAppTheme()
@@ -33,7 +34,8 @@ export function HomeScaffold(props: {
   const backTintColor = props.backTintColor ?? theme.colors.primary
   const titleAlign = props.titleAlign ?? (props.canGoBack ? "center" : "left")
   const isLargeTitle = titleAlign === "left" && !props.canGoBack
-  const floatingBottomInset = getFloatingOverlayContentInset(route.name, insets.bottom)
+  const reserveFloatingOverlayInset = props.reserveFloatingOverlayInset ?? props.scroll !== false
+  const floatingBottomInset = reserveFloatingOverlayInset ? getFloatingOverlayContentInset(route.name, insets.bottom) : 0
   const contentOpacity = React.useRef(new Animated.Value(0)).current
   const contentTranslateY = React.useRef(new Animated.Value(10)).current
   const hasAnimatedInRef = React.useRef(false)
@@ -311,9 +313,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
   },
   headerTextAction: {
-    minHeight: 34,
+    minHeight: 32,
     borderRadius: 999,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -321,8 +323,8 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
   headerTextActionLabel: {
-    fontSize: 14,
-    lineHeight: 18,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: "600",
     letterSpacing: -0.1,
   },
