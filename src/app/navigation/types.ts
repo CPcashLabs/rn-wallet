@@ -1,7 +1,5 @@
 import type { NavigatorScreenParams } from "@react-navigation/native"
 
-import type { PluginId, PluginReturnTarget, PluginRouteParams } from "@/shared/plugins/types"
-
 export type AuthStackParamList = {
   LoginScreen: { inviteCode?: string } | undefined
   CreateMnemonicScreen: { inviteCode?: string } | undefined
@@ -121,7 +119,6 @@ export type AddressBookStackParamList = {
     | {
         mode?: "manage" | "select"
         chainType?: "EVM" | "TRON"
-        requestId?: string
       }
     | undefined
   AddressBookEditScreen:
@@ -419,10 +416,5 @@ export type RootStackParamList = {
   TransferStack: NavigatorScreenParams<TransferStackParamList>
   ReceiveStack: NavigatorScreenParams<ReceiveStackParamList>
   CopouchStack: NavigatorScreenParams<CopouchStackParamList>
-  PluginHost: {
-    pluginId: PluginId
-    pluginParams?: PluginRouteParams
-    returnTo?: PluginReturnTarget
-  }
   SupportStack: NavigatorScreenParams<SupportStackParamList>
 }

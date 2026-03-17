@@ -1,21 +1,18 @@
-import { beginBootstrapRun, resetBootstrapRunCoordinatorForTests } from "@/app/navigation/bootstrapRunCoordinator"
+import { createLatestTaskController } from "@/shared/async/taskController"
 
-describe("bootstrapRunCoordinator integration", () => {
-  beforeEach(() => {
-    resetBootstrapRunCoordinatorForTests()
-  })
-
-  afterEach(() => {
-    resetBootstrapRunCoordinatorForTests()
-  })
+describe("bootstrap run task controller integration", () => {
+  function beginBootstrapRun() {
+    return createLatestTaskController().begin()
+  }
 
   it("aborts the previous bootstrap run when a new run starts", () => {
-    const firstRun = beginBootstrapRun()
+    const controller = createLatestTaskController()
+    const firstRun = controller.begin()
 
     expect(firstRun.isCurrent()).toBe(true)
     expect(firstRun.signal.aborted).toBe(false)
 
-    const secondRun = beginBootstrapRun()
+    const secondRun = controller.begin()
 
     expect(firstRun.isCurrent()).toBe(false)
     expect(firstRun.signal.aborted).toBe(true)
@@ -24,8 +21,9 @@ describe("bootstrapRunCoordinator integration", () => {
   })
 
   it("keeps the latest bootstrap run alive when a stale run cancels itself", () => {
-    const firstRun = beginBootstrapRun()
-    const secondRun = beginBootstrapRun()
+    const controller = createLatestTaskController()
+    const firstRun = controller.begin()
+    const secondRun = controller.begin()
 
     firstRun.cancel()
 

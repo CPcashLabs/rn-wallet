@@ -1,4 +1,5 @@
 import type { RootRouteDescriptor } from "@/app/navigation/routeDescriptor"
+import { buildCopouchDetailRoute } from "@/app/navigation/copouchNavigation"
 import { resolveApiBaseUrl } from "@/shared/config/runtime"
 import { deepLinkAdapter } from "@/shared/native"
 
@@ -230,15 +231,7 @@ function toTxPayStatus(orderSn: string): RootRouteDescriptor<"TransferStack"> {
 }
 
 function toCopouchDetail(id: string): RootRouteDescriptor<"CopouchStack"> {
-  return {
-    name: "CopouchStack",
-    params: {
-      screen: "CopouchDetailScreen",
-      params: {
-        id,
-      },
-    },
-  }
+  return buildCopouchDetailRoute(id)
 }
 
 function toReceiveHome(params: {

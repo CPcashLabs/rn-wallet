@@ -10,13 +10,13 @@ import { getInviteBindingMessage } from "@/features/auth/utils/authMessages"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { formatCurrency } from "@/features/home/utils/format"
 import { HomeMessagePreview } from "@/features/messages/components/HomeMessagePreview"
+import { openCopouchHome } from "@/app/navigation/copouchNavigation"
 import { resolveTransferAddressFromUnknownChain } from "@/domains/wallet/transfer/utils/address"
 import { openReceiveModule, openScannedTransferModule, openTransferModule } from "@/app/navigation/coreModuleNavigation"
 import { navigateRoot } from "@/app/navigation/navigationRef"
 import { NativeCapabilityUnavailableError } from "@/shared/errors"
 import { errorCodeOf, resolveErrorMessage } from "@/shared/errors/presentation"
 import { scannerAdapter } from "@/shared/native"
-import { openPluginHost } from "@/shared/plugins/navigation"
 import { getBoolean, setBoolean } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 import { useBalanceStore } from "@/shared/store/useBalanceStore"
@@ -240,7 +240,7 @@ export function HomeShellScreen({ navigation, route }: Props) {
   }
 
   const handleOpenCopouch = () => {
-    openPluginHost({ pluginId: "copouch" })
+    openCopouchHome()
   }
 
   const handleOpenMessages = () => {
@@ -291,7 +291,7 @@ export function HomeShellScreen({ navigation, route }: Props) {
   }, [showToast, t])
 
   return (
-    <HomeScaffold hideHeader title={t("home.shell.title")}>
+    <HomeScaffold contentContainerStyle={styles.contentStack} hideHeader title={t("home.shell.title")}>
       <View style={styles.topBar}>
         <Pressable
           accessibilityLabel={t("home.shell.scan")}
@@ -310,7 +310,7 @@ export function HomeShellScreen({ navigation, route }: Props) {
             },
           ]}
         >
-          <AppGlyph backgroundColor="transparent" name="scan" size={20} tintColor={theme.colors.text} />
+          <AppGlyph backgroundColor="transparent" name="scan" size={18} tintColor={theme.colors.text} />
         </Pressable>
       </View>
 
@@ -340,7 +340,9 @@ export function HomeShellScreen({ navigation, route }: Props) {
           </Pressable>
         </View>
 
-        <Text style={[styles.balanceValue, { color: theme.colors.text }]}>{showBalance ? formatCurrency(displayedBalanceValue) : "*****"}</Text>
+        <Text numberOfLines={1} style={[styles.balanceValue, { color: theme.colors.text }]}>
+          {showBalance ? formatCurrency(displayedBalanceValue) : "*****"}
+        </Text>
         {balanceError ? (
           <Text style={[styles.balanceStatus, { color: theme.colors.danger }]}>
             {t(balanceError.kind === "refresh" ? "home.totalAssets.refreshFailed" : "home.totalAssets.loadFailed")}
@@ -397,28 +399,35 @@ function ActionButton(props: { label: string; onPress: () => void; symbol: strin
       >
         <Text style={[styles.actionSymbol, { color: theme.colors.primary }]}>{props.symbol}</Text>
       </View>
-      <Text style={[styles.actionLabel, { color: theme.colors.text }]}>{props.label}</Text>
+      <Text adjustsFontSizeToFit minimumFontScale={0.82} numberOfLines={1} style={[styles.actionLabel, { color: theme.colors.text }]}>
+        {props.label}
+      </Text>
     </Pressable>
   )
 }
 
 const styles = StyleSheet.create({
+  contentStack: {
+    gap: 14,
+    paddingTop: 6,
+    paddingBottom: 28,
+  },
   topBar: {
     alignSelf: "flex-end",
-    marginBottom: 10,
   },
   topBarAction: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
+    width: 44,
+    height: 44,
+    borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
     justifyContent: "center",
   },
   balanceCard: {
     borderRadius: 28,
-    padding: 20,
-    gap: 12,
+    paddingHorizontal: 22,
+    paddingVertical: 22,
+    gap: 14,
     borderWidth: StyleSheet.hairlineWidth,
     overflow: "hidden",
   },
@@ -446,41 +455,50 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   balanceLabel: {
-    fontSize: 14,
+    fontSize: 15,
+    lineHeight: 20,
     fontWeight: "600",
+    letterSpacing: -0.1,
   },
   balanceToggle: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    minHeight: 34,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
+    alignItems: "center",
+    justifyContent: "center",
   },
   balanceToggleText: {
-    fontSize: 12,
+    fontSize: 14,
+    lineHeight: 18,
     fontWeight: "600",
   },
   balanceValue: {
-    fontSize: 34,
-    lineHeight: 38,
-    letterSpacing: -1,
-    fontWeight: "700",
+    fontSize: 32,
+    lineHeight: 36,
+    letterSpacing: -1.2,
+    fontWeight: "800",
     fontVariant: ["tabular-nums"],
   },
   balanceStatus: {
-    fontSize: 12,
+    fontSize: 13,
+    lineHeight: 18,
     fontWeight: "600",
   },
   totalAssetsButton: {
     alignSelf: "flex-start",
-    marginTop: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    marginTop: 2,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
   },
   totalAssetsButtonText: {
-    fontSize: 13,
+    fontSize: 15,
+    lineHeight: 20,
     fontWeight: "600",
+    letterSpacing: -0.1,
   },
   actionRow: {
     flexDirection: "row",
@@ -488,38 +506,40 @@ const styles = StyleSheet.create({
   },
   actionGrid: {
     flexDirection: "row",
-    gap: 10,
+    gap: 12,
   },
   actionButton: {
     flex: 1,
     minWidth: 0,
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 24,
-    minHeight: 108,
+    borderRadius: 26,
+    minHeight: 116,
     alignItems: "center",
     justifyContent: "center",
-    gap: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 16,
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 18,
   },
   actionButtonPressed: {
     transform: [{ scale: 0.985 }],
   },
   actionIconShell: {
-    width: 46,
-    height: 46,
-    borderRadius: 16,
+    width: 50,
+    height: 50,
+    borderRadius: 18,
     borderWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
     justifyContent: "center",
   },
   actionSymbol: {
-    fontSize: 23,
+    fontSize: 24,
     fontWeight: "600",
   },
   actionLabel: {
-    fontSize: 15,
-    fontWeight: "600",
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: "700",
+    letterSpacing: -0.12,
     textAlign: "center",
   },
 })

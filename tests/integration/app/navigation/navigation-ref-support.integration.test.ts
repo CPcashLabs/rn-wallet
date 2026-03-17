@@ -38,7 +38,7 @@ import {
   resetToSupportScreen,
 } from "@/app/navigation/navigationRef"
 import { resolveSupportRoute } from "@/features/support/utils/supportRoutes"
-import { useNavigationStateStore } from "@/shared/store/useNavigationStateStore"
+import { useNavigationStateStore } from "@/app/navigation/useNavigationStateStore"
 
 function resetMockNavigationRuntime() {
   mockNavigationRuntime.actions = []
@@ -58,7 +58,11 @@ describe("navigationRef and supportRoutes integration", () => {
   })
 
   it("does not dispatch navigation actions before the container is ready", () => {
-    expect(navigateRoot("MainTabs")).toBe(false)
+    expect(
+      navigateRoot("MainTabs", {
+        screen: "HomeTab",
+      }),
+    ).toBe(false)
 
     resetToAuthStack()
     resetToMainTabs()
@@ -85,7 +89,11 @@ describe("navigationRef and supportRoutes integration", () => {
   it("dispatches root navigation and normalized resets when the container is ready", () => {
     mockNavigationRuntime.ready = true
 
-    expect(navigateRoot("MainTabs")).toBe(true)
+    expect(
+      navigateRoot("MainTabs", {
+        screen: "HomeTab",
+      }),
+    ).toBe(true)
     expect(
       navigateRoot("SupportStack", {
         screen: "NoNetworkScreen",
@@ -348,7 +356,6 @@ describe("navigationRef and supportRoutes integration", () => {
     expect(getCurrentRouteDescriptor()).toEqual({
       name: "SupportStack",
       params: {
-        reason: "legacy",
         screen: "NoNetworkScreen",
         params: { mode: "details" },
       },
@@ -357,7 +364,7 @@ describe("navigationRef and supportRoutes integration", () => {
     expect(
       describeRootRouteDescriptor({
         name: "SupportStack",
-        params: { reason: "legacy" },
+        params: undefined,
       }),
     ).toBe("SupportStack")
     expect(
@@ -369,7 +376,7 @@ describe("navigationRef and supportRoutes integration", () => {
             screen: "AddDesktopGuideScreen",
           },
         },
-      }),
+      } as never),
     ).toBe("SupportStack > NoNetworkScreen > AddDesktopGuideScreen")
   })
 })

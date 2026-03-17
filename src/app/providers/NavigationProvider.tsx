@@ -11,9 +11,9 @@ import { drainQueuedNavigationUrls, type QueuedUrlSource } from "@/app/providers
 import { setNetworkUnavailableHandler, setUnauthorizedHandler } from "@/shared/api/interceptors"
 import { getString } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
-import { clearPersistedWechatTargetPath, persistWechatTargetPath } from "@/shared/navigation/wechatTargetPath"
+import { clearPersistedWechatTargetPath, persistWechatTargetPath } from "@/app/navigation/wechatTargetPath"
 import { useAuthStore } from "@/shared/store/useAuthStore"
-import { useNavigationStateStore } from "@/shared/store/useNavigationStateStore"
+import { useNavigationStateStore } from "@/app/navigation/useNavigationStateStore"
 import { useThemeStore } from "@/shared/store/useThemeStore"
 import { resolveTheme } from "@/shared/theme/resolveTheme"
 

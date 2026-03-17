@@ -9,9 +9,9 @@ import { resetToRootRoutes } from "@/app/navigation/navigationRef"
 import { SupportPanel, SupportScaffold } from "@/features/support/components/SupportScaffold"
 import { resetToEntryScreen } from "@/features/support/utils/supportNavigation"
 import { getSupportGuideUrl, openSupportUrl } from "@/features/support/utils/supportLinks"
-import { clearPersistedWechatTargetPath, persistWechatTargetPath } from "@/shared/navigation/wechatTargetPath"
+import { clearPersistedWechatTargetPath, persistWechatTargetPath } from "@/app/navigation/wechatTargetPath"
 import { useAuthStore } from "@/shared/store/useAuthStore"
-import { useNavigationStateStore } from "@/shared/store/useNavigationStateStore"
+import { useNavigationStateStore } from "@/app/navigation/useNavigationStateStore"
 
 import type { SupportStackParamList } from "@/app/navigation/types"
 

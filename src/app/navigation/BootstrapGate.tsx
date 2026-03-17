@@ -1,10 +1,10 @@
-import React, { useEffect } from "react"
+import React, { useEffect, useRef } from "react"
 
 import { useNavigation } from "@react-navigation/native"
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 
-import { beginBootstrapRun } from "@/app/navigation/bootstrapRunCoordinator"
 import { readAuthSession } from "@/shared/api/auth-session"
+import { createLatestTaskController } from "@/shared/async/taskController"
 import { hydrateI18n } from "@/shared/i18n"
 import { getString } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
@@ -21,9 +21,10 @@ type Navigation = NativeStackNavigationProp<RootStackParamList, "BootstrapGate">
 
 export function BootstrapGate() {
   const navigation = useNavigation<Navigation>()
+  const bootstrapControllerRef = useRef(createLatestTaskController())
 
   useEffect(() => {
-    const run = beginBootstrapRun()
+    const run = bootstrapControllerRef.current.begin()
     const isCurrentRun = run.isCurrent
 
     const bootstrap = async () => {

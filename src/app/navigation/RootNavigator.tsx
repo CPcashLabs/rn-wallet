@@ -13,7 +13,6 @@ import { OrdersStackNavigator } from "@/app/navigation/OrdersStackNavigator"
 import { ReceiveStackNavigator } from "@/domains/wallet/receive/ReceiveStackNavigator"
 import { SupportNavigator } from "@/app/navigation/SupportNavigator"
 import { TransferStackNavigator } from "@/domains/wallet/transfer/TransferStackNavigator"
-import { PluginHostScreen } from "@/app/plugins/PluginHostScreen"
 
 import type { RootStackParamList } from "@/app/navigation/types"
 
@@ -32,15 +31,6 @@ export function RootNavigator() {
       <Stack.Screen name="TransferStack" component={TransferStackNavigator} />
       <Stack.Screen name="ReceiveStack" component={ReceiveStackNavigator} />
       <Stack.Screen name="CopouchStack" component={CopouchStackNavigator} />
-      <Stack.Screen
-        name="PluginHost"
-        component={PluginHostScreen}
-        options={{
-          animation: "none",
-          presentation: "transparentModal",
-          contentStyle: { backgroundColor: "transparent" },
-        }}
-      />
       <Stack.Screen name="SupportStack" component={SupportNavigator} />
     </Stack.Navigator>
   )

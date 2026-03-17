@@ -4,17 +4,14 @@ import { Pressable, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 
 import { resetToMainTabs } from "@/app/navigation/navigationRef"
-import { HomeScaffold } from "@/features/home/components/HomeScaffold"
-import { usePluginRuntime } from "@/shared/plugins/PluginRuntimeProvider"
+import { HomeScaffold } from "@/shared/ui/HomeScaffold"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 type Props = React.ComponentProps<typeof HomeScaffold>
 
 export function CopouchScaffold({ children, right, ...props }: Props) {
-  const pluginRuntime = usePluginRuntime()
-
   return (
-    <HomeScaffold {...props} right={!pluginRuntime ? <CopouchCloseButton /> : null}>
+    <HomeScaffold {...props} right={<CopouchCloseButton />}>
       {right ? <View style={styles.topActionsRow}>{right}</View> : null}
       {children}
     </HomeScaffold>

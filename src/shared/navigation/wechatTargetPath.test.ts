@@ -31,7 +31,7 @@ jest.mock("react-native-mmkv", () => {
 })
 
 import { sanitizeWechatTargetPath } from "@/app/navigation/deepLinkRouting"
-import { clearPersistedWechatTargetPath, persistWechatTargetPath } from "@/shared/navigation/wechatTargetPath"
+import { clearPersistedWechatTargetPath, persistWechatTargetPath } from "@/app/navigation/wechatTargetPath"
 import { getBoolean, getString, setBoolean, setString } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 
