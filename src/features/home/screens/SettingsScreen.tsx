@@ -85,7 +85,6 @@ export function SettingsScreen({ navigation }: Props) {
       canGoBack
       contentContainerStyle={styles.page}
       onBack={navigation.goBack}
-      reserveFloatingOverlayInset={false}
       title={t("home.settings.title")}
     >
       <Text style={[styles.sectionTitle, { color: theme.colors.mutedText }]}>{t("home.settings.accountSection")}</Text>
