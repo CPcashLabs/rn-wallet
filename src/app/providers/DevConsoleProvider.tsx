@@ -18,6 +18,8 @@ import {
   useDevConsoleEntries,
 } from "@/shared/logging/devConsole"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { getDevConsoleBottomOffset } from "@/shared/ui/floatingInsets"
+import { useNavigationStateStore } from "@/app/navigation/useNavigationStateStore"
 
 const FILTERS: DevConsoleFilter[] = ["all", "error", "warn", "runtime"]
 
@@ -28,6 +30,7 @@ export function DevConsoleProvider({ children }: PropsWithChildren) {
   const [visible, setVisible] = useState(false)
   const [filter, setFilter] = useState<DevConsoleFilter>("all")
   const entries = useDevConsoleEntries()
+  const lastRouteName = useNavigationStateStore(state => state.lastRouteName)
 
   useEffect(() => {
     installDevConsoleCapture()
@@ -85,8 +88,8 @@ export function DevConsoleProvider({ children }: PropsWithChildren) {
           style={[
             styles.triggerSlot,
             {
-              bottom: Math.max(insets.bottom, 16) + 72,
-              right: 18,
+              bottom: getDevConsoleBottomOffset(lastRouteName, insets.bottom),
+              right: 16,
             },
           ]}
         >
@@ -371,27 +374,27 @@ const styles = StyleSheet.create({
     position: "absolute",
   },
   triggerButton: {
-    minWidth: 68,
-    height: 38,
+    minWidth: 62,
+    height: 34,
     borderRadius: 999,
     borderWidth: 1,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     alignItems: "center",
     justifyContent: "center",
-    shadowOpacity: 0.18,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
+    shadowOpacity: 0.16,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 5,
   },
   triggerLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "800",
-    lineHeight: 13,
-    letterSpacing: 0.6,
+    lineHeight: 12,
+    letterSpacing: 0.5,
   },
   triggerCount: {
-    minWidth: 16,
-    height: 16,
+    minWidth: 15,
+    height: 15,
     borderRadius: 999,
     paddingHorizontal: 3,
     alignItems: "center",
@@ -402,7 +405,7 @@ const styles = StyleSheet.create({
   },
   triggerCountLabel: {
     color: "#FFFFFF",
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: "800",
   },
   modalRoot: {

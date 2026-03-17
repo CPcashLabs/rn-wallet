@@ -1,10 +1,12 @@
 import React from "react"
 
+import { useRoute } from "@react-navigation/native"
 import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native"
 import { useTranslation } from "react-i18next"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { getFloatingOverlayContentInset } from "@/shared/ui/floatingInsets"
 
 export function HomeScaffold(props: {
   title: string
@@ -24,12 +26,14 @@ export function HomeScaffold(props: {
   const { t } = useTranslation()
   const theme = useAppTheme()
   const insets = useSafeAreaInsets()
+  const route = useRoute()
   const backgroundColor = props.backgroundColor ?? theme.colors.background
   const headerBackgroundColor = props.headerBackgroundColor ?? theme.colors.glassStrong ?? theme.colors.surfaceElevated ?? theme.colors.surface
   const headerTintColor = props.headerTintColor ?? theme.colors.text
   const backTintColor = props.backTintColor ?? theme.colors.primary
   const titleAlign = props.titleAlign ?? (props.canGoBack ? "center" : "left")
   const isLargeTitle = titleAlign === "left" && !props.canGoBack
+  const floatingBottomInset = getFloatingOverlayContentInset(route.name, insets.bottom)
   const contentOpacity = React.useRef(new Animated.Value(0)).current
   const contentTranslateY = React.useRef(new Animated.Value(10)).current
   const hasAnimatedInRef = React.useRef(false)
@@ -74,12 +78,14 @@ export function HomeScaffold(props: {
 
   const content = props.scroll === false ? (
     <View style={styles.body}>
-      <Animated.View style={[styles.bodyInner, animatedContentStyle]}>{props.children}</Animated.View>
+      <Animated.View style={[styles.bodyInner, { paddingBottom: floatingBottomInset }, animatedContentStyle, props.contentContainerStyle]}>
+        {props.children}
+      </Animated.View>
     </View>
   ) : (
     <ScrollView
       bounces={false}
-      contentContainerStyle={styles.scrollContainer}
+      contentContainerStyle={[styles.scrollContainer, { paddingBottom: floatingBottomInset }]}
       keyboardDismissMode="on-drag"
       keyboardShouldPersistTaps="handled"
       style={styles.body}
@@ -296,19 +302,18 @@ const styles = StyleSheet.create({
   },
   bodyInner: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingHorizontal: 18,
   },
   scrollContainer: {
-    paddingBottom: 16,
+    minHeight: "100%",
   },
   scrollContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
   },
   headerTextAction: {
-    minHeight: 32,
+    minHeight: 34,
     borderRadius: 999,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -316,7 +321,9 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
   headerTextActionLabel: {
-    fontSize: 13,
-    fontWeight: "700",
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: "600",
+    letterSpacing: -0.1,
   },
 })
