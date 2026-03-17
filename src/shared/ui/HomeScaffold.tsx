@@ -36,20 +36,22 @@ export function HomeScaffold(props: {
   const isLargeTitle = titleAlign === "left" && !props.canGoBack
   const reserveFloatingOverlayInset = props.reserveFloatingOverlayInset ?? props.scroll !== false
   const floatingBottomInset = reserveFloatingOverlayInset ? getFloatingOverlayContentInset(route.name, insets.bottom) : 0
+  const contentContainerStyle = StyleSheet.flatten(props.contentContainerStyle) ?? {}
+  const contentPaddingBottom = resolvePaddingBottom(contentContainerStyle)
 
   const content = props.scroll === false ? (
     <View style={styles.body}>
-      <View style={[styles.bodyInner, { paddingBottom: floatingBottomInset }, props.contentContainerStyle]}>{props.children}</View>
+      <View style={[styles.bodyInner, contentContainerStyle, { paddingBottom: contentPaddingBottom + floatingBottomInset }]}>{props.children}</View>
     </View>
   ) : (
     <ScrollView
       bounces={false}
-      contentContainerStyle={[styles.scrollContainer, { paddingBottom: floatingBottomInset }]}
+      contentContainerStyle={styles.scrollContainer}
       keyboardDismissMode="on-drag"
       keyboardShouldPersistTaps="handled"
       style={styles.body}
     >
-      <View style={[styles.scrollContent, props.contentContainerStyle]}>{props.children}</View>
+      <View style={[styles.scrollContent, contentContainerStyle, { paddingBottom: contentPaddingBottom + floatingBottomInset }]}>{props.children}</View>
     </ScrollView>
   )
 
@@ -144,6 +146,22 @@ export function HomeScaffold(props: {
       </SafeAreaView>
     </View>
   )
+}
+
+function resolvePaddingBottom(style: ViewStyle) {
+  if (typeof style.paddingBottom === "number") {
+    return style.paddingBottom
+  }
+
+  if (typeof style.paddingVertical === "number") {
+    return style.paddingVertical
+  }
+
+  if (typeof style.padding === "number") {
+    return style.padding
+  }
+
+  return 0
 }
 
 export function HeaderTextAction(props: {

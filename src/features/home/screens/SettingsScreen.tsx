@@ -180,6 +180,7 @@ function SettingsRow(props: { label: string; detail?: string; onPress: () => voi
 const styles = StyleSheet.create({
   page: {
     gap: 14,
+    paddingBottom: 28,
   },
   card: {
     gap: 0,
