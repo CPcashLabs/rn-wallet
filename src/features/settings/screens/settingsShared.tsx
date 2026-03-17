@@ -105,7 +105,8 @@ export function useProfileRefresh() {
 
 export const styles = StyleSheet.create({
   sectionLabel: {
-    fontSize: 14,
+    fontSize: 15,
+    lineHeight: 20,
     fontWeight: "600",
     color: "#6E6E73",
   },
@@ -131,19 +132,22 @@ export const styles = StyleSheet.create({
     fontSize: 12,
   },
   helperText: {
-    fontSize: 12,
+    fontSize: 13,
     color: "#6E6E73",
-    lineHeight: 18,
+    lineHeight: 20,
   },
   centerMuted: {
     textAlign: "center",
-    fontSize: 13,
+    fontSize: 14,
+    lineHeight: 20,
     color: "#6E6E73",
   },
   emailValue: {
     textAlign: "center",
-    fontSize: 20,
+    fontSize: 18,
+    lineHeight: 22,
     fontWeight: "700",
+    letterSpacing: -0.2,
     color: "#111111",
   },
   inlineTextButton: {
@@ -186,8 +190,10 @@ export const styles = StyleSheet.create({
   },
   brandTitle: {
     textAlign: "center",
-    fontSize: 22,
+    fontSize: 20,
+    lineHeight: 24,
     fontWeight: "700",
+    letterSpacing: -0.4,
     color: "#111111",
   },
   levelRow: {
@@ -232,19 +238,23 @@ export const styles = StyleSheet.create({
   tableHeadCell: {
     flex: 1,
     textAlign: "center",
+    fontSize: 13,
+    lineHeight: 18,
     fontWeight: "600",
     color: "#6E6E73",
   },
   tableRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "rgba(60,60,67,0.12)",
   },
   tableCell: {
     flex: 1,
     textAlign: "center",
+    fontSize: 14,
+    lineHeight: 20,
     color: "#111111",
   },
   bulletRow: {

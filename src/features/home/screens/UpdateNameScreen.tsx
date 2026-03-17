@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react"
 
-import { View } from "react-native"
+import { StyleSheet, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -57,8 +57,8 @@ export function UpdateNameScreen({ navigation }: Props) {
   }
 
   return (
-    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("home.updateName.title")}>
-      <AppCard>
+    <HomeScaffold canGoBack contentContainerStyle={styles.page} onBack={navigation.goBack} title={t("home.updateName.title")}>
+      <AppCard style={styles.formCard}>
         <AppTextField
           autoCapitalize="words"
           backgroundTone="background"
@@ -74,7 +74,20 @@ export function UpdateNameScreen({ navigation }: Props) {
         disabled={submitting}
         label={submitting ? t("common.loading") : t("home.updateName.save")}
         onPress={() => void save()}
+        style={styles.saveButton}
       />
     </HomeScaffold>
   )
 }
+
+const styles = StyleSheet.create({
+  page: {
+    gap: 16,
+  },
+  formCard: {
+    gap: 12,
+  },
+  saveButton: {
+    marginTop: 2,
+  },
+})

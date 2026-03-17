@@ -3,6 +3,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react"
 import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
+import { useRoute } from "@react-navigation/native"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { HeaderTextAction, HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { formatAddress } from "@/features/home/utils/format"
@@ -41,6 +43,7 @@ import { useUserStore } from "@/shared/store/useUserStore"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { AppTextField } from "@/shared/ui/AppTextField"
+import { getFloatingOverlayContentInset } from "@/shared/ui/floatingInsets"
 
 import type { OrdersStackParamList } from "@/app/navigation/types"
 
@@ -85,6 +88,8 @@ export function TxlogsByAddressScreen({ navigation, route }: TxlogsByAddressProp
 function OrderLogsScreenBase(props: OrderListBaseProps) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const route = useRoute()
+  const insets = useSafeAreaInsets()
   const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
   const [orderType, setOrderType] = useState<OrderTypeFilter | undefined>(undefined)
@@ -103,6 +108,7 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
   const totalRef = useRef(0)
 
   const rangeSelection = useMemo(() => buildRangeSelection("all"), [])
+  const contentBottomInset = getFloatingOverlayContentInset(route.name, insets.bottom)
   const cacheKey = useMemo(
     () =>
       buildOrderLogsCacheKey({
@@ -333,7 +339,7 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
     >
       <FlatList
         bounces
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: contentBottomInset }]}
         data={loading ? [] : orderGroups}
         keyExtractor={([month]) => month}
         keyboardDismissMode="on-drag"
@@ -414,6 +420,7 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
 export function OrderBillScreen({ navigation, route }: OrderBillProps) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const insets = useSafeAreaInsets()
   const { presentError } = useErrorPresenter()
   const profile = useUserStore(state => state.profile)
   const [preset, setPreset] = useState<Exclude<RangePreset, "all">>(route.params?.preset ?? "today")
@@ -422,6 +429,7 @@ export function OrderBillScreen({ navigation, route }: OrderBillProps) {
   const [loading, setLoading] = useState(true)
 
   const rangeSelection = useMemo(() => buildRangeSelection(preset), [preset])
+  const contentBottomInset = getFloatingOverlayContentInset(route.name, insets.bottom)
   const cacheKey = useMemo(() => buildOrderBillCacheKey(rangeSelection), [rangeSelection])
   const rangeOptions = useMemo(() => resolveOrderBillRangeOptions(t), [t])
 
@@ -497,7 +505,7 @@ export function OrderBillScreen({ navigation, route }: OrderBillProps) {
         ) : null
       }
     >
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: contentBottomInset }]}>
         <SectionCard style={styles.filtersCard}>
           <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("orders.bill.rangeTitle")}</Text>
           <ScrollView horizontal contentContainerStyle={styles.filterScrollContent} showsHorizontalScrollIndicator={false}>
@@ -643,14 +651,13 @@ export function BillExportScreen({ navigation, route }: BillExportProps) {
 
 const styles = StyleSheet.create({
   content: {
-    padding: 16,
-    paddingBottom: 24,
+    padding: 18,
   },
   headerContent: {
-    gap: 14,
+    gap: 16,
   },
   filtersCard: {
-    gap: 12,
+    gap: 14,
   },
   filtersPanel: {
     gap: 10,
@@ -660,8 +667,10 @@ const styles = StyleSheet.create({
     paddingRight: 8,
   },
   sectionTitle: {
-    fontSize: 15,
+    fontSize: 16,
+    lineHeight: 21,
     fontWeight: "700",
+    letterSpacing: -0.2,
   },
   filterWrap: {
     flexDirection: "row",
@@ -675,8 +684,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   body: {
-    fontSize: 13,
-    lineHeight: 20,
+    fontSize: 14,
+    lineHeight: 21,
   },
   listGroup: {
     marginTop: 14,
@@ -693,10 +702,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   addressTitle: {
-    fontSize: 14,
+    fontSize: 15,
+    lineHeight: 20,
     fontWeight: "700",
   },
   addressBody: {
-    fontSize: 13,
+    fontSize: 14,
+    lineHeight: 20,
   },
 })

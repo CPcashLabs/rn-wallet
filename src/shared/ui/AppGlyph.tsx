@@ -31,7 +31,7 @@ type AppGlyphProps = {
   backgroundColor?: string
 }
 
-export function AppGlyph({ name, size = 30, tintColor, backgroundColor }: AppGlyphProps) {
+export function AppGlyph({ name, size = 28, tintColor, backgroundColor }: AppGlyphProps) {
   const theme = useAppTheme()
   const stroke = tintColor ?? theme.colors.primary
   const shellColor = backgroundColor ?? theme.colors.primarySoft ?? `${theme.colors.primary}14`
@@ -44,7 +44,7 @@ export function AppGlyph({ name, size = 30, tintColor, backgroundColor }: AppGly
         {
           width: size,
           height: size,
-          borderRadius: size * 0.36,
+          borderRadius: size * 0.34,
           backgroundColor: shellColor,
         },
       ]}

@@ -100,7 +100,7 @@ export function PersonalScreen({ navigation }: Props) {
   }
 
   return (
-    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("home.personal.title")}>
+    <HomeScaffold canGoBack contentContainerStyle={styles.page} onBack={navigation.goBack} title={t("home.personal.title")}>
       {cropUri ? (
         <ImageCropModal
           imageUri={cropUri}
@@ -116,8 +116,10 @@ export function PersonalScreen({ navigation }: Props) {
           onPress={handleAvatarPress}
           right={
             <View style={styles.rowRight}>
-              <UserAvatar accountKey={address} cacheVersion={avatarVersion} label={nickname} size={32} uri={avatar} />
-              <Text style={[styles.rowValue, { color: theme.colors.mutedText }]}>{uploading ? t("common.loading") : "›"}</Text>
+              <UserAvatar accountKey={address} cacheVersion={avatarVersion} label={nickname} size={36} uri={avatar} />
+              <Text style={[uploading ? styles.rowValue : styles.chevron, { color: theme.colors.mutedText }]}>
+                {uploading ? t("common.loading") : "›"}
+              </Text>
             </View>
           }
           title={t("home.personal.avatar")}
@@ -127,8 +129,8 @@ export function PersonalScreen({ navigation }: Props) {
           onPress={() => navigation.navigate("UpdateNameScreen")}
           right={
             <View style={styles.rowRight}>
-              <Text style={[styles.rowValue, { color: theme.colors.mutedText }]}>{nickname}</Text>
-              <Text style={[styles.rowValue, { color: theme.colors.mutedText }]}>›</Text>
+              <Text numberOfLines={1} style={[styles.rowValue, { color: theme.colors.mutedText }]}>{nickname}</Text>
+              <Text style={[styles.chevron, { color: theme.colors.mutedText }]}>›</Text>
             </View>
           }
           title={t("home.personal.nickname")}
@@ -138,8 +140,10 @@ export function PersonalScreen({ navigation }: Props) {
           onPress={() => Alert.alert(t("common.infoTitle"), address)}
           right={
             <View style={styles.rowRight}>
-              <Text style={[styles.rowValue, { color: theme.colors.mutedText }]}>{formatAddress(address)}</Text>
-              <Text style={[styles.rowValue, { color: theme.colors.mutedText }]}>›</Text>
+              <Text numberOfLines={1} style={[styles.rowValue, styles.rowValueCompressed, { color: theme.colors.mutedText }]}>
+                {formatAddress(address)}
+              </Text>
+              <Text style={[styles.chevron, { color: theme.colors.mutedText }]}>›</Text>
             </View>
           }
           title={t("home.personal.address")}
@@ -150,8 +154,10 @@ export function PersonalScreen({ navigation }: Props) {
           onPress={() => navigation.navigate(hasEmail ? "EmailBindedScreen" : "EmailHomeScreen")}
           right={
             <View style={styles.rowRight}>
-              <Text style={[styles.rowValue, { color: theme.colors.mutedText }]}>{email}</Text>
-              <Text style={[styles.rowValue, { color: theme.colors.mutedText }]}>›</Text>
+              <Text numberOfLines={1} style={[styles.rowValue, styles.rowValueCompressed, { color: theme.colors.mutedText }]}>
+                {email}
+              </Text>
+              <Text style={[styles.chevron, { color: theme.colors.mutedText }]}>›</Text>
             </View>
           }
           title={t("home.personal.email")}
@@ -162,12 +168,28 @@ export function PersonalScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
+  page: {
+    gap: 16,
+  },
   rowRight: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 10,
+    maxWidth: "64%",
+    minWidth: 0,
   },
   rowValue: {
-    fontSize: 13,
+    flexShrink: 1,
+    fontSize: 15,
+    lineHeight: 20,
+    textAlign: "right",
+  },
+  rowValueCompressed: {
+    maxWidth: 150,
+  },
+  chevron: {
+    fontSize: 20,
+    lineHeight: 20,
+    fontWeight: "300",
   },
 })

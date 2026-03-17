@@ -19,7 +19,6 @@ import { useThemeStore, type ThemeMode } from "@/shared/store/useThemeStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { persistThemePreference } from "@/shared/theme/themePersistence"
 import { AppButton } from "@/shared/ui/AppButton"
-import { AppCard } from "@/shared/ui/AppCard"
 import { AppListCard, AppListRow } from "@/shared/ui/AppList"
 import { AppGlyph, type AppGlyphName } from "@/shared/ui/AppGlyph"
 
@@ -82,18 +81,7 @@ export function SettingsScreen({ navigation }: Props) {
   }
 
   return (
-    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("home.settings.title")}>
-      <AppCard style={[styles.summaryCard, { backgroundColor: theme.colors.surfaceElevated ?? theme.colors.surface }]}>
-        <Text style={[styles.summaryTitle, { color: theme.colors.text }]}>{t("home.settings.title")}</Text>
-        <Text style={[styles.summaryBody, { color: theme.colors.mutedText }]}>
-          {isPasskeyLogin ? t("home.settings.exportPasskey") : t("home.settings.changePassword")}
-          {" · "}
-          {t(`home.settings.networkOptions.${chainId === "199" ? "mainnet" : "testnet"}`)}
-          {" · "}
-          {t(languageLabelKey)}
-        </Text>
-      </AppCard>
-
+    <HomeScaffold canGoBack contentContainerStyle={styles.page} onBack={navigation.goBack} title={t("home.settings.title")}>
       <Text style={[styles.sectionTitle, { color: theme.colors.mutedText }]}>{t("home.settings.accountSection")}</Text>
       <AppListCard style={styles.card}>
         <SettingsRow
@@ -156,7 +144,7 @@ export function SettingsScreen({ navigation }: Props) {
         <SettingsRow hideDivider icon="bell" label={t("settingsHub.email.notificationTitle")} onPress={() => navigation.navigate("EmailNotificationScreen")} />
       </AppListCard>
 
-      <AppButton label={t("home.settings.logout")} onPress={() => void logout()} tone="danger" />
+      <AppButton label={t("home.settings.logout")} onPress={() => void logout()} style={styles.logoutButton} tone="danger" />
     </HomeScaffold>
   )
 }
@@ -171,7 +159,11 @@ function SettingsRow(props: { label: string; detail?: string; onPress: () => voi
       onPress={props.onPress}
       right={
         <View style={styles.rowAccessory}>
-          {props.detail ? <Text style={[styles.rowDetail, { color: theme.colors.mutedText }]}>{props.detail}</Text> : null}
+          {props.detail ? (
+            <Text numberOfLines={1} style={[styles.rowDetail, { color: theme.colors.mutedText }]}>
+              {props.detail}
+            </Text>
+          ) : null}
           <Text style={[styles.rowChevron, { color: theme.colors.mutedText }]}>›</Text>
         </View>
       }
@@ -181,40 +173,41 @@ function SettingsRow(props: { label: string; detail?: string; onPress: () => voi
 }
 
 const styles = StyleSheet.create({
-  summaryCard: {
-    gap: 8,
-  },
-  summaryTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    letterSpacing: -0.4,
-  },
-  summaryBody: {
-    fontSize: 13,
-    lineHeight: 20,
+  page: {
+    gap: 14,
+    paddingBottom: 148,
   },
   card: {
     gap: 0,
   },
   sectionTitle: {
-    fontSize: 13,
+    fontSize: 15,
+    lineHeight: 20,
     fontWeight: "600",
-    letterSpacing: 0.4,
-    textTransform: "uppercase",
-    paddingHorizontal: 4,
-    paddingTop: 4,
+    letterSpacing: -0.1,
+    paddingHorizontal: 6,
+    paddingTop: 2,
   },
   rowAccessory: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 10,
+    minWidth: 0,
+    marginLeft: 12,
   },
   rowDetail: {
-    fontSize: 13,
+    maxWidth: 138,
+    fontSize: 15,
+    lineHeight: 20,
+    textAlign: "right",
+    flexShrink: 1,
   },
   rowChevron: {
-    fontSize: 22,
-    lineHeight: 22,
+    fontSize: 20,
+    lineHeight: 20,
     fontWeight: "300",
+  },
+  logoutButton: {
+    marginTop: 2,
   },
 })

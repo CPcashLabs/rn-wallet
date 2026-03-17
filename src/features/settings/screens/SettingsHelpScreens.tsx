@@ -28,11 +28,11 @@ export function HelpCenterScreen({ navigation }: HelpStackProps<"HelpCenterScree
   const theme = useAppTheme()
 
   return (
-    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.help.title")}>
+    <HomeScaffold canGoBack contentContainerStyle={localStyles.helpPage} onBack={navigation.goBack} title={t("settingsHub.help.title")}>
       <Card>
-        <Text style={[styles.sectionLabel, { color: theme.colors.mutedText }]}>{t("settingsHub.help.needHelp")}</Text>
+        <Text style={[localStyles.helpLead, { color: theme.colors.mutedText }]}>{t("settingsHub.help.needHelp")}</Text>
         <PrimaryButton label="Telegram" onPress={() => void openExternalUrl("https://t.me/CPcashWallet")} />
-        <Text style={[styles.emailValue, { color: theme.colors.text }]}>support@cp.cash</Text>
+        <Text style={[styles.emailValue, localStyles.helpEmail, { color: theme.colors.text }]}>support@cp.cash</Text>
       </Card>
       <ListCard>
         <Row icon="help" label={t("settingsHub.help.faq")} onPress={() => navigation.navigate("FAQScreen")} />
@@ -102,12 +102,28 @@ export function AboutScreen({ navigation }: StackProps<"AboutScreen">) {
   ]
 
   return (
-    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.about.title")}>
+    <HomeScaffold
+      canGoBack
+      contentContainerStyle={localStyles.aboutContent}
+      onBack={navigation.goBack}
+      title={t("settingsHub.about.title")}
+    >
       <Card>
         <View style={localStyles.brandCard}>
-          <AppleBrandMark size={60} tone="light" />
-          <Text style={[styles.brandTitle, { color: theme.colors.text }]}>CPcash Wallet</Text>
-          <Text style={[localStyles.brandBody, { color: theme.colors.mutedText }]}>Apple-style wallet workspace</Text>
+          <View style={[localStyles.brandMarkShell, { backgroundColor: theme.colors.surfaceMuted ?? theme.colors.surface }]}>
+            <AppleBrandMark size={54} tone="light" />
+          </View>
+          <View style={localStyles.brandCopy}>
+            <Text
+              adjustsFontSizeToFit
+              minimumFontScale={0.92}
+              numberOfLines={1}
+              style={[styles.brandTitle, localStyles.brandTitle, { color: theme.colors.text }]}
+            >
+              CPcash Wallet
+            </Text>
+            <Text style={[localStyles.brandBody, { color: theme.colors.mutedText }]}>Apple-style wallet workspace</Text>
+          </View>
         </View>
       </Card>
       <ListCard>
@@ -223,14 +239,51 @@ export function SafetyGuideDetailScreen(props: HelpStackProps<"SafetyGuideDetail
 }
 
 const localStyles = {
+  helpPage: {
+    gap: 16,
+  },
+  helpLead: {
+    textAlign: "center" as const,
+    fontSize: 16,
+    lineHeight: 24,
+    fontWeight: "600" as const,
+  },
+  helpEmail: {
+    fontSize: 17,
+    lineHeight: 22,
+    letterSpacing: -0.2,
+  },
+  aboutContent: {
+    gap: 16,
+    paddingBottom: 152,
+  },
   brandCard: {
     alignItems: "center" as const,
-    gap: 12,
-    paddingVertical: 8,
+    gap: 16,
+    paddingVertical: 14,
+  },
+  brandMarkShell: {
+    width: 94,
+    height: 94,
+    borderRadius: 30,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  brandCopy: {
+    alignItems: "center" as const,
+    gap: 6,
+    maxWidth: 260,
+  },
+  brandTitle: {
+    fontSize: 19,
+    lineHeight: 24,
+    letterSpacing: -0.45,
   },
   brandBody: {
-    fontSize: 13,
-    lineHeight: 20,
+    textAlign: "center" as const,
+    fontSize: 15,
+    lineHeight: 21,
+    maxWidth: 240,
   },
   feedbackHint: {
     fontSize: 12,

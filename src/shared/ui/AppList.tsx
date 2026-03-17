@@ -46,9 +46,15 @@ export const AppListRow = React.memo(function AppListRow(props: AppListRowProps)
           props.children
         ) : (
           <>
-            {props.title ? <Text style={[styles.title, { color: theme.colors.text }, props.titleStyle]}>{props.title}</Text> : null}
+            {props.title ? (
+              <Text numberOfLines={1} style={[styles.title, { color: theme.colors.text }, props.titleStyle]}>
+                {props.title}
+              </Text>
+            ) : null}
             {props.subtitle ? (
-              <Text style={[styles.subtitle, { color: theme.colors.mutedText }, props.subtitleStyle]}>{props.subtitle}</Text>
+              <Text numberOfLines={2} style={[styles.subtitle, { color: theme.colors.mutedText }, props.subtitleStyle]}>
+                {props.subtitle}
+              </Text>
             ) : null}
           </>
         )}
@@ -96,28 +102,34 @@ AppListRow.displayName = "AppListRow"
 const styles = StyleSheet.create({
   row: {
     paddingHorizontal: APP_LIST_ROW_PADDING,
+    paddingVertical: 4,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 14,
   },
   left: {
     alignItems: "center",
     justifyContent: "center",
+    flexShrink: 0,
   },
   main: {
     flex: 1,
-    gap: 4,
+    minWidth: 0,
+    gap: 3,
   },
   title: {
-    fontSize: 15,
-    fontWeight: "500",
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: "600",
+    letterSpacing: -0.2,
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: 14,
+    lineHeight: 20,
   },
   arrow: {
-    fontSize: 22,
-    lineHeight: 22,
+    fontSize: 20,
+    lineHeight: 20,
     fontWeight: "300",
   },
 })

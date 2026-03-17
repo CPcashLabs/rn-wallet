@@ -112,13 +112,14 @@ AppTextField.displayName = "AppTextField"
 const stylePresets: Record<"default" | "auth", { container: ViewStyle; input: TextStyle }> = {
   default: {
     container: {
-      minHeight: 50,
-      borderRadius: 18,
-      paddingHorizontal: 16,
+      minHeight: 54,
+      borderRadius: 20,
+      paddingHorizontal: 18,
     },
     input: {
-      paddingVertical: 13,
-      fontSize: 15,
+      paddingVertical: 14,
+      fontSize: 16,
+      lineHeight: 22,
     },
   },
   auth: {
@@ -139,8 +140,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   label: {
-    fontSize: 14,
+    fontSize: 15,
+    lineHeight: 20,
     fontWeight: "700",
+    letterSpacing: -0.15,
   },
   labelAuth: {
     fontWeight: "600",
@@ -173,7 +176,7 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
   },
   helperText: {
-    fontSize: 12,
+    fontSize: 13,
     lineHeight: 18,
   },
 })

@@ -277,12 +277,25 @@ export function CopouchHomeScreen({ navigation }: Props) {
             style={[styles.walletCard, { borderColor: theme.colors.border, backgroundColor: COPOUCH_WALLET_CARD_COLORS[(wallet.walletBgColor - 1) % COPOUCH_WALLET_CARD_COLORS.length] }]}
           >
             <View style={styles.walletHeader}>
-              <Text style={styles.walletName}>{wallet.walletName || t("copouch.home.unnamedWallet")}</Text>
-              <Text style={[styles.walletStatus, { color: wallet.status === 1 ? "#047857" : "#B45309" }]}>
-                {wallet.status === 1 ? t("copouch.home.statusReady") : t("copouch.home.statusPending")}
+              <Text adjustsFontSizeToFit minimumFontScale={0.8} numberOfLines={1} style={styles.walletName}>
+                {wallet.walletName || t("copouch.home.unnamedWallet")}
               </Text>
+              <View
+                style={[
+                  styles.walletStatusBadge,
+                  {
+                    backgroundColor: wallet.status === 1 ? "rgba(4,120,87,0.12)" : "rgba(180,83,9,0.12)",
+                  },
+                ]}
+              >
+                <Text style={[styles.walletStatus, { color: wallet.status === 1 ? "#047857" : "#B45309" }]}>
+                  {wallet.status === 1 ? t("copouch.home.statusReady") : t("copouch.home.statusPending")}
+                </Text>
+              </View>
             </View>
-            <Text style={styles.walletBalance}>{formatCurrency(wallet.totalValue)}</Text>
+            <Text adjustsFontSizeToFit minimumFontScale={0.82} numberOfLines={1} style={styles.walletBalance}>
+              {formatCurrency(wallet.totalValue)}
+            </Text>
             <View style={styles.walletMeta}>
               <Text style={[styles.walletMetaText, { color: theme.colors.mutedText }]}>
                 {t("copouch.home.ownerCount", { count: wallet.ownerCount })}
@@ -299,6 +312,7 @@ export function CopouchHomeScreen({ navigation }: Props) {
         label={creating ? t("common.loading") : refreshing ? t("copouch.home.refreshing") : t("copouch.home.createButton")}
         onPress={handleOpenCreate}
         disabled={creating || isCreateCoolingDown}
+        style={styles.createButton}
       />
 
       <Modal animationType="slide" transparent visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
@@ -349,57 +363,81 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "flex-end",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 10,
   },
   summaryTitle: {
-    fontSize: 15,
+    fontSize: 17,
+    lineHeight: 22,
     fontWeight: "700",
+    letterSpacing: -0.24,
   },
   summaryBody: {
-    fontSize: 13,
-    lineHeight: 20,
+    fontSize: 15,
+    lineHeight: 24,
   },
   sectionTitle: {
-    fontSize: 15,
+    fontSize: 17,
+    lineHeight: 22,
     fontWeight: "700",
+    letterSpacing: -0.2,
   },
   sortRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    gap: 12,
   },
   sortText: {
-    fontSize: 13,
-    fontWeight: "700",
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: "600",
+    letterSpacing: -0.12,
   },
   loadingText: {
-    fontSize: 13,
+    fontSize: 14,
+    lineHeight: 20,
   },
   walletCard: {
-    borderRadius: 18,
-    padding: 16,
-    gap: 10,
+    borderRadius: 22,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+    gap: 12,
     borderWidth: StyleSheet.hairlineWidth,
   },
   walletHeader: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     justifyContent: "space-between",
-    gap: 12,
+    gap: 14,
   },
   walletName: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#0F172A",
     flex: 1,
+    minWidth: 0,
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: "700",
+    letterSpacing: -0.32,
+    color: "#0F172A",
+  },
+  walletStatusBadge: {
+    minHeight: 30,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    alignItems: "center",
+    justifyContent: "center",
   },
   walletStatus: {
-    fontSize: 12,
+    fontSize: 14,
+    lineHeight: 18,
     fontWeight: "700",
   },
   walletBalance: {
-    fontSize: 26,
+    fontSize: 30,
+    lineHeight: 34,
     fontWeight: "800",
+    letterSpacing: -0.9,
+    fontVariant: ["tabular-nums"],
     color: "#0F172A",
   },
   walletMeta: {
@@ -409,7 +447,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   walletMetaText: {
-    fontSize: 12,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  createButton: {
+    marginTop: 2,
   },
   modalMask: {
     flex: 1,
@@ -420,15 +462,20 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     borderWidth: StyleSheet.hairlineWidth,
-    padding: 16,
-    gap: 12,
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 20,
+    gap: 14,
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 20,
+    lineHeight: 24,
     fontWeight: "800",
+    letterSpacing: -0.28,
   },
   modalLabel: {
-    fontSize: 13,
+    fontSize: 14,
+    lineHeight: 18,
     fontWeight: "600",
   },
   input: {
@@ -449,8 +496,8 @@ const styles = StyleSheet.create({
     borderWidth: 3,
   },
   helperText: {
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 13,
+    lineHeight: 20,
   },
   modalActions: {
     gap: 10,

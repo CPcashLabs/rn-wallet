@@ -67,6 +67,8 @@ export const AppButton = React.memo(function AppButton(props: AppButtonProps) {
         <ActivityIndicator color={variant === "primary" ? "#FFFFFF" : primaryColor} />
       ) : (
         <Text
+          adjustsFontSizeToFit
+          numberOfLines={1}
           style={[
             styles.label,
             variant === "primary" ? styles.labelPrimary : null,
@@ -85,11 +87,11 @@ AppButton.displayName = "AppButton"
 
 const styles = StyleSheet.create({
   base: {
-    minHeight: 50,
+    minHeight: 54,
     borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
   },
   disabled: {
     opacity: 0.55,
@@ -99,10 +101,11 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.985 }],
   },
   label: {
-    fontSize: 16,
+    fontSize: 17,
+    lineHeight: 22,
     fontWeight: "700",
   },
   labelPrimary: {
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
   },
 })
