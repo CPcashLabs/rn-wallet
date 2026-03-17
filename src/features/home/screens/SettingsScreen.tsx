@@ -81,7 +81,13 @@ export function SettingsScreen({ navigation }: Props) {
   }
 
   return (
-    <HomeScaffold canGoBack contentContainerStyle={styles.page} onBack={navigation.goBack} title={t("home.settings.title")}>
+    <HomeScaffold
+      canGoBack
+      contentContainerStyle={styles.page}
+      onBack={navigation.goBack}
+      reserveFloatingOverlayInset={false}
+      title={t("home.settings.title")}
+    >
       <Text style={[styles.sectionTitle, { color: theme.colors.mutedText }]}>{t("home.settings.accountSection")}</Text>
       <AppListCard style={styles.card}>
         <SettingsRow
