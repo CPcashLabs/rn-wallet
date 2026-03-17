@@ -8,7 +8,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { HeaderTextAction, HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { formatAddress } from "@/features/home/utils/format"
-import { ActionRow, FilterChip, OrderMonthSection, SummaryGrid, SuccessStateCard } from "@/features/orders/components/OrdersUi"
+import { FilterChip, OrderMonthSection, SuccessStateCard } from "@/features/orders/components/OrdersUi"
+import { SeedAddressAvatar } from "@/features/orders/components/OrderCounterpartyAvatar"
 import { exportOrderBillFile } from "@/features/orders/services/orderExport"
 import {
   buildOrderBillCacheKey,
@@ -33,7 +34,6 @@ import {
   groupOrdersByMonth,
   resolveOrderBillRangeOptions,
   resolveOrderTypeOptions,
-  summarizeStatistics,
   type RangePreset,
 } from "@/features/orders/utils/orderHelpers"
 import { createLatestTaskController } from "@/shared/async/taskController"
@@ -121,6 +121,13 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
   )
   const orderGroups = useMemo(() => groupOrdersByMonth(items), [items])
   const typeOptions = useMemo(() => resolveOrderTypeOptions(t), [t])
+  const typeChipToneStyle = useMemo(
+    () => ({
+      backgroundColor: theme.colors.surfaceElevated ?? theme.colors.surface,
+      borderColor: "transparent",
+    }),
+    [theme.colors.surface, theme.colors.surfaceElevated],
+  )
 
   useEffect(() => {
     itemsRef.current = items
@@ -367,8 +374,10 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
                   <FilterChip
                     key={option.label}
                     label={option.label}
+                    labelStyle={styles.typeBarChipText}
                     active={orderType === option.value}
                     onPress={() => setOrderType(option.value)}
+                    style={[styles.typeBarChip, typeChipToneStyle]}
                   />
                 ))}
               </ScrollView>
@@ -438,6 +447,23 @@ export function OrderBillScreen({ navigation, route }: OrderBillProps) {
   const contentBottomInset = getFloatingOverlayContentInset(route.name, insets.bottom)
   const cacheKey = useMemo(() => buildOrderBillCacheKey(rangeSelection), [rangeSelection])
   const rangeOptions = useMemo(() => resolveOrderBillRangeOptions(t), [t])
+  const rangeChipToneStyle = useMemo(
+    () => ({
+      backgroundColor: theme.colors.surfaceElevated ?? theme.colors.surface,
+      borderColor: "transparent",
+    }),
+    [theme.colors.surface, theme.colors.surfaceElevated],
+  )
+  const billMetrics = useMemo(
+    () => [
+      { key: "payment", label: t("orders.summary.payment"), value: formatBillNumber(statistics.paymentAmount) },
+      { key: "receipt", label: t("orders.summary.receipt"), value: formatBillNumber(statistics.receiptAmount) },
+      { key: "fee", label: t("orders.summary.fee"), value: formatBillNumber(statistics.fee) },
+      { key: "transactions", label: t("orders.summary.transactions"), value: formatBillNumber(statistics.transactions, 0) },
+    ],
+    [statistics.fee, statistics.paymentAmount, statistics.receiptAmount, statistics.transactions, t],
+  )
+  const billPeriodTitle = useMemo(() => resolveBillPeriodTitle(preset, rangeSelection), [preset, rangeSelection])
 
   useEffect(() => {
     let active = true
@@ -514,8 +540,7 @@ export function OrderBillScreen({ navigation, route }: OrderBillProps) {
       }
     >
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: contentBottomInset }]}>
-        <SectionCard style={styles.filtersCard}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("orders.bill.rangeTitle")}</Text>
+        <View style={styles.billRangeBar}>
           <ScrollView horizontal contentContainerStyle={styles.filterScrollContent} showsHorizontalScrollIndicator={false}>
             {rangeOptions.map(option => (
               <FilterChip
@@ -524,66 +549,80 @@ export function OrderBillScreen({ navigation, route }: OrderBillProps) {
                 label={option.label}
                 active={preset === option.value}
                 onPress={() => setPreset(option.value)}
-                style={styles.billRangeChip}
+                style={[styles.billRangeChip, rangeChipToneStyle]}
               />
             ))}
           </ScrollView>
-        </SectionCard>
+        </View>
 
-        <SummaryGrid
-          cardStyle={styles.billSummaryCard}
-          gridStyle={styles.billSummaryGrid}
-          items={summarizeStatistics(statistics).map(item => ({
-            label: t(`orders.summary.${item.key}`),
-            value: item.value,
-          }))}
-          metricLabelStyle={styles.billSummaryLabel}
-          metricStyle={styles.billSummaryMetric}
-          metricValueStyle={styles.billSummaryValue}
-        />
+        <SectionCard style={styles.billPanelCard}>
+          <View style={styles.billPanelHeader}>
+            <Text style={[styles.billPanelTitle, { color: theme.colors.text }]}>{billPeriodTitle}</Text>
+          </View>
 
-        {loading ? (
-          <SectionCard>
+          {loading ? (
             <View style={styles.loadingWrap}>
               <ActivityIndicator color={theme.colors.primary} />
               <Text style={[styles.body, { color: theme.colors.mutedText }]}>{t("orders.bill.loading")}</Text>
             </View>
-          </SectionCard>
-        ) : null}
+          ) : (
+            <>
+              <View style={styles.billMetricsGrid}>
+                {billMetrics.map(metric => (
+                  <View key={metric.key} style={styles.billMetricBlock}>
+                    <Text style={[styles.billSummaryLabel, { color: theme.colors.mutedText }]}>{metric.label}</Text>
+                    <Text style={[styles.billSummaryValue, { color: theme.colors.text }]}>{metric.value}</Text>
+                  </View>
+                ))}
+              </View>
 
-        {!loading && items.length === 0 ? (
-          <SectionCard style={styles.billEmptyCard}>
-            <View style={styles.billEmptyState}>
-              <AppGlyph
-                backgroundColor={theme.colors.primarySoft ?? `${theme.colors.primary}12`}
-                name="book"
-                size={50}
-                tintColor={theme.colors.primary}
-              />
-              <Text style={[styles.billEmptyTitle, { color: theme.colors.text }]}>{t("orders.bill.emptyTitle")}</Text>
-              <Text style={[styles.billEmptyBody, { color: theme.colors.mutedText }]}>{t("orders.bill.emptyBody")}</Text>
-            </View>
-          </SectionCard>
-        ) : null}
+              {items.length > 0 ? (
+                <>
+                  <View style={[styles.billTableHeader, { borderBottomColor: theme.colors.glassBorder }]}>
+                    <Text style={[styles.billTableHeaderAddress, { color: theme.colors.mutedText }]}>{t("orders.detail.counterpartyAddress")}</Text>
+                    <Text style={[styles.billTableHeaderAmount, { color: theme.colors.mutedText }]}>{t("orders.summary.payment")}</Text>
+                    <Text style={[styles.billTableHeaderAmount, { color: theme.colors.mutedText }]}>{t("orders.summary.receipt")}</Text>
+                  </View>
 
-        {!loading
-          ? items.map(item => (
-              <SectionCard key={item.address}>
-                <ActionRow
-                  label={formatAddressLabel(item.address)}
-                  body={t("orders.bill.addressSummary", {
-                    payment: item.paymentAmount.toFixed(2),
-                    receipt: item.receiptAmount.toFixed(2),
-                  })}
-                  onPress={() =>
-                    navigation.navigate("TxlogsByAddressScreen", {
-                      address: item.address,
-                    })
-                  }
-                />
-              </SectionCard>
-            ))
-          : null}
+                  {items.map((item, index) => (
+                    <Pressable
+                      key={item.address}
+                      onPress={() =>
+                        navigation.navigate("TxlogsByAddressScreen", {
+                          address: item.address,
+                        })
+                      }
+                      style={[
+                        styles.billTableRow,
+                        index < items.length - 1 ? { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.glassBorder } : null,
+                      ]}
+                    >
+                      <View style={styles.billAddressCell}>
+                        <SeedAddressAvatar seedSource={item.address} size={32} uri={item.avatar} />
+                        <Text numberOfLines={1} style={[styles.billAddressLabel, { color: theme.colors.text }]}>
+                          {formatAddressLabel(item.address)}
+                        </Text>
+                      </View>
+                      <Text style={[styles.billTableValue, { color: theme.colors.text }]}>{formatBillNumber(item.paymentAmount)}</Text>
+                      <Text style={[styles.billTableValue, { color: theme.colors.text }]}>{formatBillNumber(item.receiptAmount)}</Text>
+                    </Pressable>
+                  ))}
+                </>
+              ) : (
+                <View style={styles.billEmptyState}>
+                  <AppGlyph
+                    backgroundColor={theme.colors.primarySoft ?? `${theme.colors.primary}12`}
+                    name="book"
+                    size={42}
+                    tintColor={theme.colors.primary}
+                  />
+                  <Text style={[styles.billEmptyTitle, { color: theme.colors.text }]}>{t("orders.bill.emptyTitle")}</Text>
+                  <Text style={[styles.billEmptyBody, { color: theme.colors.mutedText }]}>{t("orders.bill.emptyBody")}</Text>
+                </View>
+              )}
+            </>
+          )}
+        </SectionCard>
       </ScrollView>
     </HomeScaffold>
   )
@@ -677,6 +716,40 @@ export function BillExportScreen({ navigation, route }: BillExportProps) {
   )
 }
 
+function formatBillNumber(value: number, digits = 2) {
+  if (!Number.isFinite(value)) {
+    return digits === 0 ? "0" : "0.00"
+  }
+
+  return value.toLocaleString("en-US", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  })
+}
+
+function resolveBillPeriodTitle(preset: Exclude<RangePreset, "all">, rangeSelection: ReturnType<typeof buildRangeSelection>) {
+  const startedAt = rangeSelection.startedAt?.slice(0, 10)
+  const endedAt = rangeSelection.endedAt?.slice(0, 10)
+
+  if (!startedAt) {
+    return "--"
+  }
+
+  if (preset === "today" || preset === "yesterday") {
+    return startedAt
+  }
+
+  if (!endedAt) {
+    return startedAt
+  }
+
+  if (preset === "last30d") {
+    return startedAt.slice(0, 7) === endedAt.slice(0, 7) ? startedAt.slice(0, 7) : `${startedAt.slice(0, 7)} - ${endedAt.slice(0, 7)}`
+  }
+
+  return startedAt === endedAt ? startedAt : `${startedAt.slice(5)} - ${endedAt.slice(5)}`
+}
+
 const styles = StyleSheet.create({
   content: {
     padding: 18,
@@ -690,6 +763,9 @@ const styles = StyleSheet.create({
   },
   filtersPanel: {
     gap: 10,
+  },
+  billRangeBar: {
+    paddingHorizontal: 4,
   },
   filterScrollContent: {
     gap: 8,
@@ -709,6 +785,16 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingRight: 8,
   },
+  typeBarChip: {
+    minHeight: 34,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+  },
+  typeBarChipText: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: "500",
+  },
   typeBarAction: {
     minHeight: 36,
     justifyContent: "center",
@@ -727,35 +813,50 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   billRangeChip: {
-    minHeight: 36,
-    paddingHorizontal: 12,
+    minHeight: 34,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
   },
   billRangeChipText: {
-    fontSize: 14,
-    lineHeight: 18,
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: "500",
   },
-  billSummaryCard: {
-    padding: 18,
+  billPanelCard: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
     gap: 0,
   },
-  billSummaryGrid: {
-    gap: 10,
+  billPanelHeader: {
+    paddingBottom: 18,
   },
-  billSummaryMetric: {
-    minHeight: 96,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 15,
+  billPanelTitle: {
+    fontSize: 18,
+    lineHeight: 23,
+    fontWeight: "700",
+    letterSpacing: -0.3,
+  },
+  billMetricsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    rowGap: 22,
+    columnGap: 24,
+    paddingBottom: 18,
+  },
+  billMetricBlock: {
+    width: "46%",
   },
   billSummaryLabel: {
     fontSize: 14,
     lineHeight: 18,
-    fontWeight: "500",
+    fontWeight: "400",
   },
   billSummaryValue: {
-    fontSize: 18,
+    marginTop: 8,
+    fontSize: 20,
     lineHeight: 24,
-    letterSpacing: -0.3,
+    letterSpacing: -0.4,
+    fontWeight: "700",
   },
   filterWrap: {
     flexDirection: "row",
@@ -772,28 +873,71 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  billEmptyCard: {
-    paddingHorizontal: 24,
-    paddingVertical: 28,
-    gap: 0,
-  },
-  billEmptyState: {
-    minHeight: 214,
+  billTableHeader: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    paddingBottom: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  billTableHeaderAddress: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "400",
+  },
+  billTableHeaderAmount: {
+    width: 92,
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: "right",
+    fontWeight: "400",
+  },
+  billTableRow: {
+    minHeight: 84,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 18,
+  },
+  billAddressCell: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
+  billAddressLabel: {
+    flex: 1,
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: "500",
+    letterSpacing: -0.2,
+  },
+  billTableValue: {
+    width: 92,
+    fontSize: 16,
+    lineHeight: 21,
+    textAlign: "right",
+    fontWeight: "500",
+  },
+  billEmptyState: {
+    minHeight: 260,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 14,
+    paddingVertical: 8,
+  },
   billEmptyTitle: {
-    fontSize: 19,
-    lineHeight: 24,
+    fontSize: 18,
+    lineHeight: 23,
     fontWeight: "700",
     letterSpacing: -0.3,
     textAlign: "center",
   },
   billEmptyBody: {
     maxWidth: 280,
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 21,
     textAlign: "center",
   },
   listGroup: {

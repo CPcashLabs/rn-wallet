@@ -161,7 +161,6 @@ export function OrderMonthSection(props: {
   return (
     <SectionCard style={styles.recordGroupCard}>
       <View style={styles.recordGroupHeader}>
-        <Text style={[styles.recordGroupEyebrow, { color: theme.colors.mutedText }]}>{props.t("orders.filters.time")}</Text>
         <Text style={[styles.recordGroupTitle, { color: theme.colors.text }]}>{props.month}</Text>
       </View>
 
@@ -169,10 +168,7 @@ export function OrderMonthSection(props: {
         <View
           style={[
             styles.recordSummaryMetric,
-            {
-              backgroundColor: theme.colors.glass,
-              borderColor: theme.colors.glassBorder,
-            },
+            styles.recordSummaryMetricPlain,
           ]}
         >
           <Text style={[styles.recordSummaryLabel, { color: theme.colors.mutedText }]}>{props.t("orders.summary.payment")}</Text>
@@ -181,10 +177,7 @@ export function OrderMonthSection(props: {
         <View
           style={[
             styles.recordSummaryMetric,
-            {
-              backgroundColor: theme.colors.glass,
-              borderColor: theme.colors.glassBorder,
-            },
+            styles.recordSummaryMetricPlain,
           ]}
         >
           <Text style={[styles.recordSummaryLabel, { color: theme.colors.mutedText }]}>{props.t("orders.summary.receipt")}</Text>
@@ -381,6 +374,7 @@ const styles = StyleSheet.create({
     lineHeight: 26,
     letterSpacing: -0.45,
     fontWeight: "700",
+    fontVariant: ["tabular-nums"],
   },
   monthHeader: {
     fontSize: 15,
@@ -430,44 +424,36 @@ const styles = StyleSheet.create({
   },
   recordGroupHeader: {
     paddingHorizontal: 18,
-    paddingTop: 20,
-    gap: 5,
-  },
-  recordGroupEyebrow: {
-    fontSize: 12,
-    fontWeight: "600",
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
+    paddingTop: 18,
+    paddingBottom: 6,
   },
   recordGroupTitle: {
-    fontSize: 18,
-    lineHeight: 22,
+    fontSize: 20,
+    lineHeight: 25,
     letterSpacing: -0.4,
     fontWeight: "700",
   },
   recordGroupSummary: {
     flexDirection: "row",
-    gap: 12,
+    gap: 36,
     paddingHorizontal: 18,
-    paddingTop: 14,
-    paddingBottom: 8,
+    paddingTop: 4,
+    paddingBottom: 10,
   },
   recordSummaryMetric: {
-    flex: 1,
-    gap: 7,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
+    gap: 6,
+  },
+  recordSummaryMetricPlain: {
+    minWidth: 108,
   },
   recordSummaryLabel: {
-    fontSize: 13,
+    fontSize: 14,
     lineHeight: 18,
-    fontWeight: "500",
+    fontWeight: "400",
   },
   recordSummaryValue: {
-    fontSize: 17,
-    lineHeight: 21,
+    fontSize: 20,
+    lineHeight: 24,
     fontWeight: "700",
   },
   recordRow: {
