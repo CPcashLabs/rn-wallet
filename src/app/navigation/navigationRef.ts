@@ -1,4 +1,4 @@
-import { CommonActions, createNavigationContainerRef } from "@react-navigation/native"
+import { CommonActions, StackActions, createNavigationContainerRef } from "@react-navigation/native"
 
 import { getCurrentRootRouteDescriptor, type RootRouteDescriptor } from "@/app/navigation/routeDescriptor"
 import { resolveSupportRoute, type SupportRouteName } from "@/features/support/utils/supportRoutes"
@@ -52,6 +52,27 @@ export function resetToMainTabs() {
       routes: [{ name: "MainTabs", params: { screen: "HomeTab" } }],
     }),
   )
+}
+
+export function closeCopouchStack() {
+  if (!navigationRef.isReady()) {
+    return false
+  }
+
+  const rootState = navigationRef.getRootState()
+  const rootIndex = rootState?.index ?? (rootState?.routes.length ? rootState.routes.length - 1 : 0)
+  const currentRoute = rootState?.routes[rootIndex]
+
+  if (currentRoute?.name === "CopouchStack" && rootState?.key && rootIndex > 0) {
+    navigationRef.dispatch({
+      ...StackActions.pop(1),
+      target: rootState.key,
+    })
+    return true
+  }
+
+  resetToMainTabs()
+  return true
 }
 
 export function resetToSupport(reason?: string) {

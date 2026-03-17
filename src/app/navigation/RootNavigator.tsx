@@ -30,7 +30,14 @@ export function RootNavigator() {
       <Stack.Screen name="AddressBookStack" component={AddressBookStackNavigator} />
       <Stack.Screen name="TransferStack" component={TransferStackNavigator} />
       <Stack.Screen name="ReceiveStack" component={ReceiveStackNavigator} />
-      <Stack.Screen name="CopouchStack" component={CopouchStackNavigator} />
+      <Stack.Screen
+        name="CopouchStack"
+        component={CopouchStackNavigator}
+        options={{
+          animation: "slide_from_bottom",
+          presentation: "modal",
+        }}
+      />
       <Stack.Screen name="SupportStack" component={SupportNavigator} />
     </Stack.Navigator>
   )

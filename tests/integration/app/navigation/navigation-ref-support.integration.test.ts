@@ -15,6 +15,12 @@ jest.mock("@react-navigation/native", () => ({
       payload,
     }),
   },
+  StackActions: {
+    pop: (count = 1) => ({
+      type: "POP",
+      payload: { count },
+    }),
+  },
   createNavigationContainerRef: () => ({
     isReady: () => mockNavigationRuntime.ready,
     dispatch: (action: { type: string; payload: unknown }) => {
@@ -27,6 +33,7 @@ jest.mock("@react-navigation/native", () => ({
 
 import { describeRootRouteDescriptor } from "@/app/navigation/routeDescriptor"
 import {
+  closeCopouchStack,
   getCurrentRouteDescriptor,
   navigateRoot,
   resetToAuthStack,
@@ -66,6 +73,7 @@ describe("navigationRef and supportRoutes integration", () => {
 
     resetToAuthStack()
     resetToMainTabs()
+    closeCopouchStack()
     resetToSupport("no_network")
     resetToRootRoute({
       name: "AuthStack",
@@ -103,6 +111,7 @@ describe("navigationRef and supportRoutes integration", () => {
 
     resetToAuthStack()
     resetToMainTabs()
+    closeCopouchStack()
 
     const routes = [
       {
@@ -139,7 +148,9 @@ describe("navigationRef and supportRoutes integration", () => {
         type: "NAVIGATE",
         payload: {
           name: "MainTabs",
-          params: undefined,
+          params: {
+            screen: "HomeTab",
+          },
         },
       },
       {
@@ -157,6 +168,13 @@ describe("navigationRef and supportRoutes integration", () => {
         payload: {
           index: 0,
           routes: [{ name: "AuthStack", params: { screen: "LoginScreen" } }],
+        },
+      },
+      {
+        type: "RESET",
+        payload: {
+          index: 0,
+          routes: [{ name: "MainTabs", params: { screen: "HomeTab" } }],
         },
       },
       {
@@ -210,6 +228,46 @@ describe("navigationRef and supportRoutes integration", () => {
       },
     ])
     expect(mockNavigationRuntime.actions).toHaveLength(actionCountBeforeEmptyReset)
+  })
+
+  it("dismisses the root Copouch modal before falling back to a reset", () => {
+    mockNavigationRuntime.ready = true
+    mockNavigationRuntime.rootState = {
+      key: "root-stack",
+      index: 1,
+      routes: [
+        { key: "tabs", name: "MainTabs", params: { screen: "HomeTab" } },
+        { key: "copouch", name: "CopouchStack", params: { screen: "CopouchHomeScreen" } },
+      ],
+    }
+
+    expect(closeCopouchStack()).toBe(true)
+    expect(mockNavigationRuntime.actions).toEqual([
+      {
+        type: "POP",
+        payload: { count: 1 },
+        target: "root-stack",
+      },
+    ])
+
+    resetMockNavigationRuntime()
+    mockNavigationRuntime.ready = true
+    mockNavigationRuntime.rootState = {
+      key: "root-stack",
+      index: 0,
+      routes: [{ key: "copouch", name: "CopouchStack", params: { screen: "CopouchHomeScreen" } }],
+    }
+
+    expect(closeCopouchStack()).toBe(true)
+    expect(mockNavigationRuntime.actions).toEqual([
+      {
+        type: "RESET",
+        payload: {
+          index: 0,
+          routes: [{ name: "MainTabs", params: { screen: "HomeTab" } }],
+        },
+      },
+    ])
   })
 
   it("maps support reasons into support stack routes", () => {
@@ -356,6 +414,7 @@ describe("navigationRef and supportRoutes integration", () => {
     expect(getCurrentRouteDescriptor()).toEqual({
       name: "SupportStack",
       params: {
+        reason: "legacy",
         screen: "NoNetworkScreen",
         params: { mode: "details" },
       },
