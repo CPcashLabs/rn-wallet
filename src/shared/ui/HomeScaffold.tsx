@@ -151,8 +151,10 @@ export function HeaderTextAction(props: {
   onPress: () => void
   disabled?: boolean
   tone?: "primary" | "danger"
+  variant?: "pill" | "plain"
 }) {
   const theme = useAppTheme()
+  const variant = props.variant ?? "pill"
   const color = props.tone === "danger" ? theme.colors.danger : theme.colors.primary
   const backgroundColor = props.tone === "danger" ? theme.colors.dangerSoft : theme.colors.primarySoft ?? `${theme.colors.primary}14`
 
@@ -163,13 +165,16 @@ export function HeaderTextAction(props: {
       onPress={props.onPress}
       style={[
         styles.headerTextAction,
+        variant === "plain" ? styles.headerTextActionPlain : null,
         {
-          backgroundColor,
+          backgroundColor: variant === "plain" ? "transparent" : backgroundColor,
         },
         props.disabled ? styles.headerTextActionDisabled : null,
       ]}
     >
-      <Text style={[styles.headerTextActionLabel, { color }]}>{props.label}</Text>
+      <Text style={[styles.headerTextActionLabel, variant === "plain" ? styles.headerTextActionLabelPlain : null, { color }]}>
+        {props.label}
+      </Text>
     </Pressable>
   )
 }
@@ -276,6 +281,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  headerTextActionPlain: {
+    minHeight: 28,
+    paddingHorizontal: 0,
+  },
   headerTextActionDisabled: {
     opacity: 0.45,
   },
@@ -284,5 +293,10 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     fontWeight: "600",
     letterSpacing: -0.1,
+  },
+  headerTextActionLabelPlain: {
+    fontSize: 16,
+    lineHeight: 20,
+    letterSpacing: -0.2,
   },
 })
