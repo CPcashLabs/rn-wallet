@@ -16,7 +16,7 @@ import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import type { ReceiveStackParamList } from "@/app/navigation/types"
-import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { HomeScaffold } from "@/shared/ui/HomeScaffold"
 import { buildReceiveAutoCreateKey, shouldAttemptReceiveAutoCreate } from "@/domains/wallet/receive/screens/receiveAutoCreate"
 import {
   readCachedReceiveChainColor,

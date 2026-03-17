@@ -14,7 +14,7 @@ import {
 import { useTranslation } from "react-i18next"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
-import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { HomeScaffold } from "@/shared/ui/HomeScaffold"
 import { checkTransferNetwork, getOrderDetail, getReceivingOrder, submitShipOrder } from "@/domains/wallet/transfer/services/transferApi"
 import {
   getTransferConfirmRetryDelay,

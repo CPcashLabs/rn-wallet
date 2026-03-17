@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import type { ReceiveStackParamList } from "@/app/navigation/types"
-import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { HomeScaffold } from "@/shared/ui/HomeScaffold"
 import { InfoRow, SegmentedTabs } from "@/domains/wallet/receive/components/ReceiveUi"
 import { createReceiveOrder, getReceiveAddressLimit, getRecentReceiveOrders, type ReceiveOrder } from "@/domains/wallet/receive/services/receiveApi"
 import { PrimaryButton, SecondaryButton, SectionCard } from "@/shared/ui/AppFlowUi"

@@ -15,7 +15,7 @@ import {
   type TransferOrderOption,
 } from "@/shared/exchange/services/exchangeApi"
 import { useTransferDraftStore } from "@/domains/wallet/transfer/store/useTransferDraftStore"
-import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { HomeScaffold } from "@/shared/ui/HomeScaffold"
 import { resolveChainNameById } from "@/shared/api/walletAssets"
 import { formatAmount, parseDecimalInput } from "@/shared/exchange/utils/order"
 import { useBalanceStore } from "@/shared/store/useBalanceStore"

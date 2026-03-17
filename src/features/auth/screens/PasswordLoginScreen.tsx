@@ -23,9 +23,10 @@ export function PasswordLoginScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
   const { presentMessage } = useErrorPresenter()
-  const walletState = useWalletStore()
+  const walletAddress = useWalletStore(state => state.address)
+  const walletStatus = useWalletStore(state => state.status)
   const inviteCode = route.params?.inviteCode
-  const defaultAddress = route.params?.address ?? walletState.address ?? ""
+  const defaultAddress = route.params?.address ?? walletAddress ?? ""
   const [address, setAddress] = useState(defaultAddress)
   const [password, setPassword] = useState("")
   const [minLength, setMinLength] = useState(6)
@@ -84,7 +85,7 @@ export function PasswordLoginScreen({ navigation, route }: Props) {
       }
 
       const tokens = await signInWithPassword(address.trim(), password)
-      const loginType = walletState.status === "connected" && walletState.address?.toLowerCase() === address.trim().toLowerCase() ? "wallet" : "password"
+      const loginType = walletStatus === "connected" && walletAddress?.toLowerCase() === address.trim().toLowerCase() ? "wallet" : "password"
 
       await persistAuthenticatedSession({
         ...tokens,

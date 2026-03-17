@@ -6,7 +6,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import type { ReceiveStackParamList } from "@/app/navigation/types"
 import { mapWalletReceiveShareFields } from "@/domains/wallet/shared/presentation/orderFields"
-import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { HomeScaffold } from "@/shared/ui/HomeScaffold"
 import { ReceiveOrderCard } from "@/domains/wallet/receive/components/ReceiveUi"
 import { getReceiveShareDetail } from "@/domains/wallet/receive/services/receiveApi"
 import { buildQrCodeDataUrl, buildQrMatrix, stripDataUrlPrefix, type QrMatrix } from "@/domains/wallet/receive/utils/qrcode"

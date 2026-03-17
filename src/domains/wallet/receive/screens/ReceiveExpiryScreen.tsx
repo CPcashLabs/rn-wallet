@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import type { ReceiveStackParamList } from "@/app/navigation/types"
-import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { HomeScaffold } from "@/shared/ui/HomeScaffold"
 import { getReceiveExpireOptions, markReceiveExpireDuration, type ReceiveExpireOption } from "@/domains/wallet/receive/services/receiveApi"
 import { useReceiveStore } from "@/domains/wallet/receive/store/useReceiveStore"
 import { SectionCard } from "@/shared/ui/AppFlowUi"

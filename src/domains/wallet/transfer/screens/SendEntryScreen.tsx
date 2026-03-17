@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import { PageEmpty, PrimaryButton, SectionCard } from "@/shared/ui/AppFlowUi"
-import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { HomeScaffold } from "@/shared/ui/HomeScaffold"
 import { useTransferDraftStore } from "@/domains/wallet/transfer/store/useTransferDraftStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 

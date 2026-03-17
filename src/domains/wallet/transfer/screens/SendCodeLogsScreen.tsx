@@ -6,7 +6,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import { formatWalletDateTime } from "@/domains/wallet/shared/utils/format"
 import { PageEmpty, SectionCard } from "@/shared/ui/AppFlowUi"
-import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { HomeScaffold } from "@/shared/ui/HomeScaffold"
 import { getSendOrderLogs } from "@/domains/wallet/transfer/services/transferApi"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { PrimaryButton } from "@/shared/ui/AppFlowUi"

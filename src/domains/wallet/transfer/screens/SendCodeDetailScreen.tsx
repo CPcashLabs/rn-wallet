@@ -7,7 +7,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { mapWalletTransferShareFields } from "@/domains/wallet/shared/presentation/orderFields"
 import { FieldRow, PrimaryButton, SecondaryButton, SectionCard } from "@/shared/ui/AppFlowUi"
 import { getSendShareDetail } from "@/domains/wallet/transfer/services/transferApi"
-import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { HomeScaffold } from "@/shared/ui/HomeScaffold"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 import type { TransferStackParamList } from "@/app/navigation/types"

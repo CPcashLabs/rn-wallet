@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import type { ReceiveStackParamList } from "@/app/navigation/types"
-import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { HomeScaffold } from "@/shared/ui/HomeScaffold"
 import { batchExpireReceiveOrders, getRecentReceiveOrders, type ReceiveOrder } from "@/domains/wallet/receive/services/receiveApi"
 import { SectionCard } from "@/shared/ui/AppFlowUi"
 import { useToast } from "@/shared/toast/useToast"

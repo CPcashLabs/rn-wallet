@@ -4,8 +4,8 @@ import { Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
-import { HomeScaffold } from "@/features/home/components/HomeScaffold"
-import { Card, PrimaryButton, styles as settingsStyles } from "@/features/settings/screens/settingsShared"
+import { Card, PrimaryButton, styles as settingsStyles } from "@/shared/ui/SettingsCommon"
+import { HomeScaffold } from "@/shared/ui/HomeScaffold"
 
 import type { ReceiveStackParamList } from "@/app/navigation/types"
 

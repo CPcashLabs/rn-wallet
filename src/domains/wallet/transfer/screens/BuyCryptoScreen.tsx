@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import type { TransferStackParamList } from "@/app/navigation/types"
-import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { HomeScaffold } from "@/shared/ui/HomeScaffold"
 import { createNativeOrder, getReceiveConfig } from "@/shared/receive/services/receiveEntryApi"
 import { FieldRow, SectionCard } from "@/shared/ui/AppFlowUi"
 import { getCoinList, resolveChainNameById, type WalletChainName, type WalletCoin } from "@/shared/api/walletAssets"
