@@ -255,7 +255,6 @@ const localStyles = {
   },
   aboutContent: {
     gap: 16,
-    paddingBottom: 152,
   },
   brandCard: {
     alignItems: "center" as const,
