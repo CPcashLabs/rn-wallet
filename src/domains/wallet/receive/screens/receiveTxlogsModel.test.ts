@@ -4,6 +4,7 @@ import {
   buildReceiveTxlogSources,
   filterReceiveTxlogs,
   mergeReceiveTxlogs,
+  matchesReceiveTxlogPayChain,
   resolveDefaultReceiveTxlogFilter,
 } from "@/domains/wallet/receive/screens/receiveTxlogsModel"
 
@@ -60,5 +61,49 @@ describe("receiveTxlogsModel", () => {
     expect(resolveDefaultReceiveTxlogFilter("TRACE")).toBe("individuals")
     expect(resolveDefaultReceiveTxlogFilter("TRACE_LONG_TERM")).toBe("business")
     expect(resolveDefaultReceiveTxlogFilter(undefined)).toBe("all")
+  })
+
+  it("matches only the current pay chain", () => {
+    expect(
+      matchesReceiveTxlogPayChain(
+        {
+          address: "T1",
+          amount: 1,
+          coinName: "USDT",
+          createdAt: 1,
+          expiredAt: null,
+          isMarked: false,
+          isRareAddress: false,
+          orderSn: "ORDER_1",
+          orderType: "TRACE",
+          recvChainName: "BSC",
+          remarkName: "",
+          sendChainName: "BSC",
+          serialNumber: "ORDER_1",
+        },
+        "bsc",
+      ),
+    ).toBe(true)
+
+    expect(
+      matchesReceiveTxlogPayChain(
+        {
+          address: "T1",
+          amount: 1,
+          coinName: "USDT",
+          createdAt: 1,
+          expiredAt: null,
+          isMarked: false,
+          isRareAddress: false,
+          orderSn: "ORDER_1",
+          orderType: "TRACE",
+          recvChainName: "TRON",
+          remarkName: "",
+          sendChainName: "TRON",
+          serialNumber: "ORDER_1",
+        },
+        "bsc",
+      ),
+    ).toBe(false)
   })
 })

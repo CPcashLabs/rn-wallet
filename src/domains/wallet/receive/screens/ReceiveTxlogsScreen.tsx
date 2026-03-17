@@ -17,6 +17,7 @@ import {
   buildReceiveTxlogSources,
   filterReceiveTxlogs,
   mergeReceiveTxlogs,
+  matchesReceiveTxlogPayChain,
   resolveDefaultReceiveTxlogFilter,
   type ReceiveTraceOrderType,
   type ReceiveTxlogItem,
@@ -114,6 +115,7 @@ export function ReceiveTxlogsScreen({ navigation, route }: Props) {
             }
           }),
         )
+        const payChainMatchedResults = results.filter(result => matchesReceiveTxlogPayChain(result.detail, route.params?.payChain))
 
         if (!pollController.canCommit()) {
           return
@@ -125,7 +127,7 @@ export function ReceiveTxlogsScreen({ navigation, route }: Props) {
         const freshKeys: string[] = []
         let nextSeenMap = currentSeenMap
 
-        results.forEach(result => {
+        payChainMatchedResults.forEach(result => {
           const nextSeenState = buildNextSeenLogState(result.orderSn, result.logs, nextSeenMap)
           detailState[result.orderType] = result.detail
           logState[result.orderType] = result.logs

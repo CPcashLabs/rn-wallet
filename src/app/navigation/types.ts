@@ -291,6 +291,7 @@ export type ReceiveStackParamList = {
         orderType?: "TRACE" | "TRACE_LONG_TERM"
         personalOrderSn?: string
         businessOrderSn?: string
+        payChain?: string
       }
     | undefined
   RareAddressScreen:

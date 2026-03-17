@@ -1,4 +1,4 @@
-import type { ReceiveLog } from "@/domains/wallet/receive/services/receiveApi"
+import type { ReceiveLog, ReceiveOrder } from "@/domains/wallet/receive/services/receiveApi"
 import { buildReceiveTxlogKey } from "@/domains/wallet/receive/screens/receiveTxlogsPolling"
 
 export type ReceiveTraceOrderType = "TRACE" | "TRACE_LONG_TERM"
@@ -94,4 +94,18 @@ export function mergeReceiveTxlogs(logs: ReceiveTxlogItem[]) {
   })
 
   return Array.from(merged.values()).sort((left, right) => (right.createdAt ?? 0) - (left.createdAt ?? 0))
+}
+
+function normalizeChainName(value?: string | null) {
+  return value?.trim().toLowerCase().replace(/\s+/g, "") || ""
+}
+
+export function matchesReceiveTxlogPayChain(detail: ReceiveOrder | null | undefined, payChain?: string) {
+  const target = normalizeChainName(payChain)
+
+  if (!target) {
+    return true
+  }
+
+  return normalizeChainName(detail?.sendChainName) === target || normalizeChainName(detail?.recvChainName) === target
 }

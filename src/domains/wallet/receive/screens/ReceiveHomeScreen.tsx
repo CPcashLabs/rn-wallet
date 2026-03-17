@@ -346,6 +346,7 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
             orderType: currentOrderType,
             personalOrderSn: personalOrder?.orderSn,
             businessOrderSn: businessOrder?.orderSn,
+            payChain: config?.payChain || requestedPayChain,
           })
         },
       },
@@ -615,6 +616,7 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
               orderType: kind === "individuals" ? "TRACE" : "TRACE_LONG_TERM",
               personalOrderSn: personalOrder?.orderSn,
               businessOrderSn: businessOrder?.orderSn,
+              payChain: config?.payChain || requestedPayChain,
             })
           }}
         >
