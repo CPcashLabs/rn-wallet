@@ -163,6 +163,14 @@ function appendEntry(level: DevConsoleLevel, args: unknown[]) {
   emitChange()
 }
 
+export function recordDevConsoleEntry(level: DevConsoleLevel, args: unknown[]) {
+  if (!__DEV__) {
+    return
+  }
+
+  appendEntry(level, args)
+}
+
 export function installDevConsoleCapture() {
   if (!__DEV__) {
     return

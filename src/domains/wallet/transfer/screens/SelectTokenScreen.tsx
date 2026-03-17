@@ -63,7 +63,9 @@ export function SelectTokenScreen({ navigation, route }: Props) {
       setChannels(result)
       setBoolean(KvStorageKeys.SelectTokenPageReload, false)
     } catch (error) {
-      logErrorSafely("[select-token][loadChannels]", error)
+      logErrorSafely("[select-token][loadChannels]", error, {
+        forwardToConsole: false,
+      })
       setChannels([])
       Alert.alert(t("common.errorTitle"), t("transfer.selectToken.loadFailed"))
     } finally {
@@ -77,7 +79,9 @@ export function SelectTokenScreen({ navigation, route }: Props) {
 
       if (shouldReload || channels.length === 0) {
         void loadChannels().catch(error => {
-          logErrorSafely("[select-token][focusReload]", error)
+          logErrorSafely("[select-token][focusReload]", error, {
+            forwardToConsole: false,
+          })
         })
       }
 

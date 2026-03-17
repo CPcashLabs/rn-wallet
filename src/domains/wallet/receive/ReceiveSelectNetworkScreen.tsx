@@ -47,7 +47,9 @@ export function ReceiveSelectNetworkScreen({ navigation, route }: Props) {
       setChannels(result)
       setBoolean(KvStorageKeys.SelectTokenPageReload, false)
     } catch (error) {
-      logErrorSafely("[receive][select-network][loadChannels]", error)
+      logErrorSafely("[receive][select-network][loadChannels]", error, {
+        forwardToConsole: false,
+      })
       setChannels([])
       Alert.alert(t("common.errorTitle"), t("receive.select.loadFailed"))
     } finally {
@@ -61,7 +63,9 @@ export function ReceiveSelectNetworkScreen({ navigation, route }: Props) {
 
       if (shouldReload || channels.length === 0) {
         void loadChannels().catch(error => {
-          logErrorSafely("[receive][select-network][focusReload]", error)
+          logErrorSafely("[receive][select-network][focusReload]", error, {
+            forwardToConsole: false,
+          })
         })
       }
 

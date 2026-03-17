@@ -110,6 +110,7 @@ export function PasswordLoginScreen({ navigation, route }: Props) {
           address: address.trim(),
           resolvedMessage: message,
         },
+        forwardToConsole: false,
       })
       setPasswordError(message)
       presentMessage(message)

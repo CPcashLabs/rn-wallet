@@ -18,6 +18,7 @@ type PresentErrorOptions = ErrorMessageOptions &
   PresentMessageOptions & {
     logTag?: string
     log?: boolean
+    logToConsole?: boolean
   }
 
 export function useErrorPresenter() {
@@ -50,6 +51,7 @@ export function useErrorPresenter() {
           context: {
             resolvedMessage: message,
           },
+          forwardToConsole: options.logToConsole ?? false,
         })
       }
 

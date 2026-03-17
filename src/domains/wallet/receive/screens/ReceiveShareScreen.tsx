@@ -61,7 +61,9 @@ export function ReceiveShareScreen({ navigation, route }: Props) {
 
       showToast({ message: t("receive.share.saveSuccess"), tone: "success" })
     } catch (error) {
-      logErrorSafely("[receive][share][qr][save]", error)
+      logErrorSafely("[receive][share][qr][save]", error, {
+        forwardToConsole: false,
+      })
       showToast({ message: t("receive.share.saveFailed"), tone: "error" })
     }
   }

@@ -1,7 +1,9 @@
+import { clearDevConsoleEntries, getDevConsoleEntriesByFilter } from "@/shared/logging/devConsole"
 import { logErrorSafely, sanitizeLogValue } from "@/shared/logging/safeConsole"
 
 describe("safeConsole", () => {
   afterEach(() => {
+    clearDevConsoleEntries()
     jest.restoreAllMocks()
   })
 
@@ -100,6 +102,34 @@ describe("safeConsole", () => {
     })
 
     expect(spy).toHaveBeenCalledWith("[test]", error, context)
+  })
+
+  it("captures handled development errors without surfacing console overlays", () => {
+    const runtime = globalThis as typeof globalThis & {
+      __DEV__?: boolean
+    }
+    const originalDev = runtime.__DEV__
+    const spy = jest.spyOn(console, "error").mockImplementation(() => {})
+
+    runtime.__DEV__ = true
+
+    try {
+      clearDevConsoleEntries()
+
+      logErrorSafely("[handled]", new Error("network down"), {
+        context: {
+          resolvedMessage: "网络不可用，请稍后重试。",
+        },
+        devMode: true,
+        forwardToConsole: false,
+      })
+    } finally {
+      runtime.__DEV__ = originalDev
+    }
+
+    expect(spy).not.toHaveBeenCalled()
+    expect(getDevConsoleEntriesByFilter("error")[0]?.message).toContain("[handled]")
+    expect(getDevConsoleEntriesByFilter("error")[0]?.message).toContain("network down")
   })
 
   it("summarizes arrays, unknown objects and plain objects without leaking secrets", () => {

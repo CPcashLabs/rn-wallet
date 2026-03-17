@@ -304,7 +304,9 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
 
       showToast({ message: t("receive.home.saveQrSuccess"), tone: "success" })
     } catch (error) {
-      logErrorSafely("[receive][qr][save]", error)
+      logErrorSafely("[receive][qr][save]", error, {
+        forwardToConsole: false,
+      })
       showToast({ message: t("receive.home.saveQrFailed"), tone: "error" })
     }
   }

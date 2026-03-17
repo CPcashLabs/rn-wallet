@@ -1,3 +1,5 @@
+import { recordDevConsoleEntry } from "@/shared/logging/devConsole"
+
 const CONTROL_CHARACTERS_PATTERN = /[\u0000-\u001F\u007F]/g
 const QUERY_SECRET_PATTERN =
   /([?&](?:access_token|token|refresh_token|id_token|authorization|code|signature|sig|address|wallet|copouch|cowallet|txid|orderSn|order_sn)=)[^&#\s]+/gi
@@ -12,6 +14,7 @@ const MAX_LOG_STRING_LENGTH = 180
 type LogErrorOptions = {
   context?: unknown
   devMode?: boolean
+  forwardToConsole?: boolean
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -259,6 +262,13 @@ export function logErrorSafely(tag: string, error: unknown, options?: LogErrorOp
   const devMode = options?.devMode ?? __DEV__
 
   if (devMode) {
+    const args = options?.context !== undefined ? [tag, error, options.context] : [tag, error]
+
+    if (options?.forwardToConsole === false) {
+      recordDevConsoleEntry("error", args)
+      return
+    }
+
     if (options?.context !== undefined) {
       console.error(tag, error, options.context)
       return
