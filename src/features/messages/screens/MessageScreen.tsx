@@ -1,11 +1,11 @@
-import React, { useCallback, useEffect, useRef, useState } from "react"
+import React, { useEffect } from "react"
 
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
+import { useQueryClient } from "@tanstack/react-query"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import { HeaderTextAction, HomeScaffold } from "@/features/home/components/HomeScaffold"
-import { getMessageList, markAllMessagesRead, markMessageRead, type MessageItem } from "@/features/messages/services/messageApi"
 import {
   formatRelativeTime,
   resolveMessageAmount,
@@ -14,13 +14,19 @@ import {
   resolveMessageTarget,
   resolveMessageTitle,
 } from "@/features/messages/utils/messagePresentation"
+import {
+  useMarkAllMessagesReadMutation,
+  useMarkMessageReadMutation,
+  useMessagesInfiniteQuery,
+} from "@/features/messages/queries/messageQueries"
+import { openCopouchHome, openCopouchViewAllocation } from "@/app/navigation/copouchNavigation"
 import { navigateRoot } from "@/app/navigation/navigationRef"
 import { PageEmpty, SectionCard } from "@/shared/ui/AppFlowUi"
-import { createLatestTaskController } from "@/shared/async/taskController"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { useSocketStore } from "@/shared/store/useSocketStore"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { useWalletStore } from "@/shared/store/useWalletStore"
 
 import type { MessageStackParamList } from "@/app/navigation/types"
 
@@ -29,95 +35,44 @@ type Props = NativeStackScreenProps<MessageStackParamList, "MessageScreen">
 export function MessageScreen({ navigation }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
-  const { presentError, presentMessage } = useErrorPresenter()
+  const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
-  const socketEvent = useSocketStore(state => state.lastEvent)
-  const [items, setItems] = useState<MessageItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
-  const [loadingMore, setLoadingMore] = useState(false)
-  const [page, setPage] = useState(1)
-  const [hasMore, setHasMore] = useState(true)
-  const mountedRef = useRef(true)
-  const loadTaskControllerRef = useRef(createLatestTaskController())
-  const itemsRef = useRef<MessageItem[]>([])
+  const queryClient = useQueryClient()
+  const walletAddress = useWalletStore(state => state.address)
+  const chainId = useWalletStore(state => state.chainId)
+  const messageRevision = useSocketStore(state => state.messageRevision)
+  const query = useMessagesInfiniteQuery({ walletAddress, chainId })
+  const readMutation = useMarkMessageReadMutation(queryClient, { walletAddress, chainId })
+  const readAllMutation = useMarkAllMessagesReadMutation(queryClient, { walletAddress, chainId })
+
+  const items = query.data?.pages.flatMap(page => page.data) ?? []
+  const loading = query.isLoading && items.length === 0
+  const refreshing = query.isRefetching && !query.isFetchingNextPage && items.length > 0
+  const loadingMore = query.isFetchingNextPage
+  const hasMore = query.hasNextPage ?? false
 
   useEffect(() => {
-    itemsRef.current = items
-  }, [items])
-
-  useEffect(() => {
-    return () => {
-      mountedRef.current = false
-      loadTaskControllerRef.current.cancel()
-    }
-  }, [])
-
-  const loadMessages = useCallback(async (nextPage = 1, mode: "replace" | "append" = "replace") => {
-    const run = loadTaskControllerRef.current.begin()
-
-    if (mode === "append") {
-      if (mountedRef.current) {
-        setRefreshing(false)
-        setLoadingMore(true)
-      }
-    } else if (itemsRef.current.length > 0) {
-      if (mountedRef.current) {
-        setLoadingMore(false)
-        setRefreshing(true)
-      }
-    } else {
-      if (mountedRef.current) {
-        setRefreshing(false)
-        setLoadingMore(false)
-        setLoading(true)
-      }
-    }
-
-    try {
-      const response = await getMessageList({ page: nextPage, perPage: 10 })
-
-      if (!run.isCurrent() || !mountedRef.current) {
-        return
-      }
-
-      setItems(current => (mode === "append" ? [...current, ...response.data] : response.data))
-      setPage(response.page)
-      setHasMore(response.data.length >= response.perPage)
-    } catch (error) {
-      if (!run.isCurrent() || !mountedRef.current) {
-        return
-      }
-
-      presentError(error, {
-        fallbackKey: "message.loadFailed",
-      })
-    } finally {
-      if (run.isCurrent() && mountedRef.current) {
-        setLoading(false)
-        setRefreshing(false)
-        setLoadingMore(false)
-      }
-    }
-  }, [presentError])
-
-  useEffect(() => {
-    void loadMessages(1, "replace")
-  }, [loadMessages])
-
-  useEffect(() => {
-    if (socketEvent?.type !== "messageRefresh") {
+    if (!query.error) {
       return
     }
 
-    void loadMessages(1, "replace")
-  }, [loadMessages, socketEvent?.at, socketEvent?.type])
+    presentError(query.error, {
+      fallbackKey: "message.loadFailed",
+    })
+  }, [presentError, query.error])
 
-  const handleOpenItem = async (item: MessageItem) => {
+  useEffect(() => {
+    if (messageRevision <= 0) {
+      return
+    }
+
+    void query.refetch()
+  }, [messageRevision, query.refetch])
+
+  const handleOpenItem = async (item: (typeof items)[number]) => {
     try {
       if (item.status === 0) {
-        await markMessageRead(item.id)
-        setItems(current => current.map(entry => (entry.id === item.id ? { ...entry, status: 1 } : entry)))
+        await readMutation.mutateAsync(item.id)
       }
     } catch (error) {
       presentError(error, {
@@ -135,20 +90,12 @@ export function MessageScreen({ navigation }: Props) {
     }
 
     if (target.kind === "copouchHome") {
-      navigateRoot("CopouchStack", {
-        screen: "CopouchHomeScreen",
-      })
+      openCopouchHome()
       return
     }
 
     if (target.kind === "copouchAllocation") {
-      navigateRoot("CopouchStack", {
-        screen: "CopouchViewAllocationScreen",
-        params: {
-          id: target.walletId,
-          orderSn: target.orderSn,
-        },
-      })
+      openCopouchViewAllocation(target.walletId, target.orderSn)
       return
     }
 
@@ -163,8 +110,7 @@ export function MessageScreen({ navigation }: Props) {
 
   const handleReadAll = async () => {
     try {
-      await markAllMessagesRead()
-      setItems(current => current.map(item => ({ ...item, status: 1 })))
+      await readAllMutation.mutateAsync()
       showToast({ message: t("message.readAllSuccess"), tone: "success" })
     } catch (error) {
       presentError(error, {
@@ -219,7 +165,7 @@ export function MessageScreen({ navigation }: Props) {
         {!loading && hasMore ? (
           <Pressable
             disabled={loadingMore}
-            onPress={() => void loadMessages(page + 1, "append")}
+            onPress={() => void query.fetchNextPage()}
             style={[styles.loadMoreButton, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}
           >
             <Text style={[styles.loadMoreText, { color: theme.colors.text }]}>

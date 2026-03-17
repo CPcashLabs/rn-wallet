@@ -7,6 +7,7 @@ import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useSocketStore } from "@/shared/store/useSocketStore"
 import { websocketAdapter } from "@/shared/native/websocketAdapter"
 import { authenticateSocketConnection, isInternalSocketEvent } from "@/app/providers/socketAuth"
+import { resolveSocketInvalidationDomain } from "@/app/providers/socketInvalidation"
 import { invalidateReconnectAttempt, scheduleReconnectAttempt } from "@/app/providers/socketReconnect"
 
 const RECONNECT_DELAY_MS = 1_500
@@ -107,7 +108,15 @@ export function SocketProvider({ children }: PropsWithChildren) {
             return
           }
 
-          socketStore.touchEvent(parsed)
+          const domain = resolveSocketInvalidationDomain(parsed.type)
+          if (domain === "messages") {
+            socketStore.bumpMessageRevision()
+            return
+          }
+
+          if (domain === "copouch") {
+            socketStore.bumpCopouchRevision()
+          }
           return
         }
         case "error":

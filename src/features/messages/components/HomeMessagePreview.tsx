@@ -1,24 +1,25 @@
-import React, { useEffect, useRef, useState } from "react"
+import React, { useEffect, useRef } from "react"
 
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
 import { useFocusEffect } from "@react-navigation/native"
 import { useTranslation } from "react-i18next"
 
-import { getMessageList, type MessageItem } from "@/features/messages/services/messageApi"
 import { diffHomeMessagePreviewIds, pruneHomeMessagePreviewRecord } from "@/features/messages/components/homeMessagePreviewState"
+import type { MessageItem } from "@/features/messages/services/messageApi"
 import {
   formatRelativeTime,
   resolveMessageAmount,
   resolveMessageCoin,
   resolveMessageTitle,
 } from "@/features/messages/utils/messagePresentation"
-import { createLatestTaskController } from "@/shared/async/taskController"
+import { useMessagePreviewQuery } from "@/features/messages/queries/messageQueries"
 import { SectionCard } from "@/shared/ui/AppFlowUi"
 import { useSocketStore } from "@/shared/store/useSocketStore"
+import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 const PREVIEW_LIMIT = 2
-const ROW_HEIGHT = 44
+const ROW_HEIGHT = 52
 const PREVIEW_BODY_HEIGHT = PREVIEW_LIMIT * ROW_HEIGHT
 
 type RowAnimationState = {
@@ -30,16 +31,17 @@ type RowAnimationState = {
 export function HomeMessagePreview(props: { onPress: () => void }) {
   const theme = useAppTheme()
   const { t } = useTranslation()
-  const socketEvent = useSocketStore(state => state.lastEvent)
-  const [items, setItems] = useState<MessageItem[]>([])
-  const [ready, setReady] = useState(false)
-  const [loadFailed, setLoadFailed] = useState(false)
+  const walletAddress = useWalletStore(state => state.address)
+  const chainId = useWalletStore(state => state.chainId)
+  const messageRevision = useSocketStore(state => state.messageRevision)
   const hasHydratedRef = useRef(false)
   const itemIdsRef = useRef<string[]>([])
   const rowAnimationsRef = useRef<Record<string, RowAnimationState>>({})
-  const mountedRef = useRef(true)
-  const loadTaskControllerRef = useRef(createLatestTaskController())
   const animationFrameRef = useRef<number | null>(null)
+  const query = useMessagePreviewQuery({ walletAddress, chainId }, PREVIEW_LIMIT)
+  const items = query.data ?? []
+  const ready = query.isFetched || query.isError
+  const loadFailed = query.isError && items.length === 0
 
   const resolveRowAnimation = React.useCallback((id: string) => {
     const existing = rowAnimationsRef.current[id]
@@ -107,10 +109,6 @@ export function HomeMessagePreview(props: { onPress: () => void }) {
       animationFrameRef.current = requestAnimationFrame(() => {
         animationFrameRef.current = null
 
-        if (!mountedRef.current) {
-          return
-        }
-
         insertedIds.forEach(id => {
           const animation = rowAnimationsRef.current[id]
           if (!animation) {
@@ -140,46 +138,9 @@ export function HomeMessagePreview(props: { onPress: () => void }) {
     [clearPendingAnimationFrame],
   )
 
-  const loadPreview = React.useCallback(async () => {
-    const run = loadTaskControllerRef.current.begin()
-
-    try {
-      const response = await getMessageList({ page: 1, perPage: PREVIEW_LIMIT })
-
-      if (!run.isCurrent() || !mountedRef.current) {
-        return
-      }
-
-      const nextItems = response.data.slice(0, PREVIEW_LIMIT)
-      const nextIds = nextItems.map(item => item.id)
-      const { insertedIds } = diffHomeMessagePreviewIds(itemIdsRef.current, nextIds, hasHydratedRef.current)
-
-      pruneRowAnimations(nextIds)
-      itemIdsRef.current = nextIds
-      setLoadFailed(false)
-      setItems(nextItems)
-      animateInsertedRows(insertedIds)
-      hasHydratedRef.current = true
-    } catch {
-      if (!run.isCurrent() || !mountedRef.current) {
-        return
-      }
-
-      if (!hasHydratedRef.current && itemIdsRef.current.length === 0) {
-        setLoadFailed(true)
-      }
-    } finally {
-      if (run.isCurrent() && mountedRef.current) {
-        setReady(true)
-      }
-    }
-  }, [animateInsertedRows, pruneRowAnimations])
-
   useEffect(() => {
     return () => {
-      mountedRef.current = false
       clearPendingAnimationFrame()
-      loadTaskControllerRef.current.cancel()
 
       Object.values(rowAnimationsRef.current).forEach(stopRowAnimation)
       rowAnimationsRef.current = {}
@@ -187,19 +148,29 @@ export function HomeMessagePreview(props: { onPress: () => void }) {
     }
   }, [clearPendingAnimationFrame, stopRowAnimation])
 
+  useEffect(() => {
+    const nextIds = items.map(item => item.id)
+    const { insertedIds } = diffHomeMessagePreviewIds(itemIdsRef.current, nextIds, hasHydratedRef.current)
+
+    pruneRowAnimations(nextIds)
+    itemIdsRef.current = nextIds
+    animateInsertedRows(insertedIds)
+    hasHydratedRef.current = true
+  }, [animateInsertedRows, items, pruneRowAnimations])
+
   useFocusEffect(
     React.useCallback(() => {
-      void loadPreview()
-    }, [loadPreview]),
+      void query.refetch()
+    }, [query.refetch]),
   )
 
   useEffect(() => {
-    if (socketEvent?.type !== "messageRefresh") {
+    if (messageRevision <= 0) {
       return
     }
 
-    void loadPreview()
-  }, [loadPreview, socketEvent?.at, socketEvent?.type])
+    void query.refetch()
+  }, [messageRevision, query.refetch])
 
   const hasUnread = items.some(item => item.status === 0)
   const previewContent =
@@ -287,15 +258,19 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   headerTitle: {
-    fontSize: 15,
+    fontSize: 17,
+    lineHeight: 22,
     fontWeight: "700",
+    letterSpacing: -0.2,
   },
   headerAction: {
-    paddingVertical: 4,
+    paddingVertical: 6,
   },
   headerActionText: {
-    fontSize: 13,
+    fontSize: 15,
+    lineHeight: 20,
     fontWeight: "700",
+    letterSpacing: -0.1,
   },
   unreadDot: {
     width: 8,
@@ -309,12 +284,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   stateTitle: {
-    fontSize: 14,
+    fontSize: 15,
+    lineHeight: 20,
     fontWeight: "700",
   },
   stateBody: {
-    fontSize: 13,
-    lineHeight: 20,
+    fontSize: 14,
+    lineHeight: 21,
     textAlign: "center",
   },
   rowWrap: {
@@ -328,6 +304,7 @@ const styles = StyleSheet.create({
     height: ROW_HEIGHT,
     borderBottomWidth: StyleSheet.hairlineWidth,
     justifyContent: "center",
+    paddingVertical: 4,
   },
   rowLast: {
     borderBottomWidth: 0,
@@ -337,14 +314,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
+    minWidth: 0,
   },
   rowSummary: {
     flex: 1,
-    fontSize: 14,
+    minWidth: 0,
+    fontSize: 15,
+    lineHeight: 22,
     fontWeight: "600",
+    letterSpacing: -0.12,
   },
   rowTime: {
-    fontSize: 12,
+    fontSize: 13,
+    lineHeight: 18,
     flexShrink: 0,
   },
 })

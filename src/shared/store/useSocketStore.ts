@@ -2,30 +2,31 @@ import { create } from "zustand"
 
 type SocketState = {
   connected: boolean
-  lastEventAt: number | null
-  lastEvent: { type?: string; payload?: unknown; at: number } | null
+  messageRevision: number
+  copouchRevision: number
   setConnected: (connected: boolean) => void
-  touchEvent: (event?: { type?: string; payload?: unknown }) => void
+  bumpMessageRevision: () => void
+  bumpCopouchRevision: () => void
   reset: () => void
 }
 
 export const useSocketStore = create<SocketState>(set => ({
   connected: false,
-  lastEventAt: null,
-  lastEvent: null,
+  messageRevision: 0,
+  copouchRevision: 0,
   setConnected: connected => set({ connected }),
-  touchEvent: event =>
-    set({
-      lastEventAt: Date.now(),
-      lastEvent: {
-        ...event,
-        at: Date.now(),
-      },
-    }),
+  bumpMessageRevision: () =>
+    set(state => ({
+      messageRevision: state.messageRevision + 1,
+    })),
+  bumpCopouchRevision: () =>
+    set(state => ({
+      copouchRevision: state.copouchRevision + 1,
+    })),
   reset: () =>
     set({
       connected: false,
-      lastEventAt: null,
-      lastEvent: null,
+      messageRevision: 0,
+      copouchRevision: 0,
     }),
 }))

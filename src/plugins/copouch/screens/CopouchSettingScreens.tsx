@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useState } from "react"
+import React, { useEffect, useState } from "react"
 
+import { useQueryClient } from "@tanstack/react-query"
 import { useTranslation } from "react-i18next"
 import { Pressable, Text, View } from "react-native"
 
@@ -9,17 +10,20 @@ import type { CopouchStackScreenProps } from "@/plugins/copouch/screens/copouchS
 import {
   AvatarBadge,
   WalletGuard,
-  loadCopouchOwnersWithGuard,
+  isCopouchForbiddenError,
   styles,
   useCopouchWalletDetail,
 } from "@/plugins/copouch/screens/copouchOperationShared"
 import {
+  invalidateCopouchQueries,
+  useCopouchOwnersQuery,
+} from "@/plugins/copouch/queries/copouchQueries"
+import {
   updateCopouchWallet,
   type CopouchOwner,
 } from "@/plugins/copouch/services/copouchApi"
-import { useCopouchStore } from "@/plugins/copouch/store/useCopouchStore"
-import { formatAddress } from "@/features/home/utils/format"
-import { ActionRow } from "@/features/orders/components/OrdersUi"
+import { formatAddress } from "@/shared/utils/format"
+import { ActionRow } from "@/shared/ui/WalletCommonUi"
 import { PrimaryButton, SectionCard } from "@/shared/ui/AppFlowUi"
 import { ApiError } from "@/shared/errors"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
@@ -30,38 +34,34 @@ import { AppTextField } from "@/shared/ui/AppTextField"
 export function CopouchSettingScreen({ navigation, route }: CopouchStackScreenProps<"CopouchSettingScreen">) {
   const { t } = useTranslation()
   const { presentError } = useErrorPresenter()
-  const { detail, loading, invalidAccess, reload, setDetail } = useCopouchWalletDetail(route.params.id)
-  const [owners, setOwners] = useState<CopouchOwner[]>([])
-  const [ownersLoading, setOwnersLoading] = useState(true)
-
-  const loadOwners = useCallback(async () => {
-    setOwnersLoading(true)
-    try {
-      const nextOwners = await loadCopouchOwnersWithGuard(route.params.id, () => setDetail(null))
-      setOwners(nextOwners)
-    } finally {
-      setOwnersLoading(false)
-    }
-  }, [route.params.id, setDetail])
-
-  const loadAll = useCallback(async () => {
-    await Promise.all([reload(), loadOwners()])
-  }, [loadOwners, reload])
+  const { detail, error: detailError, loading, invalidAccess } = useCopouchWalletDetail(route.params.id)
+  const ownersQuery = useCopouchOwnersQuery(route.params.id)
+  const owners = (ownersQuery.data ?? []) as CopouchOwner[]
+  const ownersLoading = ownersQuery.isLoading
+  const screenInvalidAccess = invalidAccess || isCopouchForbiddenError(ownersQuery.error)
 
   useEffect(() => {
-    void loadAll().catch(error => {
-      presentError(error, {
+    if (detailError && !isCopouchForbiddenError(detailError)) {
+      presentError(detailError, {
         fallbackKey: "copouch.setting.loadFailed",
       })
-    })
-  }, [loadAll, presentError])
+    }
+  }, [detailError, presentError])
+
+  useEffect(() => {
+    if (ownersQuery.error && !isCopouchForbiddenError(ownersQuery.error)) {
+      presentError(ownersQuery.error, {
+        fallbackKey: "copouch.setting.loadFailed",
+      })
+    }
+  }, [ownersQuery.error, presentError])
 
   return (
     <CopouchScaffold canGoBack onBack={navigation.goBack} title={t("copouch.setting.title")}>
       <WalletGuard
         invalidBody={t("copouch.setting.invalidBody")}
         invalidTitle={t("copouch.setting.invalidTitle")}
-        invalidAccess={invalidAccess}
+        invalidAccess={screenInvalidAccess}
         loading={loading || ownersLoading}
         loadingBody={t("copouch.setting.loading")}
       >
@@ -130,6 +130,7 @@ export function CopouchSetNameScreen({ navigation, route }: CopouchStackScreenPr
   const { t } = useTranslation()
   const { presentError, presentMessage } = useErrorPresenter()
   const { showToast } = useToast()
+  const queryClient = useQueryClient()
   const { detail, loading, invalidAccess, reload } = useCopouchWalletDetail(route.params.id)
   const [name, setName] = useState("")
   const [saving, setSaving] = useState(false)
@@ -154,7 +155,7 @@ export function CopouchSetNameScreen({ navigation, route }: CopouchStackScreenPr
       await updateCopouchWallet(route.params.id, {
         walletName: name.trim(),
       })
-      await useCopouchStore.getState().refreshOverview().catch(() => null)
+      await invalidateCopouchQueries(queryClient)
       showToast({ message: t("copouch.setting.nameSaved"), tone: "success" })
       navigation.goBack()
     } catch (error) {
@@ -198,6 +199,7 @@ export function CopouchBgSettingScreen({ navigation, route }: CopouchStackScreen
   const { t } = useTranslation()
   const { presentError, presentMessage } = useErrorPresenter()
   const { showToast } = useToast()
+  const queryClient = useQueryClient()
   const { detail, loading, invalidAccess, reload } = useCopouchWalletDetail(route.params.id)
   const [selectedColor, setSelectedColor] = useState(1)
   const [saving, setSaving] = useState(false)
@@ -222,7 +224,7 @@ export function CopouchBgSettingScreen({ navigation, route }: CopouchStackScreen
       await updateCopouchWallet(route.params.id, {
         walletBgColor: selectedColor,
       })
-      await useCopouchStore.getState().refreshOverview().catch(() => null)
+      await invalidateCopouchQueries(queryClient)
       showToast({ message: t("copouch.setting.backgroundSaved"), tone: "success" })
       navigation.goBack()
     } catch (error) {

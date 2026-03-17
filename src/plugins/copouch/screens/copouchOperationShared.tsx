@@ -1,16 +1,15 @@
-import React, { useCallback, useEffect, useRef, useState } from "react"
+import React from "react"
 
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 
 import {
-  getCopouchDetail,
-  getCopouchOwners,
   type CopouchBillItem,
   type CopouchDetail,
   type CopouchEvent,
   type CopouchOwner,
 } from "@/plugins/copouch/services/copouchApi"
+import { useCopouchDetailQuery } from "@/plugins/copouch/queries/copouchQueries"
 import { PageEmpty, SectionCard } from "@/shared/ui/AppFlowUi"
 import { formatAmount } from "@/shared/exchange/utils/order"
 import { ApiError } from "@/shared/errors"
@@ -211,65 +210,22 @@ export function WalletGuard(props: {
   return <>{props.children}</>
 }
 
-export function useCopouchWalletDetail(id: string) {
-  const [detail, setDetail] = useState<CopouchDetail | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [invalidAccess, setInvalidAccess] = useState(false)
-  const mountedRef = useRef(true)
-
-  useEffect(() => {
-    mountedRef.current = true
-
-    return () => {
-      mountedRef.current = false
-    }
-  }, [])
-
-  const load = useCallback(async () => {
-    if (mountedRef.current) {
-      setLoading(true)
-    }
-
-    try {
-      const response = await getCopouchDetail(id)
-
-      if (mountedRef.current) {
-        setDetail(response)
-        setInvalidAccess(false)
-      }
-
-      return response
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 403) {
-        if (mountedRef.current) {
-          setInvalidAccess(true)
-          setDetail(null)
-        }
-
-        return null
-      }
-
-      throw error
-    } finally {
-      if (mountedRef.current) {
-        setLoading(false)
-      }
-    }
-  }, [id])
-
-  return { detail, loading, invalidAccess, reload: load, setDetail }
+export function isCopouchForbiddenError(error: unknown) {
+  return error instanceof ApiError && error.status === 403
 }
 
-export async function loadCopouchOwnersWithGuard(id: string, onForbidden: () => void) {
-  try {
-    return await getCopouchOwners(id)
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 403) {
-      onForbidden()
-      return []
-    }
+export function useCopouchWalletDetail(id: string) {
+  const query = useCopouchDetailQuery(id)
 
-    throw error
+  return {
+    detail: (query.data ?? null) as CopouchDetail | null,
+    error: query.error,
+    loading: query.isLoading,
+    invalidAccess: isCopouchForbiddenError(query.error),
+    reload: async () => {
+      const result = await query.refetch()
+      return result.data ?? null
+    },
   }
 }
 

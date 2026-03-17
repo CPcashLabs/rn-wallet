@@ -10,21 +10,19 @@ import {
   AvatarBadge,
   LoadingCard,
   WalletGuard,
+  isCopouchForbiddenError,
   styles,
   useCopouchWalletDetail,
 } from "@/plugins/copouch/screens/copouchOperationShared"
+import { useCopouchAssetBreakdownQuery } from "@/plugins/copouch/queries/copouchQueries"
 import {
   applyCopouchTransferQuote,
   buildCopouchTransferQuoteKey,
   resolveCopouchTransferOption,
   type CopouchTransferQuotedOption,
 } from "@/plugins/copouch/screens/copouchTransferQuote"
-import {
-  getCopouchAssetBreakdown,
-  type CopouchAssetItem,
-} from "@/plugins/copouch/services/copouchApi"
-import { formatAddress } from "@/features/home/utils/format"
-import { FilterChip } from "@/features/orders/components/OrdersUi"
+import { formatAddress } from "@/shared/utils/format"
+import { FilterChip } from "@/shared/ui/WalletCommonUi"
 import {
   createBridgeTransferOrder,
   createNormalTransferOrder,
@@ -64,9 +62,14 @@ function CopouchTransferScreen(props: {
   const balances = useBalanceStore(state => state.balances)
   const loadCoins = useBalanceStore(state => state.loadCoins)
   const currentChainName = resolveChainNameById(chainId)
-  const { detail, loading, invalidAccess, reload } = useCopouchWalletDetail(props.route.params.id)
-  const [safeAssets, setSafeAssets] = useState<CopouchAssetItem[]>([])
-  const [assetLoading, setAssetLoading] = useState(false)
+  const { detail, error: detailError, loading, invalidAccess } = useCopouchWalletDetail(props.route.params.id)
+  const assetBreakdownQuery = useCopouchAssetBreakdownQuery({
+    walletId: props.route.params.id,
+    chainId,
+  })
+  const safeAssets = assetBreakdownQuery.data?.assets ?? []
+  const assetLoading = props.mode === "withdraw" && assetBreakdownQuery.isLoading && !assetBreakdownQuery.data
+  const screenInvalidAccess = invalidAccess || isCopouchForbiddenError(assetBreakdownQuery.error)
   const [channels, setChannels] = useState<TransferChannel[]>([])
   const [channelLoading, setChannelLoading] = useState(true)
   const [selectedChannelKey, setSelectedChannelKey] = useState("")
@@ -85,34 +88,30 @@ function CopouchTransferScreen(props: {
   const quoteRequestIdRef = useRef(0)
 
   useEffect(() => {
-    void reload().catch(() => null)
     if (props.mode === "deposit") {
       void loadCoins(chainId).catch(() => null)
     }
-  }, [chainId, loadCoins, props.mode, reload])
+  }, [chainId, loadCoins, props.mode])
 
   useEffect(() => {
-    if (props.mode !== "withdraw") {
+    if (!detailError || isCopouchForbiddenError(detailError)) {
       return
     }
 
-    setAssetLoading(true)
-    void getCopouchAssetBreakdown({
-      walletId: props.route.params.id,
-      chainId,
+    presentError(detailError, {
+      fallbackKey: "copouch.transfer.loadFailed",
     })
-      .then(response => {
-        setSafeAssets(response.assets)
-      })
-      .catch(error => {
-        presentError(error, {
-          fallbackKey: "copouch.transfer.loadFailed",
-        })
-      })
-      .finally(() => {
-        setAssetLoading(false)
-      })
-  }, [chainId, presentError, props.mode, props.route.params.id])
+  }, [detailError, presentError])
+
+  useEffect(() => {
+    if (props.mode !== "withdraw" || !assetBreakdownQuery.error || isCopouchForbiddenError(assetBreakdownQuery.error)) {
+      return
+    }
+
+    presentError(assetBreakdownQuery.error, {
+      fallbackKey: "copouch.transfer.loadFailed",
+    })
+  }, [assetBreakdownQuery.error, presentError, props.mode])
 
   useEffect(() => {
     setChannelLoading(true)
@@ -387,9 +386,9 @@ function CopouchTransferScreen(props: {
         <WalletGuard
           invalidBody={t("copouch.transfer.invalidBody")}
           invalidTitle={t("copouch.transfer.invalidTitle")}
-          invalidAccess={invalidAccess}
-          loading={loading}
-          loadingBody={t("copouch.transfer.loading")}
+        invalidAccess={screenInvalidAccess}
+        loading={loading}
+        loadingBody={t("copouch.transfer.loading")}
         >
           <SectionCard>
             <Text style={[styles.inputLabel, { color: theme.colors.text }]}>{t("copouch.transfer.destination")}</Text>

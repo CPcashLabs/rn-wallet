@@ -1,33 +1,21 @@
 import React, { useEffect, useMemo, useState } from "react"
 
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
+import { useIsFocused } from "@react-navigation/native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import type { ReceiveStackParamList } from "@/app/navigation/types"
-import { HomeScaffold } from "@/features/home/components/HomeScaffold"
-import { SeedAddressAvatar } from "@/features/orders/components/OrderCounterpartyAvatar"
 import {
-  getTraceChildLogs,
-  getTraceDetail,
-  type ReceiveOrder,
-} from "@/domains/wallet/receive/services/receiveApi"
-import {
-  attachReceiveTxlogOrderType,
   buildReceiveTxlogSources,
   filterReceiveTxlogs,
   mergeReceiveTxlogs,
-  matchesReceiveTxlogPayChain,
   resolveDefaultReceiveTxlogFilter,
-  type ReceiveTraceOrderType,
   type ReceiveTxlogItem,
   type ReceiveTxlogRecordFilter,
 } from "@/domains/wallet/receive/screens/receiveTxlogsModel"
-import {
-  buildNextSeenLogState,
-  buildReceiveTxlogKey,
-  createReceiveTxlogsPollController,
-} from "@/domains/wallet/receive/screens/receiveTxlogsPolling"
+import { useReceiveTxlogSnapshotQuery } from "@/domains/wallet/receive/queries/receiveTxlogQueries"
+import { buildReceiveTxlogKey } from "@/domains/wallet/receive/screens/receiveTxlogsPolling"
 import {
   formatWalletAddress,
   formatWalletAmount,
@@ -39,10 +27,11 @@ import {
   formatWalletRecordTime,
 } from "@/domains/wallet/shared/utils/format"
 import { openWalletOrderDetail } from "@/domains/wallet/shared/navigation/orderDetail"
-import { getJson, setJson } from "@/shared/storage/kvStorage"
-import { KvStorageKeys } from "@/shared/storage/sessionKeys"
+import { useAppForeground } from "@/shared/hooks/useAppForeground"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { SectionCard } from "@/shared/ui/AppFlowUi"
+import { HomeScaffold } from "@/shared/ui/HomeScaffold"
+import { SeedAddressAvatar } from "@/shared/avatar/SeedAddressAvatar"
 import { useToast } from "@/shared/toast/useToast"
 
 type Props = NativeStackScreenProps<ReceiveStackParamList, "ReceiveTxlogsScreen">
@@ -60,6 +49,8 @@ export function ReceiveTxlogsScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
   const { showToast } = useToast()
+  const isFocused = useIsFocused()
+  const isAppForeground = useAppForeground()
   const sources = useMemo(
     () =>
       buildReceiveTxlogSources({
@@ -70,119 +61,33 @@ export function ReceiveTxlogsScreen({ navigation, route }: Props) {
       }),
     [route.params?.businessOrderSn, route.params?.orderSn, route.params?.orderType, route.params?.personalOrderSn],
   )
-  const sourcesKey = sources.map(item => `${item.orderType}:${item.orderSn}`).join("|")
-  const [detailByType, setDetailByType] = useState<Partial<Record<ReceiveTraceOrderType, ReceiveOrder | null>>>({})
-  const [logsByType, setLogsByType] = useState<Partial<Record<ReceiveTraceOrderType, ReceiveTxlogItem[]>>>({})
-  const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
-  const [newLogKeys, setNewLogKeys] = useState<string[]>([])
   const [selectedFilter, setSelectedFilter] = useState<ReceiveTxlogRecordFilter>(() =>
     resolveDefaultReceiveTxlogFilter(route.params?.orderType),
   )
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null)
+  const query = useReceiveTxlogSnapshotQuery({
+    sources,
+    payChain: route.params?.payChain,
+    pollEnabled: isFocused && isAppForeground,
+  })
+  const detailByType = query.data?.detailByType ?? {}
+  const logsByType = query.data?.logsByType ?? {}
+  const newLogKeys = query.data?.newLogKeys ?? []
+  const loading = sources.length > 0 && query.isLoading && !query.data
+  const refreshing = query.isRefetching && !!query.data
 
   useEffect(() => {
-    if (sources.length === 0) {
-      setDetailByType({})
-      setLogsByType({})
-      setLoading(false)
-      setRefreshing(false)
+    if (!query.error) {
       return
     }
 
-    const pollController = createReceiveTxlogsPollController()
-
-    const load = async (isRefresh = false) => {
-      if (!pollController.startRequest()) {
-        return
-      }
-
-      if (isRefresh) {
-        setRefreshing(true)
-      } else {
-        setLoading(true)
-      }
-
-      try {
-        const results = await Promise.all(
-          sources.map(async source => {
-            const [nextDetail, nextLogs] = await Promise.all([getTraceDetail(source.orderSn), getTraceChildLogs({ orderSn: source.orderSn })])
-
-            return {
-              ...source,
-              detail: nextDetail,
-              logs: attachReceiveTxlogOrderType(nextLogs, source.orderType),
-            }
-          }),
-        )
-        const payChainMatchedResults = results.filter(result => matchesReceiveTxlogPayChain(result.detail, route.params?.payChain))
-
-        if (!pollController.canCommit()) {
-          return
-        }
-
-        const currentSeenMap = getJson<Record<string, string[]>>(KvStorageKeys.ReceiveShowedList) ?? {}
-        const detailState: Partial<Record<ReceiveTraceOrderType, ReceiveOrder | null>> = {}
-        const logState: Partial<Record<ReceiveTraceOrderType, ReceiveTxlogItem[]>> = {}
-        const freshKeys: string[] = []
-        let nextSeenMap = currentSeenMap
-
-        payChainMatchedResults.forEach(result => {
-          const nextSeenState = buildNextSeenLogState(result.orderSn, result.logs, nextSeenMap)
-          detailState[result.orderType] = result.detail
-          logState[result.orderType] = result.logs
-          freshKeys.push(...nextSeenState.freshKeys)
-          nextSeenMap = nextSeenState.nextSeenMap
-        })
-
-        if (!pollController.canCommit()) {
-          return
-        }
-
-        setJson(KvStorageKeys.ReceiveShowedList, nextSeenMap)
-
-        if (!pollController.canCommit()) {
-          return
-        }
-
-        pollController.markSuccess()
-        setDetailByType(detailState)
-        setLogsByType(logState)
-        setNewLogKeys(Array.from(new Set(freshKeys)))
-      } catch {
-        if (!pollController.canCommit()) {
-          return
-        }
-
-        if (isRefresh) {
-          if (pollController.shouldNotifyRefreshFailure()) {
-            showToast({ message: t("receive.logs.refreshFailed"), tone: "error" })
-          }
-        } else {
-          Alert.alert(t("common.errorTitle"), t("receive.logs.loadFailed"))
-        }
-      } finally {
-        pollController.finishRequest()
-
-        if (!pollController.canCommit()) {
-          return
-        }
-
-        setLoading(false)
-        setRefreshing(false)
-      }
+    if (query.data) {
+      showToast({ message: t("receive.logs.refreshFailed"), tone: "error" })
+      return
     }
 
-    void load()
-    const timer = setInterval(() => {
-      void load(true)
-    }, 5000)
-
-    return () => {
-      pollController.deactivate()
-      clearInterval(timer)
-    }
-  }, [showToast, sources, sourcesKey, t])
+    Alert.alert(t("common.errorTitle"), t("receive.logs.loadFailed"))
+  }, [query.data, query.error, showToast, t])
 
   useEffect(() => {
     setSelectedFilter(resolveDefaultReceiveTxlogFilter(route.params?.orderType))

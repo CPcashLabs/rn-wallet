@@ -1,23 +1,23 @@
 import React, { useEffect, useMemo, useState } from "react"
 
 import { Pressable, StyleSheet, Text, View } from "react-native"
-import { useFocusEffect } from "@react-navigation/native"
+import { useQueryClient } from "@tanstack/react-query"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 
 import { navigateRoot } from "@/app/navigation/navigationRef"
-import { getCopouchDetail, getCopouchOwners, markCopouchFirstEnterSeen, type CopouchDetail, type CopouchOwner } from "@/plugins/copouch/services/copouchApi"
+import { markCopouchFirstEnterSeen } from "@/plugins/copouch/services/copouchApi"
 import { CopouchScaffold } from "@/plugins/copouch/components/CopouchScaffold"
 import { COPOUCH_WALLET_BG_PALETTE } from "@/plugins/copouch/screens/copouchPalette"
-import { useCopouchStore } from "@/plugins/copouch/store/useCopouchStore"
-import { formatAddress, formatCurrency } from "@/features/home/utils/format"
+import { copouchKeys, useCopouchOwnersQuery } from "@/plugins/copouch/queries/copouchQueries"
+import { formatAddress, formatCurrency } from "@/shared/utils/format"
 import { PageEmpty, PrimaryButton, SectionCard, SecondaryButton } from "@/shared/ui/AppFlowUi"
-import { ApiError } from "@/shared/errors"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { getJson, setJson } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 import { useSocketStore } from "@/shared/store/useSocketStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { isCopouchForbiddenError, useCopouchWalletDetail } from "@/plugins/copouch/screens/copouchOperationShared"
 
 import type { CopouchStackParamList } from "@/app/navigation/types"
 
@@ -27,66 +27,48 @@ export function CopouchDetailScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
   const { presentError } = useErrorPresenter()
-  const refreshOverview = useCopouchStore(state => state.refreshOverview)
-  const refreshWalletValue = useCopouchStore(state => state.refreshWalletValue)
-  const wallets = useCopouchStore(state => state.wallets)
-  const lastEvent = useSocketStore(state => state.lastEvent)
-  const [loading, setLoading] = useState(true)
-  const [detail, setDetail] = useState<CopouchDetail | null>(null)
-  const [owners, setOwners] = useState<CopouchOwner[]>([])
-  const [invalidAccess, setInvalidAccess] = useState(false)
+  const queryClient = useQueryClient()
+  const copouchRevision = useSocketStore(state => state.copouchRevision)
+  const { detail, error: detailError, loading: detailLoading, invalidAccess, reload } = useCopouchWalletDetail(route.params.id)
+  const ownersQuery = useCopouchOwnersQuery(route.params.id)
+  const owners = ownersQuery.data ?? []
+  const loading = detailLoading || ownersQuery.isLoading
   const [isGuideDismissed, setIsGuideDismissed] = useState(false)
-
-  const wallet = wallets.find(item => item.id === route.params.id)
-  const walletTotalValue = wallet?.totalValue ?? detail?.totalValue ?? 0
+  const walletTotalValue = detail?.totalValue ?? 0
   const walletPalette = COPOUCH_WALLET_BG_PALETTE[detail?.walletBgColor ?? route.params.walletBgColor ?? 1] ?? COPOUCH_WALLET_BG_PALETTE[1]
 
-  const loadDetail = React.useCallback(async () => {
-    setLoading(true)
-
-    try {
-      const [nextDetail, nextOwners] = await Promise.all([getCopouchDetail(route.params.id), getCopouchOwners(route.params.id)])
-
-      setDetail(nextDetail)
-      setOwners(nextOwners)
-      setInvalidAccess(false)
-
-      const dismissedIds = getJson<string[]>(KvStorageKeys.CopouchGuideDismissedWalletIds) ?? []
-      setIsGuideDismissed(dismissedIds.includes(route.params.id) || nextDetail.firstEnterStatus !== 1)
-
-      await refreshWalletValue(nextDetail.id, nextDetail.walletAddress)
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 403) {
-        setInvalidAccess(true)
-      } else {
-        presentError(error, {
-          fallbackKey: "copouch.detail.loadFailed",
-        })
-      }
-    } finally {
-      setLoading(false)
-    }
-  }, [presentError, refreshWalletValue, route.params.id])
-
-  useFocusEffect(
-    React.useCallback(() => {
-      void refreshOverview().catch(() => null)
-      void loadDetail()
-    }, [loadDetail, refreshOverview]),
-  )
-
   useEffect(() => {
-    const type = lastEvent?.type
-
-    if (!type) {
+    if (copouchRevision <= 0) {
       return
     }
 
-    if (["MultisigWalletMemberAddSuc", "MultisigWalletMemberDelSuc", "MultisigWalletMemberRemoved", "MultisigWalletCreatedSuc"].includes(type)) {
-      void refreshOverview().catch(() => null)
-      void loadDetail()
+    void Promise.all([reload(), ownersQuery.refetch()]).catch(() => null)
+  }, [copouchRevision, ownersQuery.refetch, reload])
+
+  useEffect(() => {
+    if (detailError && !isCopouchForbiddenError(detailError)) {
+      presentError(detailError, {
+        fallbackKey: "copouch.detail.loadFailed",
+      })
     }
-  }, [lastEvent, loadDetail, refreshOverview])
+  }, [detailError, presentError])
+
+  useEffect(() => {
+    if (ownersQuery.error && !isCopouchForbiddenError(ownersQuery.error)) {
+      presentError(ownersQuery.error, {
+        fallbackKey: "copouch.detail.loadFailed",
+      })
+    }
+  }, [ownersQuery.error, presentError])
+
+  useEffect(() => {
+    if (!detail) {
+      return
+    }
+
+    const dismissedIds = getJson<string[]>(KvStorageKeys.CopouchGuideDismissedWalletIds) ?? []
+    setIsGuideDismissed(dismissedIds.includes(route.params.id) || detail.firstEnterStatus !== 1)
+  }, [detail, route.params.id])
 
   const ownerSummary = useMemo(() => {
     return owners.slice(0, 5)
@@ -100,7 +82,7 @@ export function CopouchDetailScreen({ navigation, route }: Props) {
 
     try {
       await markCopouchFirstEnterSeen(route.params.id)
-      setDetail(current =>
+      queryClient.setQueryData(copouchKeys.detail(route.params.id), current =>
         current
           ? {
               ...current,

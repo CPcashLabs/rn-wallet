@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
-import { useFocusEffect } from "@react-navigation/native"
+import { useQueryClient } from "@tanstack/react-query"
 import { useTranslation } from "react-i18next"
 import { Alert, Pressable, Text, View } from "react-native"
 
@@ -12,7 +12,7 @@ import {
   WalletGuard,
   groupOwners,
   isEvmAddress,
-  loadCopouchOwnersWithGuard,
+  isCopouchForbiddenError,
   normalizeWalletAddress,
   resolveMemberBadgeKey,
   resolveMutationMessage,
@@ -21,19 +21,21 @@ import {
 } from "@/plugins/copouch/screens/copouchOperationShared"
 import {
   addCopouchOwner,
-  getCopouchDetail,
-  getCopouchOwners,
   preValidateCopouchAddOwner,
   preValidateCopouchRemoveOwner,
   removeCopouchOwner,
   syncCopouchOwners,
   type CopouchOwner,
 } from "@/plugins/copouch/services/copouchApi"
-import { useCopouchStore } from "@/plugins/copouch/store/useCopouchStore"
-import { formatAddress } from "@/features/home/utils/format"
-import { ActionRow } from "@/features/orders/components/OrdersUi"
+import {
+  invalidateCopouchQueries,
+  useCopouchDetailQuery,
+  useCopouchOverviewQuery,
+  useCopouchOwnersQuery,
+} from "@/plugins/copouch/queries/copouchQueries"
+import { formatAddress } from "@/shared/utils/format"
+import { ActionRow } from "@/shared/ui/WalletCommonUi"
 import { PageEmpty, PrimaryButton, SectionCard } from "@/shared/ui/AppFlowUi"
-import { ApiError } from "@/shared/errors"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { useSocketStore } from "@/shared/store/useSocketStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
@@ -44,49 +46,35 @@ import { AppTextField } from "@/shared/ui/AppTextField"
 export function CopouchMemberScreen({ navigation, route }: CopouchStackScreenProps<"CopouchMemberScreen">) {
   const { t } = useTranslation()
   const { presentError } = useErrorPresenter()
-  const lastEvent = useSocketStore(state => state.lastEvent)
-  const { detail, loading, invalidAccess, reload, setDetail } = useCopouchWalletDetail(route.params.id)
-  const [owners, setOwners] = useState<CopouchOwner[]>([])
-  const [ownersLoading, setOwnersLoading] = useState(true)
-
-  const loadOwners = useCallback(async () => {
-    setOwnersLoading(true)
-    try {
-      const nextOwners = await loadCopouchOwnersWithGuard(route.params.id, () => setDetail(null))
-      setOwners(nextOwners)
-    } finally {
-      setOwnersLoading(false)
-    }
-  }, [route.params.id, setDetail])
-
-  const loadAll = useCallback(async () => {
-    const [walletDetail] = await Promise.all([reload(), loadOwners()])
-    return walletDetail
-  }, [loadOwners, reload])
+  const copouchRevision = useSocketStore(state => state.copouchRevision)
+  const { detail, error: detailError, loading, invalidAccess, reload } = useCopouchWalletDetail(route.params.id)
+  const ownersQuery = useCopouchOwnersQuery(route.params.id)
+  const owners = (ownersQuery.data ?? []) as CopouchOwner[]
+  const screenInvalidAccess = invalidAccess || isCopouchForbiddenError(ownersQuery.error)
 
   useEffect(() => {
-    void loadAll().catch(error => {
-      presentError(error, {
-        fallbackKey: "copouch.member.loadFailed",
-      })
-    })
-  }, [loadAll, presentError])
-
-  useFocusEffect(
-    React.useCallback(() => {
-      void loadAll().catch(() => null)
-    }, [loadAll]),
-  )
-
-  useEffect(() => {
-    if (!lastEvent?.type) {
+    if (copouchRevision <= 0) {
       return
     }
 
-    if (["MultisigWalletMemberAddSuc", "MultisigWalletMemberDelSuc", "MultisigWalletMemberRemoved"].includes(lastEvent.type)) {
-      void loadAll().catch(() => null)
+    void Promise.all([reload(), ownersQuery.refetch()]).catch(() => null)
+  }, [copouchRevision, ownersQuery.refetch, reload])
+
+  useEffect(() => {
+    if (detailError && !isCopouchForbiddenError(detailError)) {
+      presentError(detailError, {
+        fallbackKey: "copouch.member.loadFailed",
+      })
     }
-  }, [lastEvent, loadAll])
+  }, [detailError, presentError])
+
+  useEffect(() => {
+    if (ownersQuery.error && !isCopouchForbiddenError(ownersQuery.error)) {
+      presentError(ownersQuery.error, {
+        fallbackKey: "copouch.member.loadFailed",
+      })
+    }
+  }, [ownersQuery.error, presentError])
 
   const groups = useMemo(() => groupOwners(owners), [owners])
 
@@ -95,8 +83,8 @@ export function CopouchMemberScreen({ navigation, route }: CopouchStackScreenPro
       <WalletGuard
         invalidBody={t("copouch.member.invalidBody")}
         invalidTitle={t("copouch.member.invalidTitle")}
-        invalidAccess={invalidAccess}
-        loading={loading || ownersLoading}
+        invalidAccess={screenInvalidAccess}
+        loading={loading || ownersQuery.isLoading}
         loadingBody={t("copouch.member.loading")}
       >
         {detail?.isCreator ? (
@@ -163,9 +151,11 @@ export function CopouchDeleteMemberScreen({ navigation, route }: CopouchStackScr
   const { t } = useTranslation()
   const { presentError, presentMessage } = useErrorPresenter()
   const { showToast } = useToast()
-  const { detail, loading, invalidAccess, reload, setDetail } = useCopouchWalletDetail(route.params.id)
-  const [owners, setOwners] = useState<CopouchOwner[]>([])
-  const [ownersLoading, setOwnersLoading] = useState(true)
+  const queryClient = useQueryClient()
+  const { detail, error: detailError, loading, invalidAccess, reload } = useCopouchWalletDetail(route.params.id)
+  const ownersQuery = useCopouchOwnersQuery(route.params.id)
+  const owners = (ownersQuery.data ?? []) as CopouchOwner[]
+  const screenInvalidAccess = invalidAccess || isCopouchForbiddenError(ownersQuery.error)
   const [deletingWalletAddress, setDeletingWalletAddress] = useState("")
   const mountedRef = useRef(true)
 
@@ -177,39 +167,25 @@ export function CopouchDeleteMemberScreen({ navigation, route }: CopouchStackScr
     }
   }, [])
 
-  const loadOwners = useCallback(async () => {
-    if (mountedRef.current) {
-      setOwnersLoading(true)
-    }
-
-    try {
-      const nextOwners = await loadCopouchOwnersWithGuard(route.params.id, () => {
-        if (mountedRef.current) {
-          setDetail(null)
-        }
-      })
-
-      if (mountedRef.current) {
-        setOwners(nextOwners)
-      }
-    } finally {
-      if (mountedRef.current) {
-        setOwnersLoading(false)
-      }
-    }
-  }, [route.params.id, setDetail])
-
-  const loadAll = useCallback(async () => {
-    await Promise.all([reload(), loadOwners()])
-  }, [loadOwners, reload])
+  const refreshOwners = useCallback(async () => {
+    await Promise.all([reload(), ownersQuery.refetch()])
+  }, [ownersQuery.refetch, reload])
 
   useEffect(() => {
-    void loadAll().catch(error => {
-      presentError(error, {
+    if (detailError && !isCopouchForbiddenError(detailError)) {
+      presentError(detailError, {
         fallbackKey: "copouch.member.loadFailed",
       })
-    })
-  }, [loadAll, presentError])
+    }
+  }, [detailError, presentError])
+
+  useEffect(() => {
+    if (ownersQuery.error && !isCopouchForbiddenError(ownersQuery.error)) {
+      presentError(ownersQuery.error, {
+        fallbackKey: "copouch.member.loadFailed",
+      })
+    }
+  }, [ownersQuery.error, presentError])
 
   const members = useMemo(() => owners.filter(owner => !owner.isCreator), [owners])
 
@@ -226,20 +202,21 @@ export function CopouchDeleteMemberScreen({ navigation, route }: CopouchStackScr
         await removeCopouchOwner(route.params.id, { walletAddress: owner.walletAddress })
 
         if (mountedRef.current) {
-          await loadAll()
+          await refreshOwners()
         }
 
         if (!mountedRef.current) {
           return
         }
 
+        await invalidateCopouchQueries(queryClient)
         showToast({ message: t("copouch.member.removeSuccess"), tone: "success" })
       } catch (error) {
         try {
           await syncCopouchOwners(route.params.id)
 
           if (mountedRef.current) {
-            await loadAll()
+            await refreshOwners()
           }
         } catch {
           // ignore sync errors and surface the original mutation error
@@ -258,7 +235,7 @@ export function CopouchDeleteMemberScreen({ navigation, route }: CopouchStackScr
         }
       }
     },
-    [loadAll, presentMessage, route.params.id, showToast, t],
+    [presentMessage, queryClient, refreshOwners, route.params.id, showToast, t],
   )
 
   const confirmDelete = useCallback(
@@ -282,8 +259,8 @@ export function CopouchDeleteMemberScreen({ navigation, route }: CopouchStackScr
       <WalletGuard
         invalidBody={t("copouch.member.invalidBody")}
         invalidTitle={t("copouch.member.invalidTitle")}
-        invalidAccess={invalidAccess}
-        loading={loading || ownersLoading}
+        invalidAccess={screenInvalidAccess}
+        loading={loading || ownersQuery.isLoading}
         loadingBody={t("copouch.member.loading")}
       >
         {!detail?.isCreator ? (
@@ -340,17 +317,21 @@ export function CopouchAddMemberScreen({ navigation, route }: CopouchStackScreen
   const { t } = useTranslation()
   const { presentError, presentMessage } = useErrorPresenter()
   const { showToast } = useToast()
-  const { detail, loading, invalidAccess, reload } = useCopouchWalletDetail(route.params.id)
+  const queryClient = useQueryClient()
+  const { detail, error: detailError, loading, invalidAccess } = useCopouchWalletDetail(route.params.id)
+  const screenInvalidAccess = invalidAccess || isCopouchForbiddenError(detailError)
   const [walletAddress, setWalletAddress] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    void reload().catch(error => {
-      presentError(error, {
-        fallbackKey: "copouch.member.loadFailed",
-      })
+    if (!detailError || isCopouchForbiddenError(detailError)) {
+      return
+    }
+
+    presentError(detailError, {
+      fallbackKey: "copouch.member.loadFailed",
     })
-  }, [presentError, reload])
+  }, [detailError, presentError])
 
   const normalizedAddress = normalizeWalletAddress(walletAddress)
   const validationMessage = useMemo(() => {
@@ -372,6 +353,7 @@ export function CopouchAddMemberScreen({ navigation, route }: CopouchStackScreen
     try {
       await preValidateCopouchAddOwner(route.params.id, address)
       await addCopouchOwner(route.params.id, { walletAddress: address })
+      await invalidateCopouchQueries(queryClient)
       showToast({ message: t("copouch.member.addSuccess"), tone: "success" })
       navigation.goBack()
     } catch (error) {
@@ -388,7 +370,7 @@ export function CopouchAddMemberScreen({ navigation, route }: CopouchStackScreen
       <WalletGuard
         invalidBody={t("copouch.member.invalidBody")}
         invalidTitle={t("copouch.member.invalidTitle")}
-        invalidAccess={invalidAccess}
+        invalidAccess={screenInvalidAccess}
         loading={loading}
         loadingBody={t("copouch.member.loading")}
       >
@@ -432,22 +414,29 @@ export function CopouchAddMemberScreen({ navigation, route }: CopouchStackScreen
 export function CopouchAddMemberForTeamScreen({ navigation, route }: CopouchStackScreenProps<"CopouchAddMemberForTeamScreen">) {
   const { t } = useTranslation()
   const { presentError } = useErrorPresenter()
-  const { showToast } = useToast()
-  const wallets = useCopouchStore(state => state.wallets)
-  const loading = useCopouchStore(state => state.loading)
-  const loadOverview = useCopouchStore(state => state.loadOverview)
-  const { invalidAccess, loading: detailLoading, reload } = useCopouchWalletDetail(route.params.id)
+  const walletAddress = useWalletStore(state => state.address)
+  const chainId = useWalletStore(state => state.chainId)
+  const { error: detailError, invalidAccess, loading: detailLoading } = useCopouchWalletDetail(route.params.id)
+  const overviewQuery = useCopouchOverviewQuery({ walletAddress, chainId }, false)
+  const wallets = overviewQuery.data?.wallets ?? []
+  const loading = overviewQuery.isLoading && !overviewQuery.data
+  const screenInvalidAccess = invalidAccess || isCopouchForbiddenError(overviewQuery.error)
 
   useEffect(() => {
-    void reload().catch(() => null)
-    if (wallets.length === 0) {
-      void loadOverview().catch(error => {
-        presentError(error, {
-          fallbackKey: "copouch.member.teamLoadFailed",
-        })
+    if (detailError && !isCopouchForbiddenError(detailError)) {
+      presentError(detailError, {
+        fallbackKey: "copouch.member.teamLoadFailed",
       })
     }
-  }, [loadOverview, presentError, reload, wallets.length])
+  }, [detailError, presentError])
+
+  useEffect(() => {
+    if (overviewQuery.error && !isCopouchForbiddenError(overviewQuery.error)) {
+      presentError(overviewQuery.error, {
+        fallbackKey: "copouch.member.teamLoadFailed",
+      })
+    }
+  }, [overviewQuery.error, presentError])
 
   const otherWallets = useMemo(
     () => wallets.filter(wallet => wallet.id !== route.params.id && wallet.isCreator),
@@ -459,7 +448,7 @@ export function CopouchAddMemberForTeamScreen({ navigation, route }: CopouchStac
       <WalletGuard
         invalidBody={t("copouch.member.invalidBody")}
         invalidTitle={t("copouch.member.invalidTitle")}
-        invalidAccess={invalidAccess}
+        invalidAccess={screenInvalidAccess}
         loading={loading || detailLoading}
         loadingBody={t("copouch.member.teamLoading")}
       >
@@ -495,46 +484,32 @@ export function CopouchAddMemberForTeamSelectScreen({
   const { presentError, presentMessage } = useErrorPresenter()
   const { showToast } = useToast()
   const currentAddress = useWalletStore(state => state.address)
-  const [loading, setLoading] = useState(true)
-  const [invalidAccess, setInvalidAccess] = useState(false)
-  const [teamName, setTeamName] = useState("")
-  const [teamOwners, setTeamOwners] = useState<CopouchOwner[]>([])
-  const [currentOwners, setCurrentOwners] = useState<CopouchOwner[]>([])
+  const queryClient = useQueryClient()
+  const teamDetailQuery = useCopouchDetailQuery(route.params.teamId)
+  const teamOwnersQuery = useCopouchOwnersQuery(route.params.teamId)
+  const currentOwnersQuery = useCopouchOwnersQuery(route.params.id)
+  const loading = teamDetailQuery.isLoading || teamOwnersQuery.isLoading || currentOwnersQuery.isLoading
+  const invalidAccess =
+    isCopouchForbiddenError(teamDetailQuery.error) ||
+    isCopouchForbiddenError(teamOwnersQuery.error) ||
+    isCopouchForbiddenError(currentOwnersQuery.error)
+  const teamName = teamDetailQuery.data?.walletName || t("copouch.home.unnamedWallet")
+  const teamOwners = (teamOwnersQuery.data ?? []) as CopouchOwner[]
+  const currentOwners = (currentOwnersQuery.data ?? []) as CopouchOwner[]
   const [selectedAddress, setSelectedAddress] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
-  const load = useCallback(async () => {
-    setLoading(true)
-
-    try {
-      const [teamDetail, sourceOwners, targetOwners] = await Promise.all([
-        getCopouchDetail(route.params.teamId),
-        getCopouchOwners(route.params.teamId),
-        getCopouchOwners(route.params.id),
-      ])
-
-      setTeamName(teamDetail.walletName || t("copouch.home.unnamedWallet"))
-      setTeamOwners(sourceOwners)
-      setCurrentOwners(targetOwners)
-      setInvalidAccess(false)
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 403) {
-        setInvalidAccess(true)
-      } else {
-        throw error
-      }
-    } finally {
-      setLoading(false)
-    }
-  }, [route.params.id, route.params.teamId, t])
-
   useEffect(() => {
-    void load().catch(error => {
-      presentError(error, {
-        fallbackKey: "copouch.member.teamLoadFailed",
-      })
+    const loadError = teamDetailQuery.error ?? teamOwnersQuery.error ?? currentOwnersQuery.error
+
+    if (!loadError || isCopouchForbiddenError(loadError)) {
+      return
+    }
+
+    presentError(loadError, {
+      fallbackKey: "copouch.member.teamLoadFailed",
     })
-  }, [load, presentError])
+  }, [currentOwnersQuery.error, presentError, teamDetailQuery.error, teamOwnersQuery.error])
 
   const disabledAddresses = useMemo(() => {
     const ownerSet = new Set(currentOwners.map(owner => owner.walletAddress.toLowerCase()))
@@ -554,6 +529,7 @@ export function CopouchAddMemberForTeamSelectScreen({
     try {
       await preValidateCopouchAddOwner(route.params.id, selectedAddress)
       await addCopouchOwner(route.params.id, { walletAddress: selectedAddress })
+      await invalidateCopouchQueries(queryClient)
       showToast({ message: t("copouch.member.addSuccess"), tone: "success" })
       navigation.goBack()
     } catch (error) {

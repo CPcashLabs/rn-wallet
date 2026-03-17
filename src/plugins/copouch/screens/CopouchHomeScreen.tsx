@@ -5,13 +5,18 @@ import { useFocusEffect } from "@react-navigation/native"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 
-import { describeCopouchEligibilityError } from "@/plugins/copouch/services/copouchApi"
+import {
+  createCopouchWallet,
+  describeCopouchEligibilityError,
+  preValidateCopouchCreate,
+} from "@/plugins/copouch/services/copouchApi"
 import { navigateRoot } from "@/app/navigation/navigationRef"
-import { HeaderTextAction } from "@/features/home/components/HomeScaffold"
+import { HeaderTextAction } from "@/shared/ui/HomeScaffold"
+import { useCopouchOverviewQuery } from "@/plugins/copouch/queries/copouchQueries"
 import { useCopouchStore } from "@/plugins/copouch/store/useCopouchStore"
 import { CopouchScaffold } from "@/plugins/copouch/components/CopouchScaffold"
 import { COPOUCH_WALLET_CARD_COLORS } from "@/plugins/copouch/screens/copouchPalette"
-import { formatCurrency } from "@/features/home/utils/format"
+import { formatCurrency } from "@/shared/utils/format"
 import { PageEmpty, PrimaryButton, SecondaryButton, SectionCard } from "@/shared/ui/AppFlowUi"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { getNumber, removeItem, setNumber } from "@/shared/storage/kvStorage"
@@ -20,6 +25,7 @@ import { useSocketStore } from "@/shared/store/useSocketStore"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { AppTextField } from "@/shared/ui/AppTextField"
+import { useWalletStore } from "@/shared/store/useWalletStore"
 
 import type { CopouchStackParamList } from "@/app/navigation/types"
 
@@ -37,24 +43,24 @@ export function CopouchHomeScreen({ navigation }: Props) {
   const { t } = useTranslation()
   const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
-  const wallets = useCopouchStore(state => state.wallets)
-  const loading = useCopouchStore(state => state.loading)
-  const refreshing = useCopouchStore(state => state.refreshing)
-  const creating = useCopouchStore(state => state.creating)
   const sortByAmount = useCopouchStore(state => state.sortByAmount)
-  const bttBalance = useCopouchStore(state => state.bttBalance)
-  const walletLimit = useCopouchStore(state => state.walletLimit)
-  const finishedCount = useCopouchStore(state => state.finishedCount)
-  const loadOverview = useCopouchStore(state => state.loadOverview)
-  const refreshOverview = useCopouchStore(state => state.refreshOverview)
   const toggleSortByAmount = useCopouchStore(state => state.toggleSortByAmount)
-  const createWallet = useCopouchStore(state => state.createWallet)
-  const lastEvent = useSocketStore(state => state.lastEvent)
+  const walletAddress = useWalletStore(state => state.address)
+  const chainId = useWalletStore(state => state.chainId)
+  const copouchRevision = useSocketStore(state => state.copouchRevision)
+  const overviewQuery = useCopouchOverviewQuery({ walletAddress, chainId }, sortByAmount)
+  const wallets = overviewQuery.data?.wallets ?? []
+  const bttBalance = overviewQuery.data?.bttBalance ?? 0
+  const walletLimit = overviewQuery.data?.walletLimit ?? 0
+  const finishedCount = overviewQuery.data?.finishedCount ?? 0
+  const loading = overviewQuery.isLoading && !overviewQuery.data
+  const refreshing = overviewQuery.isRefetching && !!overviewQuery.data
 
   const [modalVisible, setModalVisible] = useState(false)
   const [walletName, setWalletName] = useState("")
   const [selectedBgColor, setSelectedBgColor] = useState(1)
   const [cooldownUntil, setCooldownUntil] = useState<number | null>(() => readActiveCreateCooldownUntil())
+  const [creating, setCreating] = useState(false)
 
   useEffect(() => {
     if (cooldownUntil == null) {
@@ -81,33 +87,28 @@ export function CopouchHomeScreen({ navigation }: Props) {
   }, [cooldownUntil])
 
   useEffect(() => {
-    void loadOverview().catch(error => {
-      presentError(error, {
-        fallbackKey: "copouch.home.loadFailed",
-      })
+    if (!overviewQuery.error) {
+      return
+    }
+
+    presentError(overviewQuery.error, {
+      fallbackKey: "copouch.home.loadFailed",
     })
-  }, [loadOverview, presentError])
+  }, [overviewQuery.error, presentError])
 
   useFocusEffect(
     React.useCallback(() => {
       setCooldownUntil(readActiveCreateCooldownUntil())
-      void refreshOverview().catch(error => {
-        presentError(error, {
-          fallbackKey: "copouch.home.refreshFailed",
-        })
-      })
-    }, [presentError, refreshOverview]),
+    }, []),
   )
 
   useEffect(() => {
-    if (!lastEvent?.type) {
+    if (copouchRevision <= 0) {
       return
     }
 
-    if (["MultisigWalletCreatedSuc", "MultisigWalletCreatedFail", "MultisigWalletMemberRemoved"].includes(lastEvent.type)) {
-      void refreshOverview().catch(() => null)
-    }
-  }, [lastEvent, refreshOverview])
+    void overviewQuery.refetch()
+  }, [copouchRevision, overviewQuery.refetch])
 
   const creationSummary = useMemo(() => {
     return t("copouch.home.qualificationSummary", {
@@ -157,11 +158,33 @@ export function CopouchHomeScreen({ navigation }: Props) {
   }
 
   const handleSubmitCreate = async () => {
+    setCreating(true)
+
     try {
-      const result = await createWallet({
+      if (finishedCount <= 0) {
+        throw new Error("finishedCount")
+      }
+
+      if (wallets.length >= walletLimit) {
+        throw new Error("walletLimit")
+      }
+
+      if (bttBalance < 1800) {
+        throw new Error("bttBalance")
+      }
+
+      await preValidateCopouchCreate({
+        chainId,
+        walletName: walletName.trim(),
+      })
+
+      const result = await createCopouchWallet({
+        chainId,
         walletName: walletName.trim(),
         walletBgColor: selectedBgColor,
       })
+
+      await overviewQuery.refetch()
       setModalVisible(false)
       setCooldownUntil(Date.now() + CREATE_COOLDOWN_MS)
       showToast({ message: t("copouch.home.createSubmitted", { txHash: result.txHash.slice(0, 10) }), tone: "success" })
@@ -207,6 +230,8 @@ export function CopouchHomeScreen({ navigation }: Props) {
             mode: "toast",
           })
       }
+    } finally {
+      setCreating(false)
     }
   }
 

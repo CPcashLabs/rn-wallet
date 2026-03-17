@@ -1,11 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import React, { useEffect, useMemo, useRef, useState } from "react"
 
-import { useFocusEffect } from "@react-navigation/native"
 import { useTranslation } from "react-i18next"
 import { Pressable, Text, View } from "react-native"
 
 import { navigateRoot } from "@/app/navigation/navigationRef"
-import { HeaderTextAction } from "@/features/home/components/HomeScaffold"
+import { HeaderTextAction } from "@/shared/ui/HomeScaffold"
 import { CopouchScaffold } from "@/plugins/copouch/components/CopouchScaffold"
 import type { CopouchStackScreenProps } from "@/plugins/copouch/screens/copouchScreenProps"
 import {
@@ -17,28 +16,24 @@ import {
   resolveEventMessage,
   resolveTransactionTitle,
   styles,
+  isCopouchForbiddenError,
   useCopouchWalletDetail,
 } from "@/plugins/copouch/screens/copouchOperationShared"
 import {
   exportCopouchBill,
-  getCopouchAssetBreakdown,
-  getCopouchBillList,
-  getCopouchBillStatistics,
-  getCopouchMemberAccountList,
-  getCopouchWalletEvents,
   markAllCopouchEventsRead,
-  type CopouchAssetItem,
-  type CopouchBillItem,
-  type CopouchBillStatistics,
-  type CopouchDetail,
-  type CopouchEvent,
-  type CopouchMemberAccount,
 } from "@/plugins/copouch/services/copouchApi"
-import { formatAddress, formatCurrency, formatDateTime, formatTokenAmount } from "@/features/home/utils/format"
-import { FilterChip, SummaryGrid } from "@/features/orders/components/OrdersUi"
+import {
+  useCopouchAssetBreakdownQuery,
+  useCopouchBillListQuery,
+  useCopouchBillStatisticsQuery,
+  useCopouchEventsQuery,
+  useCopouchMemberAccountsQuery,
+} from "@/plugins/copouch/queries/copouchQueries"
+import { formatAddress, formatCurrency, formatDateTime, formatTokenAmount } from "@/shared/utils/format"
+import { FilterChip, SummaryGrid } from "@/shared/ui/WalletCommonUi"
 import { FieldRow, PageEmpty, SecondaryButton, SectionCard } from "@/shared/ui/AppFlowUi"
 import { formatAmount } from "@/shared/exchange/utils/order"
-import { ApiError } from "@/shared/errors"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { useSocketStore } from "@/shared/store/useSocketStore"
 import { useUserStore } from "@/shared/store/useUserStore"
@@ -52,76 +47,49 @@ export function CopouchBillListScreen({ navigation, route }: CopouchStackScreenP
   const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
   const profile = useUserStore(state => state.profile)
-  const { detail, loading, invalidAccess, reload } = useCopouchWalletDetail(route.params.id)
-  const [billLoading, setBillLoading] = useState(true)
-  const [items, setItems] = useState<CopouchBillItem[]>([])
-  const [stats, setStats] = useState<CopouchBillStatistics>({ totalPaymentAmount: 0, totalReceivedAmount: 0 })
-  const [members, setMembers] = useState<CopouchMemberAccount[]>([])
+  const { detail, error: detailError, loading, invalidAccess } = useCopouchWalletDetail(route.params.id)
   const [selectedFilterKey, setSelectedFilterKey] = useState<(typeof billFilters)[number]["key"]>("all")
   const [selectedMemberId, setSelectedMemberId] = useState("")
   const [exporting, setExporting] = useState(false)
-  const mountedRef = useRef(true)
-
-  useEffect(() => {
-    mountedRef.current = true
-
-    return () => {
-      mountedRef.current = false
-    }
-  }, [])
 
   const activeFilter = useMemo(() => billFilters.find(item => item.key === selectedFilterKey) ?? billFilters[0], [selectedFilterKey])
-
-  const loadBills = useCallback(async () => {
-    if (mountedRef.current) {
-      setBillLoading(true)
-    }
-
-    try {
-      const [billResponse, statResponse, memberResponse] = await Promise.all([
-        getCopouchBillList({
-          walletId: route.params.id,
-          perPage: 40,
-          orderTypeList: activeFilter.orderTypeList as string[] | undefined,
-          userId: selectedMemberId || undefined,
-        }),
-        getCopouchBillStatistics({
-          walletId: route.params.id,
-          orderTypeList: activeFilter.orderTypeList as string[] | undefined,
-          userId: selectedMemberId || undefined,
-        }),
-        getCopouchMemberAccountList({
-          walletId: route.params.id,
-          selectSelf: false,
-        }),
-      ])
-
-      if (!mountedRef.current) {
-        return
-      }
-
-      setItems(billResponse.items)
-      setStats(statResponse)
-      setMembers(memberResponse)
-    } finally {
-      if (mountedRef.current) {
-        setBillLoading(false)
-      }
-    }
-  }, [activeFilter.orderTypeList, route.params.id, selectedMemberId])
+  const billQuery = useCopouchBillListQuery({
+    walletId: route.params.id,
+    perPage: 40,
+    orderTypeList: activeFilter.orderTypeList as string[] | undefined,
+    userId: selectedMemberId || undefined,
+  })
+  const statsQuery = useCopouchBillStatisticsQuery({
+    walletId: route.params.id,
+    orderTypeList: activeFilter.orderTypeList as string[] | undefined,
+    userId: selectedMemberId || undefined,
+  })
+  const membersQuery = useCopouchMemberAccountsQuery({
+    walletId: route.params.id,
+    selectSelf: false,
+  })
+  const items = billQuery.data ?? []
+  const stats = statsQuery.data ?? { totalPaymentAmount: 0, totalReceivedAmount: 0 }
+  const members = membersQuery.data ?? []
+  const billLoading = billQuery.isLoading || statsQuery.isLoading || membersQuery.isLoading
+  const screenInvalidAccess =
+    invalidAccess ||
+    isCopouchForbiddenError(billQuery.error) ||
+    isCopouchForbiddenError(statsQuery.error) ||
+    isCopouchForbiddenError(membersQuery.error)
 
   useEffect(() => {
-    void reload().catch(() => null)
-  }, [reload])
+    const loadError = detailError ?? billQuery.error ?? statsQuery.error ?? membersQuery.error
 
-  useEffect(() => {
-    void loadBills().catch(error => {
-      presentError(error, {
-        fallbackKey: "copouch.bill.loadFailed",
-        mode: "toast",
-      })
+    if (!loadError || isCopouchForbiddenError(loadError)) {
+      return
+    }
+
+    presentError(loadError, {
+      fallbackKey: "copouch.bill.loadFailed",
+      mode: "toast",
     })
-  }, [loadBills, presentError])
+  }, [billQuery.error, detailError, membersQuery.error, presentError, statsQuery.error])
 
   const memberChips = useMemo(() => {
     return [
@@ -173,7 +141,7 @@ export function CopouchBillListScreen({ navigation, route }: CopouchStackScreenP
       <WalletGuard
         invalidBody={t("copouch.bill.invalidBody")}
         invalidTitle={t("copouch.bill.invalidTitle")}
-        invalidAccess={invalidAccess}
+        invalidAccess={screenInvalidAccess}
         loading={loading}
         loadingBody={t("copouch.bill.loading")}
       >
@@ -269,79 +237,78 @@ export function CopouchRemindScreen({ navigation, route }: CopouchStackScreenPro
   const theme = useAppTheme()
   const { t } = useTranslation()
   const { presentError } = useErrorPresenter()
-  const lastEvent = useSocketStore(state => state.lastEvent)
-  const { loading, invalidAccess, reload } = useCopouchWalletDetail(route.params.id)
-  const [events, setEvents] = useState<CopouchEvent[]>([])
-  const [eventLoading, setEventLoading] = useState(true)
-  const mountedRef = useRef(true)
+  const copouchRevision = useSocketStore(state => state.copouchRevision)
+  const { error: detailError, loading, invalidAccess, reload } = useCopouchWalletDetail(route.params.id)
+  const eventsQuery = useCopouchEventsQuery({
+    walletId: route.params.id,
+    perPage: 40,
+  })
+  const events = eventsQuery.data ?? []
+  const eventLoading = eventsQuery.isLoading && !eventsQuery.data
+  const eventSignatureRef = useRef("")
+  const screenInvalidAccess = invalidAccess || isCopouchForbiddenError(eventsQuery.error)
 
   useEffect(() => {
-    mountedRef.current = true
-
-    return () => {
-      mountedRef.current = false
-    }
-  }, [])
-
-  const loadEvents = useCallback(async () => {
-    if (mountedRef.current) {
-      setEventLoading(true)
-    }
-
-    try {
-      const response = await getCopouchWalletEvents({
-        walletId: route.params.id,
-        perPage: 40,
-      })
-
-      if (!mountedRef.current) {
-        return
-      }
-
-      setEvents(response.items)
-      if (mountedRef.current && response.items.length > 0) {
-        await markAllCopouchEventsRead().catch(() => null)
-      }
-    } finally {
-      if (mountedRef.current) {
-        setEventLoading(false)
-      }
-    }
-  }, [route.params.id])
-
-  useEffect(() => {
-    void Promise.all([reload().catch(() => null), loadEvents()]).catch(error => {
-      presentError(error, {
+    if (detailError && !isCopouchForbiddenError(detailError)) {
+      presentError(detailError, {
         fallbackKey: "copouch.remind.loadFailed",
       })
-    })
-  }, [loadEvents, presentError, reload])
-
-  useFocusEffect(
-    React.useCallback(() => {
-      void loadEvents().catch(() => null)
-    }, [loadEvents]),
-  )
+    }
+  }, [detailError, presentError])
 
   useEffect(() => {
-    if (lastEvent?.type && ["MultisigWalletMemberAddSuc", "MultisigWalletMemberDelSuc"].includes(lastEvent.type)) {
-      void loadEvents().catch(() => null)
+    if (eventsQuery.error && !isCopouchForbiddenError(eventsQuery.error)) {
+      presentError(eventsQuery.error, {
+        fallbackKey: "copouch.remind.loadFailed",
+      })
     }
-  }, [lastEvent, loadEvents])
+  }, [eventsQuery.error, presentError])
+
+  useEffect(() => {
+    if (copouchRevision <= 0) {
+      return
+    }
+
+    void Promise.all([reload(), eventsQuery.refetch()]).catch(() => null)
+  }, [copouchRevision, eventsQuery.refetch, reload])
+
+  useEffect(() => {
+    const signature = events.map(event => event.id).join("|")
+
+    if (!signature || signature === eventSignatureRef.current) {
+      return
+    }
+
+    eventSignatureRef.current = signature
+    void markAllCopouchEventsRead()
+      .then(() => reload().catch(() => null))
+      .catch(() => null)
+  }, [events, reload])
 
   return (
     <CopouchScaffold
       canGoBack
       onBack={navigation.goBack}
       right={
-        <HeaderTextAction label={t("copouch.remind.readAll")} onPress={() => void markAllCopouchEventsRead().then(() => loadEvents())} />
+        <HeaderTextAction
+          label={t("copouch.remind.readAll")}
+          onPress={() =>
+            void markAllCopouchEventsRead()
+              .then(() => Promise.all([reload(), eventsQuery.refetch()]))
+              .catch(error => {
+                presentError(error, {
+                  fallbackKey: "copouch.remind.loadFailed",
+                })
+              })
+          }
+        />
       }
       title={t("copouch.remind.title")}
     >
       <WalletGuard
         invalidBody={t("copouch.remind.invalidBody")}
         invalidTitle={t("copouch.remind.invalidTitle")}
-        invalidAccess={invalidAccess}
+        invalidAccess={screenInvalidAccess}
         loading={loading}
         loadingBody={t("copouch.remind.loading")}
       >
@@ -370,70 +337,32 @@ export function CopouchBalanceScreen({ navigation, route }: CopouchStackScreenPr
   const { t } = useTranslation()
   const { presentError } = useErrorPresenter()
   const chainId = useWalletStore(state => state.chainId)
-  const [loading, setLoading] = useState(true)
-  const [invalidAccess, setInvalidAccess] = useState(false)
-  const [wallet, setWallet] = useState<CopouchDetail | null>(null)
-  const [assets, setAssets] = useState<CopouchAssetItem[]>([])
-  const [memberAccounts, setMemberAccounts] = useState<CopouchMemberAccount[]>([])
-  const [totalValue, setTotalValue] = useState(0)
-  const mountedRef = useRef(true)
+  const assetBreakdownQuery = useCopouchAssetBreakdownQuery({
+    walletId: route.params.id,
+    chainId,
+  })
+  const memberAccountsQuery = useCopouchMemberAccountsQuery({
+    walletId: route.params.id,
+    selectSelf: false,
+  })
+  const loading = assetBreakdownQuery.isLoading || memberAccountsQuery.isLoading
+  const invalidAccess = isCopouchForbiddenError(assetBreakdownQuery.error) || isCopouchForbiddenError(memberAccountsQuery.error)
+  const wallet = assetBreakdownQuery.data?.wallet ?? null
+  const assets = assetBreakdownQuery.data?.assets ?? []
+  const memberAccounts = memberAccountsQuery.data ?? []
+  const totalValue = assetBreakdownQuery.data?.totalValue ?? 0
 
   useEffect(() => {
-    mountedRef.current = true
+    const loadError = assetBreakdownQuery.error ?? memberAccountsQuery.error
 
-    return () => {
-      mountedRef.current = false
-    }
-  }, [])
-
-  const load = useCallback(async () => {
-    if (mountedRef.current) {
-      setLoading(true)
+    if (!loadError || isCopouchForbiddenError(loadError)) {
+      return
     }
 
-    try {
-      const [assetResponse, memberResponse] = await Promise.all([
-        getCopouchAssetBreakdown({
-          walletId: route.params.id,
-          chainId,
-        }),
-        getCopouchMemberAccountList({
-          walletId: route.params.id,
-          selectSelf: false,
-        }),
-      ])
-
-      if (!mountedRef.current) {
-        return
-      }
-
-      setWallet(assetResponse.wallet)
-      setAssets(assetResponse.assets)
-      setTotalValue(assetResponse.totalValue)
-      setMemberAccounts(memberResponse)
-      setInvalidAccess(false)
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 403) {
-        if (mountedRef.current) {
-          setInvalidAccess(true)
-        }
-      } else {
-        throw error
-      }
-    } finally {
-      if (mountedRef.current) {
-        setLoading(false)
-      }
-    }
-  }, [chainId, route.params.id])
-
-  useEffect(() => {
-    void load().catch(error => {
-      presentError(error, {
-        fallbackKey: "copouch.balance.loadFailed",
-      })
+    presentError(loadError, {
+      fallbackKey: "copouch.balance.loadFailed",
     })
-  }, [load, presentError])
+  }, [assetBreakdownQuery.error, memberAccountsQuery.error, presentError])
 
   return (
     <CopouchScaffold canGoBack onBack={navigation.goBack} title={t("copouch.balance.title")}>
