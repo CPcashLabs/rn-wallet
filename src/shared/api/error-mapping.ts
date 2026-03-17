@@ -35,6 +35,23 @@ function describeResponseData(data: unknown) {
   }
 }
 
+function isCanceledAxiosRequest(error: unknown) {
+  if (axios.isCancel(error)) {
+    return true
+  }
+
+  if (!error || typeof error !== "object") {
+    return false
+  }
+
+  const axiosError = error as {
+    name?: unknown
+    code?: unknown
+  }
+
+  return axiosError.name === "CanceledError" || axiosError.code === "ERR_CANCELED"
+}
+
 export function mapApiError(error: unknown) {
   if (error instanceof ApiError) {
     return error
@@ -42,6 +59,17 @@ export function mapApiError(error: unknown) {
 
   if (!axios.isAxiosError(error)) {
     return new ApiError("Unknown API error", { cause: error })
+  }
+
+  if (isCanceledAxiosRequest(error)) {
+    const messageValue = (error as { message?: unknown }).message
+    const canceledMessage = typeof messageValue === "string" && messageValue ? messageValue : "Request canceled"
+    const canceledError = new ApiError(canceledMessage, {
+      code: "ERR_CANCELED",
+      cause: error,
+    })
+    canceledError.name = "CanceledError"
+    return canceledError
   }
 
   if (!error.response) {

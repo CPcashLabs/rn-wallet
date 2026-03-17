@@ -88,4 +88,28 @@ describe("auth session and interceptors integration", () => {
 
     expect(networkSpy).toHaveBeenCalledTimes(1)
   })
+
+  it("does not call the network unavailable hook for canceled transport failures", async () => {
+    const networkSpy = jest.fn()
+    setNetworkUnavailableHandler(networkSpy)
+
+    const harness = createFakeAxiosClient()
+    registerInterceptors(harness.client)
+
+    await expect(
+      harness.getResponseErrorHandler()(
+        createAxiosError({
+          name: "CanceledError",
+          message: "request canceled",
+          code: "ERR_CANCELED",
+          response: undefined,
+        }),
+      ),
+    ).rejects.toMatchObject({
+      name: "CanceledError",
+      code: "ERR_CANCELED",
+    })
+
+    expect(networkSpy).not.toHaveBeenCalled()
+  })
 })

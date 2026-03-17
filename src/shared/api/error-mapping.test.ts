@@ -42,6 +42,25 @@ describe("mapApiError", () => {
     expect(mapped.message).toBe("Network unavailable")
   })
 
+  it("keeps canceled axios requests out of the offline fallback flow", () => {
+    const mapped = mapApiError(
+      createAxiosError({
+        name: "CanceledError",
+        message: "canceled by caller",
+        code: "ERR_CANCELED",
+        response: undefined,
+      }),
+    )
+
+    expect(mapped).toBeInstanceOf(ApiError)
+    expect(mapped).not.toBeInstanceOf(NetworkUnavailableError)
+    expect(mapped).toMatchObject({
+      name: "CanceledError",
+      message: "canceled by caller",
+      code: "ERR_CANCELED",
+    })
+  })
+
   it("maps non-token 401 responses to AuthExpiredError", () => {
     const mapped = mapApiError(
       createAxiosError({

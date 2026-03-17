@@ -60,7 +60,8 @@ export function BootstrapGate() {
             return
           }
 
-          void syncCurrentUserProfile(false, signal)
+          // Let profile sync continue after BootstrapGate resets away.
+          void syncCurrentUserProfile(false)
           navigation.reset({
             index: 0,
             routes: [{ name: "MainTabs", params: { screen: "HomeTab" } }],
