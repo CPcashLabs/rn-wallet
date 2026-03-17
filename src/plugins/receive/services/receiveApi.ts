@@ -107,6 +107,9 @@ export type ReceiveLog = {
   status: number
   statusName: string
   amount: number
+  receiptAmount: number
+  recvActualAmount: number
+  feeAmount: number
   coinName: string
   createdAt: number | null
   fromAddress: string
@@ -280,16 +283,24 @@ export async function getTraceChildLogs(input: { orderSn: string; page?: number;
   })
 
   return unwrapEnvelope(response.data)
-    .map<ReceiveLog>(item => ({
-      orderSn: toStringValue(item.order_sn ?? item.serial_number),
-      status: toNumber(item.status),
-      statusName: toStringValue(item.status_name),
-      amount: toNumber(item.recv_actual_amount ?? item.recv_amount ?? item.amount),
-      coinName: toStringValue(item.recv_coin_name ?? item.recv_coin_symbol ?? item.coin_name ?? item.send_coin_name),
-      createdAt: toTimestamp(item.created_at),
-      fromAddress: toStringValue(item.payment_address ?? item.from_address ?? item.address),
-      txid: toStringValue(item.txid ?? item.send_tx_id),
-    }))
+    .map<ReceiveLog>(item => {
+      const receiptAmount = toNumber(item.recv_amount ?? item.amount ?? item.recv_actual_amount)
+      const recvActualAmount = toNumber(item.recv_actual_amount ?? item.recv_amount ?? item.amount)
+
+      return {
+        orderSn: toStringValue(item.order_sn ?? item.serial_number),
+        status: toNumber(item.status),
+        statusName: toStringValue(item.status_name),
+        amount: recvActualAmount,
+        receiptAmount,
+        recvActualAmount,
+        feeAmount: Math.max(0, Number((receiptAmount - recvActualAmount).toFixed(6))),
+        coinName: toStringValue(item.recv_coin_name ?? item.recv_coin_symbol ?? item.coin_name ?? item.send_coin_name),
+        createdAt: toTimestamp(item.created_at),
+        fromAddress: toStringValue(item.payment_address ?? item.from_address ?? item.address),
+        txid: toStringValue(item.txid ?? item.send_tx_id),
+      }
+    })
     .sort((left, right) => (right.createdAt ?? 0) - (left.createdAt ?? 0))
 }
 

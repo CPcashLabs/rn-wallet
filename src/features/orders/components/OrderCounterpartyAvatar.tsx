@@ -136,7 +136,7 @@ export function OrderCounterpartyAvatar(props: Props) {
   }
 
   return (
-    <AddressAvatar
+    <SeedAddressAvatar
       seedSource={resolveAvatarSeedSource(props.item)}
       size={size}
       uri={props.item.avatar}
@@ -144,10 +144,11 @@ export function OrderCounterpartyAvatar(props: Props) {
   )
 }
 
-function AddressAvatar(props: {
+export function SeedAddressAvatar(props: {
   size: number
   uri?: string
   seedSource: string
+  borderColor?: string
 }) {
   const theme = useAppTheme()
   const [imageFailed, setImageFailed] = React.useState(false)
@@ -169,7 +170,7 @@ function AddressAvatar(props: {
             width: props.size,
             height: props.size,
             borderRadius: props.size / 2,
-            borderColor: theme.colors.glassBorder,
+            borderColor: props.borderColor ?? theme.colors.glassBorder,
           },
         ]}
       />
@@ -185,7 +186,7 @@ function AddressAvatar(props: {
           height: props.size,
           borderRadius: props.size / 2,
           backgroundColor: jazzicon.background,
-          borderColor: theme.colors.glassBorder,
+          borderColor: props.borderColor ?? theme.colors.glassBorder,
         },
       ]}
     >

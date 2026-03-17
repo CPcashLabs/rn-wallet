@@ -1,33 +1,42 @@
 import React, { useEffect, useState } from "react"
 
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from "react-native"
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import type { ReceiveStackParamList } from "@/app/navigation/types"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
-import { formatDateTime } from "@/features/home/utils/format"
-import { InfoRow } from "@/plugins/receive/components/ReceiveUi"
+import { formatAddress } from "@/features/home/utils/format"
+import { SeedAddressAvatar } from "@/features/orders/components/OrderCounterpartyAvatar"
 import {
   getTraceChildLogs,
-  getTraceChildStatistics,
   getTraceDetail,
   type ReceiveLog,
   type ReceiveOrder,
-  type ReceiveTraceStatistics,
 } from "@/plugins/receive/services/receiveApi"
 import {
   buildNextSeenLogState,
   buildReceiveTxlogKey,
   createReceiveTxlogsPollController,
 } from "@/plugins/receive/screens/receiveTxlogsPolling"
-import { SectionCard } from "@/shared/ui/AppFlowUi"
 import { getJson, setJson } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { SectionCard } from "@/shared/ui/AppFlowUi"
 import { useToast } from "@/shared/toast/useToast"
 
 type Props = NativeStackScreenProps<ReceiveStackParamList, "ReceiveTxlogsScreen">
+
+type RecordFilter = "all" | "individuals" | "business"
+
+type DayGroup = {
+  dateKey: string
+  items: ReceiveLog[]
+  transactionCount: number
+  receiptAmount: number
+  feeAmount: number
+  recvActualAmount: number
+}
 
 export function ReceiveTxlogsScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
@@ -36,11 +45,11 @@ export function ReceiveTxlogsScreen({ navigation, route }: Props) {
   const orderSn = route.params?.orderSn
   const [detail, setDetail] = useState<ReceiveOrder | null>(null)
   const [logs, setLogs] = useState<ReceiveLog[]>([])
-  const [stats, setStats] = useState<ReceiveTraceStatistics | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null)
   const [newLogKeys, setNewLogKeys] = useState<string[]>([])
+  const [selectedFilter, setSelectedFilter] = useState<RecordFilter>(() => resolveDefaultFilter(route.params?.orderType))
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null)
 
   useEffect(() => {
     if (!orderSn) {
@@ -61,11 +70,7 @@ export function ReceiveTxlogsScreen({ navigation, route }: Props) {
       }
 
       try {
-        const [nextDetail, nextLogs, nextStats] = await Promise.all([
-          getTraceDetail(orderSn),
-          getTraceChildLogs({ orderSn }),
-          getTraceChildStatistics({ orderSn }),
-        ])
+        const [nextDetail, nextLogs] = await Promise.all([getTraceDetail(orderSn), getTraceChildLogs({ orderSn })])
 
         if (!pollController.canCommit()) {
           return
@@ -87,9 +92,7 @@ export function ReceiveTxlogsScreen({ navigation, route }: Props) {
         pollController.markSuccess()
         setDetail(nextDetail)
         setLogs(nextLogs)
-        setStats(nextStats)
         setNewLogKeys(freshKeys)
-        setLastUpdatedAt(Date.now())
       } catch {
         if (!pollController.canCommit()) {
           return
@@ -125,181 +128,723 @@ export function ReceiveTxlogsScreen({ navigation, route }: Props) {
     }
   }, [orderSn, showToast, t])
 
-  return (
-    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("receive.logs.title")} scroll={false}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <SectionCard>
-          <InfoRow label="Order SN" value={orderSn || "-"} />
-          <InfoRow label={t("receive.logs.address")} value={detail?.address || "-"} />
-          <InfoRow label={t("receive.logs.mode")} value={route.params?.orderType || detail?.orderType || "-"} />
-          <InfoRow
-            label={t("receive.logs.refreshStatus")}
-            value={
-              refreshing
-                ? t("receive.logs.refreshing")
-                : lastUpdatedAt
-                  ? t("receive.logs.updatedAt", { at: new Date(lastUpdatedAt).toLocaleTimeString() })
-                  : "-"
-            }
-          />
-        </SectionCard>
+  const currentMonthKey = formatMonthKey(Date.now())
+  const currentOrderType = route.params?.orderType || detail?.orderType
+  const availableMonths = buildAvailableMonthKeys(logs, detail?.createdAt ?? null, currentMonthKey)
+  const availableMonthsKey = availableMonths.join("|")
+  const activeMonthKey = selectedMonth ?? currentMonthKey
+  const assetCode = detail?.coinName || logs.find(item => item.coinName)?.coinName || ""
+  const visibleLogs = matchesRecordFilter(selectedFilter, currentOrderType)
+    ? logs.filter(item => formatMonthKey(item.createdAt) === activeMonthKey)
+    : []
+  const dayGroups = buildDayGroups(visibleLogs)
+  const todayKey = formatDayKey(Date.now())
+  const showTodayCard = activeMonthKey === currentMonthKey
+  const todayGroup = dayGroups.find(item => item.dateKey === todayKey) ?? createEmptyDayGroup(todayKey)
+  const historyGroups = showTodayCard ? dayGroups.filter(item => item.dateKey !== todayKey) : dayGroups
+  const incomeLabel = assetCode ? `${t("receive.logs.income")}(${assetCode})` : t("receive.logs.income")
 
-        <SectionCard>
-          <Text style={[styles.title, { color: theme.colors.text }]}>{t("receive.logs.stats")}</Text>
-          <View style={styles.statsGrid}>
-            <StatisticTile label={t("receive.logs.orderCount")} value={String(stats?.orderCount ?? 0)} />
-            <StatisticTile label={t("receive.logs.receiptAmount")} value={String(stats?.receiptAmount ?? 0)} />
-            <StatisticTile label={t("receive.logs.recvActualAmount")} value={String(stats?.recvActualAmount ?? 0)} />
-            <StatisticTile label={t("receive.logs.sendActualFeeAmount")} value={String(stats?.sendActualFeeAmount ?? 0)} />
-          </View>
-        </SectionCard>
+  useEffect(() => {
+    if (!selectedMonth || !availableMonths.includes(selectedMonth)) {
+      setSelectedMonth(availableMonths[0] ?? currentMonthKey)
+    }
+  }, [availableMonths, availableMonthsKey, currentMonthKey, selectedMonth])
+
+  function handleCycleMonth() {
+    if (availableMonths.length < 2) {
+      return
+    }
+
+    const currentIndex = availableMonths.indexOf(activeMonthKey)
+    const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % availableMonths.length : 0
+    setSelectedMonth(availableMonths[nextIndex] ?? activeMonthKey)
+  }
+
+  return (
+    <HomeScaffold
+      backgroundColor={theme.isDark ? theme.colors.background : "#EEF5FF"}
+      hideHeader
+      title={t("receive.logs.title")}
+      scroll={false}
+    >
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.headerRow}>
+          <Pressable hitSlop={8} onPress={navigation.goBack} style={styles.headerBackButton}>
+            <Text style={[styles.headerBackIcon, { color: theme.colors.text }]}>‹</Text>
+          </Pressable>
+          <Text numberOfLines={1} style={[styles.headerTitle, { color: theme.colors.text }]}>
+            {t("receive.logs.title")}
+          </Text>
+          <View style={styles.headerSpacer} />
+        </View>
+
+        <View style={styles.filterRow}>
+          <RecordFilterChip active={selectedFilter === "all"} label={t("receive.logs.all")} onPress={() => setSelectedFilter("all")} />
+          <RecordFilterChip
+            active={selectedFilter === "individuals"}
+            label={t("receive.home.individuals")}
+            onPress={() => setSelectedFilter("individuals")}
+          />
+          <RecordFilterChip
+            active={selectedFilter === "business"}
+            label={t("receive.home.business")}
+            onPress={() => setSelectedFilter("business")}
+          />
+        </View>
+
+        <View style={styles.monthRow}>
+          <Pressable disabled={availableMonths.length < 2} onPress={handleCycleMonth} style={styles.monthButton}>
+            <Text style={[styles.monthLabel, { color: theme.colors.text }]}>{formatMonthLabel(activeMonthKey)}</Text>
+            <Text style={[styles.monthChevron, { color: theme.colors.mutedText }]}>▾</Text>
+          </Pressable>
+          {refreshing && !loading ? <Text style={[styles.refreshingText, { color: theme.colors.mutedText }]}>{t("receive.logs.refreshing")}</Text> : null}
+        </View>
 
         {loading ? (
-          <SectionCard>
+          <SectionCard style={[styles.loadingCard, { backgroundColor: theme.colors.surfaceElevated, borderColor: theme.colors.glassBorder }]}>
             <View style={styles.loadingWrap}>
               <ActivityIndicator color={theme.colors.primary} />
-              <Text style={[styles.body, { color: theme.colors.mutedText }]}>{t("receive.logs.loading")}</Text>
+              <Text style={[styles.loadingText, { color: theme.colors.mutedText }]}>{t("receive.logs.loading")}</Text>
             </View>
           </SectionCard>
-        ) : null}
+        ) : (
+          <>
+            {showTodayCard ? (
+              <ReceiveDayCard
+                amountReceivedLabel={t("receive.logs.amountReceived")}
+                feeLabel={t("receive.logs.fee")}
+                group={todayGroup}
+                incomeLabel={incomeLabel}
+                newBadgeLabel={t("receive.logs.new")}
+                newLogKeys={newLogKeys}
+                noRecordsMessage={t("receive.logs.noTodayRecords")}
+                title={`${t("receive.logs.today")} ${formatDayLabel(todayKey)}`}
+                transactionsLabel={t("receive.logs.transactions")}
+              />
+            ) : null}
 
-        {logs.map((item, index) => {
-          const logKey = buildReceiveTxlogKey(item)
-          return (
-            <SectionCard
-              key={`${logKey}:${index}`}
-              style={[
-                styles.logCard,
-                newLogKeys.includes(logKey)
-                  ? { borderColor: theme.colors.primary, backgroundColor: theme.colors.glassStrong }
-                  : null,
-              ]}
-            >
-              <View style={styles.logHeader}>
-                <Text style={[styles.title, { color: theme.colors.text }]}>{item.statusName || t("receive.logs.pending")}</Text>
-                {newLogKeys.includes(logKey) ? (
-                  <View
-                    style={[
-                      styles.newBadge,
-                      {
-                        backgroundColor: theme.colors.primarySoft,
-                        borderColor: theme.colors.primary,
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.newBadgeText, { color: theme.colors.primary }]}>{t("receive.logs.new")}</Text>
-                  </View>
-                ) : null}
-              </View>
-              {item.orderSn ? <InfoRow label={t("receive.logs.orderSn")} value={item.orderSn} /> : null}
-              <InfoRow label={t("receive.logs.createdAt")} value={formatDateTime(item.createdAt)} />
-              <View style={[styles.amountPlate, { backgroundColor: theme.colors.glass, borderColor: theme.colors.glassBorder }]}>
-                <Text style={[styles.amountValue, { color: theme.colors.text }]}>{`${item.amount} ${item.coinName}`.trim() || "-"}</Text>
-              </View>
-              <Text style={[styles.body, { color: theme.colors.mutedText }]}>{item.fromAddress || item.txid || "-"}</Text>
-            </SectionCard>
-          )
-        })}
+            {historyGroups.map(group => (
+              <ReceiveDayCard
+                key={group.dateKey}
+                amountReceivedLabel={t("receive.logs.amountReceived")}
+                feeLabel={t("receive.logs.fee")}
+                group={group}
+                incomeLabel={incomeLabel}
+                newBadgeLabel={t("receive.logs.new")}
+                newLogKeys={newLogKeys}
+                noRecordsMessage={t("receive.logs.emptyBody")}
+                title={formatDayLabel(group.dateKey)}
+                transactionsLabel={t("receive.logs.transactions")}
+              />
+            ))}
 
-        {!loading && logs.length === 0 ? (
-          <SectionCard>
-            <Text style={[styles.title, { color: theme.colors.text }]}>{t("receive.logs.emptyTitle")}</Text>
-            <Text style={[styles.body, { color: theme.colors.mutedText }]}>{t("receive.logs.emptyBody")}</Text>
-          </SectionCard>
-        ) : null}
+            {!showTodayCard && historyGroups.length === 0 ? (
+              <SectionCard style={[styles.emptyMonthCard, { backgroundColor: theme.colors.surfaceElevated, borderColor: theme.colors.glassBorder }]}>
+                <EmptyReceiveDayState message={t("receive.logs.emptyBody")} />
+              </SectionCard>
+            ) : null}
+
+            <View style={styles.footer}>
+              <View style={[styles.footerLine, { backgroundColor: theme.colors.glassBorder }]} />
+              <Text style={[styles.footerText, { color: theme.colors.mutedText }]}>{t("receive.logs.noMoreData")}</Text>
+              <View style={[styles.footerLine, { backgroundColor: theme.colors.glassBorder }]} />
+            </View>
+          </>
+        )}
       </ScrollView>
     </HomeScaffold>
   )
 }
 
-function StatisticTile(props: { label: string; value: string }) {
+function ReceiveDayCard(props: {
+  title: string
+  group: DayGroup
+  incomeLabel: string
+  transactionsLabel: string
+  feeLabel: string
+  amountReceivedLabel: string
+  noRecordsMessage: string
+  newLogKeys: string[]
+  newBadgeLabel: string
+}) {
   const theme = useAppTheme()
+
+  return (
+    <SectionCard style={[styles.dayCard, { backgroundColor: theme.colors.surfaceElevated, borderColor: theme.colors.glassBorder }]}>
+      <View style={styles.dayCardInner}>
+        <Text style={[styles.dayTitle, { color: theme.colors.text }]}>{props.title}</Text>
+
+        {props.group.items.length === 0 ? (
+          <EmptyReceiveDayState message={props.noRecordsMessage} />
+        ) : (
+          <>
+            <View style={styles.summaryHero}>
+              <View style={styles.summaryBlock}>
+                <Text style={[styles.summaryLabel, { color: theme.colors.mutedText }]}>{props.transactionsLabel}</Text>
+                <Text style={[styles.summaryValue, { color: theme.colors.text }]}>{formatInteger(props.group.transactionCount)}</Text>
+              </View>
+              <View style={[styles.summaryBlock, styles.summaryBlockRight]}>
+                <Text style={[styles.summaryLabel, { color: theme.colors.mutedText }]}>{props.incomeLabel}</Text>
+                <Text style={[styles.summaryValue, { color: theme.colors.text }]}>{formatFixedAmount(props.group.receiptAmount)}</Text>
+              </View>
+            </View>
+
+            <View style={styles.summaryMetaBlock}>
+              <View style={styles.summaryMetaRow}>
+                <Text style={[styles.summaryMetaLabel, { color: theme.colors.mutedText }]}>{props.feeLabel}</Text>
+                <Text style={[styles.summaryMetaValue, { color: theme.colors.text }]}>{formatFixedAmount(props.group.feeAmount)}</Text>
+              </View>
+              <View style={styles.summaryMetaRow}>
+                <Text style={[styles.summaryMetaLabel, { color: theme.colors.mutedText }]}>{props.amountReceivedLabel}</Text>
+                <Text style={[styles.summaryMetaValue, { color: theme.colors.text }]}>{formatFixedAmount(props.group.recvActualAmount)}</Text>
+              </View>
+            </View>
+
+            <View style={[styles.cardDivider, { backgroundColor: theme.colors.glassBorder }]} />
+
+            <View>
+              {props.group.items.map((item, index) => (
+                <ReceiveRecordRow
+                  amountReceivedLabel={props.amountReceivedLabel}
+                  feeLabel={props.feeLabel}
+                  isLast={index === props.group.items.length - 1}
+                  item={item}
+                  key={`${buildReceiveTxlogKey(item)}:${index}`}
+                  newBadgeLabel={props.newBadgeLabel}
+                  showNewBadge={props.newLogKeys.includes(buildReceiveTxlogKey(item))}
+                />
+              ))}
+            </View>
+          </>
+        )}
+      </View>
+    </SectionCard>
+  )
+}
+
+function ReceiveRecordRow(props: {
+  item: ReceiveLog
+  feeLabel: string
+  amountReceivedLabel: string
+  showNewBadge: boolean
+  newBadgeLabel: string
+  isLast: boolean
+}) {
+  const theme = useAppTheme()
+  const primaryText = formatAddress(props.item.fromAddress || props.item.txid || props.item.orderSn || "-", 6, 4)
 
   return (
     <View
       style={[
-        styles.statTile,
-        {
-          backgroundColor: theme.colors.glass,
-          borderColor: theme.colors.glassBorder,
-        },
+        styles.recordRow,
+        !props.isLast ? { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.glassBorder } : null,
       ]}
     >
-      <Text style={[styles.statLabel, { color: theme.colors.mutedText }]}>{props.label}</Text>
-      <Text style={[styles.statValue, { color: theme.colors.text }]}>{props.value}</Text>
+      <View style={styles.recordLeft}>
+        <SeedAddressAvatar
+          borderColor={props.showNewBadge ? theme.colors.primary : undefined}
+          seedSource={props.item.fromAddress || props.item.txid || props.item.orderSn || "-"}
+          size={48}
+        />
+        <View style={styles.recordMeta}>
+          <View style={styles.recordTitleRow}>
+            <Text numberOfLines={1} style={[styles.recordTitle, { color: theme.colors.text }]}>
+              {primaryText}
+            </Text>
+            {props.showNewBadge ? (
+              <View style={[styles.rowBadge, { backgroundColor: theme.colors.primarySoft }]}>
+                <Text style={[styles.rowBadgeText, { color: theme.colors.primary }]}>{props.newBadgeLabel}</Text>
+              </View>
+            ) : null}
+          </View>
+          <Text style={[styles.recordTime, { color: theme.colors.mutedText }]}>{formatRecordTime(props.item.createdAt)}</Text>
+        </View>
+      </View>
+
+      <View style={styles.recordRight}>
+        <Text style={[styles.recordAmount, { color: theme.colors.text }]}>{`+ ${formatFixedAmount(props.item.receiptAmount)}`}</Text>
+        <Text style={[styles.recordSubAmount, { color: theme.colors.mutedText }]}>{`${props.feeLabel}: ${formatFixedAmount(props.item.feeAmount)}`}</Text>
+        <Text style={[styles.recordSubAmount, { color: theme.colors.mutedText }]}>{`${props.amountReceivedLabel}: + ${formatFixedAmount(
+          props.item.recvActualAmount,
+        )}`}</Text>
+      </View>
     </View>
   )
 }
 
+function RecordFilterChip(props: { label: string; active: boolean; onPress: () => void }) {
+  const theme = useAppTheme()
+
+  return (
+    <Pressable
+      onPress={props.onPress}
+      style={[
+        styles.filterChip,
+        {
+          backgroundColor: theme.colors.surfaceElevated,
+          borderColor: props.active ? theme.colors.primarySoft : theme.colors.glassBorder,
+        },
+      ]}
+    >
+      <Text style={[styles.filterChipText, { color: props.active ? theme.colors.primary : theme.colors.text }]}>{props.label}</Text>
+    </Pressable>
+  )
+}
+
+function EmptyReceiveDayState(props: { message: string }) {
+  const theme = useAppTheme()
+
+  return (
+    <View style={styles.emptyWrap}>
+      <EmptyReceiveIllustration />
+      <Text style={[styles.emptyText, { color: theme.colors.mutedText }]}>{props.message}</Text>
+    </View>
+  )
+}
+
+function EmptyReceiveIllustration() {
+  const theme = useAppTheme()
+
+  return (
+    <View style={styles.emptyArt}>
+      <View style={[styles.emptyArtShadow, { backgroundColor: theme.isDark ? theme.colors.border : "#E6EBF5" }]} />
+      <View style={[styles.emptyArtBoxBack, { backgroundColor: theme.isDark ? theme.colors.surfaceMuted : "#E5EAF4" }]} />
+      <View style={[styles.emptyArtBoxFront, { backgroundColor: theme.isDark ? theme.colors.surface : "#F2F5FB" }]} />
+      <View style={[styles.emptyArtFlapLeft, { backgroundColor: theme.isDark ? theme.colors.backgroundMuted : "#EEF2FA" }]} />
+      <View style={[styles.emptyArtFlapRight, { backgroundColor: theme.isDark ? theme.colors.backgroundMuted : "#E8EDF7" }]} />
+      <View style={[styles.emptyArtRing, { borderColor: "#F5B94C" }]} />
+      <View style={[styles.emptyArtHandle, { backgroundColor: "#F5B94C" }]} />
+    </View>
+  )
+}
+
+function buildAvailableMonthKeys(logs: ReceiveLog[], fallbackTimestamp: number | null, currentMonthKey: string) {
+  const monthKeys = new Set<string>([currentMonthKey])
+
+  if (fallbackTimestamp) {
+    monthKeys.add(formatMonthKey(fallbackTimestamp))
+  }
+
+  logs.forEach(item => {
+    monthKeys.add(formatMonthKey(item.createdAt))
+  })
+
+  return Array.from(monthKeys).sort((left, right) => right.localeCompare(left))
+}
+
+function buildDayGroups(logs: ReceiveLog[]) {
+  const grouped = new Map<string, ReceiveLog[]>()
+
+  logs.forEach(item => {
+    const dateKey = formatDayKey(item.createdAt)
+    const bucket = grouped.get(dateKey) ?? []
+    bucket.push(item)
+    grouped.set(dateKey, bucket)
+  })
+
+  return Array.from(grouped.entries())
+    .map(([dateKey, items]) => ({
+      dateKey,
+      items: items.sort((left, right) => (right.createdAt ?? 0) - (left.createdAt ?? 0)),
+      transactionCount: items.length,
+      receiptAmount: items.reduce((sum, item) => sum + item.receiptAmount, 0),
+      feeAmount: items.reduce((sum, item) => sum + item.feeAmount, 0),
+      recvActualAmount: items.reduce((sum, item) => sum + item.recvActualAmount, 0),
+    }))
+    .sort((left, right) => right.dateKey.localeCompare(left.dateKey))
+}
+
+function createEmptyDayGroup(dateKey: string): DayGroup {
+  return {
+    dateKey,
+    items: [],
+    transactionCount: 0,
+    receiptAmount: 0,
+    feeAmount: 0,
+    recvActualAmount: 0,
+  }
+}
+
+function resolveDefaultFilter(orderType?: string): RecordFilter {
+  if (orderType === "TRACE") {
+    return "individuals"
+  }
+
+  if (orderType === "TRACE_LONG_TERM") {
+    return "business"
+  }
+
+  return "all"
+}
+
+function matchesRecordFilter(filter: RecordFilter, orderType?: string) {
+  if (filter === "all") {
+    return true
+  }
+
+  if (filter === "individuals") {
+    return orderType === "TRACE"
+  }
+
+  return orderType === "TRACE_LONG_TERM"
+}
+
+function formatMonthKey(timestamp: number | null) {
+  const date = timestamp ? new Date(timestamp) : new Date(0)
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}`
+}
+
+function formatMonthLabel(monthKey: string) {
+  return monthKey
+}
+
+function formatDayKey(timestamp: number | null) {
+  const date = timestamp ? new Date(timestamp) : new Date(0)
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
+function formatDayLabel(dateKey: string) {
+  return dateKey.length >= 10 ? dateKey.slice(5) : "--"
+}
+
+function formatRecordTime(timestamp: number | null) {
+  if (!timestamp) {
+    return "--"
+  }
+
+  const date = new Date(timestamp)
+  return `${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+function formatFixedAmount(value: number) {
+  if (!Number.isFinite(value)) {
+    return "0.00"
+  }
+
+  return value.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+}
+
+function formatInteger(value: number) {
+  if (!Number.isFinite(value)) {
+    return "0"
+  }
+
+  return value.toLocaleString("en-US", {
+    maximumFractionDigits: 0,
+  })
+}
+
+function pad(value: number) {
+  return String(value).padStart(2, "0")
+}
+
 const styles = StyleSheet.create({
   content: {
-    padding: 16,
-    gap: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 28,
+    gap: 16,
   },
-  title: {
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  statsGrid: {
+  headerRow: {
+    minHeight: 44,
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 2,
+    marginBottom: 10,
   },
-  statTile: {
-    minWidth: "46%",
+  headerBackButton: {
+    width: 40,
+    height: 40,
+    alignItems: "flex-start",
+    justifyContent: "center",
+  },
+  headerBackIcon: {
+    fontSize: 34,
+    lineHeight: 34,
+    marginLeft: 2,
+  },
+  headerTitle: {
     flex: 1,
-    gap: 6,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  statLabel: {
-    fontSize: 12,
-  },
-  statValue: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: "700",
+    textAlign: "center",
     letterSpacing: -0.4,
   },
-  body: {
-    fontSize: 13,
-    lineHeight: 20,
+  headerSpacer: {
+    width: 40,
+    height: 40,
   },
-  loadingWrap: {
-    minHeight: 100,
+  filterRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+  },
+  filterChip: {
+    minHeight: 44,
+    paddingHorizontal: 18,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
   },
-  logHeader: {
+  filterChipText: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  monthRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
   },
-  logCard: {
-    gap: 14,
-  },
-  amountPlate: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  amountValue: {
-    fontSize: 15,
-    fontWeight: "700",
-    letterSpacing: -0.2,
-  },
-  newBadge: {
-    borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 8,
+  monthButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
     paddingVertical: 4,
   },
-  newBadgeText: {
-    fontSize: 11,
+  monthLabel: {
+    fontSize: 18,
+    fontWeight: "600",
+    letterSpacing: -0.3,
+  },
+  monthChevron: {
+    fontSize: 14,
+  },
+  refreshingText: {
+    fontSize: 12,
+  },
+  loadingCard: {
+    padding: 0,
+    gap: 0,
+  },
+  loadingWrap: {
+    minHeight: 220,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 13,
+  },
+  dayCard: {
+    padding: 0,
+    gap: 0,
+    overflow: "hidden",
+  },
+  dayCardInner: {
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 12,
+  },
+  dayTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 20,
+  },
+  summaryHero: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 20,
+  },
+  summaryBlock: {
+    flex: 1,
+    gap: 8,
+  },
+  summaryBlockRight: {
+    alignItems: "flex-end",
+  },
+  summaryLabel: {
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  summaryValue: {
+    fontSize: 24,
     fontWeight: "700",
+    letterSpacing: -0.6,
+  },
+  summaryMetaBlock: {
+    gap: 12,
+    marginTop: 18,
+  },
+  summaryMetaRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 16,
+  },
+  summaryMetaLabel: {
+    fontSize: 13,
+    lineHeight: 20,
+  },
+  summaryMetaValue: {
+    fontSize: 13,
+    lineHeight: 20,
+    fontWeight: "600",
+  },
+  cardDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  recordRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 14,
+    paddingVertical: 16,
+  },
+  recordLeft: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  recordMeta: {
+    flex: 1,
+    minWidth: 0,
+    gap: 6,
+  },
+  recordTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  recordTitle: {
+    flexShrink: 1,
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  rowBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  rowBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  recordTime: {
+    fontSize: 12,
+  },
+  recordRight: {
+    minWidth: 132,
+    alignItems: "flex-end",
+    gap: 4,
+  },
+  recordAmount: {
+    fontSize: 18,
+    fontWeight: "700",
+    letterSpacing: -0.3,
+  },
+  recordSubAmount: {
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: "right",
+  },
+  emptyMonthCard: {
+    padding: 0,
+    gap: 0,
+  },
+  emptyWrap: {
+    minHeight: 300,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 22,
+    paddingHorizontal: 20,
+    paddingBottom: 8,
+  },
+  emptyText: {
+    fontSize: 15,
+    lineHeight: 22,
+    textAlign: "center",
+  },
+  emptyArt: {
+    width: 190,
+    height: 130,
+    position: "relative",
+  },
+  emptyArtShadow: {
+    position: "absolute",
+    left: 40,
+    right: 40,
+    bottom: 12,
+    height: 14,
+    borderRadius: 999,
+    opacity: 0.6,
+  },
+  emptyArtBoxBack: {
+    position: "absolute",
+    left: 56,
+    top: 28,
+    width: 76,
+    height: 34,
+    borderRadius: 8,
+    transform: [{ skewX: "-18deg" }],
+  },
+  emptyArtBoxFront: {
+    position: "absolute",
+    left: 54,
+    top: 54,
+    width: 84,
+    height: 58,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+  },
+  emptyArtFlapLeft: {
+    position: "absolute",
+    left: 34,
+    top: 50,
+    width: 56,
+    height: 28,
+    borderRadius: 8,
+    transform: [{ rotate: "22deg" }],
+  },
+  emptyArtFlapRight: {
+    position: "absolute",
+    left: 104,
+    top: 50,
+    width: 56,
+    height: 28,
+    borderRadius: 8,
+    transform: [{ rotate: "-22deg" }],
+  },
+  emptyArtRing: {
+    position: "absolute",
+    right: 26,
+    top: 42,
+    width: 34,
+    height: 34,
+    borderRadius: 999,
+    borderWidth: 3,
+  },
+  emptyArtHandle: {
+    position: "absolute",
+    right: 20,
+    top: 72,
+    width: 18,
+    height: 4,
+    borderRadius: 999,
+    transform: [{ rotate: "42deg" }],
+  },
+  footer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 4,
+    paddingTop: 8,
+    paddingBottom: 2,
+  },
+  footerLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+  },
+  footerText: {
+    fontSize: 14,
   },
 })
