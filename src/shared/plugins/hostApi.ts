@@ -9,7 +9,6 @@ import type {
   HostApi,
   PluginAddressBookResult,
   PluginCloseResult,
-  PluginId,
   PluginPickedImage,
   PluginScannedCode,
   ReceiveIntent,
@@ -141,11 +140,8 @@ async function createReceiveIntent(input: ReceiveIntent): Promise<ReceiveIntentR
 }
 
 export function createHostApi(config: {
-  pluginId: PluginId
   onRequestClose: (result?: PluginCloseResult) => void
 }): HostApi {
-  void config.pluginId
-
   return {
     async getLoginStatus() {
       const authState = useAuthStore.getState()

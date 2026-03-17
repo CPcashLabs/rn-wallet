@@ -1,15 +1,19 @@
 # Plugin Runtime Architecture
 
+> Status note
+>
+> This document now describes the extension runtime only. Since 2026-03, `Transfer` and `Receive` are core wallet modules opened through `TransferStack` and `ReceiveStack`, while `PluginHost` is reserved for extension-style modules such as `CoPouch`.
+
 ## Goal
 
-Define a compile-time plugin architecture for `rn_code` so product capabilities such as CoPouch, transfer, and receive can run inside a shared host shell instead of being hard-wired into the root app navigation.
+Define a compile-time extension runtime for `rn_code` so modules such as CoPouch can run inside a shared host shell instead of being hard-wired into the root app navigation.
 
 This document focuses on:
 
 - plugin packaging and registration inside the React Native app
 - host-owned capability boundaries for wallet-sensitive actions
 - a consistent presentation model for plugin entry, close, and exit
-- a migration path from the current feature-stack layout
+- a clear runtime boundary between core wallet modules and extension modules
 
 This document does not define:
 
@@ -25,19 +29,19 @@ The target model is:
 - plugins are compiled into the app bundle at build time
 - the host exposes a narrow SDK for privileged actions such as signing, transfer submission, user identity, wallet address lookup, and login status
 - each plugin renders inside a host-owned container with one close affordance and one exit animation rule
-- transfer and receive remain user-facing wallet actions, while their internal domain model is still a cross-chain order exchange flow
+- transfer and receive remain user-facing wallet actions in the core wallet runtime, while extension modules can compose those capabilities
 
 In user language:
 
-- users open a wallet action such as `Transfer`, `Receive`, or `CoPouch`
-- the app renders a plugin screen
+- users open an extension surface such as `CoPouch`
+- the app renders an extension screen
 - the plugin asks the host for data and privileged actions
 - the host executes sensitive operations and returns results
 - the plugin can be closed from the top-right corner and exits by sliding downward
 
 ## Why This Model
 
-The current app already separates product domains under `src/features/`, but the root navigation still mounts specific stacks such as `TransferStack`, `ReceiveStack`, and `CopouchStack` directly. That works for a small set of features, but it does not scale cleanly when more wallet mini-programs are introduced.
+The current app separates product domains under dedicated stacks. Core wallet flows such as `TransferStack` and `ReceiveStack` stay mounted directly, while extension domains can use a shared host shell when that improves isolation and lifecycle control.
 
 The plugin model improves that by making the host responsible for:
 
@@ -71,10 +75,8 @@ App Host
   ├─ Plugin Host Container
   ├─ Host SDK
   └─ Build-time Plugin Registry
-       ├─ CoPouch Plugin
-       ├─ Transfer Plugin
-       ├─ Receive Plugin
-       └─ Future Plugins
+       ├─ CoPouch Extension
+       └─ Future Extensions
 ```
 
 ## Responsibilities
@@ -115,11 +117,11 @@ Plugins must not:
 
 ## Build-Time Registration
 
-The plugin system should be static at build time. The app bundle contains all approved plugins, but the root host does not import every plugin screen manually.
+The extension system should be static at build time. The app bundle contains all approved extensions, but the root host does not import every extension screen manually.
 
 Recommended discovery rule:
 
-- each plugin exposes a manifest at `src/plugins/<plugin-id>/manifest.ts`
+- each extension exposes a manifest at `src/plugins/<plugin-id>/manifest.ts`
 - a build script resolves those manifests and generates `src/app/plugins/pluginRegistry.generated.ts`
 
 The generated registry is the only place the host uses to resolve plugin entrypoints.
@@ -137,18 +139,6 @@ export const pluginRegistry: Record<string, PluginManifest> = {
     hostApiVersion: "1",
     permissions: ["auth.status.read", "user.profile.read", "wallet.address.read"],
     load: () => import("@/plugins/copouch/entry"),
-    presentation: {
-      style: "sheet",
-      closeButton: "top-right",
-    },
-  },
-  transfer: {
-    id: "transfer",
-    name: "Transfer",
-    version: "1.0.0",
-    hostApiVersion: "1",
-    permissions: ["auth.status.read", "wallet.address.read", "wallet.transfer"],
-    load: () => import("@/plugins/transfer/entry"),
     presentation: {
       style: "sheet",
       closeButton: "top-right",
@@ -290,38 +280,21 @@ Recommended distinction:
 
 This keeps the UX simple while preserving the real business model.
 
-### Transfer Plugin
+### CoPouch Extension
 
-The transfer plugin is responsible for:
+The CoPouch extension is responsible for:
 
-- recipient input
-- token selection
-- quote and route display
-- transfer confirmation UI
-- handing the final intent to the host
+- collaborative wallet UI and workflow
+- extension-local navigation flow
+- invoking host-owned wallet capabilities when needed
+- rendering approval, collaboration, and governance states
 
 The host remains responsible for:
 
 - account truth
-- signature request
-- final transaction execution
+- shared wallet capability surfaces
+- guarded signing and native capabilities
 - result persistence and analytics
-
-### Receive Plugin
-
-The receive plugin is responsible for:
-
-- chain or route selection
-- displaying the active receive address or QR code
-- generating a receive order request
-- rendering receive logs and share affordances
-
-The host remains responsible for:
-
-- user identity and wallet context
-- receive intent creation
-- permission checks
-- any future signing or guarded side effect
 
 ## Recommended Runtime Flow
 
@@ -420,8 +393,8 @@ That keeps the root navigation thin and prevents each new mini-program from addi
 Create plugin manifests and entry files for:
 
 - `src/plugins/copouch`
-- `src/plugins/transfer`
-- `src/plugins/receive`
+- `src/domains/wallet/transfer`
+- `src/domains/wallet/receive`
 
 At this stage, plugin entries may still delegate to plugin-owned stack navigators while preserving the existing business flow.
 
@@ -448,11 +421,11 @@ Move close affordance and close animation into the host container.
 
 ### Phase 4: Route Through Plugin IDs
 
-Replace direct root navigation to feature stacks with calls such as:
+Route extension modules through plugin IDs with calls such as:
 
 ```ts
 navigation.navigate("PluginHost", {
-  pluginId: "transfer",
+  pluginId: "copouch",
   params: { source: "home-shortcut" },
 })
 ```
@@ -461,8 +434,8 @@ navigation.navigate("PluginHost", {
 
 Once migration stabilizes:
 
-- keep feature-internal routing inside the plugin
-- remove redundant root-level plugin stacks
+- keep extension-internal routing inside the plugin
+- avoid moving core wallet stacks into PluginHost
 - standardize analytics around plugin lifecycle and permission usage
 
 ## Guardrails

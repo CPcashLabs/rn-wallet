@@ -2,6 +2,7 @@ import { getCurrentRouteDescriptor, navigateRoot } from "@/app/navigation/naviga
 import type { RootStackParamList } from "@/app/navigation/types"
 import type { PluginId, PluginReturnTarget, PluginRouteParams } from "@/shared/plugins/types"
 
+// PluginHost is reserved for extension modules rather than wallet core flows.
 export function buildPluginHostParams(input: {
   pluginId: PluginId
   pluginParams?: PluginRouteParams

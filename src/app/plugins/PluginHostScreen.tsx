@@ -66,10 +66,9 @@ export function PluginHostScreen({ navigation, route }: Props) {
   const hostApi = useMemo(
     () =>
       createHostApi({
-        pluginId: manifest.id,
         onRequestClose: handleRequestClose,
       }),
-    [handleRequestClose, manifest.id],
+    [handleRequestClose],
   )
 
   const context = useMemo(

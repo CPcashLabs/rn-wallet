@@ -29,8 +29,8 @@ import {
   createBridgeTransferOrder,
   createNormalTransferOrder,
 } from "@/shared/exchange/services/orderCreationApi"
-import { TransferConfirmModal, type TransferConfirmSuccess, type TransferConfirmVariant } from "@/plugins/transfer/components/TransferConfirmPanel"
-import { TransferOrderCreatingOverlay } from "@/plugins/transfer/components/TransferOrderCreatingOverlay"
+import { TransferConfirmModal, type TransferConfirmSuccess, type TransferConfirmVariant } from "@/domains/wallet/transfer/components/TransferConfirmPanel"
+import { TransferOrderCreatingOverlay } from "@/domains/wallet/transfer/components/TransferOrderCreatingOverlay"
 import {
   getTransferChannels,
   getTransferGasEstimate,

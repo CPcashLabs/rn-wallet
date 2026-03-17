@@ -19,7 +19,7 @@ import {
   SplitDetailScreen,
 } from "@/features/orders/screens/OrderFollowupScreens"
 import { TagsNotesScreen } from "@/features/orders/screens/TagsNotesScreen"
-import { TxPayStatusScreen } from "@/plugins/transfer/screens/TxPayStatusScreen"
+import { TxPayStatusScreen } from "@/domains/wallet/transfer/screens/TxPayStatusScreen"
 
 import type { OrdersStackParamList } from "@/app/navigation/types"
 

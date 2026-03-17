@@ -10,7 +10,8 @@ import { getInviteBindingMessage } from "@/features/auth/utils/authMessages"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { formatCurrency } from "@/features/home/utils/format"
 import { HomeMessagePreview } from "@/features/messages/components/HomeMessagePreview"
-import { resolveTransferAddressFromUnknownChain } from "@/plugins/transfer/utils/address"
+import { resolveTransferAddressFromUnknownChain } from "@/domains/wallet/transfer/utils/address"
+import { openReceiveModule, openScannedTransferModule, openTransferModule } from "@/app/navigation/coreModuleNavigation"
 import { navigateRoot } from "@/app/navigation/navigationRef"
 import { NativeCapabilityUnavailableError } from "@/shared/errors"
 import { errorCodeOf, resolveErrorMessage } from "@/shared/errors/presentation"
@@ -229,11 +230,13 @@ export function HomeShellScreen({ navigation, route }: Props) {
   }
 
   const handleOpenTransfer = () => {
-    openPluginHost({ pluginId: "transfer" })
+    openTransferModule({
+      intent: "transfer",
+    })
   }
 
   const handleOpenReceive = () => {
-    openPluginHost({ pluginId: "receive" })
+    openReceiveModule()
   }
 
   const handleOpenCopouch = () => {
@@ -279,14 +282,11 @@ export function HomeShellScreen({ navigation, route }: Props) {
       return
     }
 
-    openPluginHost({
-      pluginId: "transfer",
-      pluginParams: {
-        scannedAddress: resolvedAddress.address,
-        scannedChainType: resolvedAddress.chainType,
-        autoAdvanceToOrder: true,
-        autoSelectFirstMatching: resolvedAddress.chainType === "TRON",
-      },
+    openScannedTransferModule({
+      scannedAddress: resolvedAddress.address,
+      scannedChainType: resolvedAddress.chainType,
+      autoAdvanceToOrder: true,
+      autoSelectFirstMatching: resolvedAddress.chainType === "TRON",
     })
   }, [showToast, t])
 

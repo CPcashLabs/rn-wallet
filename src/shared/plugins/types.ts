@@ -2,7 +2,12 @@ import type React from "react"
 
 import type { AuthLoginType, UserProfile } from "@/shared/types/auth"
 
-export type PluginId = "copouch" | "transfer" | "receive"
+// Core wallet capabilities live in dedicated root stacks and do not go through PluginHost.
+export type CoreModuleId = "transfer" | "receive"
+
+// PluginHost is now reserved for extension-style experiences such as CoPouch.
+export type ExtensionId = "copouch"
+export type PluginId = ExtensionId
 
 export type PluginRouteParamValue = string | number | boolean | null | undefined
 
