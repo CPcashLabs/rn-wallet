@@ -189,7 +189,7 @@ export function OrderMonthSection(props: {
                   <Text numberOfLines={1} style={[styles.recordTitle, { color: theme.colors.text }]}>
                     {typeLabel}
                   </Text>
-                  <Text numberOfLines={1} style={[styles.recordMeta, { color: theme.colors.mutedText }]}>
+                  <Text ellipsizeMode="middle" numberOfLines={1} style={[styles.recordMeta, { color: theme.colors.mutedText }]}>
                     {resolveCounterpartyLabel(props.t, item.orderType)}{" "}
                     {formatAddress(resolveCounterpartyAddress(item) || item.walletAddress || item.receiveAddress || item.paymentAddress || "")}
                   </Text>
@@ -199,6 +199,8 @@ export function OrderMonthSection(props: {
 
               <View style={styles.recordRowRight}>
                 <Text
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.88}
                   numberOfLines={1}
                   style={[
                     styles.recordAmount,
@@ -211,6 +213,7 @@ export function OrderMonthSection(props: {
                 </Text>
                 {statusBadge ? (
                   <Text
+                    numberOfLines={1}
                     style={[
                       styles.recordStatusText,
                       {
@@ -348,16 +351,16 @@ export function resolveSectionTitle(timestamp: number | null) {
 
 const styles = StyleSheet.create({
   chip: {
-    minHeight: 40,
+    minHeight: 38,
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 16,
+    paddingHorizontal: 15,
     alignItems: "center",
     justifyContent: "center",
   },
   chipText: {
-    fontSize: 16,
-    lineHeight: 20,
+    fontSize: 15,
+    lineHeight: 19,
     fontWeight: "600",
     letterSpacing: -0.2,
   },
@@ -368,19 +371,19 @@ const styles = StyleSheet.create({
   },
   metric: {
     minWidth: "42%",
-    gap: 8,
+    gap: 7,
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 22,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingHorizontal: 15,
+    paddingVertical: 15,
   },
   metricLabel: {
     fontSize: 13,
     lineHeight: 18,
   },
   metricValue: {
-    fontSize: 20,
-    lineHeight: 24,
+    fontSize: 19,
+    lineHeight: 23,
     letterSpacing: -0.4,
     fontWeight: "700",
   },
@@ -431,8 +434,8 @@ const styles = StyleSheet.create({
   },
   recordGroupHeader: {
     paddingHorizontal: 18,
-    paddingTop: 18,
-    gap: 4,
+    paddingTop: 20,
+    gap: 5,
   },
   recordGroupEyebrow: {
     fontSize: 12,
@@ -451,15 +454,15 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 18,
     paddingTop: 14,
-    paddingBottom: 6,
+    paddingBottom: 8,
   },
   recordSummaryMetric: {
     flex: 1,
-    gap: 6,
+    gap: 7,
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 20,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: 13,
   },
   recordSummaryLabel: {
     fontSize: 13,
@@ -467,13 +470,13 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   recordSummaryValue: {
-    fontSize: 18,
-    lineHeight: 22,
+    fontSize: 17,
+    lineHeight: 21,
     fontWeight: "700",
   },
   recordRow: {
     paddingHorizontal: 18,
-    paddingVertical: 18,
+    paddingVertical: 16,
     flexDirection: "row",
     alignItems: "flex-start",
     justifyContent: "space-between",
@@ -487,44 +490,49 @@ const styles = StyleSheet.create({
   },
   recordTextWrap: {
     flex: 1,
-    gap: 5,
+    gap: 4,
     minWidth: 0,
   },
   recordTitle: {
-    fontSize: 17,
-    lineHeight: 22,
+    fontSize: 16,
+    lineHeight: 21,
     fontWeight: "700",
     letterSpacing: -0.2,
   },
   recordMeta: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 18,
   },
   recordTime: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 18,
   },
   recordRowRight: {
-    minWidth: 96,
+    minWidth: 88,
+    maxWidth: 112,
+    flexShrink: 0,
     alignItems: "flex-end",
-    gap: 8,
+    gap: 7,
     paddingTop: 2,
   },
   recordAmount: {
-    fontSize: 17,
-    lineHeight: 22,
-    letterSpacing: -0.4,
-    fontWeight: "800",
+    fontSize: 15,
+    lineHeight: 20,
+    letterSpacing: -0.25,
+    fontWeight: "700",
   },
   recordStatusText: {
-    fontSize: 13,
-    lineHeight: 18,
+    maxWidth: "100%",
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: "600",
+    textAlign: "center",
+    alignSelf: "flex-end",
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 999,
     overflow: "hidden",
-    paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
   successTitle: {
     fontSize: 16,

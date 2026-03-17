@@ -28,17 +28,19 @@ const styles = StyleSheet.create({
   container: {
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 20,
-    gap: 8,
+    paddingHorizontal: 24,
+    gap: 10,
   },
   title: {
-    fontSize: 16,
+    fontSize: 18,
+    lineHeight: 22,
     fontWeight: "700",
     textAlign: "center",
+    letterSpacing: -0.25,
   },
   body: {
-    fontSize: 13,
-    lineHeight: 20,
+    fontSize: 14,
+    lineHeight: 21,
     textAlign: "center",
   },
 })
