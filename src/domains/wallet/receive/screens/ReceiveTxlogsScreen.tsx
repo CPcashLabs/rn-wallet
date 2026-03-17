@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
@@ -10,9 +10,18 @@ import { SeedAddressAvatar } from "@/features/orders/components/OrderCounterpart
 import {
   getTraceChildLogs,
   getTraceDetail,
-  type ReceiveLog,
   type ReceiveOrder,
 } from "@/domains/wallet/receive/services/receiveApi"
+import {
+  attachReceiveTxlogOrderType,
+  buildReceiveTxlogSources,
+  filterReceiveTxlogs,
+  mergeReceiveTxlogs,
+  resolveDefaultReceiveTxlogFilter,
+  type ReceiveTraceOrderType,
+  type ReceiveTxlogItem,
+  type ReceiveTxlogRecordFilter,
+} from "@/domains/wallet/receive/screens/receiveTxlogsModel"
 import {
   buildNextSeenLogState,
   buildReceiveTxlogKey,
@@ -37,11 +46,9 @@ import { useToast } from "@/shared/toast/useToast"
 
 type Props = NativeStackScreenProps<ReceiveStackParamList, "ReceiveTxlogsScreen">
 
-type RecordFilter = "all" | "individuals" | "business"
-
 type DayGroup = {
   dateKey: string
-  items: ReceiveLog[]
+  items: ReceiveTxlogItem[]
   transactionCount: number
   receiptAmount: number
   feeAmount: number
@@ -52,17 +59,33 @@ export function ReceiveTxlogsScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
   const { showToast } = useToast()
-  const orderSn = route.params?.orderSn
-  const [detail, setDetail] = useState<ReceiveOrder | null>(null)
-  const [logs, setLogs] = useState<ReceiveLog[]>([])
+  const sources = useMemo(
+    () =>
+      buildReceiveTxlogSources({
+        orderSn: route.params?.orderSn,
+        orderType: route.params?.orderType,
+        personalOrderSn: route.params?.personalOrderSn,
+        businessOrderSn: route.params?.businessOrderSn,
+      }),
+    [route.params?.businessOrderSn, route.params?.orderSn, route.params?.orderType, route.params?.personalOrderSn],
+  )
+  const sourcesKey = sources.map(item => `${item.orderType}:${item.orderSn}`).join("|")
+  const [detailByType, setDetailByType] = useState<Partial<Record<ReceiveTraceOrderType, ReceiveOrder | null>>>({})
+  const [logsByType, setLogsByType] = useState<Partial<Record<ReceiveTraceOrderType, ReceiveTxlogItem[]>>>({})
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [newLogKeys, setNewLogKeys] = useState<string[]>([])
-  const [selectedFilter, setSelectedFilter] = useState<RecordFilter>(() => resolveDefaultFilter(route.params?.orderType))
+  const [selectedFilter, setSelectedFilter] = useState<ReceiveTxlogRecordFilter>(() =>
+    resolveDefaultReceiveTxlogFilter(route.params?.orderType),
+  )
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!orderSn) {
+    if (sources.length === 0) {
+      setDetailByType({})
+      setLogsByType({})
+      setLoading(false)
+      setRefreshing(false)
       return
     }
 
@@ -80,14 +103,35 @@ export function ReceiveTxlogsScreen({ navigation, route }: Props) {
       }
 
       try {
-        const [nextDetail, nextLogs] = await Promise.all([getTraceDetail(orderSn), getTraceChildLogs({ orderSn })])
+        const results = await Promise.all(
+          sources.map(async source => {
+            const [nextDetail, nextLogs] = await Promise.all([getTraceDetail(source.orderSn), getTraceChildLogs({ orderSn: source.orderSn })])
+
+            return {
+              ...source,
+              detail: nextDetail,
+              logs: attachReceiveTxlogOrderType(nextLogs, source.orderType),
+            }
+          }),
+        )
 
         if (!pollController.canCommit()) {
           return
         }
 
         const currentSeenMap = getJson<Record<string, string[]>>(KvStorageKeys.ReceiveShowedList) ?? {}
-        const { freshKeys, nextSeenMap } = buildNextSeenLogState(orderSn, nextLogs, currentSeenMap)
+        const detailState: Partial<Record<ReceiveTraceOrderType, ReceiveOrder | null>> = {}
+        const logState: Partial<Record<ReceiveTraceOrderType, ReceiveTxlogItem[]>> = {}
+        const freshKeys: string[] = []
+        let nextSeenMap = currentSeenMap
+
+        results.forEach(result => {
+          const nextSeenState = buildNextSeenLogState(result.orderSn, result.logs, nextSeenMap)
+          detailState[result.orderType] = result.detail
+          logState[result.orderType] = result.logs
+          freshKeys.push(...nextSeenState.freshKeys)
+          nextSeenMap = nextSeenState.nextSeenMap
+        })
 
         if (!pollController.canCommit()) {
           return
@@ -100,9 +144,9 @@ export function ReceiveTxlogsScreen({ navigation, route }: Props) {
         }
 
         pollController.markSuccess()
-        setDetail(nextDetail)
-        setLogs(nextLogs)
-        setNewLogKeys(freshKeys)
+        setDetailByType(detailState)
+        setLogsByType(logState)
+        setNewLogKeys(Array.from(new Set(freshKeys)))
       } catch {
         if (!pollController.canCommit()) {
           return
@@ -136,17 +180,32 @@ export function ReceiveTxlogsScreen({ navigation, route }: Props) {
       pollController.deactivate()
       clearInterval(timer)
     }
-  }, [orderSn, showToast, t])
+  }, [showToast, sources, sourcesKey, t])
+
+  useEffect(() => {
+    setSelectedFilter(resolveDefaultReceiveTxlogFilter(route.params?.orderType))
+  }, [route.params?.orderType])
 
   const currentMonthKey = formatWalletMonthKey(Date.now())
-  const currentOrderType = route.params?.orderType || detail?.orderType
-  const availableMonths = buildAvailableMonthKeys(logs, detail?.createdAt ?? null, currentMonthKey)
+  const allLogs = mergeReceiveTxlogs([...(logsByType.TRACE ?? []), ...(logsByType.TRACE_LONG_TERM ?? [])])
+  const filteredLogs = filterReceiveTxlogs(allLogs, selectedFilter)
+  const filteredFallbackTimestamps = [
+    selectedFilter !== "business" ? detailByType.TRACE?.createdAt ?? null : null,
+    selectedFilter !== "individuals" ? detailByType.TRACE_LONG_TERM?.createdAt ?? null : null,
+  ]
+  const availableMonths = buildAvailableMonthKeys(
+    filteredLogs,
+    filteredFallbackTimestamps,
+    currentMonthKey,
+  )
   const availableMonthsKey = availableMonths.join("|")
   const activeMonthKey = selectedMonth ?? currentMonthKey
-  const assetCode = detail?.coinName || logs.find(item => item.coinName)?.coinName || ""
-  const visibleLogs = matchesRecordFilter(selectedFilter, currentOrderType)
-    ? logs.filter(item => formatWalletMonthKey(item.createdAt) === activeMonthKey)
-    : []
+  const assetCode =
+    filteredLogs.find(item => item.coinName)?.coinName ||
+    (selectedFilter !== "business" ? detailByType.TRACE?.coinName : "") ||
+    (selectedFilter !== "individuals" ? detailByType.TRACE_LONG_TERM?.coinName : "") ||
+    ""
+  const visibleLogs = filteredLogs.filter(item => formatWalletMonthKey(item.createdAt) === activeMonthKey)
   const dayGroups = buildDayGroups(visibleLogs)
   const todayKey = formatWalletDayKey(Date.now())
   const showTodayCard = activeMonthKey === currentMonthKey
@@ -334,7 +393,7 @@ function ReceiveDayCard(props: {
 }
 
 function ReceiveRecordRow(props: {
-  item: ReceiveLog
+  item: ReceiveTxlogItem
   feeLabel: string
   amountReceivedLabel: string
   showNewBadge: boolean
@@ -432,12 +491,14 @@ function EmptyReceiveIllustration() {
   )
 }
 
-function buildAvailableMonthKeys(logs: ReceiveLog[], fallbackTimestamp: number | null, currentMonthKey: string) {
+function buildAvailableMonthKeys(logs: ReceiveTxlogItem[], fallbackTimestamps: Array<number | null>, currentMonthKey: string) {
   const monthKeys = new Set<string>([currentMonthKey])
 
-  if (fallbackTimestamp) {
-    monthKeys.add(formatWalletMonthKey(fallbackTimestamp))
-  }
+  fallbackTimestamps.forEach(value => {
+    if (value) {
+      monthKeys.add(formatWalletMonthKey(value))
+    }
+  })
 
   logs.forEach(item => {
     monthKeys.add(formatWalletMonthKey(item.createdAt))
@@ -446,8 +507,8 @@ function buildAvailableMonthKeys(logs: ReceiveLog[], fallbackTimestamp: number |
   return Array.from(monthKeys).sort((left, right) => right.localeCompare(left))
 }
 
-function buildDayGroups(logs: ReceiveLog[]) {
-  const grouped = new Map<string, ReceiveLog[]>()
+function buildDayGroups(logs: ReceiveTxlogItem[]) {
+  const grouped = new Map<string, ReceiveTxlogItem[]>()
 
   logs.forEach(item => {
     const dateKey = formatWalletDayKey(item.createdAt)
@@ -477,30 +538,6 @@ function createEmptyDayGroup(dateKey: string): DayGroup {
     feeAmount: 0,
     recvActualAmount: 0,
   }
-}
-
-function resolveDefaultFilter(orderType?: string): RecordFilter {
-  if (orderType === "TRACE") {
-    return "individuals"
-  }
-
-  if (orderType === "TRACE_LONG_TERM") {
-    return "business"
-  }
-
-  return "all"
-}
-
-function matchesRecordFilter(filter: RecordFilter, orderType?: string) {
-  if (filter === "all") {
-    return true
-  }
-
-  if (filter === "individuals") {
-    return orderType === "TRACE"
-  }
-
-  return orderType === "TRACE_LONG_TERM"
 }
 
 const styles = StyleSheet.create({

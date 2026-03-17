@@ -42,6 +42,7 @@ type TraceShowPayload = TraceListItemPayload & {
 type TraceChildPayload = {
   order_sn?: string
   serial_number?: string
+  order_type?: string
   status?: number | string
   status_name?: string
   amount?: number | string
@@ -104,6 +105,7 @@ export type ReceiveOrder = {
 
 export type ReceiveLog = {
   orderSn: string
+  orderType: "TRACE" | "TRACE_LONG_TERM" | "TRACE_CHILD" | "UNKNOWN"
   status: number
   statusName: string
   amount: number
@@ -289,6 +291,10 @@ export async function getTraceChildLogs(input: { orderSn: string; page?: number;
 
       return {
         orderSn: toStringValue(item.order_sn ?? item.serial_number),
+        orderType:
+          item.order_type === "TRACE" || item.order_type === "TRACE_LONG_TERM" || item.order_type === "TRACE_CHILD"
+            ? item.order_type
+            : "UNKNOWN",
         status: toNumber(item.status),
         statusName: toStringValue(item.status_name),
         amount: recvActualAmount,

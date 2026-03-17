@@ -13,6 +13,7 @@ function createLog(overrides: Partial<ReceiveLog> = {}): ReceiveLog {
     feeAmount: 0.2,
     fromAddress: "0xabc",
     orderSn: "SUB_1",
+    orderType: "UNKNOWN",
     receiptAmount: 1.2,
     recvActualAmount: 1,
     status: 1,

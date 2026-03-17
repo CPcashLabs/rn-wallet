@@ -289,6 +289,8 @@ export type ReceiveStackParamList = {
     | {
         orderSn: string
         orderType?: "TRACE" | "TRACE_LONG_TERM"
+        personalOrderSn?: string
+        businessOrderSn?: string
       }
     | undefined
   RareAddressScreen:

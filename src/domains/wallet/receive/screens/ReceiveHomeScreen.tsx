@@ -322,6 +322,8 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
           navigation.navigate("ReceiveTxlogsScreen", {
             orderSn: currentOrder.orderSn,
             orderType: currentOrderType,
+            personalOrderSn: personalOrder?.orderSn,
+            businessOrderSn: businessOrder?.orderSn,
           })
         },
       },
@@ -589,6 +591,8 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
             navigation.navigate("ReceiveTxlogsScreen", {
               orderSn: cardOrder.orderSn,
               orderType: kind === "individuals" ? "TRACE" : "TRACE_LONG_TERM",
+              personalOrderSn: personalOrder?.orderSn,
+              businessOrderSn: businessOrder?.orderSn,
             })
           }}
         >
