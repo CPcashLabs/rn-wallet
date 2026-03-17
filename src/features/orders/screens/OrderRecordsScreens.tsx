@@ -42,6 +42,7 @@ import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { useUserStore } from "@/shared/store/useUserStore"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppGlyph } from "@/shared/ui/AppGlyph"
 import { AppTextField } from "@/shared/ui/AppTextField"
 import { getFloatingOverlayContentInset } from "@/shared/ui/floatingInsets"
 
@@ -519,19 +520,26 @@ export function OrderBillScreen({ navigation, route }: OrderBillProps) {
             {rangeOptions.map(option => (
               <FilterChip
                 key={option.value}
+                labelStyle={styles.billRangeChipText}
                 label={option.label}
                 active={preset === option.value}
                 onPress={() => setPreset(option.value)}
+                style={styles.billRangeChip}
               />
             ))}
           </ScrollView>
         </SectionCard>
 
         <SummaryGrid
+          cardStyle={styles.billSummaryCard}
+          gridStyle={styles.billSummaryGrid}
           items={summarizeStatistics(statistics).map(item => ({
             label: t(`orders.summary.${item.key}`),
             value: item.value,
           }))}
+          metricLabelStyle={styles.billSummaryLabel}
+          metricStyle={styles.billSummaryMetric}
+          metricValueStyle={styles.billSummaryValue}
         />
 
         {loading ? (
@@ -543,7 +551,20 @@ export function OrderBillScreen({ navigation, route }: OrderBillProps) {
           </SectionCard>
         ) : null}
 
-        {!loading && items.length === 0 ? <PageEmpty title={t("orders.bill.emptyTitle")} body={t("orders.bill.emptyBody")} /> : null}
+        {!loading && items.length === 0 ? (
+          <SectionCard style={styles.billEmptyCard}>
+            <View style={styles.billEmptyState}>
+              <AppGlyph
+                backgroundColor={theme.colors.primarySoft ?? `${theme.colors.primary}12`}
+                name="book"
+                size={50}
+                tintColor={theme.colors.primary}
+              />
+              <Text style={[styles.billEmptyTitle, { color: theme.colors.text }]}>{t("orders.bill.emptyTitle")}</Text>
+              <Text style={[styles.billEmptyBody, { color: theme.colors.mutedText }]}>{t("orders.bill.emptyBody")}</Text>
+            </View>
+          </SectionCard>
+        ) : null}
 
         {!loading
           ? items.map(item => (
@@ -659,16 +680,20 @@ export function BillExportScreen({ navigation, route }: BillExportProps) {
 const styles = StyleSheet.create({
   content: {
     padding: 18,
+    gap: 14,
   },
   headerContent: {
+    gap: 16,
+  },
+  filtersCard: {
     gap: 16,
   },
   filtersPanel: {
     gap: 10,
   },
   filterScrollContent: {
-    gap: 10,
-    paddingRight: 8,
+    gap: 8,
+    paddingRight: 4,
   },
   typeBar: {
     flexDirection: "row",
@@ -696,10 +721,41 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   sectionTitle: {
-    fontSize: 16,
-    lineHeight: 21,
+    fontSize: 15,
+    lineHeight: 20,
     fontWeight: "700",
     letterSpacing: -0.2,
+  },
+  billRangeChip: {
+    minHeight: 36,
+    paddingHorizontal: 12,
+  },
+  billRangeChipText: {
+    fontSize: 14,
+    lineHeight: 18,
+  },
+  billSummaryCard: {
+    padding: 18,
+    gap: 0,
+  },
+  billSummaryGrid: {
+    gap: 10,
+  },
+  billSummaryMetric: {
+    minHeight: 96,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 15,
+  },
+  billSummaryLabel: {
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: "500",
+  },
+  billSummaryValue: {
+    fontSize: 18,
+    lineHeight: 24,
+    letterSpacing: -0.3,
   },
   filterWrap: {
     flexDirection: "row",
@@ -707,14 +763,38 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   loadingWrap: {
-    minHeight: 120,
+    minHeight: 128,
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
+    gap: 12,
   },
   body: {
     fontSize: 14,
-    lineHeight: 21,
+    lineHeight: 20,
+  },
+  billEmptyCard: {
+    paddingHorizontal: 24,
+    paddingVertical: 28,
+    gap: 0,
+  },
+  billEmptyState: {
+    minHeight: 214,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+  },
+  billEmptyTitle: {
+    fontSize: 19,
+    lineHeight: 24,
+    fontWeight: "700",
+    letterSpacing: -0.3,
+    textAlign: "center",
+  },
+  billEmptyBody: {
+    maxWidth: 280,
+    fontSize: 15,
+    lineHeight: 22,
+    textAlign: "center",
   },
   listGroup: {
     marginTop: 14,

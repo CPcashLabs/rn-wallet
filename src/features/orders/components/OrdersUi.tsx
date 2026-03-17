@@ -1,6 +1,6 @@
 import React from "react"
 
-import { Pressable, StyleSheet, Text, View } from "react-native"
+import { Pressable, StyleSheet, Text, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native"
 
 import { SectionCard } from "@/shared/ui/AppFlowUi"
 import { formatAddress } from "@/features/home/utils/format"
@@ -27,26 +27,34 @@ export function FilterChip(props: {
   label: string
   active?: boolean
   onPress: () => void
+  style?: StyleProp<ViewStyle>
+  labelStyle?: StyleProp<TextStyle>
 }) {
   const theme = useAppTheme()
-  const backgroundColor = theme.colors.surfaceElevated ?? theme.colors.surface
+  const backgroundColor = props.active ? theme.colors.primarySoft ?? `${theme.colors.primary}14` : theme.colors.surfaceElevated ?? theme.colors.surface
+  const borderColor = props.active ? theme.colors.primary : theme.colors.glassBorder ?? theme.colors.border
 
   return (
     <Pressable
       onPress={props.onPress}
-      style={[
+      style={({ pressed }) => [
         styles.chip,
         {
           backgroundColor,
+          borderColor,
           shadowColor: theme.colors.shadow,
-          shadowOpacity: theme.isDark ? 0.12 : 0.04,
-          shadowRadius: 10,
-          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: theme.isDark ? 0.1 : 0.025,
+          shadowRadius: 8,
+          shadowOffset: { width: 0, height: 3 },
           elevation: 1,
+          transform: [{ scale: pressed ? 0.985 : 1 }],
         },
+        props.style,
       ]}
     >
-      <Text style={[styles.chipText, { color: props.active ? theme.colors.primary : theme.colors.text }]}>{props.label}</Text>
+      <Text numberOfLines={1} style={[styles.chipText, props.active ? styles.chipTextActive : null, { color: props.active ? theme.colors.primary : theme.colors.text }, props.labelStyle]}>
+        {props.label}
+      </Text>
     </Pressable>
   )
 }
@@ -54,6 +62,9 @@ export function FilterChip(props: {
 export function SummaryMetric(props: {
   label: string
   value: string
+  style?: StyleProp<ViewStyle>
+  labelStyle?: StyleProp<TextStyle>
+  valueStyle?: StyleProp<TextStyle>
 }) {
   const theme = useAppTheme()
 
@@ -65,22 +76,35 @@ export function SummaryMetric(props: {
           backgroundColor: theme.colors.glass,
           borderColor: theme.colors.glassBorder,
         },
+        props.style,
       ]}
     >
-      <Text style={[styles.metricLabel, { color: theme.colors.mutedText }]}>{props.label}</Text>
-      <Text style={[styles.metricValue, { color: theme.colors.text }]}>{props.value}</Text>
+      <Text style={[styles.metricLabel, { color: theme.colors.mutedText }, props.labelStyle]}>{props.label}</Text>
+      <Text style={[styles.metricValue, { color: theme.colors.text }, props.valueStyle]}>{props.value}</Text>
     </View>
   )
 }
 
 export function SummaryGrid(props: {
   items: Array<{ label: string; value: string }>
+  cardStyle?: StyleProp<ViewStyle>
+  gridStyle?: StyleProp<ViewStyle>
+  metricStyle?: StyleProp<ViewStyle>
+  metricLabelStyle?: StyleProp<TextStyle>
+  metricValueStyle?: StyleProp<TextStyle>
 }) {
   return (
-    <SectionCard>
-      <View style={styles.metricGrid}>
+    <SectionCard style={props.cardStyle}>
+      <View style={[styles.metricGrid, props.gridStyle]}>
         {props.items.map(item => (
-          <SummaryMetric key={item.label} label={item.label} value={item.value} />
+          <SummaryMetric
+            key={item.label}
+            label={item.label}
+            labelStyle={props.metricLabelStyle}
+            style={props.metricStyle}
+            value={item.value}
+            valueStyle={props.metricValueStyle}
+          />
         ))}
       </View>
     </SectionCard>
@@ -315,40 +339,47 @@ export function resolveSectionTitle(timestamp: number | null) {
 
 const styles = StyleSheet.create({
   chip: {
-    minHeight: 36,
+    minHeight: 34,
+    borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     alignItems: "center",
     justifyContent: "center",
   },
   chipText: {
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: "500",
-    letterSpacing: -0.2,
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: "600",
+    letterSpacing: -0.15,
+  },
+  chipTextActive: {
+    fontWeight: "700",
   },
   metricGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 14,
+    gap: 12,
   },
   metric: {
-    minWidth: "42%",
-    gap: 7,
+    flexBasis: "47%",
+    flexGrow: 1,
+    minHeight: 92,
+    gap: 8,
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 22,
-    paddingHorizontal: 15,
-    paddingVertical: 15,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
   metricLabel: {
     fontSize: 13,
-    lineHeight: 18,
+    lineHeight: 17,
+    fontWeight: "500",
   },
   metricValue: {
-    fontSize: 19,
-    lineHeight: 23,
-    letterSpacing: -0.4,
+    fontSize: 21,
+    lineHeight: 26,
+    letterSpacing: -0.45,
     fontWeight: "700",
   },
   monthHeader: {
