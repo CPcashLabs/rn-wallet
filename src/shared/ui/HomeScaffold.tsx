@@ -1,7 +1,7 @@
 import React from "react"
 
 import { useRoute } from "@react-navigation/native"
-import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native"
+import { Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native"
 import { useTranslation } from "react-i18next"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 
@@ -36,53 +36,10 @@ export function HomeScaffold(props: {
   const isLargeTitle = titleAlign === "left" && !props.canGoBack
   const reserveFloatingOverlayInset = props.reserveFloatingOverlayInset ?? props.scroll !== false
   const floatingBottomInset = reserveFloatingOverlayInset ? getFloatingOverlayContentInset(route.name, insets.bottom) : 0
-  const contentOpacity = React.useRef(new Animated.Value(0)).current
-  const contentTranslateY = React.useRef(new Animated.Value(10)).current
-  const hasAnimatedInRef = React.useRef(false)
-
-  React.useEffect(() => {
-    if (hasAnimatedInRef.current) {
-      contentOpacity.setValue(1)
-      contentTranslateY.setValue(0)
-      return
-    }
-
-    hasAnimatedInRef.current = true
-    contentOpacity.setValue(0)
-    contentTranslateY.setValue(10)
-
-    const animation = Animated.parallel([
-      Animated.timing(contentOpacity, {
-        toValue: 1,
-        duration: 260,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(contentTranslateY, {
-        toValue: 0,
-        duration: 260,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ])
-
-    animation.start()
-
-    return () => {
-      animation.stop()
-    }
-  }, [contentOpacity, contentTranslateY])
-
-  const animatedContentStyle = {
-    opacity: contentOpacity,
-    transform: [{ translateY: contentTranslateY }],
-  }
 
   const content = props.scroll === false ? (
     <View style={styles.body}>
-      <Animated.View style={[styles.bodyInner, { paddingBottom: floatingBottomInset }, animatedContentStyle, props.contentContainerStyle]}>
-        {props.children}
-      </Animated.View>
+      <View style={[styles.bodyInner, { paddingBottom: floatingBottomInset }, props.contentContainerStyle]}>{props.children}</View>
     </View>
   ) : (
     <ScrollView
@@ -92,7 +49,7 @@ export function HomeScaffold(props: {
       keyboardShouldPersistTaps="handled"
       style={styles.body}
     >
-      <Animated.View style={[styles.scrollContent, animatedContentStyle, props.contentContainerStyle]}>{props.children}</Animated.View>
+      <View style={[styles.scrollContent, props.contentContainerStyle]}>{props.children}</View>
     </ScrollView>
   )
 
