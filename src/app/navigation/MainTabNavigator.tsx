@@ -53,7 +53,7 @@ export function MainTabNavigator() {
         options={{
           title: "Home",
           tabBarIcon: ({ color, focused }) => <HomeTabIcon color={color} focused={focused} />,
-          tabBarLabel: ({ color }) => <Text style={{ color, fontSize: 12 }}>{t("home.tabs.home")}</Text>,
+          tabBarLabel: ({ color }) => <Text style={[styles.tabBarLabel, { color }]}>{t("home.tabs.home")}</Text>,
         }}
       />
       <Tab.Screen
@@ -66,7 +66,7 @@ export function MainTabNavigator() {
           return {
             title: "Me",
             tabBarIcon: ({ color, focused }) => <ProfileTabIcon color={color} focused={focused} />,
-            tabBarLabel: ({ color }) => <Text style={{ color, fontSize: 12 }}>{t("home.tabs.me")}</Text>,
+            tabBarLabel: ({ color }) => <Text style={[styles.tabBarLabel, { color }]}>{t("home.tabs.me")}</Text>,
             tabBarStyle: shouldHideTabBar ? { display: "none" } : baseTabBarStyle,
           }
         }}
@@ -97,15 +97,17 @@ function HomeTabIcon(props: { color: string; focused: boolean }) {
 
 const styles = StyleSheet.create({
   tabBarLabel: {
-    fontSize: 12,
-    fontWeight: "700",
+    fontSize: 11,
+    lineHeight: 13,
+    fontWeight: "600",
+    letterSpacing: -0.08,
   },
   tabBarItem: {
-    paddingVertical: 2,
+    paddingVertical: 3,
   },
   homeIconShell: {
-    width: 26,
-    height: 26,
+    width: 24,
+    height: 24,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -148,8 +150,8 @@ const styles = StyleSheet.create({
     top: 15,
   },
   profileIconShell: {
-    width: 26,
-    height: 26,
+    width: 24,
+    height: 24,
     alignItems: "center",
     justifyContent: "center",
   },
