@@ -120,7 +120,7 @@ const NATIVE_AVATAR_MODEL: AbstractAvatarModel = {
 }
 
 export function OrderCounterpartyAvatar(props: Props) {
-  const size = props.size ?? 40
+  const size = props.size ?? 32
   const normalizedType = props.item.orderType.toUpperCase()
 
   if (SEND_CODE_TYPES.has(normalizedType)) {

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react"
 
-import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, View } from "react-native"
+import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { useRoute } from "@react-navigation/native"
@@ -332,11 +332,6 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
       reserveFloatingOverlayInset={false}
       title={props.title}
       scroll={false}
-      right={
-        props.openStatistics ? (
-          <HeaderTextAction label={t("orders.list.statistics")} onPress={() => props.navigation.navigate("OrderBillScreen")} />
-        ) : null
-      }
     >
       <FlatList
         bounces
@@ -360,12 +355,12 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
         ItemSeparatorComponent={() => <View style={styles.monthSectionSpacer} />}
         ListHeaderComponent={
           <View style={styles.headerContent}>
-            <SectionCard style={styles.filtersCard}>
-              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("orders.filters.type")}</Text>
+            <View style={styles.typeBar}>
               <ScrollView
                 horizontal
-                contentContainerStyle={styles.filterScrollContent}
+                contentContainerStyle={styles.typeBarScrollContent}
                 showsHorizontalScrollIndicator={false}
+                style={styles.typeBarScroll}
               >
                 {typeOptions.map(option => (
                   <FilterChip
@@ -376,7 +371,16 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
                   />
                 ))}
               </ScrollView>
-            </SectionCard>
+              {props.openStatistics ? (
+                <Pressable
+                  hitSlop={8}
+                  onPress={() => props.navigation.navigate("OrderBillScreen")}
+                  style={styles.typeBarAction}
+                >
+                  <Text style={[styles.typeBarActionLabel, { color: theme.colors.primary }]}>{t("orders.list.statistics")}</Text>
+                </Pressable>
+              ) : null}
+            </View>
 
             {props.otherAddress ? (
               <SectionCard>
@@ -493,6 +497,7 @@ export function OrderBillScreen({ navigation, route }: OrderBillProps) {
       right={
         !loading && rangeSelection.startedAt && rangeSelection.endedAt ? (
           <HeaderTextAction
+            variant="plain"
             label={t("orders.bill.export")}
             onPress={() =>
               navigation.navigate("BillExportScreen", {
@@ -658,15 +663,37 @@ const styles = StyleSheet.create({
   headerContent: {
     gap: 16,
   },
-  filtersCard: {
-    gap: 14,
-  },
   filtersPanel: {
     gap: 10,
   },
   filterScrollContent: {
     gap: 10,
     paddingRight: 8,
+  },
+  typeBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    paddingHorizontal: 4,
+  },
+  typeBarScroll: {
+    flex: 1,
+  },
+  typeBarScrollContent: {
+    gap: 10,
+    paddingRight: 8,
+  },
+  typeBarAction: {
+    minHeight: 36,
+    justifyContent: "center",
+    paddingLeft: 6,
+  },
+  typeBarActionLabel: {
+    fontSize: 16,
+    lineHeight: 20,
+    fontWeight: "500",
+    letterSpacing: -0.2,
   },
   sectionTitle: {
     fontSize: 16,

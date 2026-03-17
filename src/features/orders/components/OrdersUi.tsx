@@ -15,7 +15,6 @@ import {
   resolveCounterpartyLabel,
   resolveOrderListStatusBadge,
   resolveOrderTypeLabel,
-  type OrderListStatusTone,
 } from "@/features/orders/utils/orderHelpers"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { AppListRow } from "@/shared/ui/AppList"
@@ -30,6 +29,7 @@ export function FilterChip(props: {
   onPress: () => void
 }) {
   const theme = useAppTheme()
+  const backgroundColor = theme.colors.surfaceElevated ?? theme.colors.surface
 
   return (
     <Pressable
@@ -37,13 +37,12 @@ export function FilterChip(props: {
       style={[
         styles.chip,
         {
-          borderColor: props.active ? theme.colors.primary : theme.colors.glassBorder,
-          backgroundColor: props.active ? theme.colors.primarySoft : theme.colors.glass,
+          backgroundColor,
           shadowColor: theme.colors.shadow,
-          shadowOpacity: props.active ? (theme.isDark ? 0.14 : 0.08) : theme.isDark ? 0.08 : 0.03,
-          shadowRadius: 12,
-          shadowOffset: { width: 0, height: 6 },
-          elevation: props.active ? 2 : 1,
+          shadowOpacity: theme.isDark ? 0.12 : 0.04,
+          shadowRadius: 10,
+          shadowOffset: { width: 0, height: 4 },
+          elevation: 1,
         },
       ]}
     >
@@ -118,7 +117,7 @@ export function OrderListCard(props: {
           <Text style={[styles.rowMeta, styles.rowMetaAddress, { color: theme.colors.mutedText }]}>
             {formatAddress(counterparty || props.item.walletAddress || props.item.receiveAddress || props.item.paymentAddress || "")}
           </Text>
-          {statusBadge ? <Text style={[styles.rowStatusText, { color: resolveStatusTextColor(theme, statusBadge.tone) }]}>{statusBadge.label}</Text> : null}
+          {statusBadge ? <Text style={[styles.rowStatusText, { color: theme.colors.mutedText }]}>{statusBadge.label}</Text> : null}
         </View>
         <Text style={[styles.rowTime, { color: theme.colors.mutedText }]}>{formatCompactTimestamp(props.item.createdAt)}</Text>
       </SectionCard>
@@ -217,9 +216,7 @@ export function OrderMonthSection(props: {
                     style={[
                       styles.recordStatusText,
                       {
-                        color: resolveStatusTextColor(theme, statusBadge.tone),
-                        backgroundColor: resolveStatusBackgroundColor(theme, statusBadge.tone),
-                        borderColor: resolveStatusBorderColor(theme, statusBadge.tone),
+                        color: theme.colors.mutedText,
                       },
                     ]}
                   >
@@ -260,39 +257,6 @@ function formatAmountWithSign(item: OrderListItem) {
   const sign = isIncoming ? "+" : "-"
 
   return `${sign}${formatTokenAmount(amount, 2)}`
-}
-
-function resolveStatusTextColor(theme: ReturnType<typeof useAppTheme>, tone: OrderListStatusTone) {
-  switch (tone) {
-    case "warning":
-      return theme.colors.warning
-    case "danger":
-      return theme.colors.danger
-    default:
-      return theme.colors.info
-  }
-}
-
-function resolveStatusBackgroundColor(theme: ReturnType<typeof useAppTheme>, tone: OrderListStatusTone) {
-  switch (tone) {
-    case "warning":
-      return theme.colors.warningSoft
-    case "danger":
-      return theme.colors.dangerSoft
-    default:
-      return theme.colors.primarySoft
-  }
-}
-
-function resolveStatusBorderColor(theme: ReturnType<typeof useAppTheme>, tone: OrderListStatusTone) {
-  switch (tone) {
-    case "warning":
-      return theme.colors.warningBorder
-    case "danger":
-      return theme.colors.dangerBorder
-    default:
-      return theme.colors.glassBorder
-  }
 }
 
 export function ActionRow(props: {
@@ -351,17 +315,17 @@ export function resolveSectionTitle(timestamp: number | null) {
 
 const styles = StyleSheet.create({
   chip: {
-    minHeight: 38,
+    minHeight: 36,
     borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 15,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     alignItems: "center",
     justifyContent: "center",
   },
   chipText: {
     fontSize: 15,
-    lineHeight: 19,
-    fontWeight: "600",
+    lineHeight: 20,
+    fontWeight: "500",
     letterSpacing: -0.2,
   },
   metricGrid: {
@@ -425,7 +389,8 @@ const styles = StyleSheet.create({
   },
   rowStatusText: {
     fontSize: 12,
-    fontWeight: "600",
+    lineHeight: 16,
+    fontWeight: "500",
   },
   recordGroupCard: {
     padding: 0,
@@ -476,7 +441,7 @@ const styles = StyleSheet.create({
   },
   recordRow: {
     paddingHorizontal: 18,
-    paddingVertical: 16,
+    paddingVertical: 18,
     flexDirection: "row",
     alignItems: "flex-start",
     justifyContent: "space-between",
@@ -490,34 +455,34 @@ const styles = StyleSheet.create({
   },
   recordTextWrap: {
     flex: 1,
-    gap: 4,
+    gap: 6,
     minWidth: 0,
   },
   recordTitle: {
-    fontSize: 16,
-    lineHeight: 21,
-    fontWeight: "700",
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: "600",
     letterSpacing: -0.2,
   },
   recordMeta: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 17,
   },
   recordTime: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 17,
   },
   recordRowRight: {
-    minWidth: 88,
-    maxWidth: 112,
+    minWidth: 92,
+    maxWidth: 116,
     flexShrink: 0,
     alignItems: "flex-end",
-    gap: 7,
+    gap: 4,
     paddingTop: 2,
   },
   recordAmount: {
     fontSize: 15,
-    lineHeight: 20,
+    lineHeight: 21,
     letterSpacing: -0.25,
     fontWeight: "700",
   },
@@ -525,14 +490,9 @@ const styles = StyleSheet.create({
     maxWidth: "100%",
     fontSize: 12,
     lineHeight: 16,
-    fontWeight: "600",
-    textAlign: "center",
+    fontWeight: "500",
+    textAlign: "right",
     alignSelf: "flex-end",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 999,
-    overflow: "hidden",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
   },
   successTitle: {
     fontSize: 16,
