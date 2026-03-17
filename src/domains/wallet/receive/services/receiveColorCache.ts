@@ -16,6 +16,28 @@ function normalizeColor(color?: string | null) {
   return color?.trim() || ""
 }
 
+export function resolvePreferredReceiveChainColor(input: {
+  cachedColor?: string | null
+  routeColor?: string | null
+  fallbackColor: string
+}) {
+  const cachedColor = normalizeColor(input.cachedColor)
+
+  if (cachedColor) {
+    return cachedColor
+  }
+
+  const routeColor = normalizeColor(input.routeColor)
+  return routeColor || input.fallbackColor
+}
+
+export function shouldPrimeReceiveChainColorFromRoute(input: {
+  cachedColor?: string | null
+  routeColor?: string | null
+}) {
+  return !normalizeColor(input.cachedColor) && Boolean(normalizeColor(input.routeColor))
+}
+
 function readCacheMap() {
   return getJson<Record<string, ReceiveChainColorCacheEntry>>(KvStorageKeys.ReceiveChainColorCache) ?? {}
 }

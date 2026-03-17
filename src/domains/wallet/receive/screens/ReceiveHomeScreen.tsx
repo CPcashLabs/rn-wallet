@@ -18,7 +18,12 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import type { ReceiveStackParamList } from "@/app/navigation/types"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { buildReceiveAutoCreateKey, shouldAttemptReceiveAutoCreate } from "@/domains/wallet/receive/screens/receiveAutoCreate"
-import { readCachedReceiveChainColor, writeCachedReceiveChainColor } from "@/domains/wallet/receive/services/receiveColorCache"
+import {
+  readCachedReceiveChainColor,
+  resolvePreferredReceiveChainColor,
+  shouldPrimeReceiveChainColorFromRoute,
+  writeCachedReceiveChainColor,
+} from "@/domains/wallet/receive/services/receiveColorCache"
 import { useReceiveStore } from "@/domains/wallet/receive/store/useReceiveStore"
 import { buildQrCodeDataUrl, buildQrMatrix, stripDataUrlPrefix, type QrMatrix } from "@/domains/wallet/receive/utils/qrcode"
 import { resolveChainNameById } from "@/shared/api/walletAssets"
@@ -104,7 +109,14 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
   const currentOrderType = activeCollapseKey === "individuals" ? "TRACE" : "TRACE_LONG_TERM"
   const requestedPayChain = route.params?.payChain ?? resolveChainNameById(chainId)
   const routeChainColor = normalizeReceiveColor(route.params?.chainColor)
-  const [dynamicColor, setDynamicColor] = useState(() => readCachedReceiveChainColor(requestedPayChain) || routeChainColor || theme.colors.success)
+  const cachedChainColor = useMemo(() => normalizeReceiveColor(readCachedReceiveChainColor(requestedPayChain)), [requestedPayChain])
+  const [dynamicColor, setDynamicColor] = useState(() =>
+    resolvePreferredReceiveChainColor({
+      cachedColor: cachedChainColor,
+      routeColor: routeChainColor,
+      fallbackColor: theme.colors.success,
+    }),
+  )
   const surfaceColor = theme.colors.glass
   const qrSource = isNormalReceive ? receiveAddress : currentOrder?.address || receiveAddress
   const pageBackgroundColor = useMemo(
@@ -170,14 +182,23 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
   }, [config, isNormalReceive, receiveAddress, route.params?.multisigWalletId])
 
   useEffect(() => {
-    const cachedColor = readCachedReceiveChainColor(requestedPayChain)
-    const nextColor = cachedColor || routeChainColor || theme.colors.success
+    const nextColor = resolvePreferredReceiveChainColor({
+      cachedColor: cachedChainColor,
+      routeColor: routeChainColor,
+      fallbackColor: theme.colors.success,
+    })
 
     setDynamicColor(current => (current === nextColor ? current : nextColor))
-  }, [requestedPayChain, routeChainColor, theme.colors.success])
+  }, [cachedChainColor, routeChainColor, theme.colors.success])
 
   useEffect(() => {
-    if (!requestedPayChain || !routeChainColor) {
+    if (
+      !requestedPayChain ||
+      !shouldPrimeReceiveChainColorFromRoute({
+        cachedColor: cachedChainColor,
+        routeColor: routeChainColor,
+      })
+    ) {
       return
     }
 
@@ -185,8 +206,7 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
       payChain: requestedPayChain,
       color: routeChainColor,
     })
-    setDynamicColor(current => (current === routeChainColor ? current : routeChainColor))
-  }, [requestedPayChain, routeChainColor])
+  }, [cachedChainColor, requestedPayChain, routeChainColor])
 
   useEffect(() => {
     const backendPayChain = config?.payChain || requestedPayChain
