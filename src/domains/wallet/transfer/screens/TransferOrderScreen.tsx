@@ -243,6 +243,8 @@ export function TransferOrderScreen({ navigation, route }: Props) {
     [t],
   )
   const canSubmit = !submitting && !validationMessage && !loading && options.length > 0
+  const useNativeAmountKeyboard = Platform.OS === "ios"
+  const shouldShowCustomAmountKeyboard = !useNativeAmountKeyboard && activeField === "amount"
   const displayCurrencySymbol = useMemo(() => resolveDisplayCurrencySymbol(selectedOption?.sendCoinSymbol || titleSymbol), [selectedOption?.sendCoinSymbol, titleSymbol])
   const recipientAvatarUri = useMemo(() => {
     const normalizedRecipient = recipientAddress.trim().toLowerCase()
@@ -341,13 +343,15 @@ export function TransferOrderScreen({ navigation, route }: Props) {
       return
     }
 
-    Keyboard.dismiss()
     const timer = setTimeout(() => {
+      if (!useNativeAmountKeyboard) {
+        Keyboard.dismiss()
+      }
       amountInputRef.current?.focus()
     }, 0)
 
     return () => clearTimeout(timer)
-  }, [activeField])
+  }, [activeField, useNativeAmountKeyboard])
 
   const handleSubmit = useCallback(async () => {
     if (confirmOrderSn) {
@@ -445,9 +449,11 @@ export function TransferOrderScreen({ navigation, route }: Props) {
 
   const handleFocusAmount = useCallback(() => {
     noteInputRef.current?.blur()
-    Keyboard.dismiss()
+    if (!useNativeAmountKeyboard) {
+      Keyboard.dismiss()
+    }
     setActiveField("amount")
-  }, [])
+  }, [useNativeAmountKeyboard])
 
   const handleAmountChange = useCallback(
     (value: string) => {
@@ -629,13 +635,15 @@ export function TransferOrderScreen({ navigation, route }: Props) {
                   ) : null}
                   <TextInput
                     ref={amountInputRef}
-                    contextMenuHidden
+                    contextMenuHidden={!useNativeAmountKeyboard}
                     keyboardType="decimal-pad"
                     onChangeText={handleAmountChange}
+                    onBlur={() => setActiveField(current => (current === "amount" ? null : current))}
                     onFocus={() => setActiveField("amount")}
                     selection={amountSelection}
                     selectionColor={caretColor}
-                    showSoftInputOnFocus={false}
+                    selectTextOnFocus={useNativeAmountKeyboard}
+                    showSoftInputOnFocus={useNativeAmountKeyboard ? undefined : false}
                     style={[
                       styles.amountInput,
                       {
@@ -723,7 +731,7 @@ export function TransferOrderScreen({ navigation, route }: Props) {
             </View>
           </ScrollView>
 
-          {activeField === "amount" ? (
+          {shouldShowCustomAmountKeyboard ? (
             <View style={[styles.keyboardShell, { backgroundColor: cardBackgroundColor, borderTopColor: keyboardKeyBorderColor }]}>
               <Pressable
                 hitSlop={10}
