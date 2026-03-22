@@ -14,10 +14,13 @@ type BridgeAllowListPayload = {
   chain_color: string
   chain_address_format_regex: string[]
   exchange_pairs: Array<{
-    recv_coin_code: string
-    recv_coin_symbol: string
-    send_coin_code: string
-    send_coin_symbol: string
+    recv_coin_code?: string
+    recv_coin_symbol?: string
+    send_chain_name?: string
+    send_coin_code?: string
+    send_coin_full_name?: string
+    send_coin_logo?: string
+    send_coin_symbol?: string
   }>
 }
 
@@ -28,10 +31,13 @@ type NormalAllowListPayload = {
   chain_color: string
   chain_address_format_regex: string[]
   coins: Array<{
-    coin_code: string
-    coin_symbol: string
-    is_send_allowed: boolean
-    is_recv_allowed: boolean
+    chain_name?: string
+    coin_code?: string
+    coin_full_name?: string
+    coin_logo?: string
+    coin_symbol?: string
+    is_send_allowed?: boolean
+    is_recv_allowed?: boolean
   }>
 }
 
@@ -70,6 +76,9 @@ export type TransferOrderOption = {
   sendChainFullName: string
   sendChainLogo: string
   sendChainColor: string
+  paymentNetworkName: string
+  paymentNetworkLogo: string
+  paymentNetworkColor: string
   recvCoinCode: string
   recvCoinSymbol: string
   feeAmount: number
@@ -91,6 +100,75 @@ export type TransferGasEstimate = {
 }
 
 const FIXED_TRANSFER_GAS_LIMIT = 100_000
+
+const PAYMENT_NETWORK_ALIASES: Record<string, { color: string; name: string }> = {
+  b: { name: "Binance", color: "#F3BA2F" },
+  bnb: { name: "Binance", color: "#F3BA2F" },
+  bsc: { name: "Binance", color: "#F3BA2F" },
+  binance: { name: "Binance", color: "#F3BA2F" },
+  e: { name: "Ethereum", color: "#627EEA" },
+  eth: { name: "Ethereum", color: "#627EEA" },
+  ethereum: { name: "Ethereum", color: "#627EEA" },
+  t: { name: "Tron", color: "#EB0029" },
+  tron: { name: "Tron", color: "#EB0029" },
+  trx: { name: "Tron", color: "#EB0029" },
+}
+
+function normalizePaymentNetworkKey(value?: string | null) {
+  return String(value ?? "")
+    .trim()
+    .replace(/[\s-]+/g, "_")
+    .toLowerCase()
+}
+
+function resolvePaymentNetworkAlias(networkKey?: string | null, coinCode?: string | null) {
+  const normalizedNetworkKey = normalizePaymentNetworkKey(networkKey)
+  if (normalizedNetworkKey && PAYMENT_NETWORK_ALIASES[normalizedNetworkKey]) {
+    return PAYMENT_NETWORK_ALIASES[normalizedNetworkKey]
+  }
+
+  const code = String(coinCode ?? "").trim().toLowerCase()
+  const suffix = code.includes("_") ? code.slice(code.lastIndexOf("_") + 1) : ""
+  if (suffix && PAYMENT_NETWORK_ALIASES[suffix]) {
+    return PAYMENT_NETWORK_ALIASES[suffix]
+  }
+
+  return null
+}
+
+function resolvePaymentNetworkMeta(input: {
+  bridgeChannelMap?: Map<string, { chainColor: string; chainFullName: string; chainLogo: string }>
+  coinCode?: string | null
+  fallbackChainColor?: string | null
+  fallbackChainFullName?: string | null
+  fallbackChainName?: string | null
+  fallbackLogo?: string | null
+  preferredNetworkKey?: string | null
+}) {
+  const bridgeNetwork = input.bridgeChannelMap?.get(String(input.preferredNetworkKey ?? ""))
+  if (bridgeNetwork) {
+    return {
+      color: bridgeNetwork.chainColor,
+      logo: bridgeNetwork.chainLogo,
+      name: bridgeNetwork.chainFullName,
+    }
+  }
+
+  const alias = resolvePaymentNetworkAlias(input.preferredNetworkKey, input.coinCode)
+  if (alias) {
+    return {
+      color: alias.color,
+      logo: String(input.fallbackLogo ?? ""),
+      name: alias.name,
+    }
+  }
+
+  return {
+    color: String(input.fallbackChainColor ?? ""),
+    logo: String(input.fallbackLogo ?? ""),
+    name: String(input.fallbackChainFullName ?? input.fallbackChainName ?? input.coinCode ?? ""),
+  }
+}
 
 export type TransferQuote = {
   feeAmount: number
@@ -178,7 +256,7 @@ export async function getTransferChannels(chainId?: string | number | null, inte
       addressRegexes: item.chain_address_format_regex,
       title: item.chain_name,
       subtitle: item.chain_full_name,
-      isRebate: item.exchange_pairs.some(pair => rebateCoinCodes.has(pair.recv_coin_code)),
+      isRebate: item.exchange_pairs.some(pair => rebateCoinCodes.has(String(pair.recv_coin_code ?? ""))),
     })
   })
 
@@ -222,22 +300,47 @@ export async function getTransferOrderOptions(input: {
       : Promise.resolve(null),
   ])
   const coinLookup = new Map(coinList.map(item => [item.code, item]))
+  const bridgeChannelMap = new Map(
+    (bridgeAllowList ?? [])
+      .filter(item => item.chain_name)
+      .map(item => [
+        String(item.chain_name),
+        {
+          chainColor: String(item.chain_color ?? ""),
+          chainFullName: String(item.chain_full_name ?? item.chain_name ?? ""),
+          chainLogo: String(item.chain_logo ?? ""),
+        },
+      ]),
+  )
 
   const bridgeChannel = bridgeAllowList?.find(item => item.chain_name === input.receiveChainName) ?? null
   const normalChannel = normalAllowList?.find(item => item.chain_name === input.sendChainName) ?? null
 
   const pairOptions =
     bridgeChannel?.exchange_pairs?.map<TransferOrderOption>(item => {
-      const coin = coinLookup.get(String(item.send_coin_code ?? ""))
+      const sendCoinCode = String(item.send_coin_code ?? "")
+      const coin = coinLookup.get(sendCoinCode)
+      const paymentNetwork = resolvePaymentNetworkMeta({
+        bridgeChannelMap,
+        coinCode: sendCoinCode,
+        fallbackChainColor: coin?.chainColor,
+        fallbackChainFullName: coin?.chainFullName,
+        fallbackChainName: coin?.chainName ?? input.sendChainName,
+        fallbackLogo: item.send_coin_logo ?? coin?.logo,
+        preferredNetworkKey: item.send_chain_name,
+      })
 
       return {
         sellerId: "",
-        sendCoinCode: String(item.send_coin_code ?? ""),
+        sendCoinCode: sendCoinCode,
         sendCoinSymbol: String(item.send_coin_symbol ?? coin?.symbol ?? item.send_coin_code ?? ""),
         sendChainName: String(coin?.chainName ?? input.sendChainName),
         sendChainFullName: String(coin?.chainFullName ?? coin?.chainName ?? input.sendChainName),
         sendChainLogo: String(coin?.chainLogo ?? ""),
         sendChainColor: String(coin?.chainColor ?? ""),
+        paymentNetworkName: paymentNetwork.name,
+        paymentNetworkLogo: paymentNetwork.logo,
+        paymentNetworkColor: paymentNetwork.color,
         recvCoinCode: String(item.recv_coin_code ?? ""),
         recvCoinSymbol: String(item.recv_coin_symbol ?? item.recv_coin_code ?? ""),
         feeAmount: 0,
@@ -253,6 +356,14 @@ export async function getTransferOrderOptions(input: {
       .map<TransferOrderOption>(item => {
         const code = String(item.coin_code ?? "")
         const coin = coinLookup.get(code)
+        const paymentNetwork = resolvePaymentNetworkMeta({
+          coinCode: code,
+          fallbackChainColor: coin?.chainColor,
+          fallbackChainFullName: item.coin_full_name ?? coin?.chainFullName,
+          fallbackChainName: item.chain_name ?? coin?.chainName ?? input.sendChainName,
+          fallbackLogo: item.coin_logo ?? coin?.logo,
+          preferredNetworkKey: item.chain_name,
+        })
 
         return {
           sellerId: "",
@@ -262,6 +373,9 @@ export async function getTransferOrderOptions(input: {
           sendChainFullName: String(coin?.chainFullName ?? coin?.chainName ?? input.sendChainName),
           sendChainLogo: String(coin?.chainLogo ?? ""),
           sendChainColor: String(coin?.chainColor ?? ""),
+          paymentNetworkName: paymentNetwork.name,
+          paymentNetworkLogo: paymentNetwork.logo,
+          paymentNetworkColor: paymentNetwork.color,
           recvCoinCode: "",
           recvCoinSymbol: "",
           feeAmount: 0,

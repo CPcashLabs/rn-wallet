@@ -67,6 +67,8 @@ type ModalProps = SharedProps & {
 }
 
 type OrderDetail = Awaited<ReturnType<typeof getReceivingOrder>>
+const PAYMENT_ROW_ACTIVE_EASING = Easing.bezier(0.22, 1, 0.36, 1)
+const PAYMENT_ROW_PRESS_EASING = Easing.out(Easing.cubic)
 
 function dedupePaymentOptions(options: TransferOrderOption[]) {
   const seen = new Set<string>()
@@ -107,11 +109,13 @@ function useTransferConfirmController({ enabled = true, onCompleted, onOrderUpda
   const [detail, setDetail] = useState<OrderDetail | null>(null)
   const [paymentOptions, setPaymentOptions] = useState<TransferOrderOption[]>([])
   const [paymentOptionsLoading, setPaymentOptionsLoading] = useState(false)
+  const [pendingPaymentCoinCode, setPendingPaymentCoinCode] = useState<string | null>(null)
   const [pendingOrderUpdate, setPendingOrderUpdate] = useState<TransferConfirmOrderUpdate | null>(null)
   const mountedRef = useRef(true)
 
   useEffect(() => {
     setActiveOrderSn(orderSn)
+    setPendingPaymentCoinCode(null)
     setPendingOrderUpdate(null)
   }, [orderSn])
 
@@ -222,9 +226,25 @@ function useTransferConfirmController({ enabled = true, onCompleted, onOrderUpda
       return
     }
 
+    setPendingPaymentCoinCode(null)
     onOrderUpdated?.(pendingOrderUpdate)
     setPendingOrderUpdate(null)
   }, [detail, onOrderUpdated, pendingOrderUpdate])
+
+  useEffect(() => {
+    if (!pendingPaymentCoinCode) {
+      return
+    }
+
+    if (detail?.sendCoinCode === pendingPaymentCoinCode) {
+      setPendingPaymentCoinCode(null)
+      return
+    }
+
+    if (!loading && detail?.orderSn !== activeOrderSn) {
+      setPendingPaymentCoinCode(null)
+    }
+  }, [activeOrderSn, detail?.orderSn, detail?.sendCoinCode, loading, pendingPaymentCoinCode])
 
   const handleSubmit = useCallback(async () => {
     if (!detail) {
@@ -306,6 +326,7 @@ function useTransferConfirmController({ enabled = true, onCompleted, onOrderUpda
         return
       }
 
+      setPendingPaymentCoinCode(option.sendCoinCode)
       setSwitchingPayment(true)
 
       try {
@@ -352,6 +373,9 @@ function useTransferConfirmController({ enabled = true, onCompleted, onOrderUpda
         })
         setActiveOrderSn(nextOrder.orderSn)
       } catch (error) {
+        if (mountedRef.current) {
+          setPendingPaymentCoinCode(null)
+        }
         presentError(error, {
           fallbackKey: "transfer.confirm.switchPaymentFailed",
         })
@@ -370,11 +394,159 @@ function useTransferConfirmController({ enabled = true, onCompleted, onOrderUpda
     onSelectPaymentOption: handleSelectPaymentOption,
     paymentOptions,
     paymentOptionsLoading,
+    pendingPaymentCoinCode,
     submitUnavailableMessage,
     submitting,
     switchingPayment,
     onSubmit: handleSubmit,
   }
+}
+
+function TransferConfirmPaymentRow(props: {
+  active: boolean
+  disabled: boolean
+  item: TransferConfirmPaymentOptionItem
+  onSelectPaymentOption: (option: TransferOrderOption) => void
+}) {
+  const theme = useAppTheme()
+  const { t } = useTranslation()
+  const highlightProgress = useRef(new Animated.Value(props.active ? 1 : 0)).current
+  const checkProgress = useRef(new Animated.Value(props.active ? 1 : 0)).current
+  const pressProgress = useRef(new Animated.Value(0)).current
+  const highlightScale = highlightProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.985, 1],
+  })
+  const pressScale = pressProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0.985],
+  })
+  const checkScale = checkProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.78, 1],
+  })
+  const checkTranslateY = checkProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [3, 0],
+  })
+
+  useEffect(() => {
+    const animation = Animated.parallel([
+      Animated.timing(highlightProgress, {
+        toValue: props.active ? 1 : 0,
+        duration: props.active ? 260 : 180,
+        easing: PAYMENT_ROW_ACTIVE_EASING,
+        useNativeDriver: true,
+      }),
+      Animated.timing(checkProgress, {
+        toValue: props.active ? 1 : 0,
+        duration: props.active ? 280 : 160,
+        easing: PAYMENT_ROW_ACTIVE_EASING,
+        useNativeDriver: true,
+      }),
+    ])
+
+    animation.start()
+
+    return () => {
+      animation.stop()
+    }
+  }, [checkProgress, highlightProgress, props.active])
+
+  useEffect(() => {
+    if (!props.disabled) {
+      return
+    }
+
+    pressProgress.stopAnimation()
+    pressProgress.setValue(0)
+  }, [pressProgress, props.disabled])
+
+  const handlePressIn = useCallback(() => {
+    if (props.disabled) {
+      return
+    }
+
+    Animated.timing(pressProgress, {
+      toValue: 1,
+      duration: 90,
+      easing: PAYMENT_ROW_PRESS_EASING,
+      useNativeDriver: true,
+    }).start()
+  }, [pressProgress, props.disabled])
+
+  const handlePressOut = useCallback(() => {
+    Animated.timing(pressProgress, {
+      toValue: 0,
+      duration: 180,
+      easing: PAYMENT_ROW_PRESS_EASING,
+      useNativeDriver: true,
+    }).start()
+  }, [pressProgress])
+
+  const symbol = props.item.option.sendCoinSymbol || props.item.option.sendCoinCode
+  const networkName = props.item.option.paymentNetworkName || props.item.option.sendChainFullName || props.item.option.sendChainName || symbol
+
+  return (
+    <Pressable
+      disabled={props.disabled}
+      onPress={() => void props.onSelectPaymentOption(props.item.option)}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      style={[
+        styles.paymentRow,
+        props.item.unavailableReason != null ? { backgroundColor: theme.colors.surfaceMuted } : null,
+      ]}
+    >
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.paymentRowHighlight,
+          {
+            backgroundColor: theme.colors.primarySoft ?? `${theme.colors.primary}12`,
+            opacity: highlightProgress,
+            transform: [{ scale: highlightScale }],
+          },
+        ]}
+      />
+      <Animated.View style={[styles.paymentRowInner, { transform: [{ scale: pressScale }] }]}>
+        <View style={styles.paymentRowIcon}>
+          <NetworkLogo
+            chainColor={props.item.option.paymentNetworkColor || props.item.option.sendChainColor || theme.colors.primary}
+            chainName={networkName}
+            logoUri={props.item.option.paymentNetworkLogo || props.item.option.sendChainLogo}
+            size={42}
+          />
+        </View>
+        <View style={styles.paymentRowContent}>
+          <Text style={[styles.paymentRowTitle, { color: props.item.unavailableReason != null ? theme.colors.mutedText : theme.colors.text }]}>
+            {networkName}
+          </Text>
+          <Text style={[styles.paymentRowSubtitle, { color: theme.colors.mutedText }]}>
+            {`${t("transfer.order.available")}: ${formatAmount(props.item.availableBalance)} ${symbol}`.trim()}
+          </Text>
+          {props.item.unavailableReason === "balanceInsufficient" ? (
+            <Text style={[styles.paymentRowReason, { color: theme.colors.danger }]}>
+              {t("transfer.confirm.balanceInsufficientHint")}
+            </Text>
+          ) : null}
+        </View>
+        <View style={styles.paymentRowAccessory}>
+          <Animated.View
+            style={[
+              styles.paymentRowCheckWrap,
+              {
+                opacity: checkProgress,
+                transform: [{ scale: checkScale }, { translateY: checkTranslateY }],
+              },
+            ]}
+          >
+            <Text style={[styles.paymentRowCheck, { color: theme.colors.primary }]}>✓</Text>
+          </Animated.View>
+        </View>
+      </Animated.View>
+    </Pressable>
+  )
 }
 
 function TransferConfirmBody(props: {
@@ -385,6 +557,7 @@ function TransferConfirmBody(props: {
   onSubmit: () => void
   paymentOptions: TransferOrderOption[]
   paymentOptionsLoading: boolean
+  pendingPaymentCoinCode: string | null
   submitUnavailableMessage?: string
   submitting: boolean
   switchingPayment: boolean
@@ -421,53 +594,29 @@ function TransferConfirmBody(props: {
     [props.detail],
   )
   const formattedRecipientLabel = useMemo(() => formatWalletAddress(receiveAddressLabel, 8, 4), [receiveAddressLabel])
+  const selectedPaymentCoinCode = props.pendingPaymentCoinCode ?? props.detail?.sendCoinCode ?? ""
   const renderPaymentRow = useCallback(
     (item: TransferConfirmPaymentOptionItem, index: number, total: number) => {
-      const active = item.active && item.unavailableReason == null
       const disabled = props.loading || props.submitting || props.switchingPayment || item.unavailableReason != null
-      const symbol = item.option.sendCoinSymbol || item.option.sendCoinCode
-      const networkName = item.option.sendChainFullName || item.option.sendChainName || symbol
 
       return (
-        <Pressable
+        <View
           key={`${item.option.sendCoinCode}-${item.option.recvCoinCode || "same-chain"}`}
-          disabled={disabled}
-          onPress={() => void props.onSelectPaymentOption(item.option)}
           style={[
-            styles.paymentRow,
+            styles.paymentRowContainer,
             total > 1 && index < total - 1 ? { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.border } : null,
-            active ? { backgroundColor: theme.colors.primarySoft ?? `${theme.colors.primary}12` } : null,
-            item.unavailableReason != null ? { backgroundColor: theme.colors.surfaceMuted } : null,
           ]}
         >
-          <View style={styles.paymentRowIcon}>
-            <NetworkLogo
-              chainColor={item.option.sendChainColor || theme.colors.primary}
-              chainName={item.option.sendChainName || props.detail?.sendChainName || symbol}
-              logoUri={item.option.sendChainLogo}
-              size={42}
-            />
-          </View>
-          <View style={styles.paymentRowContent}>
-            <Text style={[styles.paymentRowTitle, { color: item.unavailableReason != null ? theme.colors.mutedText : theme.colors.text }]}>
-              {networkName}
-            </Text>
-            <Text style={[styles.paymentRowSubtitle, { color: theme.colors.mutedText }]}>
-              {`${t("transfer.order.available")}: ${formatAmount(item.availableBalance)} ${symbol}`.trim()}
-            </Text>
-            {item.unavailableReason === "balanceInsufficient" ? (
-              <Text style={[styles.paymentRowReason, { color: theme.colors.danger }]}>
-                {t("transfer.confirm.balanceInsufficientHint")}
-              </Text>
-            ) : null}
-          </View>
-          <View style={styles.paymentRowAccessory}>
-            {active ? <Text style={[styles.paymentRowCheck, { color: theme.colors.primary }]}>✓</Text> : null}
-          </View>
-        </Pressable>
+          <TransferConfirmPaymentRow
+            active={item.option.sendCoinCode === selectedPaymentCoinCode && item.unavailableReason == null}
+            disabled={disabled}
+            item={item}
+            onSelectPaymentOption={props.onSelectPaymentOption}
+          />
+        </View>
       )
     },
-    [props.detail?.sendChainName, props.loading, props.onSelectPaymentOption, props.submitting, props.switchingPayment, t, theme.colors],
+    [props.loading, props.onSelectPaymentOption, props.submitting, props.switchingPayment, selectedPaymentCoinCode, theme.colors.border],
   )
 
   if (props.loading && !props.detail) {
@@ -593,6 +742,7 @@ export function TransferConfirmScreenView(props: SharedProps) {
         onSubmit={() => void controller.onSubmit()}
         paymentOptions={controller.paymentOptions}
         paymentOptionsLoading={controller.paymentOptionsLoading}
+        pendingPaymentCoinCode={controller.pendingPaymentCoinCode}
         submitUnavailableMessage={controller.submitUnavailableMessage}
         submitting={controller.submitting}
         switchingPayment={controller.switchingPayment}
@@ -726,6 +876,7 @@ export function TransferConfirmModal(props: ModalProps) {
           onSubmit={() => void controller.onSubmit()}
           paymentOptions={controller.paymentOptions}
           paymentOptionsLoading={controller.paymentOptionsLoading}
+          pendingPaymentCoinCode={controller.pendingPaymentCoinCode}
           submitUnavailableMessage={controller.submitUnavailableMessage}
           submitting={controller.submitting}
           switchingPayment={controller.switchingPayment}
@@ -791,10 +942,20 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     overflow: "hidden",
   },
+  paymentRowContainer: {
+    overflow: "hidden",
+  },
   paymentRow: {
     minHeight: 84,
     paddingHorizontal: 18,
     paddingVertical: 16,
+    position: "relative",
+    overflow: "hidden",
+  },
+  paymentRowHighlight: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  paymentRowInner: {
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
@@ -823,6 +984,11 @@ const styles = StyleSheet.create({
   paymentRowAccessory: {
     minWidth: 24,
     alignItems: "flex-end",
+    justifyContent: "center",
+  },
+  paymentRowCheckWrap: {
+    minWidth: 24,
+    alignItems: "center",
   },
   paymentRowCheck: {
     fontSize: 22,
