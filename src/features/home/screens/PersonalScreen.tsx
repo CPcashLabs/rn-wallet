@@ -4,6 +4,7 @@ import { Alert, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
+import { navigateRoot } from "@/app/navigation/navigationRef"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { ImageCropModal, type CropResult } from "@/features/home/components/ImageCropModal"
 import { useProfileSync } from "@/features/home/hooks/useProfileSync"
@@ -147,7 +148,6 @@ export function PersonalScreen({ navigation }: Props) {
           title={t("home.personal.address")}
         />
         <AppListRow
-          hideDivider
           left={<AppGlyph name="mail" />}
           onPress={() => navigation.navigate("EmailHomeScreen")}
           right={
@@ -159,6 +159,21 @@ export function PersonalScreen({ navigation }: Props) {
             </View>
           }
           title={t("home.personal.email")}
+        />
+        <AppListRow
+          hideDivider
+          left={<AppGlyph name="lock" />}
+          onPress={() => {
+            navigateRoot("AuthStack", {
+              screen: "LoggedInSetPasswordScreen",
+            })
+          }}
+          right={
+            <View style={styles.rowRight}>
+              <Text style={[styles.chevron, { color: theme.colors.mutedText }]}>›</Text>
+            </View>
+          }
+          title={t("home.settings.changePassword")}
         />
       </AppListCard>
     </HomeScaffold>

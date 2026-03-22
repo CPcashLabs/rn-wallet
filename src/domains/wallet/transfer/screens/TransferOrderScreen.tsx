@@ -1,13 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native"
+import { Alert, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import { TransferConfirmModal, type TransferConfirmSuccess, type TransferConfirmVariant } from "@/domains/wallet/transfer/components/TransferConfirmPanel"
 import { TransferOrderCreatingOverlay } from "@/domains/wallet/transfer/components/TransferOrderCreatingOverlay"
 import { formatWalletAddress } from "@/domains/wallet/shared/utils/format"
-import { PageEmpty, PrimaryButton } from "@/shared/ui/AppFlowUi"
+import { PageEmpty } from "@/shared/ui/AppFlowUi"
 import {
   getTransferOrderOptions,
   getTransferQuote,
@@ -22,17 +22,24 @@ import {
 } from "@/domains/wallet/transfer/screens/transferQuote"
 import { useTransferDraftStore } from "@/domains/wallet/transfer/store/useTransferDraftStore"
 import { navigateRoot } from "@/app/navigation/navigationRef"
-import { SeedAddressAvatar } from "@/shared/avatar/SeedAddressAvatar"
 import { HomeScaffold } from "@/shared/ui/HomeScaffold"
 import { resolveChainNameById } from "@/shared/api/walletAssets"
 import { formatAmount, parseDecimalInput } from "@/shared/exchange/utils/order"
 import { useWalletBalanceQuery } from "@/shared/queries/balanceQueries"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppGlyph } from "@/shared/ui/AppGlyph"
+import { SFSymbolIcon } from "@/shared/ui/SFSymbolIcon"
 
 import type { TransferStackParamList } from "@/app/navigation/types"
 
-const CNY_EXCHANGE_RATE = 7.2
+const KEYBOARD_ROW_HEIGHT = 76
+const QUICK_NOTE_KEYS = ["loan", "thanks", "living", "rent", "shopping", "repayment"] as const
+const NUMERIC_KEY_ROWS = [
+  ["1", "2", "3"],
+  ["4", "5", "6"],
+  ["7", "8", "9"],
+] as const
 
 type Props = NativeStackScreenProps<
   TransferStackParamList,
@@ -65,6 +72,10 @@ export function TransferOrderScreen({ navigation, route }: Props) {
   const [quoteFailed, setQuoteFailed] = useState(false)
   const [confirmOrderSn, setConfirmOrderSn] = useState<string | null>(null)
   const [confirmVisible, setConfirmVisible] = useState(false)
+  const [bannerVisible, setBannerVisible] = useState(true)
+  const [activeField, setActiveField] = useState<"amount" | "note" | null>("amount")
+  const amountInputRef = useRef<TextInput>(null)
+  const noteInputRef = useRef<TextInput>(null)
   const quoteRequestIdRef = useRef(0)
 
   const sendChainName = resolveChainNameById(chainId)
@@ -72,7 +83,6 @@ export function TransferOrderScreen({ navigation, route }: Props) {
   const isNormalRoute = route.name === "TransferOrderNormalScreen"
   const confirmVariant: TransferConfirmVariant = selectedChannel?.channelType === "normal" || isNormalRoute ? "normal" : "default"
   const balances = balanceQuery.data?.balances ?? {}
-  const coinList = balanceQuery.data?.coins ?? []
 
   const selectedOption = useMemo(() => {
     return (
@@ -151,15 +161,9 @@ export function TransferOrderScreen({ navigation, route }: Props) {
   const quoteRequired = selectedChannel?.channelType === "bridge" && currentQuoteRequestKey != null
   const hasCurrentQuote = quotedOption?.requestKey === currentQuoteRequestKey
   const resolvedSendAmount = quoteRequired && hasCurrentQuote ? quotedOption?.sendAmount ?? 0 : numericAmount
-  const selectedCoin = useMemo(
-    () => coinList.find(item => item.code === (selectedOption?.sendCoinCode ?? "")) ?? null,
-    [coinList, selectedOption?.sendCoinCode],
-  )
   const titleSymbol = resolvedOption?.recvCoinSymbol || selectedOption?.recvCoinSymbol || selectedOption?.sendCoinSymbol || ""
-  const screenTitle = titleSymbol ? t("transfer.order.titleWithAsset", { symbol: titleSymbol }) : t("transfer.order.title")
   const recipientPrimary = recipientAddress ? formatWalletAddress(recipientAddress, 4, 3) : "--"
   const recipientSecondary = recipientAddress ? formatWalletAddress(recipientAddress, 6, 4) : "--"
-  const approxCnyValue = Math.max(numericAmount, 0) * (selectedCoin?.price ?? 0) * CNY_EXCHANGE_RATE
 
   const inputValidationMessage = useMemo(() => {
     if (!recipientAddress) {
@@ -221,8 +225,25 @@ export function TransferOrderScreen({ navigation, route }: Props) {
 
     return `${t("transfer.order.receiveEstimate")}: ${formatAmount(resolvedOption.recvEstimateAmount)} ${resolvedOption.recvCoinSymbol}`
   }, [hasCurrentQuote, quoteRequired, resolvedOption?.recvCoinSymbol, resolvedOption?.recvEstimateAmount, t])
-  const amountHelperMessage = inputValidationMessage || quoteValidationMessage || quoteHint
-  const amountHelperColor = inputValidationMessage || quoteFailed ? theme.colors.danger : theme.colors.mutedText
+  const amountSecondaryMessage = inputValidationMessage || quoteValidationMessage || quoteHint
+  const amountSecondaryColor = inputValidationMessage || quoteFailed ? theme.colors.danger : theme.colors.mutedText
+  const quickNoteOptions = useMemo(
+    () =>
+      QUICK_NOTE_KEYS.map(key => ({
+        key,
+        label: t(`transfer.order.quickNote.${key}`),
+      })),
+    [t],
+  )
+  const canSubmit = !submitting && !validationMessage && !loading && options.length > 0
+  const displayCurrencySymbol = useMemo(() => resolveDisplayCurrencySymbol(selectedOption?.sendCoinSymbol || titleSymbol), [selectedOption?.sendCoinSymbol, titleSymbol])
+  const amountSelection = useMemo(
+    () => ({
+      start: sendAmount.length,
+      end: sendAmount.length,
+    }),
+    [sendAmount.length],
+  )
 
   useEffect(() => {
     let mounted = true
@@ -277,6 +298,19 @@ export function TransferOrderScreen({ navigation, route }: Props) {
     setConfirmOrderSn(null)
     setConfirmVisible(false)
   }, [note, recipientAddress, resolvedOption?.recvCoinCode, resolvedOption?.sendCoinCode, sendAmount])
+
+  useEffect(() => {
+    if (activeField !== "amount") {
+      return
+    }
+
+    Keyboard.dismiss()
+    const timer = setTimeout(() => {
+      amountInputRef.current?.focus()
+    }, 0)
+
+    return () => clearTimeout(timer)
+  }, [activeField])
 
   const handleSubmit = useCallback(async () => {
     if (confirmOrderSn) {
@@ -372,6 +406,35 @@ export function TransferOrderScreen({ navigation, route }: Props) {
     navigateRoot("OrdersStack", { screen: "TxlogsScreen" })
   }, [])
 
+  const handleFocusAmount = useCallback(() => {
+    noteInputRef.current?.blur()
+    Keyboard.dismiss()
+    setActiveField("amount")
+  }, [])
+
+  const handleAmountChange = useCallback(
+    (value: string) => {
+      setOrderDraft({ sendAmount: parseDecimalInput(value) })
+    },
+    [setOrderDraft],
+  )
+
+  const handleQuickNotePress = useCallback(
+    (value: string) => {
+      setOrderDraft({ note: value.slice(0, 50) })
+    },
+    [setOrderDraft],
+  )
+
+  const handleAmountKeyboardPress = useCallback(
+    (key: NumericKeyboardInput) => {
+      setOrderDraft({
+        sendAmount: applyNumericKeyboardInput(sendAmount, key),
+      })
+    },
+    [sendAmount, setOrderDraft],
+  )
+
   if (!selectedChannel) {
     return (
       <HomeScaffold canGoBack onBack={navigation.goBack} title={t("transfer.order.title")}>
@@ -380,37 +443,56 @@ export function TransferOrderScreen({ navigation, route }: Props) {
     )
   }
 
-  const pageBackgroundColor = theme.isDark ? theme.colors.background : "#FBF8F3"
-  const cardBackgroundColor = theme.isDark ? theme.colors.surface : "#FFFFFF"
-  const cardBorderColor = theme.isDark ? theme.colors.glassBorder ?? theme.colors.border : "rgba(35, 35, 35, 0.05)"
-  const cardShadowOpacity = theme.isDark ? 0.18 : 0.06
-  const accentColor = theme.isDark ? "#68DA84" : "#51CA73"
-  const accentSoft = theme.isDark ? "rgba(104,218,132,0.22)" : "#DDF4E2"
-  const accentMuted = theme.isDark ? "#B6F0C4" : "#84D99A"
-  const textMuted = theme.colors.mutedText
-  const inputPlaceholderColor = theme.isDark ? "rgba(255,255,255,0.18)" : "#E2E0DA"
-  const noteIconColor = theme.isDark ? "rgba(255,255,255,0.42)" : "#AFB4B0"
-  const amountSymbol = selectedOption?.sendCoinSymbol ?? titleSymbol
+  const pageBackgroundColor = theme.isDark ? "#101114" : "#F5F5F5"
+  const cardBackgroundColor = theme.isDark ? "#17191D" : "#FFFFFF"
+  const dividerColor = theme.isDark ? "#2A2D33" : "#F0F0F0"
+  const textColor = theme.colors.text
+  const mutedColor = theme.isDark ? "#8B9098" : "#979AA1"
+  const placeholderColor = theme.isDark ? "#5C626D" : "#C8CBD1"
+  const warningBackgroundColor = theme.isDark ? "rgba(255, 120, 28, 0.12)" : "#FFF4E6"
+  const warningTextColor = theme.isDark ? "#FFB16B" : "#FF6A00"
+  const keyboardKeyBackground = theme.isDark ? "#14161A" : "#FFFFFF"
+  const keyboardSideBackground = theme.isDark ? "#21252B" : "#F1F1F1"
+  const keyboardKeyBorderColor = theme.isDark ? "#272A30" : "#EAEAEA"
+  const submitBackgroundColor = canSubmit ? "#F6A04D" : keyboardSideBackground
+  const submitTextColor = canSubmit ? "#FFFFFF" : (theme.isDark ? "#7D828C" : "#B6B8BD")
+  const caretColor = "#4E8EF7"
   const availableText = t("transfer.order.availableBalance", {
     amount: formatAmount(availableBalance),
-    symbol: amountSymbol,
+    symbol: selectedOption?.sendCoinSymbol || selectedOption?.sendCoinCode || titleSymbol,
   })
 
   return (
     <View style={styles.screenRoot}>
-      <HomeScaffold backgroundColor={pageBackgroundColor} hideHeader reserveFloatingOverlayInset={false} scroll={false} title={screenTitle}>
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.layoutRoot}>
-          <View style={styles.headerRow}>
+      <HomeScaffold backgroundColor={cardBackgroundColor} hideHeader reserveFloatingOverlayInset={false} scroll={false} title={t("transfer.order.title")}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={[styles.layoutRoot, { backgroundColor: pageBackgroundColor }]}>
+          <View style={[styles.headerRow, { backgroundColor: cardBackgroundColor }]}>
             <Pressable accessibilityLabel={t("common.back")} hitSlop={12} onPress={navigation.goBack} style={styles.headerIconButton}>
-              <Text style={[styles.headerIcon, { color: accentColor }]}>←</Text>
+              <SFSymbolIcon color={textColor} fallbackName="chevron-left" name="chevron.left" size={24} />
             </Pressable>
-            <Text numberOfLines={1} style={[styles.headerTitle, { color: theme.colors.text }]}>
-              {screenTitle}
+            <Text numberOfLines={1} style={[styles.headerTitle, { color: textColor }]}>
+              {t("transfer.order.title")}
             </Text>
-            <Pressable accessibilityLabel={t("home.actions.records")} hitSlop={12} onPress={handleOpenRecords} style={styles.headerIconButton}>
-              <Text style={[styles.headerIcon, { color: accentColor }]}>↺</Text>
+            <Pressable accessibilityLabel={t("transfer.order.recordsAction")} hitSlop={12} onPress={handleOpenRecords} style={styles.headerActionButton}>
+              <Text numberOfLines={1} style={[styles.headerActionText, { color: textColor }]}>
+                {t("transfer.order.recordsAction")}
+              </Text>
             </Pressable>
           </View>
+
+          {bannerVisible ? (
+            <View style={[styles.bannerRow, { backgroundColor: warningBackgroundColor }]}>
+              <View style={styles.bannerContent}>
+                <SFSymbolIcon color={warningTextColor} fallbackName="bullhorn-outline" name="speaker.wave.2.fill" size={22} />
+                <Text numberOfLines={1} style={[styles.bannerText, { color: warningTextColor }]}>
+                  {t("transfer.order.warningBanner")}
+                </Text>
+              </View>
+              <Pressable hitSlop={10} onPress={() => setBannerVisible(false)} style={styles.bannerCloseButton}>
+                <SFSymbolIcon color={warningTextColor} fallbackName="close" name="xmark" size={20} />
+              </Pressable>
+            </View>
+          ) : null}
 
           <ScrollView
             bounces={false}
@@ -419,130 +501,196 @@ export function TransferOrderScreen({ navigation, route }: Props) {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <View style={styles.sectionBlock}>
-              <Text style={[styles.sectionLabel, { color: textMuted }]}>{t("transfer.order.recipientLabel")}</Text>
-              <View
-                style={[
-                  styles.card,
-                  styles.recipientCard,
-                  {
-                    backgroundColor: cardBackgroundColor,
-                    borderColor: cardBorderColor,
-                    shadowColor: theme.colors.shadow,
-                    shadowOpacity: cardShadowOpacity,
-                  },
-                ]}
-              >
-                <SeedAddressAvatar borderColor={accentSoft} seedSource={recipientAddress || selectedChannel.receiveChainName} size={58} />
+            <View style={styles.recipientSection}>
+              <View style={[styles.recipientCard, { backgroundColor: pageBackgroundColor }]}>
+                <AppGlyph
+                  backgroundColor={theme.isDark ? "#262932" : "#EEEEEE"}
+                  name="person"
+                  size={72}
+                  tintColor={theme.isDark ? "#767D89" : "#BDBDBD"}
+                />
                 <View style={styles.recipientContent}>
-                  <View style={styles.recipientTitleRow}>
-                    <Text numberOfLines={1} style={[styles.recipientTitle, { color: theme.colors.text }]}>
-                      {recipientPrimary}
-                    </Text>
-                    <View style={[styles.networkBadge, { backgroundColor: accentSoft }]}>
-                      <Text numberOfLines={1} style={[styles.networkBadgeText, { color: accentColor }]}>
-                        {selectedChannel.receiveChainFullName || selectedChannel.title}
-                      </Text>
-                    </View>
-                  </View>
-                  <Text numberOfLines={1} style={[styles.recipientSubtitle, { color: textMuted }]}>
+                  <Text numberOfLines={1} style={[styles.recipientTitle, { color: textColor }]}>
+                    {recipientPrimary}
+                  </Text>
+                  <Text numberOfLines={1} style={[styles.recipientSubtitle, { color: mutedColor }]}>
                     {recipientSecondary}
                   </Text>
                 </View>
-                <View style={[styles.verifiedBadge, { backgroundColor: accentSoft }]}>
-                  <Text style={[styles.verifiedCheck, { color: accentColor }]}>✓</Text>
-                </View>
               </View>
             </View>
 
-            <View style={styles.sectionBlock}>
-              <Text style={[styles.sectionLabel, { color: textMuted }]}>{t("transfer.order.amountLabel")}</Text>
-              <View
-                style={[
-                  styles.card,
-                  styles.amountCard,
-                  {
-                    backgroundColor: cardBackgroundColor,
-                    borderColor: cardBorderColor,
-                    shadowColor: theme.colors.shadow,
-                    shadowOpacity: cardShadowOpacity,
-                  },
-                ]}
-              >
-                <View style={styles.amountInputShell}>
-                  <Text style={[styles.amountCurrency, { color: accentColor }]}>$</Text>
+            <Pressable onPress={handleFocusAmount} style={[styles.card, styles.amountCard, { backgroundColor: cardBackgroundColor }]}>
+              <Text style={[styles.cardTitle, { color: textColor }]}>{t("transfer.order.amountLabel")}</Text>
+              <View style={styles.amountInputShell}>
+                <Text style={[styles.amountCurrency, { color: textColor }]}>{displayCurrencySymbol}</Text>
+                <View style={styles.amountTextShell}>
+                  {!sendAmount ? (
+                    <Text numberOfLines={1} style={[styles.amountPlaceholder, { color: placeholderColor }]}>
+                      {t("transfer.order.amountPlaceholder")}
+                    </Text>
+                  ) : null}
                   <TextInput
+                    ref={amountInputRef}
+                    contextMenuHidden
                     keyboardType="decimal-pad"
-                    onChangeText={value => setOrderDraft({ sendAmount: parseDecimalInput(value) })}
-                    placeholder="0.00"
-                    placeholderTextColor={inputPlaceholderColor}
-                    selectionColor={accentColor}
-                    style={[styles.amountInput, { color: theme.colors.text }]}
+                    onChangeText={handleAmountChange}
+                    onFocus={() => setActiveField("amount")}
+                    selection={amountSelection}
+                    selectionColor={caretColor}
+                    showSoftInputOnFocus={false}
+                    style={[styles.amountInput, { color: textColor }]}
                     value={sendAmount}
                   />
                 </View>
-                <View style={[styles.amountDivider, { backgroundColor: cardBorderColor }]} />
-                <View style={styles.amountMetaRow}>
-                  <Text numberOfLines={1} style={[styles.amountMetaLabel, { color: theme.colors.text }]}>
-                    {availableText}
-                  </Text>
-                  <Text numberOfLines={1} style={[styles.amountMetaValue, { color: theme.colors.text }]}>
-                    {formatApproximateCny(approxCnyValue)}
-                  </Text>
-                </View>
               </View>
-              {amountHelperMessage ? (
-                <Text style={[styles.helperText, { color: amountHelperColor }]}>
-                  {amountHelperMessage}
-                </Text>
+            </Pressable>
+
+            <View style={styles.amountHelperGroup}>
+              <Text style={[styles.amountHelperText, { color: mutedColor }]}>{availableText}</Text>
+              {amountSecondaryMessage ? (
+                <Text style={[styles.amountHelperText, { color: amountSecondaryColor }]}>{amountSecondaryMessage}</Text>
               ) : null}
             </View>
 
-            <View style={styles.sectionBlock}>
-              <Text style={[styles.sectionLabel, { color: textMuted }]}>{t("transfer.order.noteLabelCompact")}</Text>
-              <View
+            <View style={[styles.card, styles.noteCard, { backgroundColor: cardBackgroundColor }]}>
+              <Text style={[styles.cardTitle, { color: textColor }]}>{t("transfer.order.noteLabelCompact")}</Text>
+              <TextInput
+                ref={noteInputRef}
+                maxLength={50}
+                onBlur={() => setActiveField(current => (current === "note" ? null : current))}
+                onChangeText={value => setOrderDraft({ note: value.slice(0, 50) })}
+                onFocus={() => {
+                  amountInputRef.current?.blur()
+                  setActiveField("note")
+                }}
+                placeholder={t("transfer.order.notePlaceholderCompact")}
+                placeholderTextColor={placeholderColor}
+                style={[styles.noteInput, { color: textColor }]}
+                value={note}
+              />
+              <View style={[styles.noteDivider, { backgroundColor: dividerColor }]} />
+              <View style={styles.quickNoteWrap}>
+                {quickNoteOptions.map(item => (
+                  <Pressable
+                    key={item.key}
+                    onPress={() => handleQuickNotePress(item.label)}
+                    style={[
+                      styles.quickNoteChip,
+                      {
+                        borderColor: note === item.label ? "#F6A04D" : keyboardKeyBorderColor,
+                        backgroundColor: note === item.label ? (theme.isDark ? "rgba(246,160,77,0.16)" : "#FFF4E8") : cardBackgroundColor,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.quickNoteText, { color: note === item.label ? "#E07E1F" : mutedColor }]}>{item.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+
+            <Text style={[styles.assuranceText, { color: mutedColor }]}>{t("transfer.order.assurance")}</Text>
+          </ScrollView>
+
+          {activeField === "amount" ? (
+            <View style={[styles.keyboardShell, { backgroundColor: cardBackgroundColor, borderTopColor: keyboardKeyBorderColor }]}>
+              <Pressable
+                hitSlop={10}
+                onPress={() => {
+                  amountInputRef.current?.blur()
+                  setActiveField(null)
+                }}
+                style={[styles.keyboardCollapseBar, { borderBottomColor: keyboardKeyBorderColor }]}
+              >
+                <SFSymbolIcon color={mutedColor} fallbackName="chevron-down" name="chevron.down" size={22} />
+              </Pressable>
+
+              <View style={styles.keyboardGrid}>
+                <View style={styles.keyboardMain}>
+                  {NUMERIC_KEY_ROWS.map(row => (
+                    <View key={row.join("")} style={styles.keyboardRow}>
+                      {row.map(item => (
+                        <NumericKeyboardKey
+                          backgroundColor={keyboardKeyBackground}
+                          borderColor={keyboardKeyBorderColor}
+                          key={item}
+                          label={item}
+                          onPress={handleAmountKeyboardPress}
+                          textColor={textColor}
+                        />
+                      ))}
+                    </View>
+                  ))}
+                  <View style={styles.keyboardRow}>
+                    <NumericKeyboardKey
+                      backgroundColor={keyboardKeyBackground}
+                      borderColor={keyboardKeyBorderColor}
+                      flex={2}
+                      label="0"
+                      onPress={handleAmountKeyboardPress}
+                      textColor={textColor}
+                    />
+                    <NumericKeyboardKey
+                      backgroundColor={keyboardKeyBackground}
+                      borderColor={keyboardKeyBorderColor}
+                      label="."
+                      onPress={handleAmountKeyboardPress}
+                      textColor={textColor}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.keyboardSideColumn}>
+                  <Pressable
+                    onPress={() => handleAmountKeyboardPress("backspace")}
+                    style={[
+                      styles.keyboardBackspaceKey,
+                      {
+                        backgroundColor: keyboardKeyBackground,
+                        borderColor: keyboardKeyBorderColor,
+                        height: KEYBOARD_ROW_HEIGHT,
+                      },
+                    ]}
+                  >
+                    <SFSymbolIcon color={textColor} fallbackName="backspace-outline" name="delete.left" size={26} />
+                  </Pressable>
+
+                  <Pressable
+                    disabled={!canSubmit}
+                    onPress={() => void handleSubmit()}
+                    style={[
+                      styles.keyboardSubmitKey,
+                      {
+                        backgroundColor: submitBackgroundColor,
+                        borderColor: keyboardKeyBorderColor,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.keyboardSubmitText, { color: submitTextColor }]}>
+                      {submitting ? t("common.loading") : t("transfer.order.submitPrimary")}
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+          ) : (
+            <View style={[styles.footerBar, { backgroundColor: cardBackgroundColor, borderTopColor: dividerColor }]}>
+              <Pressable
+                disabled={!canSubmit}
+                onPress={() => void handleSubmit()}
                 style={[
-                  styles.card,
-                  styles.noteCard,
+                  styles.footerSubmitButton,
                   {
-                    backgroundColor: cardBackgroundColor,
-                    borderColor: cardBorderColor,
-                    shadowColor: theme.colors.shadow,
-                    shadowOpacity: cardShadowOpacity,
+                    backgroundColor: canSubmit ? "#F6A04D" : keyboardSideBackground,
                   },
                 ]}
               >
-                <RemarkIcon color={noteIconColor} />
-                <TextInput
-                  maxLength={50}
-                  onChangeText={value => setOrderDraft({ note: value.slice(0, 50) })}
-                  placeholder={t("transfer.order.notePlaceholderCompact")}
-                  placeholderTextColor={textMuted}
-                  selectionColor={accentColor}
-                  style={[styles.noteInput, { color: theme.colors.text }]}
-                  value={note}
-                />
-              </View>
+                <Text style={[styles.footerSubmitText, { color: canSubmit ? "#FFFFFF" : submitTextColor }]}>
+                  {submitting ? t("common.loading") : t("transfer.order.submitPrimary")}
+                </Text>
+              </Pressable>
             </View>
-          </ScrollView>
-
-          <View style={[styles.footer, { backgroundColor: pageBackgroundColor }]}>
-            <PrimaryButton
-              disabled={submitting || Boolean(validationMessage) || loading || options.length === 0}
-              label={submitting ? t("common.loading") : t("transfer.order.submitPrimary")}
-              onPress={() => void handleSubmit()}
-              style={[
-                styles.submitButton,
-                {
-                  backgroundColor: accentColor,
-                  borderColor: accentMuted,
-                },
-              ]}
-            />
-            <Text style={[styles.footerHint, { color: textMuted }]}>
-              {t("transfer.order.disclaimer")}
-            </Text>
-          </View>
+          )}
         </KeyboardAvoidingView>
       </HomeScaffold>
 
@@ -572,9 +720,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 8,
-    paddingTop: 8,
-    paddingBottom: 18,
+    paddingLeft: 8,
+    paddingRight: 18,
+    paddingTop: 2,
+    paddingBottom: 14,
   },
   headerIconButton: {
     width: 44,
@@ -582,192 +731,307 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  headerIcon: {
-    fontSize: 28,
-    fontWeight: "700",
-    lineHeight: 30,
-  },
   headerTitle: {
     flex: 1,
-    marginHorizontal: 12,
     textAlign: "center",
-    fontSize: 24,
-    fontWeight: "700",
-    letterSpacing: -0.5,
-  },
-  scrollContent: {
-    paddingBottom: 24,
-    gap: 28,
-  },
-  sectionBlock: {
-    gap: 12,
-  },
-  sectionLabel: {
-    fontSize: 14,
-    fontWeight: "700",
-    letterSpacing: 0.2,
-  },
-  card: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 30,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 4,
-  },
-  recipientCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-    gap: 14,
-  },
-  recipientContent: {
-    flex: 1,
-    minWidth: 0,
-    gap: 8,
-  },
-  recipientTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  recipientTitle: {
-    flexShrink: 1,
-    fontSize: 20,
+    fontSize: 26,
     fontWeight: "700",
     letterSpacing: -0.4,
   },
-  networkBadge: {
-    maxWidth: 152,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+  headerActionButton: {
+    minWidth: 96,
+    height: 44,
+    alignItems: "flex-end",
+    justifyContent: "center",
   },
-  networkBadgeText: {
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  recipientSubtitle: {
+  headerActionText: {
     fontSize: 16,
     fontWeight: "500",
   },
-  verifiedBadge: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  verifiedCheck: {
-    fontSize: 20,
-    fontWeight: "700",
-    lineHeight: 22,
-  },
-  amountCard: {
-    paddingHorizontal: 22,
-    paddingTop: 20,
-    paddingBottom: 18,
-  },
-  amountInputShell: {
-    minHeight: 150,
-    justifyContent: "center",
-  },
-  amountCurrency: {
-    position: "absolute",
-    left: 0,
-    top: "50%",
-    marginTop: -28,
-    fontSize: 56,
-    lineHeight: 56,
-    fontWeight: "700",
-    letterSpacing: -1,
-  },
-  amountInput: {
-    minHeight: 88,
-    paddingHorizontal: 52,
-    textAlign: "center",
-    fontSize: 58,
-    lineHeight: 66,
-    fontWeight: "700",
-    letterSpacing: -2,
-  },
-  amountDivider: {
-    height: StyleSheet.hairlineWidth,
-    marginBottom: 16,
-  },
-  amountMetaRow: {
+  bannerRow: {
+    minHeight: 42,
+    paddingLeft: 20,
+    paddingRight: 10,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
   },
-  amountMetaLabel: {
+  bannerContent: {
     flex: 1,
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  amountMetaValue: {
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  helperText: {
-    fontSize: 13,
-    lineHeight: 20,
-    paddingHorizontal: 8,
-  },
-  noteCard: {
+    minWidth: 0,
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 18,
-    paddingVertical: 18,
-    gap: 14,
+    gap: 10,
+  },
+  bannerText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  bannerCloseButton: {
+    width: 28,
+    height: 28,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  scrollContent: {
+    paddingTop: 18,
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+    gap: 18,
+  },
+  recipientSection: {
+    paddingTop: 10,
+  },
+  recipientCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+  },
+  recipientContent: {
+    flex: 1,
+    minWidth: 0,
+    gap: 6,
+  },
+  recipientTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+  },
+  recipientSubtitle: {
+    fontSize: 18,
+    fontWeight: "500",
+  },
+  card: {
+    borderRadius: 20,
+  },
+  amountCard: {
+    minHeight: 220,
+    paddingHorizontal: 26,
+    paddingTop: 24,
+    paddingBottom: 18,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: "500",
+  },
+  amountInputShell: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "flex-end",
+    paddingBottom: 6,
+    gap: 8,
+  },
+  amountTextShell: {
+    flex: 1,
+    minHeight: 92,
+    justifyContent: "center",
+    position: "relative",
+  },
+  amountCurrency: {
+    paddingBottom: 10,
+    fontSize: 54,
+    lineHeight: 60,
+    fontWeight: "700",
+    letterSpacing: -1,
+  },
+  amountPlaceholder: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 12,
+    fontSize: 30,
+    fontWeight: "400",
+    letterSpacing: -0.6,
+  },
+  amountInput: {
+    minHeight: 80,
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+    fontSize: 48,
+    lineHeight: 58,
+    fontWeight: "700",
+    letterSpacing: -1.1,
+  },
+  amountHelperGroup: {
+    gap: 4,
+    marginTop: -6,
+  },
+  amountHelperText: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  noteCard: {
+    paddingHorizontal: 26,
+    paddingTop: 24,
+    paddingBottom: 18,
   },
   noteInput: {
-    flex: 1,
-    minHeight: 28,
+    minHeight: 52,
+    marginTop: 14,
+    paddingVertical: 0,
+    fontSize: 20,
+    fontWeight: "500",
+  },
+  noteDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginTop: 14,
+    marginBottom: 18,
+  },
+  quickNoteWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  quickNoteChip: {
+    minHeight: 36,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quickNoteText: {
     fontSize: 16,
     fontWeight: "500",
   },
-  remarkIcon: {
-    width: 22,
-    gap: 4,
-  },
-  remarkStroke: {
-    height: 2.5,
-    borderRadius: 999,
-  },
-  footer: {
-    paddingTop: 8,
-    paddingBottom: 8,
-    gap: 14,
-  },
-  submitButton: {
-    minHeight: 72,
-    borderRadius: 28,
-  },
-  footerHint: {
+  assuranceText: {
     textAlign: "center",
-    fontSize: 12,
-    lineHeight: 18,
-    paddingHorizontal: 12,
+    fontSize: 15,
+    fontWeight: "500",
+    paddingTop: 6,
+  },
+  keyboardShell: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  keyboardCollapseBar: {
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  keyboardGrid: {
+    flexDirection: "row",
+  },
+  keyboardMain: {
+    flex: 1,
+  },
+  keyboardRow: {
+    flexDirection: "row",
+  },
+  keyboardKey: {
+    flex: 1,
+    height: KEYBOARD_ROW_HEIGHT,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  keyboardKeyWide: {
+    flex: 2,
+  },
+  keyboardKeyText: {
+    fontSize: 30,
+    fontWeight: "500",
+  },
+  keyboardSideColumn: {
+    width: 108,
+  },
+  keyboardBackspaceKey: {
+    alignItems: "center",
+    justifyContent: "center",
+    borderLeftWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  keyboardSubmitKey: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    borderLeftWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    minHeight: KEYBOARD_ROW_HEIGHT * 3,
+  },
+  keyboardSubmitText: {
+    fontSize: 22,
+    fontWeight: "700",
+  },
+  footerBar: {
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 16,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  footerSubmitButton: {
+    minHeight: 56,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  footerSubmitText: {
+    fontSize: 18,
+    fontWeight: "700",
   },
 })
 
-function RemarkIcon(props: { color: string }) {
+type NumericKeyboardInput = `${number}` | "." | "backspace"
+
+function NumericKeyboardKey(props: {
+  label: NumericKeyboardInput
+  onPress: (value: NumericKeyboardInput) => void
+  textColor: string
+  backgroundColor: string
+  borderColor: string
+  flex?: number
+}) {
   return (
-    <View style={styles.remarkIcon}>
-      <View style={[styles.remarkStroke, { width: 22, backgroundColor: props.color }]} />
-      <View style={[styles.remarkStroke, { width: 18, backgroundColor: props.color }]} />
-      <View style={[styles.remarkStroke, { width: 22, backgroundColor: props.color }]} />
-    </View>
+    <Pressable
+      onPress={() => props.onPress(props.label)}
+      style={[
+        styles.keyboardKey,
+        props.flex === 2 ? styles.keyboardKeyWide : null,
+        {
+          backgroundColor: props.backgroundColor,
+          borderColor: props.borderColor,
+          flex: props.flex ?? 1,
+        },
+      ]}
+    >
+      <Text style={[styles.keyboardKeyText, { color: props.textColor }]}>{props.label}</Text>
+    </Pressable>
   )
 }
 
-function formatApproximateCny(value: number) {
-  const normalizedValue = Number.isFinite(value) ? value : 0
+function resolveDisplayCurrencySymbol(symbol?: string) {
+  const normalized = symbol?.trim()
 
-  return `≈ ¥${normalizedValue.toLocaleString("zh-CN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })} CNY`
+  if (!normalized) {
+    return "¥"
+  }
+
+  if (normalized.length <= 2) {
+    return normalized
+  }
+
+  return "¥"
+}
+
+function applyNumericKeyboardInput(currentValue: string, key: NumericKeyboardInput) {
+  if (key === "backspace") {
+    return currentValue.slice(0, -1)
+  }
+
+  if (key === ".") {
+    if (currentValue.includes(".")) {
+      return currentValue
+    }
+
+    return currentValue ? `${currentValue}.` : "0."
+  }
+
+  if (currentValue === "0" && !currentValue.includes(".")) {
+    return key === "0" ? currentValue : key
+  }
+
+  const nextValue = parseDecimalInput(`${currentValue}${key}`)
+  return nextValue.startsWith(".") ? `0${nextValue}` : nextValue
 }
