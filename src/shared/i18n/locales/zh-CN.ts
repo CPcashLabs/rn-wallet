@@ -941,8 +941,6 @@ const copouch = {
     title: "CoPouch",
     faq: "FAQ",
     claimBtt: "领取 BTT",
-    summaryTitle: "创建资格",
-    qualificationSummary: "已完成订单：{{finishedCount}}。钱包上限：{{walletLimit}}。当前 BTT 余额：{{bttBalance}}。",
     listTitle: "我的 CoPouch",
     sortByAmountOn: "已按资产排序",
     sortByAmountOff: "按资产排序",

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useState } from "react"
 
 import { Alert, Modal, Pressable, StyleSheet, Text, View } from "react-native"
 import { useFocusEffect } from "@react-navigation/native"
@@ -109,14 +109,6 @@ export function CopouchHomeScreen({ navigation }: Props) {
 
     void overviewQuery.refetch()
   }, [copouchRevision, overviewQuery.refetch])
-
-  const creationSummary = useMemo(() => {
-    return t("copouch.home.qualificationSummary", {
-      finishedCount,
-      walletLimit,
-      bttBalance: bttBalance.toFixed(2),
-    })
-  }, [bttBalance, finishedCount, t, walletLimit])
 
   const openBttClaim = () => {
     navigateRoot("TransferStack", {
@@ -246,11 +238,6 @@ export function CopouchHomeScreen({ navigation }: Props) {
       }
     >
       <SectionCard>
-        <Text style={[styles.summaryTitle, { color: theme.colors.text }]}>{t("copouch.home.summaryTitle")}</Text>
-        <Text style={[styles.summaryBody, { color: theme.colors.mutedText }]}>{creationSummary}</Text>
-      </SectionCard>
-
-      <SectionCard>
         <View style={styles.sortRow}>
           <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("copouch.home.listTitle")}</Text>
           <Pressable onPress={toggleSortByAmount}>
@@ -364,16 +351,6 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
     flexWrap: "wrap",
     gap: 10,
-  },
-  summaryTitle: {
-    fontSize: 17,
-    lineHeight: 22,
-    fontWeight: "700",
-    letterSpacing: -0.24,
-  },
-  summaryBody: {
-    fontSize: 15,
-    lineHeight: 24,
   },
   sectionTitle: {
     fontSize: 17,

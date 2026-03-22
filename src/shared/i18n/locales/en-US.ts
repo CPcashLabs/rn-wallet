@@ -941,9 +941,6 @@ const copouch = {
     title: "CoPouch",
     faq: "FAQ",
     claimBtt: "Claim BTT",
-    summaryTitle: "Creation Checklist",
-    qualificationSummary:
-      "Finished orders: {{finishedCount}}. Wallet quota: {{walletLimit}}. Current BTT balance: {{bttBalance}}.",
     listTitle: "My CoPouch",
     sortByAmountOn: "Sorted by assets",
     sortByAmountOff: "Sort by assets",
