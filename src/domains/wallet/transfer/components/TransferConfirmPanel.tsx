@@ -721,8 +721,10 @@ function TransferConfirmBody(props: {
       >
         <PrimaryButton
           disabled={submitDisabled}
-          label={props.submitting || props.switchingPayment ? t("common.loading") : t("transfer.confirm.submit")}
+          label={t("transfer.confirm.submit")}
+          loading={props.submitting}
           onPress={props.onSubmit}
+          style={props.switchingPayment ? styles.footerButtonStableDisabled : null}
         />
       </View>
     </View>
@@ -915,6 +917,9 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: 16,
     paddingTop: 12,
+  },
+  footerButtonStableDisabled: {
+    opacity: 1,
   },
   summaryPanel: {
     borderRadius: 28,
