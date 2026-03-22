@@ -1,7 +1,7 @@
 import type { RootRouteDescriptor } from "@/app/navigation/routeDescriptor"
 import { buildCopouchDetailRoute } from "@/app/navigation/copouchNavigation"
 import { resolveApiBaseUrl } from "@/shared/config/runtime"
-import { deepLinkAdapter } from "@/shared/native"
+import { deepLinkAdapter } from "@/shared/native/deepLinkAdapter"
 
 export type DeepLinkResolution = {
   routes: RootRouteDescriptor[]

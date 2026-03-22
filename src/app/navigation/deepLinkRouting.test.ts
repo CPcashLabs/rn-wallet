@@ -1,4 +1,4 @@
-import { deepLinkAdapter } from "@/shared/native"
+import { deepLinkAdapter } from "@/shared/native/deepLinkAdapter"
 import { resolveDeepLink, sanitizeWechatTargetPath, serializeRouteDescriptorsAsDeepLink } from "@/app/navigation/deepLinkRouting"
 
 const ORDER_SN = "ORDER_123"

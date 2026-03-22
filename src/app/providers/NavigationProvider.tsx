@@ -2,11 +2,11 @@ import React, { type PropsWithChildren, useCallback, useEffect, useRef, useState
 
 import { DefaultTheme } from "@react-navigation/native"
 import { NavigationContainer } from "@react-navigation/native"
-import { Linking, useColorScheme } from "react-native"
+import { useColorScheme } from "react-native"
 
 import { describeRootRouteDescriptor, type RootRouteDescriptor } from "@/app/navigation/routeDescriptor"
-import { resolveDeepLink } from "@/app/navigation/deepLinkRouting"
-import { getCurrentRouteDescriptor, navigationRef, resetToAuthStack, resetToRootRoutes, resetToSupportScreen } from "@/app/navigation/navigationRef"
+import { getCurrentRouteDescriptor, navigationRef, resetToAuthStack, resetToSupportScreen } from "@/app/navigation/navigationRef"
+import { useNavigationLinkingBridge } from "@/app/navigation/navigationLinking"
 import { drainQueuedNavigationUrls, type QueuedUrlSource } from "@/app/providers/navigationQueue"
 import { setNetworkUnavailableHandler, setUnauthorizedHandler } from "@/shared/api/interceptors"
 import { getString } from "@/shared/storage/kvStorage"
@@ -44,13 +44,16 @@ export function NavigationProvider({ children }: PropsWithChildren) {
     [setPendingProtectedUrl],
   )
 
-  const processUrl = useCallback(
-    (url: string | null, source: "incoming" | "protected" = "incoming") => {
-      if (!url || !bootstrappedRef.current || !navigationReadyRef.current || !navigationRef.isReady()) {
-        return false
-      }
-
-      const resolution = resolveDeepLink(url, authenticatedRef.current)
+  const handleResolvedPayload = useCallback(
+    ({
+      resolution,
+      source,
+      url,
+    }: {
+      resolution: { routes: RootRouteDescriptor[]; pendingProtectedUrl?: string }
+      source: QueuedUrlSource
+      url: string
+    }) => {
       if (resolution.pendingProtectedUrl) {
         syncPendingProtectedUrl(resolution.pendingProtectedUrl)
       } else if (source === "protected" && pendingProtectedUrlRef.current === url) {
@@ -74,11 +77,28 @@ export function NavigationProvider({ children }: PropsWithChildren) {
       if (targetPath) {
         persistWechatTargetPath(targetPath)
       }
-
-      resetToRootRoutes(resolution.routes, resolution.index)
-      return true
     },
     [syncPendingProtectedUrl],
+  )
+
+  const { dispatchUrl, linking } = useNavigationLinkingBridge({
+    canHandleUrl: () => bootstrappedRef.current && navigationReadyRef.current && navigationRef.isReady(),
+    isAuthenticated: () => authenticatedRef.current,
+    onResolvedPayload: handleResolvedPayload,
+    queuePendingUrl: url => {
+      pendingUrlRef.current = url
+    },
+  })
+
+  const processUrl = useCallback(
+    (url: string | null, source: QueuedUrlSource = "incoming") => {
+      if (!url) {
+        return false
+      }
+
+      return dispatchUrl(url, source)
+    },
+    [dispatchUrl],
   )
 
   const drainQueuedUrls = useCallback(
@@ -135,31 +155,9 @@ export function NavigationProvider({ children }: PropsWithChildren) {
     drainQueuedUrls()
   }, [authenticated, drainQueuedUrls, isBootstrapped, navigationReady, pendingProtectedUrl])
 
-  useEffect(() => {
-    let mounted = true
-
-    void Linking.getInitialURL().then(url => {
-      if (!mounted || !url) {
-        return
-      }
-
-      pendingUrlRef.current = url
-      drainQueuedUrls()
-    })
-
-    const subscription = Linking.addEventListener("url", event => {
-      pendingUrlRef.current = event.url
-      drainQueuedUrls()
-    })
-
-    return () => {
-      mounted = false
-      subscription.remove()
-    }
-  }, [drainQueuedUrls])
-
   return (
     <NavigationContainer
+      linking={linking}
       ref={navigationRef}
       onReady={() => {
         setNavigationReady(true)
