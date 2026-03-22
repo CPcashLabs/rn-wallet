@@ -1,14 +1,14 @@
 import {
+  isLocalDevelopmentHost,
+  isTlsPinnedHost,
+  normalizePinnedNetworkBaseUrl,
   resolveApiBaseUrl,
+  resolveAuthenticatedWebSocketUrl,
   resolveAuthBaseUrl,
   resolveOAuthClientId,
   resolveOptionalOAuthClientSecret,
   resolvePasskeyRpId,
   resolveRuntimeEnv,
-  buildWebSocketAuthMessage,
-  isLocalDevelopmentHost,
-  isTlsPinnedHost,
-  normalizePinnedNetworkBaseUrl,
   resolveWebSocketUrl,
 } from "@/shared/config/runtime"
 
@@ -45,23 +45,13 @@ describe("websocket runtime configuration", () => {
     process.env.NODE_ENV = originalNodeEnv
   })
 
-  it("resolves the websocket endpoint without leaking the access token into the URL", () => {
+  it("resolves the websocket endpoint and derives an authenticated websocket url", () => {
     expect(resolveWebSocketUrl()).toBe("wss://wallet.cp.cash/ws")
-    expect(resolveWebSocketUrl()).not.toContain("access_token")
-    expect(resolveWebSocketUrl()).not.toContain("?")
-  })
-
-  it("builds an authenticate message that carries the token in the first payload", () => {
-    expect(buildWebSocketAuthMessage("  secret-token  ")).toBe(
-      JSON.stringify({
-        type: "authenticate",
-        access_token: "secret-token",
-      }),
-    )
+    expect(resolveAuthenticatedWebSocketUrl("  secret-token  ")).toBe("wss://wallet.cp.cash/ws?access_token=secret-token")
   })
 
   it("rejects empty websocket access tokens", () => {
-    expect(() => buildWebSocketAuthMessage("   ")).toThrow("WebSocket access token is required.")
+    expect(() => resolveAuthenticatedWebSocketUrl("   ")).toThrow("WebSocket access token is required.")
   })
 
   it("accepts first-party production hosts that are covered by certificate pinning", () => {
@@ -231,6 +221,7 @@ describe("websocket runtime configuration", () => {
     runtimeGlobals.__CPCASH_API_BASE_URL__ = "http://127.0.0.1:3000"
     expect(resolveAuthBaseUrl()).toBe("http://127.0.0.1:3000")
     expect(resolveWebSocketUrl()).toBe("ws://127.0.0.1:3000/ws")
+    expect(resolveAuthenticatedWebSocketUrl("local-token")).toBe("ws://127.0.0.1:3000/ws?access_token=local-token")
 
     runtimeGlobals.__CPCASH_API_BASE_URL__ = "ws://wallet.local"
     expect(resolveWebSocketUrl()).toBe("ws://wallet.local/ws")

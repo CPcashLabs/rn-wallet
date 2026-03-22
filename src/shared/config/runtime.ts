@@ -279,14 +279,11 @@ export function resolveWebSocketUrl() {
   return `${toWebSocketOrigin(resolveAuthBaseUrl())}/ws`
 }
 
-export function buildWebSocketAuthMessage(accessToken: string) {
+export function resolveAuthenticatedWebSocketUrl(accessToken: string) {
   const normalizedToken = accessToken.trim()
   if (!normalizedToken) {
     throw new Error("WebSocket access token is required.")
   }
 
-  return JSON.stringify({
-    type: "authenticate",
-    access_token: normalizedToken,
-  })
+  return `${resolveWebSocketUrl()}?access_token=${encodeURIComponent(normalizedToken)}`
 }

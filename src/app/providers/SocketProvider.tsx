@@ -2,13 +2,12 @@ import React, { type PropsWithChildren, useCallback, useEffect, useRef } from "r
 
 import { AppState, type AppStateStatus } from "react-native"
 
-import { resolveWebSocketUrl } from "@/shared/config/runtime"
+import { resolveAuthenticatedWebSocketUrl } from "@/shared/config/runtime"
 import { logWarnSafely } from "@/shared/logging/safeConsole"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useSocketStore } from "@/shared/store/useSocketStore"
 import { websocketAdapter } from "@/shared/native/websocketAdapter"
 import {
-  authenticateSocketConnection,
   isInternalSocketEvent,
   isSocketAuthAckEvent,
 } from "@/app/providers/socketAuth"
@@ -71,23 +70,6 @@ export function SocketProvider({ children }: PropsWithChildren) {
     reconnectAttemptRef.current = 0
   }, [])
 
-  const authenticateSocket = useCallback(async () => {
-    const reconnectGeneration = reconnectGenerationRef.current
-    const socketStore = useSocketStore.getState()
-    const authenticated = await authenticateSocketConnection(websocketAdapter, accessTokenRef.current)
-
-    if (reconnectGeneration !== reconnectGenerationRef.current) {
-      return
-    }
-
-    if (authenticated) {
-      socketStore.setConnected(true)
-      return
-    }
-
-    socketStore.setConnected(false)
-  }, [])
-
   const scheduleReconnect = useCallback(() => {
     const attempt = reconnectAttemptRef.current + 1
     const delayMs = resolveReconnectDelayMs(attempt, DEFAULT_SOCKET_RECONNECT_DELAY_MS)
@@ -103,7 +85,12 @@ export function SocketProvider({ children }: PropsWithChildren) {
           isForeground(appStateRef.current),
         ),
       onReconnect: () => {
-        void websocketAdapter.connect(resolveWebSocketUrl())
+        const currentAccessToken = accessTokenRef.current
+        if (!currentAccessToken) {
+          return
+        }
+
+        void websocketAdapter.connect(resolveAuthenticatedWebSocketUrl(currentAccessToken))
       },
     })
 
@@ -128,7 +115,7 @@ export function SocketProvider({ children }: PropsWithChildren) {
       return
     }
 
-    void websocketAdapter.connect(resolveWebSocketUrl())
+    void websocketAdapter.connect(resolveAuthenticatedWebSocketUrl(accessTokenRef.current))
   }, [invalidateReconnect, isBootstrapped, resetReconnectAttempts])
 
   useEffect(() => {
@@ -138,7 +125,8 @@ export function SocketProvider({ children }: PropsWithChildren) {
       switch (event.type) {
         case "open":
           invalidateReconnect()
-          void authenticateSocket()
+          resetReconnectAttempts()
+          socketStore.setConnected(true)
           return
         case "message": {
           const parsed = parseSocketPayload(event.data)
@@ -245,7 +233,7 @@ export function SocketProvider({ children }: PropsWithChildren) {
       invalidateReconnect()
       unsubscribe()
     }
-  }, [authenticateSocket, invalidateReconnect, scheduleReconnect])
+  }, [invalidateReconnect, resetReconnectAttempts, scheduleReconnect])
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", nextState => {
