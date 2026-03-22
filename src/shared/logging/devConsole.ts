@@ -54,6 +54,78 @@ function truncateText(value: string, maxLength = 2400) {
   return `${value.slice(0, maxLength - 3)}...`
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== "object") {
+    return false
+  }
+
+  const prototype = Object.getPrototypeOf(value)
+  return prototype === Object.prototype || prototype === null
+}
+
+function compactObjectSummary(value: Record<string, unknown>) {
+  return Object.entries(value)
+    .map(([key, nestedValue]) => `${key}=${serializeConsoleValue(nestedValue)}`)
+    .join(" ")
+}
+
+function isStructuredRuntimeContext(
+  value: unknown,
+): value is {
+  component?: string
+  event: string
+  message: string
+  details?: unknown
+  httpRequest?: unknown
+} {
+  return (
+    isPlainObject(value) &&
+    typeof value.event === "string" &&
+    typeof value.message === "string"
+  )
+}
+
+function formatHttpRequestSummary(httpRequest: unknown) {
+  if (!isPlainObject(httpRequest)) {
+    return ""
+  }
+
+  const parts: string[] = []
+  if (typeof httpRequest.requestMethod === "string" && httpRequest.requestMethod.trim()) {
+    parts.push(httpRequest.requestMethod.trim().toUpperCase())
+  }
+  if (typeof httpRequest.requestUrl === "string" && httpRequest.requestUrl.trim()) {
+    parts.push(httpRequest.requestUrl.trim())
+  }
+  if (typeof httpRequest.status === "number") {
+    parts.push(`status=${httpRequest.status}`)
+  }
+
+  return parts.join(" ")
+}
+
+function formatStructuredRuntimeEntry(tag: string, context: {
+  event: string
+  message: string
+  details?: unknown
+  httpRequest?: unknown
+}) {
+  const lines = [`${tag} ${context.event}`, context.message]
+  const httpSummary = formatHttpRequestSummary(context.httpRequest)
+
+  if (httpSummary) {
+    lines.push(httpSummary)
+  }
+
+  if (isPlainObject(context.details) && Object.keys(context.details).length > 0) {
+    lines.push(compactObjectSummary(context.details))
+  } else if (context.details !== undefined) {
+    lines.push(serializeConsoleValue(context.details))
+  }
+
+  return truncateText(lines.filter(Boolean).join("\n"))
+}
+
 function serializeConsoleValue(
   value: unknown,
   seen = new WeakSet<object>(),
@@ -109,10 +181,12 @@ function serializeConsoleValue(
   }
 
   try {
+    const seenInJson = new WeakSet<object>()
+
     return truncateText(
       JSON.stringify(
         value,
-        (_key, nestedValue) => {
+        (key, nestedValue) => {
           if (typeof nestedValue === "bigint") {
             return nestedValue.toString()
           }
@@ -126,10 +200,16 @@ function serializeConsoleValue(
           }
 
           if (nestedValue && typeof nestedValue === "object") {
-            if (seen.has(nestedValue)) {
+            if (key === "") {
+              seenInJson.add(nestedValue)
+              return nestedValue
+            }
+
+            if (seenInJson.has(nestedValue)) {
               return "[Circular]"
             }
-            seen.add(nestedValue)
+
+            seenInJson.add(nestedValue)
           }
 
           return nestedValue
@@ -143,6 +223,10 @@ function serializeConsoleValue(
 }
 
 function formatConsoleArgs(args: unknown[]) {
+  if (args.length === 2 && typeof args[0] === "string" && isStructuredRuntimeContext(args[1])) {
+    return formatStructuredRuntimeEntry(args[0], args[1])
+  }
+
   return args.map(argument => serializeConsoleValue(argument)).join(" ")
 }
 

@@ -1,18 +1,19 @@
 import { buildWebSocketAuthMessage } from "@/shared/config/runtime"
 
-const mockLogInfoSafely = jest.fn()
 const mockLogWarnSafely = jest.fn()
 
 jest.mock("@/shared/logging/safeConsole", () => ({
-  logInfoSafely: (...args: unknown[]) => mockLogInfoSafely(...args),
   logWarnSafely: (...args: unknown[]) => mockLogWarnSafely(...args),
 }))
 
-import { authenticateSocketConnection, isInternalSocketEvent } from "@/app/providers/socketAuth"
+import {
+  authenticateSocketConnection,
+  isInternalSocketEvent,
+  isSocketAuthAckEvent,
+} from "@/app/providers/socketAuth"
 
 describe("socketAuth", () => {
   beforeEach(() => {
-    mockLogInfoSafely.mockReset()
     mockLogWarnSafely.mockReset()
   })
 
@@ -24,17 +25,7 @@ describe("socketAuth", () => {
 
     expect(send).toHaveBeenCalledWith(buildWebSocketAuthMessage("socket-secret"))
     expect(disconnect).not.toHaveBeenCalled()
-    expect(mockLogInfoSafely).toHaveBeenCalledWith("[socket.auth]", {
-      context: {
-        component: "socket.auth",
-        event: "authenticate_succeeded",
-        message: "Authenticated the socket connection successfully.",
-        details: {
-          hasAccessToken: true,
-        },
-      },
-      forwardToConsole: false,
-    })
+    expect(mockLogWarnSafely).not.toHaveBeenCalled()
   })
 
   it("disconnects the socket when the authenticate payload cannot be sent", async () => {
@@ -67,6 +58,12 @@ describe("socketAuth", () => {
     expect(isInternalSocketEvent()).toBe(false)
   })
 
+  it("detects explicit socket auth ack events", () => {
+    expect(isSocketAuthAckEvent("authenticated")).toBe(true)
+    expect(isSocketAuthAckEvent(" auth_success ")).toBe(true)
+    expect(isSocketAuthAckEvent("pong")).toBe(false)
+  })
+
   it("skips authentication when there is no access token", async () => {
     const send = jest.fn(async () => ({ ok: true as const, data: undefined }))
     const disconnect = jest.fn(async () => ({ ok: true as const, data: undefined }))
@@ -75,16 +72,6 @@ describe("socketAuth", () => {
 
     expect(send).not.toHaveBeenCalled()
     expect(disconnect).not.toHaveBeenCalled()
-    expect(mockLogInfoSafely).toHaveBeenCalledWith("[socket.auth]", {
-      context: {
-        component: "socket.auth",
-        event: "skip_authentication",
-        message: "Skipped socket authentication because no access token is available.",
-        details: {
-          hasAccessToken: false,
-        },
-      },
-      forwardToConsole: false,
-    })
+    expect(mockLogWarnSafely).not.toHaveBeenCalled()
   })
 })

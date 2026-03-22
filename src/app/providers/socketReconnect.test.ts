@@ -1,10 +1,9 @@
-const mockLogInfoSafely = jest.fn()
-
-jest.mock("@/shared/logging/safeConsole", () => ({
-  logInfoSafely: (...args: unknown[]) => mockLogInfoSafely(...args),
-}))
-
-import { invalidateReconnectAttempt, scheduleReconnectAttempt } from "@/app/providers/socketReconnect"
+import {
+  invalidateReconnectAttempt,
+  resolveReconnectDelayMs,
+  scheduleReconnectAttempt,
+  shouldReconnectAfterClose,
+} from "@/app/providers/socketReconnect"
 
 function runQueuedCallback(callback: (() => void) | null) {
   if (!callback) {
@@ -15,10 +14,6 @@ function runQueuedCallback(callback: (() => void) | null) {
 }
 
 describe("socketReconnect", () => {
-  beforeEach(() => {
-    mockLogInfoSafely.mockReset()
-  })
-
   it("ignores a queued reconnect callback after invalidation", () => {
     const generationRef = { current: 0 }
     const timerRef = { current: null as ReturnType<typeof setTimeout> | null }
@@ -52,34 +47,10 @@ describe("socketReconnect", () => {
 
     expect(clearTimeoutMock).toHaveBeenCalledWith(timerHandle)
     expect(timerRef.current).toBeNull()
-    expect(mockLogInfoSafely).toHaveBeenCalledWith("[socket.reconnect]", {
-      context: {
-        component: "socket.reconnect",
-        event: "invalidate_attempt",
-        message: "Invalidated the pending socket reconnect attempt.",
-        details: {
-          hadTimer: true,
-          generation: 1,
-        },
-      },
-      forwardToConsole: false,
-    })
 
     runQueuedCallback(queuedCallback)
 
     expect(onReconnect).not.toHaveBeenCalled()
-    expect(mockLogInfoSafely).toHaveBeenCalledWith("[socket.reconnect]", {
-      context: {
-        component: "socket.reconnect",
-        event: "skip_reconnect_callback",
-        message: "Skipped the queued reconnect callback because it was no longer valid.",
-        details: {
-          reason: "stale_generation",
-          generation: 1,
-        },
-      },
-      forwardToConsole: false,
-    })
   })
 
   it("reconnects when the queued callback is still current", () => {
@@ -110,17 +81,6 @@ describe("socketReconnect", () => {
 
     expect(timerRef.current).toBeNull()
     expect(onReconnect).toHaveBeenCalledTimes(1)
-    expect(mockLogInfoSafely).toHaveBeenCalledWith("[socket.reconnect]", {
-      context: {
-        component: "socket.reconnect",
-        event: "execute_reconnect",
-        message: "Executed the queued reconnect callback.",
-        details: {
-          generation: 0,
-        },
-      },
-      forwardToConsole: false,
-    })
   })
 
   it("does nothing when invalidating without an active timer", () => {
@@ -135,18 +95,6 @@ describe("socketReconnect", () => {
 
     expect(generationRef.current).toBe(1)
     expect(clearTimeoutMock).not.toHaveBeenCalled()
-    expect(mockLogInfoSafely).toHaveBeenCalledWith("[socket.reconnect]", {
-      context: {
-        component: "socket.reconnect",
-        event: "invalidate_attempt",
-        message: "Invalidated the pending socket reconnect attempt.",
-        details: {
-          hadTimer: false,
-          generation: 1,
-        },
-      },
-      forwardToConsole: false,
-    })
   })
 
   it("does not schedule when reconnect is not allowed or a timer already exists", () => {
@@ -183,30 +131,6 @@ describe("socketReconnect", () => {
     ).toBe(false)
 
     expect(setTimeoutMock).not.toHaveBeenCalled()
-    expect(mockLogInfoSafely).toHaveBeenCalledWith("[socket.reconnect]", {
-      context: {
-        component: "socket.reconnect",
-        event: "skip_schedule",
-        message: "Skipped scheduling a reconnect because reconnecting is currently blocked.",
-        details: {
-          reason: "reconnect_blocked",
-          generation: 0,
-        },
-      },
-      forwardToConsole: false,
-    })
-    expect(mockLogInfoSafely).toHaveBeenCalledWith("[socket.reconnect]", {
-      context: {
-        component: "socket.reconnect",
-        event: "skip_schedule",
-        message: "Skipped scheduling a reconnect because a timer is already active.",
-        details: {
-          reason: "timer_exists",
-          generation: 0,
-        },
-      },
-      forwardToConsole: false,
-    })
   })
 
   it("uses the global timer api defaults when no timer api is provided", () => {
@@ -241,17 +165,38 @@ describe("socketReconnect", () => {
 
     jest.advanceTimersByTime(1_000)
     expect(onReconnect).toHaveBeenCalledTimes(1)
-    expect(mockLogInfoSafely).toHaveBeenCalledWith("[socket.reconnect]", {
-      context: {
-        component: "socket.reconnect",
-        event: "schedule_attempt",
-        message: "Scheduled a socket reconnect attempt.",
-        details: {
-          delayMs: 1000,
-          generation: 1,
-        },
-      },
-      forwardToConsole: false,
-    })
+  })
+
+  it("backs off reconnect delays exponentially up to the max delay", () => {
+    expect(resolveReconnectDelayMs(1)).toBe(1_500)
+    expect(resolveReconnectDelayMs(2)).toBe(3_000)
+    expect(resolveReconnectDelayMs(3)).toBe(6_000)
+    expect(resolveReconnectDelayMs(10)).toBe(30_000)
+  })
+
+  it("stops reconnecting after repeated auth-send failures", () => {
+    expect(
+      shouldReconnectAfterClose({
+        attempt: 1,
+        reason: "auth_send_failed",
+        shouldReconnect: true,
+      }),
+    ).toBe(true)
+
+    expect(
+      shouldReconnectAfterClose({
+        attempt: 3,
+        reason: "auth_send_failed",
+        shouldReconnect: true,
+      }),
+    ).toBe(false)
+
+    expect(
+      shouldReconnectAfterClose({
+        attempt: 5,
+        reason: "server_closed",
+        shouldReconnect: true,
+      }),
+    ).toBe(true)
   })
 })

@@ -1,14 +1,6 @@
-import { logInfoSafely } from "@/shared/logging/safeConsole"
-
-const SOCKET_RECONNECT_LOG_TAG = "[socket.reconnect]"
-const SOCKET_RECONNECT_COMPONENT = "socket.reconnect"
-const SOCKET_RECONNECT_LOG_TYPES = {
-  invalidateAttempt: "invalidate_attempt",
-  skipSchedule: "skip_schedule",
-  skipReconnectCallback: "skip_reconnect_callback",
-  executeReconnect: "execute_reconnect",
-  scheduleAttempt: "schedule_attempt",
-} as const
+export const DEFAULT_SOCKET_RECONNECT_DELAY_MS = 1_500
+export const MAX_SOCKET_RECONNECT_DELAY_MS = 30_000
+export const MAX_AUTH_SEND_FAILURE_RECONNECT_ATTEMPTS = 3
 
 type TimerRef = {
   current: ReturnType<typeof setTimeout> | null
@@ -29,22 +21,33 @@ type ScheduleReconnectOptions = {
   timerRef: TimerRef
 }
 
-export function invalidateReconnectAttempt(timerRef: TimerRef, generationRef: GenerationRef, timerApi: TimerApi = globalThis) {
-  const hadTimer = Boolean(timerRef.current)
-  generationRef.current += 1
+export function resolveReconnectDelayMs(
+  attempt: number,
+  baseDelayMs = DEFAULT_SOCKET_RECONNECT_DELAY_MS,
+  maxDelayMs = MAX_SOCKET_RECONNECT_DELAY_MS,
+) {
+  const normalizedAttempt = Math.max(1, Math.floor(attempt))
+  return Math.min(baseDelayMs * 2 ** (normalizedAttempt - 1), maxDelayMs)
+}
 
-  logInfoSafely(SOCKET_RECONNECT_LOG_TAG, {
-    context: {
-      component: SOCKET_RECONNECT_COMPONENT,
-      event: SOCKET_RECONNECT_LOG_TYPES.invalidateAttempt,
-      message: "Invalidated the pending socket reconnect attempt.",
-      details: {
-        hadTimer,
-        generation: generationRef.current,
-      },
-    },
-    forwardToConsole: false,
-  })
+export function shouldReconnectAfterClose(options: {
+  attempt: number
+  reason?: string
+  shouldReconnect: boolean
+}) {
+  if (!options.shouldReconnect) {
+    return false
+  }
+
+  if (options.reason === "auth_send_failed" && options.attempt >= MAX_AUTH_SEND_FAILURE_RECONNECT_ATTEMPTS) {
+    return false
+  }
+
+  return true
+}
+
+export function invalidateReconnectAttempt(timerRef: TimerRef, generationRef: GenerationRef, timerApi: TimerApi = globalThis) {
+  generationRef.current += 1
 
   if (!timerRef.current) {
     return
@@ -63,34 +66,10 @@ export function scheduleReconnectAttempt({
   timerRef,
 }: ScheduleReconnectOptions) {
   if (timerRef.current) {
-    logInfoSafely(SOCKET_RECONNECT_LOG_TAG, {
-      context: {
-        component: SOCKET_RECONNECT_COMPONENT,
-        event: SOCKET_RECONNECT_LOG_TYPES.skipSchedule,
-        message: "Skipped scheduling a reconnect because a timer is already active.",
-        details: {
-          reason: "timer_exists",
-          generation: generationRef.current,
-        },
-      },
-      forwardToConsole: false,
-    })
     return false
   }
 
   if (!canReconnect()) {
-    logInfoSafely(SOCKET_RECONNECT_LOG_TAG, {
-      context: {
-        component: SOCKET_RECONNECT_COMPONENT,
-        event: SOCKET_RECONNECT_LOG_TYPES.skipSchedule,
-        message: "Skipped scheduling a reconnect because reconnecting is currently blocked.",
-        details: {
-          reason: "reconnect_blocked",
-          generation: generationRef.current,
-        },
-      },
-      forwardToConsole: false,
-    })
     return false
   }
 
@@ -99,47 +78,11 @@ export function scheduleReconnectAttempt({
     timerRef.current = null
 
     if (reconnectGeneration !== generationRef.current || !canReconnect()) {
-      logInfoSafely(SOCKET_RECONNECT_LOG_TAG, {
-        context: {
-          component: SOCKET_RECONNECT_COMPONENT,
-          event: SOCKET_RECONNECT_LOG_TYPES.skipReconnectCallback,
-          message: "Skipped the queued reconnect callback because it was no longer valid.",
-          details: {
-            reason: reconnectGeneration !== generationRef.current ? "stale_generation" : "reconnect_blocked",
-            generation: generationRef.current,
-          },
-        },
-        forwardToConsole: false,
-      })
       return
     }
 
-    logInfoSafely(SOCKET_RECONNECT_LOG_TAG, {
-      context: {
-        component: SOCKET_RECONNECT_COMPONENT,
-        event: SOCKET_RECONNECT_LOG_TYPES.executeReconnect,
-        message: "Executed the queued reconnect callback.",
-        details: {
-          generation: generationRef.current,
-        },
-      },
-      forwardToConsole: false,
-    })
     onReconnect()
   }, delayMs)
-
-  logInfoSafely(SOCKET_RECONNECT_LOG_TAG, {
-    context: {
-      component: SOCKET_RECONNECT_COMPONENT,
-      event: SOCKET_RECONNECT_LOG_TYPES.scheduleAttempt,
-      message: "Scheduled a socket reconnect attempt.",
-      details: {
-        delayMs,
-        generation: reconnectGeneration,
-      },
-    },
-    forwardToConsole: false,
-  })
 
   return true
 }

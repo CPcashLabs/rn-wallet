@@ -1,12 +1,10 @@
 import { buildWebSocketAuthMessage } from "@/shared/config/runtime"
-import { logInfoSafely, logWarnSafely } from "@/shared/logging/safeConsole"
+import { logWarnSafely } from "@/shared/logging/safeConsole"
 import type { WebSocketAdapter } from "@/shared/native/websocketAdapter"
 
 const SOCKET_AUTH_LOG_TAG = "[socket.auth]"
 const SOCKET_AUTH_COMPONENT = "socket.auth"
 const SOCKET_AUTH_LOG_TYPES = {
-  skipAuthentication: "skip_authentication",
-  authenticateSucceeded: "authenticate_succeeded",
   authenticateFailed: "authenticate_failed",
 } as const
 
@@ -15,33 +13,11 @@ export async function authenticateSocketConnection(
   accessToken?: string | null,
 ) {
   if (!accessToken) {
-    logInfoSafely(SOCKET_AUTH_LOG_TAG, {
-      context: {
-        component: SOCKET_AUTH_COMPONENT,
-        event: SOCKET_AUTH_LOG_TYPES.skipAuthentication,
-        message: "Skipped socket authentication because no access token is available.",
-        details: {
-          hasAccessToken: false,
-        },
-      },
-      forwardToConsole: false,
-    })
     return true
   }
 
   const result = await adapter.send(buildWebSocketAuthMessage(accessToken))
   if (result.ok) {
-    logInfoSafely(SOCKET_AUTH_LOG_TAG, {
-      context: {
-        component: SOCKET_AUTH_COMPONENT,
-        event: SOCKET_AUTH_LOG_TYPES.authenticateSucceeded,
-        message: "Authenticated the socket connection successfully.",
-        details: {
-          hasAccessToken: true,
-        },
-      },
-      forwardToConsole: false,
-    })
     return true
   }
 
@@ -61,11 +37,20 @@ export async function authenticateSocketConnection(
   return false
 }
 
+export function isSocketAuthAckEvent(type?: string) {
+  if (!type) {
+    return false
+  }
+
+  const normalized = type.trim().toLowerCase()
+  return normalized === "authenticated" || normalized === "auth_success" || normalized === "auth-ok"
+}
+
 export function isInternalSocketEvent(type?: string) {
   if (!type) {
     return false
   }
 
   const normalized = type.trim().toLowerCase()
-  return normalized === "pong" || normalized === "authenticated" || normalized === "auth_success" || normalized === "auth-ok"
+  return normalized === "pong" || isSocketAuthAckEvent(normalized)
 }
