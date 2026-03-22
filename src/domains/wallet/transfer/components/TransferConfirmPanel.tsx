@@ -589,6 +589,7 @@ function TransferConfirmBody(props: {
     !props.detail ||
     Boolean(props.submitUnavailableMessage) ||
     paymentOptionGroups.selectedOptionUnavailable
+  const footerInset = props.bottomInset ?? 16
   const receiveAddressLabel = useMemo(
     () => props.detail?.receiveAddress || props.detail?.depositAddress || "-",
     [props.detail],
@@ -638,49 +639,34 @@ function TransferConfirmBody(props: {
   }
 
   return (
-    <ScrollView
-      bounces={false}
-      contentContainerStyle={[styles.content, props.bottomInset != null ? { paddingBottom: props.bottomInset } : null]}
-      keyboardShouldPersistTaps="handled"
-    >
-      <View style={[styles.summaryPanel, { backgroundColor: theme.isDark ? theme.colors.surfaceElevated : "#EEF5FF" }]}>
-        <Text style={[styles.summaryRecipient, { color: theme.colors.text }]}>{t("transfer.confirm.sendTo", { address: formattedRecipientLabel })}</Text>
-        <Text style={[styles.amountText, { color: theme.colors.text }]}>
-          {props.detail ? `${props.detail.sendAmount} ${props.detail.sendCoinName || props.detail.sendCoinCode}` : t("common.loading")}
-        </Text>
-        <Text style={[styles.chainBadge, { color: theme.colors.mutedText }]}>{props.detail?.recvChainName || "-"}</Text>
-      </View>
+    <View style={styles.bodyLayout}>
+      <ScrollView
+        bounces={false}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        style={styles.scrollBody}
+      >
+        <View style={[styles.summaryPanel, { backgroundColor: theme.isDark ? theme.colors.surfaceElevated : "#EEF5FF" }]}>
+          <Text style={[styles.summaryRecipient, { color: theme.colors.text }]}>{t("transfer.confirm.sendTo", { address: formattedRecipientLabel })}</Text>
+          <Text style={[styles.amountText, { color: theme.colors.text }]}>
+            {props.detail ? `${props.detail.sendAmount} ${props.detail.sendCoinName || props.detail.sendCoinCode}` : t("common.loading")}
+          </Text>
+          <Text style={[styles.chainBadge, { color: theme.colors.mutedText }]}>{props.detail?.recvChainName || "-"}</Text>
+        </View>
 
-      {props.paymentOptions.length > 0 ? (
-        <View style={styles.paymentSection}>
-          <View style={styles.paymentHeader}>
-            <Text style={[styles.paymentSectionLabel, { color: theme.colors.mutedText }]}>{t("transfer.confirm.paymentMethod")}</Text>
-            {props.paymentOptionsLoading || props.switchingPayment ? (
-              <View style={styles.paymentLoading}>
-                <ActivityIndicator color={theme.colors.primary} size="small" />
-                <Text style={[styles.paymentLoadingText, { color: theme.colors.mutedText }]}>{t("transfer.confirm.switchingPayment")}</Text>
-              </View>
-            ) : null}
-          </View>
+        {props.paymentOptions.length > 0 ? (
+          <View style={styles.paymentSection}>
+            <View style={styles.paymentHeader}>
+              <Text style={[styles.paymentSectionLabel, { color: theme.colors.mutedText }]}>{t("transfer.confirm.paymentMethod")}</Text>
+              {props.paymentOptionsLoading || props.switchingPayment ? (
+                <View style={styles.paymentLoading}>
+                  <ActivityIndicator color={theme.colors.primary} size="small" />
+                  <Text style={[styles.paymentLoadingText, { color: theme.colors.mutedText }]}>{t("transfer.confirm.switchingPayment")}</Text>
+                </View>
+              ) : null}
+            </View>
 
-          {paymentOptionGroups.available.length > 0 ? (
-            <SectionCard
-              style={[
-                styles.paymentGroupCard,
-                {
-                  backgroundColor: theme.colors.surfaceElevated ?? theme.colors.surface,
-                },
-              ]}
-            >
-              {paymentOptionGroups.available.map((item, index) => renderPaymentRow(item, index, paymentOptionGroups.available.length))}
-            </SectionCard>
-          ) : null}
-
-          {paymentOptionGroups.unavailable.length > 0 ? (
-            <View style={styles.unavailableSection}>
-              <Text style={[styles.paymentSectionLabel, { color: theme.colors.mutedText }]}>
-                {t("transfer.confirm.unavailablePaymentMethods")}
-              </Text>
+            {paymentOptionGroups.available.length > 0 ? (
               <SectionCard
                 style={[
                   styles.paymentGroupCard,
@@ -689,28 +675,57 @@ function TransferConfirmBody(props: {
                   },
                 ]}
               >
-                {paymentOptionGroups.unavailable.map((item, index) =>
-                  renderPaymentRow(item, index, paymentOptionGroups.unavailable.length),
-                )}
+                {paymentOptionGroups.available.map((item, index) => renderPaymentRow(item, index, paymentOptionGroups.available.length))}
               </SectionCard>
-            </View>
-          ) : null}
-        </View>
-      ) : null}
+            ) : null}
 
-      {props.submitUnavailableMessage ? (
-        <SectionCard>
-          <Text style={[styles.capabilityWarning, { color: theme.colors.warning }]}>
-            {props.submitUnavailableMessage}
-          </Text>
-        </SectionCard>
-      ) : null}
-      <PrimaryButton
-        disabled={submitDisabled}
-        label={props.submitting || props.switchingPayment ? t("common.loading") : t("transfer.confirm.submit")}
-        onPress={props.onSubmit}
-      />
-    </ScrollView>
+            {paymentOptionGroups.unavailable.length > 0 ? (
+              <View style={styles.unavailableSection}>
+                <Text style={[styles.paymentSectionLabel, { color: theme.colors.mutedText }]}>
+                  {t("transfer.confirm.unavailablePaymentMethods")}
+                </Text>
+                <SectionCard
+                  style={[
+                    styles.paymentGroupCard,
+                    {
+                      backgroundColor: theme.colors.surfaceElevated ?? theme.colors.surface,
+                    },
+                  ]}
+                >
+                  {paymentOptionGroups.unavailable.map((item, index) =>
+                    renderPaymentRow(item, index, paymentOptionGroups.unavailable.length),
+                  )}
+                </SectionCard>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
+        {props.submitUnavailableMessage ? (
+          <SectionCard>
+            <Text style={[styles.capabilityWarning, { color: theme.colors.warning }]}>
+              {props.submitUnavailableMessage}
+            </Text>
+          </SectionCard>
+        ) : null}
+      </ScrollView>
+
+      <View
+        style={[
+          styles.footer,
+          {
+            backgroundColor: theme.isDark ? theme.colors.background : "#EEF5FF",
+            paddingBottom: footerInset,
+          },
+        ]}
+      >
+        <PrimaryButton
+          disabled={submitDisabled}
+          label={props.submitting || props.switchingPayment ? t("common.loading") : t("transfer.confirm.submit")}
+          onPress={props.onSubmit}
+        />
+      </View>
+    </View>
   )
 }
 
@@ -819,7 +834,6 @@ export function TransferConfirmModal(props: ModalProps) {
             backgroundColor: theme.isDark ? theme.colors.background : "#EEF5FF",
             borderColor: theme.colors.border,
             top: Math.max(insets.top + 12, 28),
-            paddingBottom: Math.max(insets.bottom + 8, 16),
             transform: [{ translateY: sheetTranslateY }],
           },
         ]}
@@ -887,9 +901,20 @@ export function TransferConfirmModal(props: ModalProps) {
 }
 
 const styles = StyleSheet.create({
+  bodyLayout: {
+    flex: 1,
+  },
+  scrollBody: {
+    flex: 1,
+  },
   content: {
     padding: 16,
     gap: 12,
+    paddingBottom: 16,
+  },
+  footer: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
   },
   summaryPanel: {
     borderRadius: 28,

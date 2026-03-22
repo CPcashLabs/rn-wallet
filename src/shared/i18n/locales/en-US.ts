@@ -420,7 +420,7 @@ const home = {
       balanceInsufficientHint: "Insufficient balance",
       tipTitle: "Before broadcasting",
       tipBody: "Please verify the address, amount and wallet network again. Once the transaction is broadcast, it cannot usually be reversed.",
-      submit: "Sign and Broadcast",
+      submit: "Pay",
     },
     status: {
       title: "Payment Status",

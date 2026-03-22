@@ -420,7 +420,7 @@ const home = {
       balanceInsufficientHint: "余额不足",
       tipTitle: "广播前确认",
       tipBody: "请再次核对地址、金额和钱包网络。交易广播后通常无法撤销。",
-      submit: "签名并广播",
+      submit: "付款",
     },
     status: {
       title: "支付状态",
