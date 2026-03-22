@@ -26,7 +26,6 @@ import { useUserStore } from "@/shared/store/useUserStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
-import { AppGlyph } from "@/shared/ui/AppGlyph"
 
 import type { HomeTabStackParamList } from "@/app/navigation/types"
 
@@ -312,6 +311,35 @@ export function HomeShellScreen({ navigation, route }: Props) {
     })
   }, [showToast, t])
 
+  const quickActions = [
+    {
+      key: "scan",
+      label: t("home.shell.scan"),
+      icon: "scan" as const,
+      onPress: () => {
+        void handleScan()
+      },
+    },
+    {
+      key: "transfer",
+      label: t("home.actions.transfer"),
+      icon: "transfer" as const,
+      onPress: handleOpenTransfer,
+    },
+    {
+      key: "receive",
+      label: t("home.actions.receive"),
+      icon: "receive" as const,
+      onPress: handleOpenReceive,
+    },
+    {
+      key: "copouch",
+      label: t("home.actions.copouch"),
+      icon: "grid" as const,
+      onPress: handleOpenCopouch,
+    },
+  ]
+
   return (
     <HomeScaffold contentContainerStyle={styles.contentStack} hideHeader title={t("home.shell.title")}>
       <View style={styles.topBar}>
@@ -341,70 +369,105 @@ export function HomeShellScreen({ navigation, route }: Props) {
           accessibilityLabel={t("home.shell.scan")}
           hitSlop={10}
           onPress={() => void handleScan()}
+          style={({ pressed }) => [styles.topBarAction, pressed ? styles.topBarActionPressed : null]}
+        >
+          <QuickActionIcon color={theme.colors.primary} kind="scan" size={28} />
+        </Pressable>
+      </View>
+
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => navigation.navigate("TotalAssetsScreen")}
+        style={({ pressed }) => [styles.balanceCardPressable, pressed ? styles.balanceCardPressed : null]}
+      >
+        <View
           style={[
-            styles.topBarAction,
+            styles.balanceCard,
             {
-              backgroundColor: theme.colors.glass,
+              backgroundColor: theme.colors.glassStrong,
               borderColor: theme.colors.glassBorder,
               shadowColor: theme.colors.shadow,
-              shadowOpacity: theme.isDark ? 0.14 : 0.06,
-              shadowRadius: 16,
-              shadowOffset: { width: 0, height: 8 },
-              elevation: 2,
+              shadowOpacity: theme.isDark ? 0.18 : 0.08,
+              shadowRadius: 18,
+              shadowOffset: { width: 0, height: 10 },
+              elevation: 3,
             },
           ]}
         >
-          <AppGlyph backgroundColor="transparent" name="scan" size={18} tintColor={theme.colors.text} />
-        </Pressable>
+          <View style={styles.balanceHeader}>
+            <View style={styles.balanceTitleRow}>
+              <Text style={[styles.balanceLabel, { color: theme.colors.text }]}>{t("home.shell.estimatedAssets")}</Text>
+              <Pressable
+                hitSlop={8}
+                onPress={event => {
+                  event.stopPropagation()
+                  handleToggleBalance()
+                }}
+                style={styles.eyeButton}
+              >
+                <EyeToggleIcon color={theme.colors.text} visible={showBalance} />
+              </Pressable>
+            </View>
+
+            <View
+              style={[
+                styles.securityScorePill,
+                {
+                  backgroundColor: theme.colors.successSoft,
+                  borderColor: theme.colors.successBorder,
+                },
+              ]}
+            >
+              <ShieldBadgeIcon color={theme.colors.success} size={18} />
+              <Text style={[styles.securityScoreText, { color: theme.colors.success }]}>
+                {t("home.shell.securityScore", { score: 98 })}
+              </Text>
+            </View>
+          </View>
+
+          <Text numberOfLines={1} style={[styles.balanceValue, { color: theme.colors.text }]}>
+            {showBalance ? formatCurrency(displayedBalanceValue) : "*****"}
+          </Text>
+
+          {balanceError ? (
+            <Text style={[styles.balanceStatus, { color: theme.colors.danger }]}>
+              {t(balanceError.kind === "refresh" ? "home.totalAssets.refreshFailed" : "home.totalAssets.loadFailed")}
+            </Text>
+          ) : (
+            <View style={styles.auditRow}>
+              <View style={[styles.auditDot, { backgroundColor: theme.colors.success }]} />
+              <Text style={[styles.auditText, { color: theme.colors.mutedText }]}>{t("home.shell.auditPassed")}</Text>
+            </View>
+          )}
+        </View>
+      </Pressable>
+
+      <View style={styles.actionGrid}>
+        {quickActions.map(item => (
+          <QuickActionButton key={item.key} icon={item.icon} label={item.label} onPress={item.onPress} />
+        ))}
       </View>
 
       <View
         style={[
-          styles.balanceCard,
+          styles.securityBanner,
           {
-            backgroundColor: theme.colors.glassStrong,
-            borderColor: theme.colors.glassBorder,
+            backgroundColor: theme.colors.success,
             shadowColor: theme.colors.shadow,
-            shadowOpacity: theme.isDark ? 0.18 : 0.08,
+            shadowOpacity: theme.isDark ? 0.2 : 0.1,
             shadowRadius: 18,
             shadowOffset: { width: 0, height: 10 },
             elevation: 3,
           },
         ]}
       >
-        <View style={[styles.balanceGlow, styles.balanceGlowPrimary, { backgroundColor: theme.colors.primarySoft }]} />
-        <View style={[styles.balanceGlow, styles.balanceGlowSecondary, { backgroundColor: theme.colors.glassOverlay }]} />
-        <View style={styles.balanceHeader}>
-          <Text style={[styles.balanceLabel, { color: theme.colors.mutedText }]}>{t("home.shell.walletBalance")}</Text>
-          <Pressable
-            onPress={handleToggleBalance}
-            style={[styles.balanceToggle, { backgroundColor: theme.colors.primarySoft, borderColor: theme.colors.glassBorder }]}
-          >
-            <Text style={[styles.balanceToggleText, { color: theme.colors.primary }]}>{showBalance ? t("home.shell.hide") : t("home.shell.show")}</Text>
-          </Pressable>
-        </View>
-
-        <Text numberOfLines={1} style={[styles.balanceValue, { color: theme.colors.text }]}>
-          {showBalance ? formatCurrency(displayedBalanceValue) : "*****"}
-        </Text>
-        {balanceError ? (
-          <Text style={[styles.balanceStatus, { color: theme.colors.danger }]}>
-            {t(balanceError.kind === "refresh" ? "home.totalAssets.refreshFailed" : "home.totalAssets.loadFailed")}
+        <View style={styles.securityBannerContent}>
+          <Text style={[styles.securityBannerTitle, { color: theme.colors.brandInverse }]}>{t("home.shell.securityCenterTitle")}</Text>
+          <Text style={[styles.securityBannerBody, { color: theme.isDark ? theme.colors.brandInverse : "rgba(255,255,255,0.74)" }]}>
+            {t("home.shell.securityCenterBody")}
           </Text>
-        ) : null}
-
-        <Pressable
-          onPress={() => navigation.navigate("TotalAssetsScreen")}
-          style={[styles.totalAssetsButton, { backgroundColor: theme.colors.glass, borderColor: theme.colors.glassBorder }]}
-        >
-          <Text style={[styles.totalAssetsButtonText, { color: theme.colors.text }]}>{t("home.shell.openTotalAssets")}</Text>
-        </Pressable>
-      </View>
-
-      <View style={styles.actionGrid}>
-        <ActionButton label={t("home.actions.transfer")} onPress={handleOpenTransfer} symbol="↑" />
-        <ActionButton label={t("home.actions.receive")} onPress={handleOpenReceive} symbol="↓" />
-        <ActionButton label={t("home.actions.copouch")} onPress={handleOpenCopouch} symbol="◉" />
+        </View>
+        <ShieldMark color={theme.colors.brandInverse} opacity={0.18} size={60} />
       </View>
 
       <HomeMessagePreview onPress={handleOpenMessages} />
@@ -412,36 +475,32 @@ export function HomeShellScreen({ navigation, route }: Props) {
   )
 }
 
-function ActionButton(props: { label: string; onPress: () => void; symbol: string }) {
+function QuickActionButton(props: { label: string; onPress: () => void; icon: "scan" | "transfer" | "receive" | "grid" }) {
   const theme = useAppTheme()
 
   return (
     <Pressable
       onPress={props.onPress}
       style={({ pressed }) => [
-        styles.actionButton,
-        {
-          backgroundColor: theme.colors.glass,
-          borderColor: theme.colors.glassBorder,
-          shadowColor: theme.colors.shadow,
-          shadowOpacity: theme.isDark ? 0.12 : 0.05,
-          shadowRadius: 16,
-          shadowOffset: { width: 0, height: 10 },
-          elevation: 2,
-        },
-        pressed ? styles.actionButtonPressed : null,
+        styles.actionButtonWrap,
+        pressed ? styles.actionButtonWrapPressed : null,
       ]}
     >
       <View
         style={[
-          styles.actionIconShell,
+          styles.actionIconCard,
           {
-            backgroundColor: theme.colors.primarySoft ?? `${theme.colors.primary}14`,
+            backgroundColor: theme.colors.surface,
             borderColor: theme.colors.glassBorder,
+            shadowColor: theme.colors.shadow,
+            shadowOpacity: theme.isDark ? 0.12 : 0.04,
+            shadowRadius: 14,
+            shadowOffset: { width: 0, height: 8 },
+            elevation: 2,
           },
         ]}
       >
-        <Text style={[styles.actionSymbol, { color: theme.colors.primary }]}>{props.symbol}</Text>
+        <QuickActionIcon color={theme.colors.primary} kind={props.icon} size={32} />
       </View>
       <Text adjustsFontSizeToFit minimumFontScale={0.82} numberOfLines={1} style={[styles.actionLabel, { color: theme.colors.text }]}>
         {props.label}
@@ -450,10 +509,99 @@ function ActionButton(props: { label: string; onPress: () => void; symbol: strin
   )
 }
 
+function EyeToggleIcon(props: { visible: boolean; color: string }) {
+  return (
+    <View style={styles.eyeIcon}>
+      <View style={[styles.eyeOutline, { borderColor: props.color }]} />
+      <View style={[styles.eyePupil, { backgroundColor: props.visible ? props.color : "transparent", borderColor: props.color }]} />
+      {!props.visible ? <View style={[styles.eyeSlash, { backgroundColor: props.color }]} /> : null}
+    </View>
+  )
+}
+
+function ShieldBadgeIcon(props: { color: string; size: number }) {
+  return (
+    <View style={[styles.shieldBadgeIcon, { width: props.size, height: props.size }]}>
+      <View style={[styles.shieldBadgeBody, { borderColor: props.color }]} />
+      <View style={[styles.shieldBadgeCheckStem, { backgroundColor: props.color }]} />
+      <View style={[styles.shieldBadgeCheckArm, { backgroundColor: props.color }]} />
+    </View>
+  )
+}
+
+function ShieldMark(props: { color: string; size: number; opacity?: number }) {
+  return (
+    <View style={[styles.shieldMark, { width: props.size, height: props.size, opacity: props.opacity ?? 1 }]}>
+      <View style={[styles.shieldMarkBody, { borderColor: props.color }]} />
+      <View style={[styles.shieldMarkShardLeft, { backgroundColor: props.color }]} />
+      <View style={[styles.shieldMarkShardRight, { backgroundColor: props.color }]} />
+    </View>
+  )
+}
+
+function QuickActionIcon(props: { kind: "scan" | "transfer" | "receive" | "grid"; color: string; size: number }) {
+  const scale = props.size / 32
+
+  return (
+    <View style={[styles.quickIconCanvas, { width: props.size, height: props.size }]}>
+      <View style={{ transform: [{ scale }] }}>
+        {props.kind === "scan" ? <ScanGlyph color={props.color} /> : null}
+        {props.kind === "transfer" ? <TransferGlyph color={props.color} /> : null}
+        {props.kind === "receive" ? <ReceiveGlyph color={props.color} /> : null}
+        {props.kind === "grid" ? <GridGlyph color={props.color} /> : null}
+      </View>
+    </View>
+  )
+}
+
+function ScanGlyph(props: { color: string }) {
+  return (
+    <View style={styles.glyphBase}>
+      <View style={[styles.scanCornerTopLeft, { borderTopColor: props.color, borderLeftColor: props.color }]} />
+      <View style={[styles.scanCornerTopRight, { borderTopColor: props.color, borderRightColor: props.color }]} />
+      <View style={[styles.scanCornerBottomLeft, { borderBottomColor: props.color, borderLeftColor: props.color }]} />
+      <View style={[styles.scanCornerBottomRight, { borderBottomColor: props.color, borderRightColor: props.color }]} />
+      <View style={[styles.scanCenterDot, { backgroundColor: props.color }]} />
+    </View>
+  )
+}
+
+function TransferGlyph(props: { color: string }) {
+  return (
+    <View style={styles.glyphBase}>
+      <View style={[styles.transferArrowStem, { backgroundColor: props.color }]} />
+      <View style={[styles.transferArrowHeadTop, { borderLeftColor: props.color }]} />
+      <View style={[styles.transferArrowHeadBottom, { borderLeftColor: props.color }]} />
+    </View>
+  )
+}
+
+function ReceiveGlyph(props: { color: string }) {
+  return (
+    <View style={styles.glyphBase}>
+      <View style={[styles.receiveArrowVertical, { backgroundColor: props.color }]} />
+      <View style={[styles.receiveArrowHorizontal, { backgroundColor: props.color }]} />
+      <View style={[styles.receiveArrowHeadLeft, { borderTopColor: props.color }]} />
+      <View style={[styles.receiveArrowHeadRight, { borderLeftColor: props.color }]} />
+    </View>
+  )
+}
+
+function GridGlyph(props: { color: string }) {
+  return (
+    <View style={styles.glyphBase}>
+      <View style={[styles.gridCell, styles.gridCellTopLeft, { backgroundColor: props.color }]} />
+      <View style={[styles.gridCell, styles.gridCellTopRight, { backgroundColor: props.color }]} />
+      <View style={[styles.gridCell, styles.gridCellBottomLeft, { backgroundColor: props.color }]} />
+      <View style={[styles.gridCell, styles.gridCellBottomRight, { backgroundColor: props.color }]} />
+    </View>
+  )
+}
+
 const styles = StyleSheet.create({
   contentStack: {
-    gap: 14,
-    paddingTop: 6,
+    gap: 20,
+    paddingTop: 4,
     paddingBottom: 28,
   },
   topBar: {
@@ -491,41 +639,37 @@ const styles = StyleSheet.create({
   topBarAction: {
     width: 44,
     height: 44,
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
     justifyContent: "center",
+  },
+  topBarActionPressed: {
+    opacity: 0.84,
+  },
+  balanceCardPressable: {
+    borderRadius: 28,
+  },
+  balanceCardPressed: {
+    transform: [{ scale: 0.992 }],
   },
   balanceCard: {
     borderRadius: 28,
     paddingHorizontal: 22,
-    paddingVertical: 22,
-    gap: 14,
+    paddingVertical: 20,
+    gap: 18,
     borderWidth: StyleSheet.hairlineWidth,
     overflow: "hidden",
   },
-  balanceGlow: {
-    position: "absolute",
-    borderRadius: 999,
-  },
-  balanceGlowPrimary: {
-    width: 220,
-    height: 220,
-    right: -80,
-    top: -120,
-    opacity: 0.7,
-  },
-  balanceGlowSecondary: {
-    width: 140,
-    height: 140,
-    left: -40,
-    bottom: -60,
-    opacity: 0.9,
-  },
   balanceHeader: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     justifyContent: "space-between",
+    gap: 12,
+  },
+  balanceTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    flexShrink: 1,
   },
   balanceLabel: {
     fontSize: 15,
@@ -533,24 +677,91 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     letterSpacing: -0.1,
   },
-  balanceToggle: {
-    minHeight: 34,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
+  eyeButton: {
+    width: 28,
+    height: 28,
     alignItems: "center",
     justifyContent: "center",
   },
-  balanceToggleText: {
-    fontSize: 14,
-    lineHeight: 18,
-    fontWeight: "600",
+  eyeIcon: {
+    width: 22,
+    height: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  eyeOutline: {
+    position: "absolute",
+    width: 22,
+    height: 14,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  eyePupil: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  eyeSlash: {
+    position: "absolute",
+    width: 24,
+    height: 1.5,
+    borderRadius: 999,
+    transform: [{ rotate: "-24deg" }],
+  },
+  securityScorePill: {
+    minHeight: 34,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  shieldBadgeIcon: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  shieldBadgeBody: {
+    position: "absolute",
+    width: 14,
+    height: 16,
+    borderWidth: 1.5,
+    borderTopLeftRadius: 6,
+    borderTopRightRadius: 6,
+    borderBottomLeftRadius: 7,
+    borderBottomRightRadius: 7,
+    transform: [{ rotate: "180deg" }],
+  },
+  shieldBadgeCheckStem: {
+    position: "absolute",
+    width: 2.2,
+    height: 5,
+    borderRadius: 999,
+    left: 6,
+    top: 8,
+    transform: [{ rotate: "-34deg" }],
+  },
+  shieldBadgeCheckArm: {
+    position: "absolute",
+    width: 2.2,
+    height: 8,
+    borderRadius: 999,
+    left: 9,
+    top: 6,
+    transform: [{ rotate: "42deg" }],
+  },
+  securityScoreText: {
+    fontSize: 13,
+    lineHeight: 16,
+    fontWeight: "700",
+    letterSpacing: -0.1,
   },
   balanceValue: {
-    fontSize: 32,
-    lineHeight: 36,
-    letterSpacing: -1.2,
+    fontSize: 34,
+    lineHeight: 40,
+    letterSpacing: -1.4,
     fontWeight: "800",
     fontVariant: ["tabular-nums"],
   },
@@ -559,54 +770,42 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontWeight: "600",
   },
-  totalAssetsButton: {
-    alignSelf: "flex-start",
-    marginTop: 2,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  totalAssetsButtonText: {
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: "600",
-    letterSpacing: -0.1,
-  },
-  actionRow: {
+  auditRow: {
     flexDirection: "row",
-    gap: 8,
+    alignItems: "center",
+    gap: 10,
+  },
+  auditDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  auditText: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: "500",
   },
   actionGrid: {
     flexDirection: "row",
     gap: 12,
   },
-  actionButton: {
+  actionButtonWrap: {
     flex: 1,
     minWidth: 0,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 26,
-    minHeight: 116,
     alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 18,
+    gap: 10,
   },
-  actionButtonPressed: {
-    transform: [{ scale: 0.985 }],
+  actionButtonWrapPressed: {
+    opacity: 0.9,
   },
-  actionIconShell: {
-    width: 50,
-    height: 50,
-    borderRadius: 18,
+  actionIconCard: {
+    width: "100%",
+    aspectRatio: 1,
+    maxWidth: 88,
+    borderRadius: 24,
     borderWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
     justifyContent: "center",
-  },
-  actionSymbol: {
-    fontSize: 24,
-    fontWeight: "600",
   },
   actionLabel: {
     fontSize: 14,
@@ -614,5 +813,210 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: -0.12,
     textAlign: "center",
+  },
+  securityBanner: {
+    borderRadius: 26,
+    paddingHorizontal: 22,
+    paddingVertical: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 16,
+  },
+  securityBannerContent: {
+    flex: 1,
+    minWidth: 0,
+    gap: 6,
+  },
+  securityBannerTitle: {
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: "800",
+    letterSpacing: -0.24,
+  },
+  securityBannerBody: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: "500",
+  },
+  shieldMark: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  shieldMarkBody: {
+    position: "absolute",
+    width: 38,
+    height: 46,
+    borderWidth: 3,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    borderBottomLeftRadius: 18,
+    borderBottomRightRadius: 18,
+    transform: [{ rotate: "180deg" }],
+  },
+  shieldMarkShardLeft: {
+    position: "absolute",
+    width: 15,
+    height: 28,
+    left: 15,
+    top: 14,
+    transform: [{ skewY: "-22deg" }, { rotate: "-8deg" }],
+  },
+  shieldMarkShardRight: {
+    position: "absolute",
+    width: 15,
+    height: 28,
+    right: 15,
+    top: 14,
+    transform: [{ skewY: "22deg" }, { rotate: "8deg" }],
+  },
+  quickIconCanvas: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  glyphBase: {
+    width: 32,
+    height: 32,
+  },
+  scanCornerTopLeft: {
+    position: "absolute",
+    top: 3,
+    left: 3,
+    width: 8,
+    height: 8,
+    borderTopWidth: 2.2,
+    borderLeftWidth: 2.2,
+    borderTopLeftRadius: 4,
+  },
+  scanCornerTopRight: {
+    position: "absolute",
+    top: 3,
+    right: 3,
+    width: 8,
+    height: 8,
+    borderTopWidth: 2.2,
+    borderRightWidth: 2.2,
+    borderTopRightRadius: 4,
+  },
+  scanCornerBottomLeft: {
+    position: "absolute",
+    bottom: 3,
+    left: 3,
+    width: 8,
+    height: 8,
+    borderBottomWidth: 2.2,
+    borderLeftWidth: 2.2,
+    borderBottomLeftRadius: 4,
+  },
+  scanCornerBottomRight: {
+    position: "absolute",
+    bottom: 3,
+    right: 3,
+    width: 8,
+    height: 8,
+    borderBottomWidth: 2.2,
+    borderRightWidth: 2.2,
+    borderBottomRightRadius: 4,
+  },
+  scanCenterDot: {
+    position: "absolute",
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    left: 12,
+    top: 12,
+  },
+  transferArrowStem: {
+    position: "absolute",
+    left: 5,
+    top: 14,
+    width: 14,
+    height: 3,
+    borderRadius: 999,
+  },
+  transferArrowHeadTop: {
+    position: "absolute",
+    right: 5,
+    top: 9,
+    width: 0,
+    height: 0,
+    borderTopWidth: 6,
+    borderBottomWidth: 0,
+    borderLeftWidth: 12,
+    borderTopColor: "transparent",
+    borderBottomColor: "transparent",
+  },
+  transferArrowHeadBottom: {
+    position: "absolute",
+    right: 5,
+    bottom: 9,
+    width: 0,
+    height: 0,
+    borderTopWidth: 0,
+    borderBottomWidth: 6,
+    borderLeftWidth: 12,
+    borderTopColor: "transparent",
+    borderBottomColor: "transparent",
+  },
+  receiveArrowVertical: {
+    position: "absolute",
+    left: 8,
+    top: 6,
+    width: 3,
+    height: 18,
+    borderRadius: 999,
+  },
+  receiveArrowHorizontal: {
+    position: "absolute",
+    left: 8,
+    bottom: 8,
+    width: 16,
+    height: 3,
+    borderRadius: 999,
+  },
+  receiveArrowHeadLeft: {
+    position: "absolute",
+    left: 6,
+    bottom: 8,
+    width: 8,
+    height: 8,
+    borderTopWidth: 2.2,
+    borderLeftWidth: 2.2,
+    borderLeftColor: "transparent",
+    transform: [{ rotate: "-45deg" }],
+  },
+  receiveArrowHeadRight: {
+    position: "absolute",
+    right: 7,
+    bottom: 6,
+    width: 0,
+    height: 0,
+    borderTopWidth: 0,
+    borderBottomWidth: 9,
+    borderLeftWidth: 9,
+    borderTopColor: "transparent",
+    borderBottomColor: "transparent",
+  },
+  gridCell: {
+    position: "absolute",
+    width: 10,
+    height: 10,
+    borderRadius: 2,
+  },
+  gridCellTopLeft: {
+    left: 5,
+    top: 5,
+  },
+  gridCellTopRight: {
+    right: 5,
+    top: 5,
+  },
+  gridCellBottomLeft: {
+    left: 5,
+    bottom: 5,
+  },
+  gridCellBottomRight: {
+    right: 5,
+    bottom: 5,
   },
 })
