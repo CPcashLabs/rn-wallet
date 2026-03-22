@@ -560,26 +560,22 @@ RCT_EXPORT_MODULE(CPCashScanner)
 
 - (void)requestCameraAccess:(void (^)(BOOL granted))completion {
   AVAuthorizationStatus status = [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeVideo];
-  switch (status) {
-    case AVAuthorizationStatusAuthorized:
-      completion(YES);
-      break;
-    case AVAuthorizationStatusNotDetermined:
-      [AVCaptureDevice requestAccessForMediaType:AVMediaTypeVideo
-                               completionHandler:^(BOOL granted) {
-                                 dispatch_async(dispatch_get_main_queue(), ^{
-                                   completion(granted);
-                                 });
-                               }];
-      break;
-    case AVAuthorizationStatusDenied:
-    case AVAuthorizationStatusRestricted:
-      completion(NO);
-      break;
-    @unknown default:
-      completion(NO);
-      break;
+  if (status == AVAuthorizationStatusAuthorized) {
+    completion(YES);
+    return;
   }
+
+  if (status == AVAuthorizationStatusNotDetermined) {
+    [AVCaptureDevice requestAccessForMediaType:AVMediaTypeVideo
+                             completionHandler:^(BOOL granted) {
+                               dispatch_async(dispatch_get_main_queue(), ^{
+                                 completion(granted);
+                               });
+                             }];
+    return;
+  }
+
+  completion(NO);
 }
 
 RCT_EXPORT_METHOD(scan:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
