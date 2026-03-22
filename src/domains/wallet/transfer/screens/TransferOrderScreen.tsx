@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { Alert, ScrollView, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
@@ -13,6 +13,12 @@ import {
   getTransferQuote,
   type TransferOrderOption,
 } from "@/shared/exchange/services/exchangeApi"
+import {
+  applyTransferQuote,
+  buildTransferQuoteKey,
+  resolveTransferOption,
+  type TransferQuotedOption,
+} from "@/domains/wallet/transfer/screens/transferQuote"
 import { useTransferDraftStore } from "@/domains/wallet/transfer/store/useTransferDraftStore"
 import { HomeScaffold } from "@/shared/ui/HomeScaffold"
 import { resolveChainNameById } from "@/shared/api/walletAssets"
@@ -50,9 +56,12 @@ export function TransferOrderScreen({ navigation, route }: Props) {
   const [selectedOptionCode, setSelectedOptionCode] = useState(selectedSendCoinCode)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
-  const [quotedOption, setQuotedOption] = useState<TransferOrderOption | null>(null)
+  const [quotedOption, setQuotedOption] = useState<TransferQuotedOption | null>(null)
+  const [quoteLoading, setQuoteLoading] = useState(false)
+  const [quoteFailed, setQuoteFailed] = useState(false)
   const [confirmOrderSn, setConfirmOrderSn] = useState<string | null>(null)
   const [confirmVisible, setConfirmVisible] = useState(false)
+  const quoteRequestIdRef = useRef(0)
 
   const sendChainName = resolveChainNameById(chainId)
   const isNormalRoute = route.name === "TransferOrderNormalScreen"
@@ -70,13 +79,79 @@ export function TransferOrderScreen({ navigation, route }: Props) {
 
   const numericAmount = Number(sendAmount || 0)
   const availableBalance = selectedOption ? balances[selectedOption.sendCoinCode] ?? 0 : 0
+  const currentQuoteRequestKey = useMemo(() => {
+    if (!selectedChannel || selectedChannel.channelType !== "bridge" || !selectedOption?.recvCoinCode || !numericAmount || numericAmount <= 0) {
+      return null
+    }
 
-  const validationMessage = useMemo(() => {
+    return buildTransferQuoteKey({
+      channelKey: selectedChannel.key,
+      sendCoinCode: selectedOption.sendCoinCode,
+      recvCoinCode: selectedOption.recvCoinCode,
+      amount: numericAmount,
+    })
+  }, [numericAmount, selectedChannel, selectedOption])
+
+  useEffect(() => {
+    if (!selectedOption || !currentQuoteRequestKey) {
+      quoteRequestIdRef.current += 1
+      setQuotedOption(null)
+      setQuoteLoading(false)
+      setQuoteFailed(false)
+      return
+    }
+
+    const requestId = quoteRequestIdRef.current + 1
+    quoteRequestIdRef.current = requestId
+    const baseOption = selectedOption
+
+    setQuotedOption(null)
+    setQuoteLoading(true)
+    setQuoteFailed(false)
+
+    void getTransferQuote({
+      sendCoinCode: baseOption.sendCoinCode,
+      recvCoinCode: baseOption.recvCoinCode,
+      recvAmount: numericAmount,
+    })
+      .then(quote => {
+        if (requestId !== quoteRequestIdRef.current) {
+          return
+        }
+
+        setQuotedOption({
+          requestKey: currentQuoteRequestKey,
+          sendAmount: quote.sendAmount,
+          option: applyTransferQuote(baseOption, quote),
+        })
+        setQuoteLoading(false)
+        setQuoteFailed(false)
+      })
+      .catch(() => {
+        if (requestId !== quoteRequestIdRef.current) {
+          return
+        }
+
+        setQuotedOption(null)
+        setQuoteLoading(false)
+        setQuoteFailed(true)
+      })
+  }, [currentQuoteRequestKey, numericAmount, selectedOption])
+
+  const resolvedOption = useMemo(
+    () => resolveTransferOption(selectedOption, quotedOption, currentQuoteRequestKey),
+    [currentQuoteRequestKey, quotedOption, selectedOption],
+  )
+  const quoteRequired = selectedChannel?.channelType === "bridge" && currentQuoteRequestKey != null
+  const hasCurrentQuote = quotedOption?.requestKey === currentQuoteRequestKey
+  const resolvedSendAmount = quoteRequired && hasCurrentQuote ? quotedOption?.sendAmount ?? 0 : numericAmount
+
+  const inputValidationMessage = useMemo(() => {
     if (!recipientAddress) {
       return t("transfer.order.addressMissing")
     }
 
-    if (!selectedOption) {
+    if (!resolvedOption) {
       return t("transfer.order.noOption")
     }
 
@@ -88,16 +163,42 @@ export function TransferOrderScreen({ navigation, route }: Props) {
       return t("transfer.order.amountInvalid")
     }
 
-    if (selectedOption.sendMinAmount > 0 && numericAmount < selectedOption.sendMinAmount) {
-      return t("transfer.order.amountTooSmall", { amount: formatAmount(selectedOption.sendMinAmount) })
+    if (resolvedOption.sendMinAmount > 0 && numericAmount < resolvedOption.sendMinAmount) {
+      return t("transfer.order.amountTooSmall", { amount: formatAmount(resolvedOption.sendMinAmount) })
     }
 
-    if (numericAmount > availableBalance) {
+    if (!quoteRequired && numericAmount > availableBalance) {
+      return t("transfer.order.balanceInsufficient")
+    }
+
+    if (quoteRequired && hasCurrentQuote && resolvedSendAmount > availableBalance) {
       return t("transfer.order.balanceInsufficient")
     }
 
     return ""
-  }, [availableBalance, numericAmount, recipientAddress, selectedOption, sendAmount, t])
+  }, [availableBalance, hasCurrentQuote, numericAmount, quoteRequired, recipientAddress, resolvedOption, resolvedSendAmount, sendAmount, t])
+
+  const quoteValidationMessage = useMemo(() => {
+    if (!quoteRequired) {
+      return ""
+    }
+
+    if (quoteLoading) {
+      return t("transfer.order.quoteLoading")
+    }
+
+    if (quoteFailed) {
+      return t("transfer.order.quoteFailed")
+    }
+
+    if (!hasCurrentQuote || resolvedSendAmount <= 0) {
+      return t("transfer.order.quoteLoading")
+    }
+
+    return ""
+  }, [hasCurrentQuote, quoteFailed, quoteLoading, quoteRequired, resolvedSendAmount, t])
+
+  const validationMessage = inputValidationMessage || quoteValidationMessage
 
   useEffect(() => {
     let mounted = true
@@ -149,47 +250,6 @@ export function TransferOrderScreen({ navigation, route }: Props) {
   }, [selectedChannel, selectedRecvCoinCode, selectedSendCoinCode, sendChainName, setOrderDraft, t])
 
   useEffect(() => {
-    let mounted = true
-
-    if (!selectedOption || !selectedOption.recvCoinCode || !numericAmount || numericAmount <= 0) {
-      setQuotedOption(null)
-      return
-    }
-
-    void (async () => {
-      try {
-        const quote = await getTransferQuote({
-          sendCoinCode: selectedOption.sendCoinCode,
-          recvCoinCode: selectedOption.recvCoinCode,
-          recvAmount: numericAmount,
-        })
-
-        if (!mounted) {
-          return
-        }
-
-        setQuotedOption({
-          ...selectedOption,
-          sellerId: String(quote.sellerId ?? selectedOption.sellerId),
-          feeAmount: quote.feeValue,
-          recvEstimateAmount: quote.recvAmount,
-          sendMinAmount: quote.sendMinAmount,
-        })
-      } catch {
-        if (mounted) {
-          setQuotedOption(null)
-        }
-      }
-    })()
-
-    return () => {
-      mounted = false
-    }
-  }, [numericAmount, selectedOption])
-
-  const resolvedOption = quotedOption && selectedOption && quotedOption.sendCoinCode === selectedOption.sendCoinCode ? quotedOption : selectedOption
-
-  useEffect(() => {
     setConfirmOrderSn(null)
     setConfirmVisible(false)
   }, [note, recipientAddress, resolvedOption?.recvCoinCode, resolvedOption?.sendCoinCode, sendAmount])
@@ -212,7 +272,7 @@ export function TransferOrderScreen({ navigation, route }: Props) {
         sellerId: resolvedOption.sellerId,
         recvCoinCode: resolvedOption.recvCoinCode,
         sendCoinCode: resolvedOption.sendCoinCode,
-        sendAmount: numericAmount,
+        sendAmount: resolvedSendAmount,
         recvAddress: recipientAddress,
         note,
       })
@@ -236,7 +296,6 @@ export function TransferOrderScreen({ navigation, route }: Props) {
     }
   }, [
     note,
-    numericAmount,
     recipientAddress,
     resolvedOption,
     setLatestOrderSn,
@@ -244,6 +303,7 @@ export function TransferOrderScreen({ navigation, route }: Props) {
     t,
     validationMessage,
     confirmOrderSn,
+    resolvedSendAmount,
   ])
 
   const handleConfirmCompleted = useCallback(
@@ -280,7 +340,7 @@ export function TransferOrderScreen({ navigation, route }: Props) {
             <Text style={[styles.inputLabel, { color: theme.colors.text }]}>{t("transfer.order.amountLabel")}</Text>
             <AppTextField
               backgroundTone="background"
-              error={validationMessage || null}
+              error={inputValidationMessage || (quoteFailed ? quoteValidationMessage : null)}
               keyboardType="decimal-pad"
               onChangeText={value => setOrderDraft({ sendAmount: parseDecimalInput(value) })}
               placeholder={t("transfer.order.amountPlaceholder")}
@@ -293,8 +353,12 @@ export function TransferOrderScreen({ navigation, route }: Props) {
             <FieldRow
               label={t("transfer.order.receiveEstimate")}
               value={
-                selectedOption?.recvCoinSymbol
-                  ? `${formatAmount((resolvedOption?.recvEstimateAmount || 0) || (numericAmount || 0))} ${selectedOption.recvCoinSymbol}`
+                quoteRequired
+                  ? hasCurrentQuote && resolvedOption?.recvCoinSymbol
+                    ? `${formatAmount(resolvedOption.recvEstimateAmount)} ${resolvedOption.recvCoinSymbol}`
+                    : "--"
+                  : selectedOption?.recvCoinSymbol
+                    ? `${formatAmount(resolvedOption?.recvEstimateAmount ?? 0)} ${selectedOption.recvCoinSymbol}`
                   : `${formatAmount(numericAmount)} ${selectedOption?.sendCoinSymbol ?? ""}`.trim()
               }
             />

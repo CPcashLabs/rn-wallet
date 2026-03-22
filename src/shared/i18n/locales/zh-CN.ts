@@ -383,6 +383,8 @@ const home = {
       amountTooSmall: "当前金额低于最小值 {{amount}}。",
       balanceInsufficient: "代币余额不足。",
       gasInsufficient: "BTT 余额不足，无法覆盖链上 Gas。",
+      quoteLoading: "正在刷新报价，请稍候再试。",
+      quoteFailed: "报价刷新失败，请稍后重试。",
       addressMissing: "缺少收款地址。",
       addressInvalid: "收款地址格式不正确。",
       loadFailed: "下单页数据加载失败。",

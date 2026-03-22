@@ -383,6 +383,8 @@ const home = {
       amountTooSmall: "The current amount is below the minimum {{amount}}.",
       balanceInsufficient: "Token balance is insufficient.",
       gasInsufficient: "BTT balance is insufficient for network gas.",
+      quoteLoading: "Refreshing the quote. Please wait a moment.",
+      quoteFailed: "Failed to refresh the quote. Please try again.",
       addressMissing: "The recipient address is missing.",
       addressInvalid: "The recipient address format is invalid.",
       loadFailed: "Failed to load transfer order data.",
