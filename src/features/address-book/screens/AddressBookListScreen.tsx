@@ -75,11 +75,6 @@ export function AddressBookListScreen({ navigation, route }: Props) {
     })
   }, [chainType, navigation])
 
-  const handleClearSelection = useCallback(() => {
-    setSelectedEntry(null)
-    navigation.goBack()
-  }, [navigation, setSelectedEntry])
-
   const renderEntry = useCallback(
     ({ item, index }: { item: AddressBookEntry; index: number }) => (
       <AppListRow
@@ -162,14 +157,6 @@ export function AddressBookListScreen({ navigation, route }: Props) {
 
         <View style={styles.footerActions}>
           <AppButton label={mode === "select" ? t("home.addressBook.addNew") : t("home.addressBook.add")} onPress={handleAddPress} />
-
-          {mode === "select" ? (
-            <AppButton
-              label={t("home.addressBook.clearSelection")}
-              onPress={handleClearSelection}
-              variant="secondary"
-            />
-          ) : null}
         </View>
       </View>
     </HomeScaffold>
