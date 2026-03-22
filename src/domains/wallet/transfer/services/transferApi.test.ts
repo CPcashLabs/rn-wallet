@@ -547,6 +547,29 @@ describe("transferApi guest token", () => {
     })
   })
 
+  it("falls back to the default ship endpoint for CoPouch normal orders", async () => {
+    mockApiPut
+      .mockRejectedValueOnce(new Error("ship-normal rejected"))
+      .mockResolvedValueOnce(undefined)
+
+    await submitShipOrder({
+      orderSn: "ORDER_MULTI",
+      txid: "0xtx3",
+      address: "0xsender",
+      variant: "normal",
+      multisigWalletId: "COPOUCH_1",
+    })
+
+    expect(mockApiPut).toHaveBeenNthCalledWith(1, "/api/order/member/order/ship-normal/ORDER_MULTI", {
+      txid: "0xtx3",
+      address: "0xsender",
+    })
+    expect(mockApiPut).toHaveBeenNthCalledWith(2, "/api/order/member/order/ship/ORDER_MULTI", {
+      txid: "0xtx3",
+      address: "0xsender",
+    })
+  })
+
   it("loads private share details, public tx status details and send logs", async () => {
     mockApiGet
       .mockResolvedValueOnce({

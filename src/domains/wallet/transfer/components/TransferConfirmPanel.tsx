@@ -23,6 +23,7 @@ import {
 } from "@/domains/wallet/transfer/components/transferConfirmRetry"
 import { isCancelledAction } from "@/domains/wallet/transfer/utils/order"
 import { NativeCapabilityUnavailableError } from "@/shared/errors"
+import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { walletAdapter } from "@/shared/native/walletAdapter"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useToast } from "@/shared/toast/useToast"
@@ -64,6 +65,7 @@ async function loadTransferConfirmOrder(orderSn: string, signal: AbortSignal) {
 
 function useTransferConfirmController({ enabled = true, onCompleted, orderSn, variant }: Omit<SharedProps, "onClose">) {
   const { t } = useTranslation()
+  const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
   const walletCapability = walletAdapter.getCapability()
   const submitUnavailableMessage = walletCapability.supported ? "" : t("auth.errors.walletUnavailable")
@@ -186,6 +188,7 @@ function useTransferConfirmController({ enabled = true, onCompleted, orderSn, va
         txid,
         address: shipAddress,
         variant,
+        multisigWalletId: detail.multisigWalletId,
       })
 
       onCompleted({
@@ -198,14 +201,16 @@ function useTransferConfirmController({ enabled = true, onCompleted, orderSn, va
       } else if (error instanceof NativeCapabilityUnavailableError) {
         Alert.alert(t("common.infoTitle"), t("auth.errors.walletUnavailable"))
       } else {
-        Alert.alert(t("common.errorTitle"), t("transfer.confirm.submitFailed"))
+        presentError(error, {
+          fallbackKey: "transfer.confirm.submitFailed",
+        })
       }
     } finally {
       if (mountedRef.current) {
         setSubmitting(false)
       }
     }
-  }, [detail, onCompleted, showToast, t, variant])
+  }, [detail, onCompleted, presentError, showToast, t, variant])
 
   return {
     detail,

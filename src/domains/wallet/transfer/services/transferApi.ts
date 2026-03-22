@@ -437,16 +437,32 @@ export async function submitShipOrder(input: {
   txid: string
   address: string
   variant?: "default" | "normal"
+  multisigWalletId?: string | null
 }) {
-  const endpoint =
-    input.variant === "normal"
-      ? `/api/order/member/order/ship-normal/${input.orderSn}`
-      : `/api/order/member/order/ship/${input.orderSn}`
+  const variants =
+    input.variant === "normal" && input.multisigWalletId
+      ? (["normal", "default"] as const)
+      : ([input.variant ?? "default"] as const)
+  let lastError: unknown
 
-  await apiClient.put(endpoint, {
-    txid: input.txid,
-    address: input.address,
-  })
+  for (const variant of variants) {
+    const endpoint =
+      variant === "normal"
+        ? `/api/order/member/order/ship-normal/${input.orderSn}`
+        : `/api/order/member/order/ship/${input.orderSn}`
+
+    try {
+      await apiClient.put(endpoint, {
+        txid: input.txid,
+        address: input.address,
+      })
+      return
+    } catch (error) {
+      lastError = error
+    }
+  }
+
+  throw lastError
 }
 
 export async function checkTransferNetwork(input: { chainName: string; address: string }) {
