@@ -1,7 +1,7 @@
 const mockGetNumber = jest.fn()
 
 jest.mock("@/shared/storage/kvStorage", () => ({
-  getNumber: (...args: unknown[]) => mockGetNumber(...args),
+  getNumber: (key: string) => mockGetNumber(key),
 }))
 
 import { AbiCoder } from "ethers"
@@ -16,7 +16,7 @@ const TEST_ADDRESS = "0x00000000000000000000000000000000000000a1"
 function loadBalanceServiceModuleWithFormatUnits(formatter: (value: bigint, precision: number) => string) {
   jest.resetModules()
   jest.doMock("@/shared/storage/kvStorage", () => ({
-    getNumber: (...args: unknown[]) => mockGetNumber(...args),
+    getNumber: (key: string) => mockGetNumber(key),
   }))
   jest.doMock("ethers", () => {
     const actual = jest.requireActual("ethers")
@@ -32,16 +32,17 @@ function loadBalanceServiceModuleWithFormatUnits(formatter: (value: bigint, prec
 
 function createCoin(overrides: Partial<WalletCoin>): WalletCoin {
   return {
-    chainColor: "#00AAFF",
-    chainName: "BTT",
-    code: "BTT",
-    contract: "0x0000000000000000000000000000000000000000",
-    logo: "",
-    name: "BitTorrent",
-    precision: 18,
-    price: 1,
-    symbol: "BTT",
-    ...overrides,
+    chainColor: overrides.chainColor ?? "#00AAFF",
+    chainFullName: overrides.chainFullName ?? "BitTorrent Chain",
+    chainLogo: overrides.chainLogo ?? "",
+    chainName: overrides.chainName ?? "BTT",
+    code: overrides.code ?? "BTT",
+    contract: overrides.contract ?? "0x0000000000000000000000000000000000000000",
+    logo: overrides.logo ?? "",
+    name: overrides.name ?? "BitTorrent",
+    precision: overrides.precision ?? 18,
+    price: overrides.price ?? 1,
+    symbol: overrides.symbol ?? "BTT",
   }
 }
 

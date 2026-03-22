@@ -323,7 +323,7 @@ function useTransferConfirmController({ enabled = true, onCompleted, onOrderUpda
                   recvAmount: detail.recvAmount,
                 })
 
-                const quotedSellerId = quote.sellerId > 0 ? quote.sellerId : undefined
+                const quotedSellerId = quote.sellerId != null && quote.sellerId > 0 ? quote.sellerId : undefined
                 const fallbackSellerId = option.sellerId ? Number(option.sellerId) : undefined
 
                 return createBridgeTransferOrder({

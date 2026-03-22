@@ -1,4 +1,5 @@
 const mockSyncCurrentUserProfile = jest.fn(async () => undefined)
+type MockWalletStatus = "idle" | "connected" | "disconnected"
 
 const mockUserStoreState = {
   profile: null as Record<string, unknown> | null,
@@ -10,11 +11,16 @@ const mockUserStoreState = {
   }),
 }
 
-const mockWalletStoreState = {
-  status: "idle" as const,
+const mockWalletStoreState: {
+  status: MockWalletStatus
+  address: string | null
+  chainId: string | null
+  setWalletState: jest.Mock<void, [{ status: MockWalletStatus; address?: string | null; chainId?: string | null }]>
+} = {
+  status: "idle",
   address: null as string | null,
   chainId: null as string | null,
-  setWalletState: jest.fn((payload: { status: "idle" | "connected" | "disconnected"; address?: string | null; chainId?: string | null }) => {
+  setWalletState: jest.fn((payload: { status: MockWalletStatus; address?: string | null; chainId?: string | null }) => {
     mockWalletStoreState.status = payload.status
     mockWalletStoreState.address = payload.address ?? null
     mockWalletStoreState.chainId = payload.chainId ?? null
@@ -22,7 +28,7 @@ const mockWalletStoreState = {
 }
 
 jest.mock("@/features/home/hooks/useProfileSync", () => ({
-  syncCurrentUserProfile: (...args: unknown[]) => mockSyncCurrentUserProfile(...args),
+  syncCurrentUserProfile: () => mockSyncCurrentUserProfile(),
 }))
 
 jest.mock("@/shared/store/useUserStore", () => ({

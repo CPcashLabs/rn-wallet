@@ -12,25 +12,25 @@ const session = {
 const passkeyA = {
   credentialId: "credential-a",
   rawId: "raw-a",
-  username: "alice",
+  name: "alice",
 }
 
 const passkeyB = {
   credentialId: "credential-b",
   rawId: "raw-b",
-  username: "bob",
+  name: "bob",
 }
 
 const passkeyC = {
   credentialId: "credential-a",
   rawId: "raw-c",
-  username: "carol",
+  name: "carol",
 }
 
 const passkeyD = {
   credentialId: "credential-d",
   rawId: "raw-b",
-  username: "diana",
+  name: "diana",
 }
 
 describe("storage and auth store integration", () => {

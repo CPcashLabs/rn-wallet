@@ -19,23 +19,27 @@ const mockApiPost = jest.fn()
 const mockApiPut = jest.fn()
 const mockNormalizePinnedNetworkBaseUrl = jest.fn((value: string) => value.trim().replace(/\/+$/, ""))
 const mockResolveApiBaseUrl = jest.fn(() => "https://cp.cash")
-const mockBuildOAuthTokenRequestBody = jest.fn(() => new URLSearchParams({ grant_type: "guest" }))
+const mockBuildOAuthTokenRequestBody = jest.fn(
+  (_grantType?: string, _params?: Record<string, string | number | boolean | null | undefined>) =>
+    new URLSearchParams({ grant_type: "guest" }),
+)
 
 jest.mock("@/shared/api/client", () => ({
   apiClient: {
-    get: (...args: unknown[]) => mockApiGet(...args),
-    post: (...args: unknown[]) => mockApiPost(...args),
-    put: (...args: unknown[]) => mockApiPut(...args),
+    get: (...args: Parameters<typeof mockApiGet>) => mockApiGet(...args),
+    post: (...args: Parameters<typeof mockApiPost>) => mockApiPost(...args),
+    put: (...args: Parameters<typeof mockApiPut>) => mockApiPut(...args),
   },
 }))
 
 jest.mock("@/shared/config/runtime", () => ({
-  normalizePinnedNetworkBaseUrl: (...args: unknown[]) => mockNormalizePinnedNetworkBaseUrl(...args),
+  normalizePinnedNetworkBaseUrl: (value: string) => mockNormalizePinnedNetworkBaseUrl(value),
   resolveApiBaseUrl: () => mockResolveApiBaseUrl(),
 }))
 
 jest.mock("@/shared/api/oauth", () => ({
-  buildOAuthTokenRequestBody: () => mockBuildOAuthTokenRequestBody(),
+  buildOAuthTokenRequestBody: (grantType: string, params?: Record<string, string | number | boolean | null | undefined>) =>
+    mockBuildOAuthTokenRequestBody(grantType, params),
 }))
 
 import axios from "axios"

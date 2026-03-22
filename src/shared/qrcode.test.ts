@@ -13,7 +13,7 @@ const mockMakeImageSnapshot = jest.fn(() => ({
 const mockGetCanvas = jest.fn(() => ({
   drawRect: mockDrawRect,
 }))
-const mockMakeOffscreen = jest.fn(() => ({
+const mockMakeOffscreen = jest.fn((_width: number, _height: number) => ({
   getCanvas: mockGetCanvas,
   flush: mockFlush,
   makeImageSnapshot: mockMakeImageSnapshot,

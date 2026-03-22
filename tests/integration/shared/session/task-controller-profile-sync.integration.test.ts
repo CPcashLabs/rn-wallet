@@ -103,11 +103,11 @@ describe("task controller and profile sync integration", () => {
   })
 
   it("deduplicates in-flight profile sync work, remembers hydration, and allows forced reruns", async () => {
-    let resolveFirstRun: ((value: boolean) => void) | null = null
+    const firstRunRef: { current: ((value: boolean) => void) | null } = { current: null }
     const task = jest.fn(
       () =>
         new Promise<boolean>(resolve => {
-          resolveFirstRun = resolve
+          firstRunRef.current = resolve
         }),
     )
 
@@ -118,7 +118,10 @@ describe("task controller and profile sync integration", () => {
     expect(task).toHaveBeenCalledTimes(1)
     expect(getProfileSyncInFlightRequest()).toBe(firstRequest)
 
-    resolveFirstRun?.(true)
+    if (firstRunRef.current == null) {
+      throw new Error("Expected the first profile sync request resolver to be captured.")
+    }
+    firstRunRef.current(true)
     await firstRequest
 
     expect(hasProfileSyncHydratedThisSession()).toBe(true)
@@ -148,32 +151,35 @@ describe("task controller and profile sync integration", () => {
   })
 
   it("keeps the latest forced profile sync request when an older request settles later", async () => {
-    let resolveFirstRequest: ((value: boolean) => void) | null = null
-    let resolveSecondRequest: ((value: boolean) => void) | null = null
+    const firstRequestRef: { current: ((value: boolean) => void) | null } = { current: null }
+    const secondRequestRef: { current: ((value: boolean) => void) | null } = { current: null }
 
     const firstRequest = runProfileSync(
       () =>
         new Promise<boolean>(resolve => {
-          resolveFirstRequest = resolve
+          firstRequestRef.current = resolve
         }),
     )
 
     const secondRequest = runProfileSync(
       () =>
         new Promise<boolean>(resolve => {
-          resolveSecondRequest = resolve
+          secondRequestRef.current = resolve
         }),
       true,
     )
 
     expect(getProfileSyncInFlightRequest()).toBe(secondRequest)
 
-    resolveFirstRequest?.(false)
+    if (firstRequestRef.current == null || secondRequestRef.current == null) {
+      throw new Error("Expected both profile sync request resolvers to be captured.")
+    }
+    firstRequestRef.current(false)
     await firstRequest
 
     expect(getProfileSyncInFlightRequest()).toBe(secondRequest)
 
-    resolveSecondRequest?.(true)
+    secondRequestRef.current(true)
     await secondRequest
 
     expect(getProfileSyncInFlightRequest()).toBeNull()

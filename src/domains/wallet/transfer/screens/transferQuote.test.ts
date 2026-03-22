@@ -7,16 +7,19 @@ import {
 
 function createOption(overrides: Partial<TransferOrderOption> = {}): TransferOrderOption {
   return {
-    sellerId: "seller-1",
-    sendCoinCode: "USDT",
-    sendCoinSymbol: "USDT",
-    recvCoinCode: "USDT",
-    recvCoinSymbol: "USDT",
-    feeAmount: 0,
-    recvEstimateAmount: 0,
-    sendMinAmount: 0,
-    sendCoinContract: "0xcontract",
-    ...overrides,
+    sellerId: overrides.sellerId ?? "seller-1",
+    sendCoinCode: overrides.sendCoinCode ?? "USDT",
+    sendCoinSymbol: overrides.sendCoinSymbol ?? "USDT",
+    sendChainName: overrides.sendChainName ?? "BTT",
+    sendChainFullName: overrides.sendChainFullName ?? "BitTorrent Chain",
+    sendChainLogo: overrides.sendChainLogo ?? "",
+    sendChainColor: overrides.sendChainColor ?? "#00AAFF",
+    recvCoinCode: overrides.recvCoinCode ?? "USDT",
+    recvCoinSymbol: overrides.recvCoinSymbol ?? "USDT",
+    feeAmount: overrides.feeAmount ?? 0,
+    recvEstimateAmount: overrides.recvEstimateAmount ?? 0,
+    sendMinAmount: overrides.sendMinAmount ?? 0,
+    sendCoinContract: overrides.sendCoinContract ?? "0xcontract",
   }
 }
 

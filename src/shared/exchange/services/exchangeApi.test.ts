@@ -598,7 +598,7 @@ describe("exchangeApi", () => {
       sendCoinName: "",
       sendMinAmount: 0,
       sendMaxAmount: 0,
-      sellerId: 0,
+      sellerId: null,
     })
   })
 

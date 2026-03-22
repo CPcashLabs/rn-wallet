@@ -103,7 +103,7 @@ export type TransferQuote = {
   sendCoinName: string
   sendMinAmount: number
   sendMaxAmount: number
-  sellerId: number
+  sellerId: number | null
 }
 
 function toTransferQuote(payload: ExchangeShowPayload): TransferQuote {
@@ -118,7 +118,7 @@ function toTransferQuote(payload: ExchangeShowPayload): TransferQuote {
     sendCoinName: String(payload.send_coin_name ?? payload.send_coin_code ?? ""),
     sendMinAmount: toNumber(payload.send_min_amount),
     sendMaxAmount: toNumber(payload.send_max_amount),
-    sellerId: toNumber(payload.seller_id),
+    sellerId: payload.seller_id === undefined || payload.seller_id === null || payload.seller_id === "" ? null : toNumber(payload.seller_id),
   }
 }
 

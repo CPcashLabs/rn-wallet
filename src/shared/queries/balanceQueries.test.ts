@@ -5,12 +5,12 @@ const mockGetCoinList = jest.fn()
 const mockResolveChainNameById = jest.fn()
 
 jest.mock("@/shared/api/walletAssets", () => ({
-  getCoinList: (...args: unknown[]) => mockGetCoinList(...args),
-  resolveChainNameById: (...args: unknown[]) => mockResolveChainNameById(...args),
+  getCoinList: (chainName: string) => mockGetCoinList(chainName),
+  resolveChainNameById: (chainId?: string | number | null) => mockResolveChainNameById(chainId),
 }))
 
 jest.mock("@/shared/web3/balanceService", () => ({
-  fetchOnChainBalances: (...args: unknown[]) => mockFetchOnChainBalances(...args),
+  fetchOnChainBalances: (input: unknown) => mockFetchOnChainBalances(input),
 }))
 
 import type { WalletCoin } from "@/shared/api/walletAssets"
@@ -29,6 +29,8 @@ describe("balanceQueries", () => {
   const coins: WalletCoin[] = [
     {
       chainColor: "#00AAFF",
+      chainFullName: "BitTorrent Chain",
+      chainLogo: "",
       chainName: "BTT",
       code: "USDT",
       contract: "0x1",
@@ -40,6 +42,8 @@ describe("balanceQueries", () => {
     },
     {
       chainColor: "#00AAFF",
+      chainFullName: "BitTorrent Chain",
+      chainLogo: "",
       chainName: "BTT",
       code: "BTT",
       contract: "0x2",
