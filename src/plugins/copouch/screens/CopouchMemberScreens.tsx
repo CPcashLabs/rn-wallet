@@ -28,7 +28,7 @@ import {
   type CopouchOwner,
 } from "@/plugins/copouch/services/copouchApi"
 import {
-  invalidateCopouchQueries,
+  refreshCopouchQueriesInBackground,
   useCopouchDetailQuery,
   useCopouchOverviewQuery,
   useCopouchOwnersQuery,
@@ -353,7 +353,7 @@ export function CopouchAddMemberScreen({ navigation, route }: CopouchStackScreen
     try {
       await preValidateCopouchAddOwner(route.params.id, address)
       await addCopouchOwner(route.params.id, { walletAddress: address })
-      await invalidateCopouchQueries(queryClient)
+      refreshCopouchQueriesInBackground(queryClient)
       showToast({ message: t("copouch.member.addSuccess"), tone: "success" })
       navigation.goBack()
     } catch (error) {
@@ -529,7 +529,7 @@ export function CopouchAddMemberForTeamSelectScreen({
     try {
       await preValidateCopouchAddOwner(route.params.id, selectedAddress)
       await addCopouchOwner(route.params.id, { walletAddress: selectedAddress })
-      await invalidateCopouchQueries(queryClient)
+      refreshCopouchQueriesInBackground(queryClient)
       showToast({ message: t("copouch.member.addSuccess"), tone: "success" })
       navigation.goBack()
     } catch (error) {

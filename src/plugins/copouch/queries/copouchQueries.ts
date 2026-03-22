@@ -242,6 +242,12 @@ export function invalidateCopouchQueries(queryClient: QueryClient) {
   })
 }
 
+export function refreshCopouchQueriesInBackground(queryClient: QueryClient) {
+  void queryClient.invalidateQueries({
+    queryKey: copouchKeys.all,
+  })
+}
+
 export function invalidateCopouchOverviewQueries(queryClient: QueryClient) {
   return queryClient.invalidateQueries({
     queryKey: [...copouchKeys.all, "overview"],
