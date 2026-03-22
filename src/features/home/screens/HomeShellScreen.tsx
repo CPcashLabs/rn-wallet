@@ -5,10 +5,12 @@ import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import { bindInviteCode } from "@/features/auth/services/authApi"
+import { UserAvatar } from "@/features/home/components/UserAvatar"
+import { useProfileSync } from "@/features/home/hooks/useProfileSync"
 import { buildHomeBalanceCacheKey, readHomeBalanceCache, writeHomeBalanceCache } from "@/features/home/services/homeBalanceCache"
 import { getInviteBindingMessage } from "@/features/auth/utils/authMessages"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
-import { formatCurrency } from "@/features/home/utils/format"
+import { formatAddress, formatCurrency } from "@/features/home/utils/format"
 import { HomeMessagePreview } from "@/features/messages/components/HomeMessagePreview"
 import { openCopouchHome } from "@/app/navigation/copouchNavigation"
 import { resolveTransferAddressFromUnknownChain } from "@/domains/wallet/transfer/utils/address"
@@ -20,6 +22,7 @@ import { scannerAdapter } from "@/shared/native"
 import { buildWalletBalanceKey, resolveBalanceQueryError, useWalletBalanceQuery } from "@/shared/queries/balanceQueries"
 import { getBoolean, setBoolean } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
+import { useUserStore } from "@/shared/store/useUserStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
@@ -67,6 +70,8 @@ export function HomeShellScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
   const { showToast } = useToast()
+  const { profile } = useProfileSync()
+  const avatarVersion = useUserStore(state => state.avatarVersion)
   const walletAddress = useWalletStore(state => state.address)
   const walletChainId = useWalletStore(state => state.chainId)
   const balanceQuery = useWalletBalanceQuery({
@@ -90,6 +95,10 @@ export function HomeShellScreen({ navigation, route }: Props) {
     () => resolveBalanceQueryError(balanceQuery.error, balanceQuery.isRefetchError),
     [balanceQuery.error, balanceQuery.isRefetchError],
   )
+  const displayName = profile?.nickname || t("home.shell.defaultNickname")
+  const profileAddress = walletAddress ?? profile?.address ?? ""
+  const profileAddressLabel = formatAddress(profileAddress) || "--"
+  const avatar = profile?.avatar
 
   useEffect(() => {
     mountedRef.current = true
@@ -254,6 +263,15 @@ export function HomeShellScreen({ navigation, route }: Props) {
     })
   }
 
+  const handleOpenProfile = useCallback(() => {
+    navigateRoot("MainTabs", {
+      screen: "MeTab",
+      params: {
+        screen: "PersonalScreen",
+      },
+    })
+  }, [])
+
   const handleScan = useCallback(async () => {
     const capability = scannerAdapter.getCapability("camera")
     if (!capability.supported) {
@@ -298,6 +316,63 @@ export function HomeShellScreen({ navigation, route }: Props) {
   return (
     <HomeScaffold contentContainerStyle={styles.contentStack} hideHeader title={t("home.shell.title")}>
       <View style={styles.topBar}>
+        <Pressable
+          accessibilityLabel={`${t("home.me.personal")} ${displayName}`}
+          accessibilityRole="button"
+          onPress={handleOpenProfile}
+          style={({ pressed }) => [
+            styles.profileHero,
+            {
+              backgroundColor: theme.colors.glassStrong,
+              borderColor: theme.colors.glassBorder,
+              shadowColor: theme.colors.shadow,
+              shadowOpacity: theme.isDark ? 0.16 : 0.06,
+              shadowRadius: 18,
+              shadowOffset: { width: 0, height: 10 },
+              elevation: 3,
+              transform: [{ scale: pressed ? 0.992 : 1 }],
+            },
+          ]}
+        >
+          <View style={[styles.profileHeroGlow, styles.profileHeroGlowPrimary, { backgroundColor: theme.colors.primarySoft ?? `${theme.colors.primary}18` }]} />
+          <View
+            style={[
+              styles.profileHeroGlow,
+              styles.profileHeroGlowSecondary,
+              {
+                backgroundColor: theme.colors.infoSoft ?? theme.colors.surfaceMuted ?? theme.colors.primarySoft,
+              },
+            ]}
+          />
+          <View style={styles.profileHeroContent}>
+            <View
+              style={[
+                styles.profileHeroAvatarShell,
+                {
+                  backgroundColor: theme.colors.surfaceElevated ?? theme.colors.surface,
+                  borderColor: theme.colors.glassBorder,
+                },
+              ]}
+            >
+              <UserAvatar accountKey={profileAddress} cacheVersion={avatarVersion} label={displayName} size={44} uri={avatar} />
+            </View>
+
+            <View style={styles.profileHeroMeta}>
+              <Text numberOfLines={1} style={[styles.profileHeroEyebrow, { color: theme.colors.primary }]}>
+                {t("home.me.personal")}
+              </Text>
+              <Text numberOfLines={1} style={[styles.profileHeroName, { color: theme.colors.text }]}>
+                {displayName}
+              </Text>
+              <Text numberOfLines={1} style={[styles.profileHeroAddress, { color: theme.colors.mutedText }]}>
+                {profileAddressLabel}
+              </Text>
+            </View>
+
+            <Text style={[styles.profileHeroChevron, { color: theme.colors.mutedText }]}>›</Text>
+          </View>
+        </Pressable>
+
         <Pressable
           accessibilityLabel={t("home.shell.scan")}
           hitSlop={10}
@@ -418,7 +493,77 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
   },
   topBar: {
-    alignSelf: "flex-end",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  profileHero: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 78,
+    borderRadius: 26,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    overflow: "hidden",
+  },
+  profileHeroGlow: {
+    position: "absolute",
+    borderRadius: 999,
+  },
+  profileHeroGlowPrimary: {
+    width: 128,
+    height: 128,
+    top: -50,
+    left: -28,
+    opacity: 0.88,
+  },
+  profileHeroGlowSecondary: {
+    width: 88,
+    height: 88,
+    right: -18,
+    bottom: -24,
+    opacity: 0.92,
+  },
+  profileHeroContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  profileHeroAvatarShell: {
+    width: 54,
+    height: 54,
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  profileHeroMeta: {
+    flex: 1,
+    minWidth: 0,
+    gap: 1,
+  },
+  profileHeroEyebrow: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "700",
+    letterSpacing: -0.08,
+  },
+  profileHeroName: {
+    fontSize: 18,
+    lineHeight: 22,
+    fontWeight: "800",
+    letterSpacing: -0.32,
+  },
+  profileHeroAddress: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "600",
+  },
+  profileHeroChevron: {
+    fontSize: 20,
+    lineHeight: 20,
+    fontWeight: "300",
   },
   topBarAction: {
     width: 44,
