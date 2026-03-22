@@ -327,6 +327,7 @@ const home = {
       invalid: "Address format does not match the selected network.",
       scan: "Scan",
       scanImage: "Scan Image",
+      scanAllUnavailable: "Scanning and image QR recognition are not available on this device.",
       scanUnavailable: "Native camera scanning is not available on this device.",
       scanImageUnavailable: "Native image QR recognition is not available on this device.",
       scanPermissionDenied: "Camera permission was denied. Please enable it in system settings and try again.",

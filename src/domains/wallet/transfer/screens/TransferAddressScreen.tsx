@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 
 import { useFocusEffect } from "@react-navigation/native"
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
+import { ActionSheetIOS, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -138,14 +138,6 @@ export function TransferAddressScreen({ navigation, route }: Props) {
   }, [deferredNormalizedAddress, validateAddress])
   const canSubmit = useMemo(() => validateAddress(normalizedAddress), [normalizedAddress, validateAddress])
 
-  const addressBookMatch = useMemo(() => {
-    const lookup = deferredNormalizedAddress.toLowerCase()
-    if (!lookup) {
-      return null
-    }
-
-    return addressBookEntries.find(item => item.walletAddress.toLowerCase() === lookup) ?? null
-  }, [addressBookEntries, deferredNormalizedAddress])
   const addressWarning = useMemo(() => {
     if (!deferredNormalizedAddress) {
       return ""
@@ -229,21 +221,7 @@ export function TransferAddressScreen({ navigation, route }: Props) {
     }
   }
 
-  const handleAddAddressBook = () => {
-    const navigated = navigateRoot("AddressBookStack", {
-      screen: "AddressBookEditScreen",
-      params: {
-        initialAddress: normalizedAddress,
-        chainType: targetChainType,
-      },
-    })
-
-    if (!navigated) {
-      presentMessage(t("transfer.address.loadAddressBookFailed"))
-    }
-  }
-
-  const handleScan = async (mode: "camera" | "image") => {
+  const runScan = useCallback(async (mode: "camera" | "image") => {
     const capability = scannerAdapter.getCapability(mode)
     if (!capability.supported) {
       presentMessage(
@@ -283,7 +261,64 @@ export function TransferAddressScreen({ navigation, route }: Props) {
     }
 
     syncAddress(nextAddress, "scan")
-  }
+  }, [presentMessage, regexes, syncAddress, t])
+
+  const handleOpenScanOptions = useCallback(() => {
+    const cameraCapability = scannerAdapter.getCapability("camera")
+    const imageCapability = scannerAdapter.getCapability("image")
+
+    if (!cameraCapability.supported && !imageCapability.supported) {
+      presentMessage(t("transfer.address.scanAllUnavailable"), {
+        titleKey: "common.infoTitle",
+      })
+      return
+    }
+
+    if (cameraCapability.supported && !imageCapability.supported) {
+      void runScan("camera")
+      return
+    }
+
+    if (!cameraCapability.supported && imageCapability.supported) {
+      void runScan("image")
+      return
+    }
+
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: [t("transfer.address.scan"), t("transfer.address.scanImage"), t("common.cancel")],
+          cancelButtonIndex: 2,
+        },
+        buttonIndex => {
+          if (buttonIndex === 0) {
+            void runScan("camera")
+            return
+          }
+
+          if (buttonIndex === 1) {
+            void runScan("image")
+          }
+        },
+      )
+      return
+    }
+
+    Alert.alert(t("transfer.address.scan"), undefined, [
+      {
+        text: t("transfer.address.scan"),
+        onPress: () => void runScan("camera"),
+      },
+      {
+        text: t("transfer.address.scanImage"),
+        onPress: () => void runScan("image"),
+      },
+      {
+        style: "cancel",
+        text: t("common.cancel"),
+      },
+    ])
+  }, [presentMessage, runScan, t])
 
   const handleNext = () => {
     if (!canSubmit) {
@@ -358,11 +393,8 @@ export function TransferAddressScreen({ navigation, route }: Props) {
             value={address}
           />
           <View style={styles.inlineActions}>
-            <Pressable onPress={() => void handleScan("camera")} style={styles.inlineButton}>
+            <Pressable onPress={handleOpenScanOptions} style={styles.inlineButton}>
               <Text style={[styles.inlineButtonText, { color: theme.colors.primary }]}>{t("transfer.address.scan")}</Text>
-            </Pressable>
-            <Pressable onPress={() => void handleScan("image")} style={styles.inlineButton}>
-              <Text style={[styles.inlineButtonText, { color: theme.colors.primary }]}>{t("transfer.address.scanImage")}</Text>
             </Pressable>
             <Pressable onPress={handleOpenAddressBook} style={styles.inlineButton}>
               <Text style={[styles.inlineButtonText, { color: theme.colors.primary }]}>{t("transfer.address.fromAddressBook")}</Text>
@@ -387,16 +419,6 @@ export function TransferAddressScreen({ navigation, route }: Props) {
               ))}
             </AppListCard>
           </>
-        ) : null}
-
-        {normalizedAddress && !addressBookMatch && isAddressValid ? (
-          <Pressable
-            onPress={handleAddAddressBook}
-            style={[styles.addAddressCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
-          >
-            <Text style={[styles.addAddressTitle, { color: theme.colors.text }]}>{t("transfer.address.addToAddressBook")}</Text>
-            <Text style={[styles.addAddressBody, { color: theme.colors.mutedText }]}>{t("transfer.address.addToAddressBookHint")}</Text>
-          </Pressable>
         ) : null}
 
         <SectionTitle title={t("transfer.address.recent")} />
@@ -501,20 +523,6 @@ const styles = StyleSheet.create({
   inlineButtonText: {
     fontSize: 13,
     fontWeight: "700",
-  },
-  addAddressCard: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 16,
-    padding: 14,
-    gap: 6,
-  },
-  addAddressTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  addAddressBody: {
-    fontSize: 13,
-    lineHeight: 20,
   },
   riskCard: {
     borderWidth: StyleSheet.hairlineWidth,

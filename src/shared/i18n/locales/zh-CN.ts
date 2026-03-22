@@ -327,6 +327,7 @@ const home = {
       invalid: "地址格式与所选网络不匹配。",
       scan: "扫码",
       scanImage: "识别图片",
+      scanAllUnavailable: "当前设备暂不支持扫码或图片识别。",
       scanUnavailable: "当前设备暂不支持原生相机扫码。",
       scanImageUnavailable: "当前设备暂不支持原生图片识别二维码。",
       scanPermissionDenied: "相机权限未开启，请到系统设置中授权后重试。",
