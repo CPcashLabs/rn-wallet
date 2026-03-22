@@ -34,6 +34,7 @@ import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { PageEmpty, PrimaryButton, SectionCard } from "@/shared/ui/AppFlowUi"
+import { NetworkLogo } from "@/shared/ui/NetworkLogo"
 
 export type TransferConfirmVariant = "default" | "normal"
 
@@ -466,10 +467,13 @@ function TransferConfirmBody(props: {
                     active ? { backgroundColor: theme.colors.primarySoft ?? `${theme.colors.primary}12` } : null,
                   ]}
                 >
-                  <View style={[styles.paymentRowIcon, { backgroundColor: active ? theme.colors.primarySoft ?? `${theme.colors.primary}18` : theme.colors.surfaceMuted ?? theme.colors.background }]}>
-                    <Text style={[styles.paymentRowIconText, { color: active ? theme.colors.primary : theme.colors.text }]}>
-                      {symbol.slice(0, 2).toUpperCase()}
-                    </Text>
+                  <View style={styles.paymentRowIcon}>
+                    <NetworkLogo
+                      chainColor={option.sendChainColor || theme.colors.primary}
+                      chainName={option.sendChainName || props.detail?.sendChainName || symbol}
+                      logoUri={option.sendChainLogo}
+                      size={42}
+                    />
                   </View>
                   <View style={styles.paymentRowContent}>
                     <Text style={[styles.paymentRowTitle, { color: theme.colors.text }]}>{symbol}</Text>
@@ -735,15 +739,8 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   paymentRowIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
     alignItems: "center",
     justifyContent: "center",
-  },
-  paymentRowIconText: {
-    fontSize: 14,
-    fontWeight: "800",
   },
   paymentRowContent: {
     flex: 1,
