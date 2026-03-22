@@ -286,7 +286,9 @@ export function TransferAddressScreen({ navigation, route }: Props) {
     }
 
     setRecipientAddress(normalizedAddress, "manual")
-    navigation.navigate(route.params.channelType === "normal" ? "TransferOrderNormalScreen" : "TransferOrderScreen")
+    navigation.navigate(route.params.channelType === "normal" ? "TransferOrderNormalScreen" : "TransferOrderScreen", {
+      multisigWalletId: route.params.multisigWalletId,
+    })
   }
 
   return (

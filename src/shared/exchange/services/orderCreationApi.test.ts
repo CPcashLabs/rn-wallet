@@ -6,7 +6,7 @@ jest.mock("@/shared/api/client", () => ({
   },
 }))
 
-import { createNormalTransferOrder } from "@/shared/exchange/services/orderCreationApi"
+import { createBridgeTransferOrder, createNormalTransferOrder } from "@/shared/exchange/services/orderCreationApi"
 
 describe("orderCreationApi", () => {
   beforeEach(() => {
@@ -55,6 +55,51 @@ describe("orderCreationApi", () => {
       coin_code: "USDT_b",
       amount: 12,
       recv_address: "0xreceiver",
+      note: "",
+      multisig_wallet_id: undefined,
+      pay_wallet_type: undefined,
+    })
+  })
+
+  it("adds the MULTISIG wallet type for CoPouch bridge transfer orders", async () => {
+    await createBridgeTransferOrder({
+      sellerId: 7,
+      recvAddress: "0xreceiver",
+      recvCoinCode: "USDT_t",
+      sendCoinCode: "BTT",
+      sendAmount: 12.5,
+      note: "memo",
+      multisigWalletId: "COPOUCH_1",
+    })
+
+    expect(mockPost).toHaveBeenCalledWith("/api/order/member/receiving/create-payment", {
+      seller_id: 7,
+      recv_address: "0xreceiver",
+      recv_coin_code: "USDT_t",
+      send_coin_code: "BTT",
+      send_amount: 12.5,
+      note: "memo",
+      multisig_wallet_id: "COPOUCH_1",
+      pay_wallet_type: "MULTISIG",
+    })
+  })
+
+  it("keeps wallet type unset for regular bridge transfer orders", async () => {
+    await createBridgeTransferOrder({
+      sellerId: 7,
+      recvAddress: "0xreceiver",
+      recvCoinCode: "USDT_t",
+      sendCoinCode: "BTT",
+      sendAmount: 12.5,
+      note: "",
+    })
+
+    expect(mockPost).toHaveBeenCalledWith("/api/order/member/receiving/create-payment", {
+      seller_id: 7,
+      recv_address: "0xreceiver",
+      recv_coin_code: "USDT_t",
+      send_coin_code: "BTT",
+      send_amount: 12.5,
       note: "",
       multisig_wallet_id: undefined,
       pay_wallet_type: undefined,

@@ -155,9 +155,18 @@ export type TransferStackParamList = {
     title: string
     isRebate: boolean
     initialAddress?: string
+    multisigWalletId?: string
   }
-  TransferOrderScreen: undefined
-  TransferOrderNormalScreen: undefined
+  TransferOrderScreen:
+    | {
+        multisigWalletId?: string
+      }
+    | undefined
+  TransferOrderNormalScreen:
+    | {
+        multisigWalletId?: string
+      }
+    | undefined
   TransferOrderCopouchScreen:
     | {
         multisigWalletId?: string

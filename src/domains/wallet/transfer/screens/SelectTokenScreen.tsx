@@ -49,6 +49,7 @@ export function SelectTokenScreen({ navigation, route }: Props) {
   const [channels, setChannels] = useState<ChannelItem[]>([])
   const [loading, setLoading] = useState(true)
   const copouchAddress = route.params?.copouch ?? route.params?.cowallet
+  const multisigWalletId = route.params?.multisigWalletId
   const preferredChainType = route.params?.preferredChainType
   const prefilledRecipientAddress = route.params?.prefilledRecipientAddress?.trim() ?? ""
   const autoAdvanceToOrder = intent === "transfer" && route.params?.autoAdvanceToOrder === true && Boolean(prefilledRecipientAddress)
@@ -154,7 +155,9 @@ export function SelectTokenScreen({ navigation, route }: Props) {
       if (autoAdvanceToOrder) {
         clearOrderDraft()
         setRecipientAddress(prefilledRecipientAddress, "scan")
-        navigation.navigate(item.channelType === "normal" ? "TransferOrderNormalScreen" : "TransferOrderScreen")
+        navigation.navigate(item.channelType === "normal" ? "TransferOrderNormalScreen" : "TransferOrderScreen", {
+          multisigWalletId,
+        })
         return
       }
 
@@ -170,6 +173,7 @@ export function SelectTokenScreen({ navigation, route }: Props) {
         title: item.title,
         isRebate: item.isRebate,
         initialAddress,
+        multisigWalletId,
       })
     },
     [
@@ -180,7 +184,7 @@ export function SelectTokenScreen({ navigation, route }: Props) {
       navigation,
       prefilledRecipientAddress,
       recipientAddress,
-      route.params?.multisigWalletId,
+      multisigWalletId,
       selectedChannel?.key,
       setRecipientAddress,
       setSelectedChannel,

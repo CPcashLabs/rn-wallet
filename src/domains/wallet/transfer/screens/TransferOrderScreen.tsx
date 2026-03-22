@@ -7,12 +7,12 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { TransferConfirmModal, type TransferConfirmSuccess, type TransferConfirmVariant } from "@/domains/wallet/transfer/components/TransferConfirmPanel"
 import { TransferOrderCreatingOverlay } from "@/domains/wallet/transfer/components/TransferOrderCreatingOverlay"
 import { FieldRow, PageEmpty, PrimaryButton, SectionCard, SecondaryButton } from "@/shared/ui/AppFlowUi"
-import { createPaymentOrder } from "@/domains/wallet/transfer/services/transferApi"
 import {
   getTransferOrderOptions,
   getTransferQuote,
   type TransferOrderOption,
 } from "@/shared/exchange/services/exchangeApi"
+import { createBridgeTransferOrder, createNormalTransferOrder } from "@/shared/exchange/services/orderCreationApi"
 import {
   applyTransferQuote,
   buildTransferQuoteKey,
@@ -32,7 +32,7 @@ import type { TransferStackParamList } from "@/app/navigation/types"
 
 type Props = NativeStackScreenProps<
   TransferStackParamList,
-  "TransferOrderScreen" | "TransferOrderNormalScreen" | "TransferOrderCopouchScreen"
+  "TransferOrderScreen" | "TransferOrderNormalScreen" | "TransferOrderCopouchScreen" | "TransferOrderCowalletScreen"
 >
 
 export function TransferOrderScreen({ navigation, route }: Props) {
@@ -64,8 +64,9 @@ export function TransferOrderScreen({ navigation, route }: Props) {
   const quoteRequestIdRef = useRef(0)
 
   const sendChainName = resolveChainNameById(chainId)
+  const multisigWalletId = route.params?.multisigWalletId
   const isNormalRoute = route.name === "TransferOrderNormalScreen"
-  const confirmVariant: TransferConfirmVariant = isNormalRoute ? "normal" : "default"
+  const confirmVariant: TransferConfirmVariant = selectedChannel?.channelType === "normal" || isNormalRoute ? "normal" : "default"
   const balances = balanceQuery.data?.balances ?? {}
 
   const selectedOption = useMemo(() => {
@@ -268,14 +269,24 @@ export function TransferOrderScreen({ navigation, route }: Props) {
     setSubmitting(true)
 
     try {
-      const result = await createPaymentOrder({
-        sellerId: resolvedOption.sellerId,
-        recvCoinCode: resolvedOption.recvCoinCode,
-        sendCoinCode: resolvedOption.sendCoinCode,
-        sendAmount: resolvedSendAmount,
-        recvAddress: recipientAddress,
-        note,
-      })
+      const result =
+        selectedChannel?.channelType === "normal"
+          ? await createNormalTransferOrder({
+              coinCode: resolvedOption.sendCoinCode,
+              amount: numericAmount,
+              recvAddress: recipientAddress,
+              note,
+              multisigWalletId,
+            })
+          : await createBridgeTransferOrder({
+              sellerId: resolvedOption.sellerId ? Number(resolvedOption.sellerId) : undefined,
+              recvAddress: recipientAddress,
+              recvCoinCode: resolvedOption.recvCoinCode,
+              sendCoinCode: resolvedOption.sendCoinCode,
+              sendAmount: resolvedSendAmount,
+              note,
+              multisigWalletId,
+            })
 
       setLatestOrderSn(result.orderSn)
       setOrderDraft({
@@ -298,12 +309,15 @@ export function TransferOrderScreen({ navigation, route }: Props) {
     note,
     recipientAddress,
     resolvedOption,
+    selectedChannel?.channelType,
     setLatestOrderSn,
     setOrderDraft,
     t,
     validationMessage,
     confirmOrderSn,
     resolvedSendAmount,
+    numericAmount,
+    multisigWalletId,
   ])
 
   const handleConfirmCompleted = useCallback(
