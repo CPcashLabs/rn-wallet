@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 
+import { Image } from "expo-image"
 import { useFocusEffect } from "@react-navigation/native"
 import { ActionSheetIOS, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native"
 import { useTranslation } from "react-i18next"
@@ -158,8 +159,8 @@ export function TransferAddressScreen({ navigation, route }: Props) {
   })
   const recentEntries = recentEntriesQuery.data ?? []
   const isRecentLoading = recentEntriesQuery.isLoading && !recentEntriesQuery.data
-  const recentAddressBookNameByAddress = useMemo(() => {
-    return new Map(addressBookEntries.map(item => [item.walletAddress.toLowerCase(), item.name.trim()]))
+  const recentAddressBookEntryByAddress = useMemo(() => {
+    return new Map(addressBookEntries.map(item => [item.walletAddress.toLowerCase(), item]))
   }, [addressBookEntries])
   const recentPreviewEntries = useMemo(() => recentEntries.slice(0, RECENT_ENTRY_LIMIT), [recentEntries])
   const regexes = useMemo(
@@ -395,7 +396,7 @@ export function TransferAddressScreen({ navigation, route }: Props) {
       onBack={navigation.goBack}
       right={
         <Pressable accessibilityLabel={t("transfer.address.scan")} hitSlop={10} onPress={handleOpenScanOptions} style={({ pressed }) => [styles.headerAction, pressed ? styles.headerActionPressed : null]}>
-          <SFSymbolIcon color={theme.colors.primary} fallbackName="qrcode-scan" name="qrcode.viewfinder" size={28} weight="medium" />
+          <SFSymbolIcon color={theme.colors.primary} fallbackName="qrcode-scan" name="qrcode.viewfinder" size={22} weight="medium" />
         </Pressable>
       }
       scroll={false}
@@ -423,7 +424,7 @@ export function TransferAddressScreen({ navigation, route }: Props) {
                 },
               ]}
             >
-              <SFSymbolIcon color={theme.colors.mutedText} fallbackName="magnify" name="magnifyingglass" size={20} weight="medium" />
+              <SFSymbolIcon color={theme.colors.mutedText} fallbackName="magnify" name="magnifyingglass" size={18} weight="medium" />
               <TextInput
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -437,7 +438,7 @@ export function TransferAddressScreen({ navigation, route }: Props) {
                 placeholderTextColor={theme.colors.mutedText}
                 returnKeyType="done"
                 selectionColor={theme.colors.primary}
-                style={[styles.addressInput, { color: theme.colors.text }]}
+                style={[theme.typography.body, styles.addressInput, { color: theme.colors.text }]}
                 value={address}
               />
               <Pressable
@@ -446,10 +447,10 @@ export function TransferAddressScreen({ navigation, route }: Props) {
                 onPress={handleOpenAddressBook}
                 style={({ pressed }) => [styles.addressBookButton, { backgroundColor: theme.colors.primary }, pressed ? styles.iconButtonPressed : null]}
               >
-                <SFSymbolIcon color="#FFFFFF" fallbackName="account-box" name="person.text.rectangle.fill" size={17} weight="medium" />
+                <SFSymbolIcon color="#FFFFFF" fallbackName="account-box" name="person.text.rectangle.fill" size={15} weight="medium" />
               </Pressable>
             </View>
-            {addressWarning ? <Text style={[styles.fieldHint, { color: theme.colors.danger }]}>{addressWarning}</Text> : null}
+            {addressWarning ? <Text style={[theme.typography.footnote, styles.fieldHint, { color: theme.colors.danger }]}>{addressWarning}</Text> : null}
           </View>
 
           {addressSuggestions.length > 0 ? (
@@ -478,13 +479,16 @@ export function TransferAddressScreen({ navigation, route }: Props) {
                 <RecentEmptyState backgroundColor={cardBackgroundColor} body={t("transfer.address.noRecent")} title={t("transfer.address.noRecentTitle")} />
               ) : (
                 recentPreviewEntries.map(item => {
-                  const contactName = recentAddressBookNameByAddress.get(item.address.toLowerCase())
+                  const contactEntry = recentAddressBookEntryByAddress.get(item.address.toLowerCase())
+                  const contactName = contactEntry?.name.trim()
                   const transferRecord = item.coinName
                     ? `${t(`transfer.address.direction.${item.direction}`)} · ${item.coinName}`
                     : t(`transfer.address.direction.${item.direction}`)
 
                   return (
                     <RecentTransferCard
+                      avatarLabel={contactName ?? ""}
+                      avatarUri={contactEntry?.avatar ?? ""}
                       key={`${item.address}-${item.createdAt}`}
                       address={item.address}
                       backgroundColor={cardBackgroundColor}
@@ -510,7 +514,7 @@ export function TransferAddressScreen({ navigation, route }: Props) {
 function SectionTitle(props: { title: string }) {
   const theme = useAppTheme()
 
-  return <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{props.title}</Text>
+  return <Text style={[theme.typography.title3, styles.sectionTitle, { color: theme.colors.text }]}>{props.title}</Text>
 }
 
 function SuggestionCard(props: {
@@ -536,13 +540,13 @@ function SuggestionCard(props: {
       ]}
     >
       <View style={[styles.suggestionAvatar, { backgroundColor: theme.colors.primarySoft ?? `${theme.colors.primary}16` }]}>
-        <SFSymbolIcon color={theme.colors.primary} fallbackName="account-box" name="person.text.rectangle.fill" size={18} weight="medium" />
+        <SFSymbolIcon color={theme.colors.primary} fallbackName="account-box" name="person.text.rectangle.fill" size={16} weight="medium" />
       </View>
       <View style={styles.suggestionBody}>
-        <Text numberOfLines={1} style={[styles.suggestionTitle, { color: theme.colors.text }]}>
+        <Text numberOfLines={1} style={[theme.typography.calloutEmphasized, styles.suggestionTitle, { color: theme.colors.text }]}>
           {props.title}
         </Text>
-        <Text numberOfLines={1} style={[styles.suggestionSubtitle, { color: theme.colors.mutedText }]}>
+        <Text numberOfLines={1} style={[theme.typography.subheadline, styles.suggestionSubtitle, { color: theme.colors.mutedText }]}>
           {props.subtitle}
         </Text>
       </View>
@@ -553,6 +557,8 @@ function SuggestionCard(props: {
 
 function RecentTransferCard(props: {
   address: string
+  avatarLabel: string
+  avatarUri?: string
   title: string
   subtitle: string
   backgroundColor: string
@@ -577,18 +583,96 @@ function RecentTransferCard(props: {
         pressed ? styles.cardPressed : null,
       ]}
     >
-      <View style={[styles.recentAvatar, { backgroundColor: avatarBackgroundColor }]}>
-        <SFSymbolIcon color={avatarTintColor} fallbackName={avatarTone.fallbackName} name={avatarTone.symbol} size={24} weight="medium" />
-      </View>
+      <RecentTransferAvatar
+        avatarLabel={props.avatarLabel}
+        avatarUri={props.avatarUri}
+        backgroundColor={avatarBackgroundColor}
+        fallbackName={avatarTone.fallbackName}
+        iconColor={avatarTintColor}
+        name={avatarTone.symbol}
+        size={48}
+      />
       <View style={styles.recentTextBlock}>
-        <Text numberOfLines={1} style={[styles.recentTitle, { color: theme.colors.text }]}>
+        <Text numberOfLines={1} style={[theme.typography.calloutEmphasized, styles.recentTitle, { color: theme.colors.text }]}>
           {props.title}
         </Text>
-        <Text numberOfLines={1} style={[styles.recentSubtitle, { color: theme.colors.mutedText }]}>
+        <Text numberOfLines={1} style={[theme.typography.subheadline, styles.recentSubtitle, { color: theme.colors.mutedText }]}>
           {props.subtitle}
         </Text>
       </View>
     </Pressable>
+  )
+}
+
+function RecentTransferAvatar(props: {
+  size: number
+  avatarLabel: string
+  avatarUri?: string
+  backgroundColor: string
+  iconColor: string
+  name: SFSymbolName
+  fallbackName: MaterialIconName
+}) {
+  const theme = useAppTheme()
+  const [imageFailed, setImageFailed] = useState(false)
+  const normalizedUri = props.avatarUri?.trim() || ""
+  const fallbackLabel = props.avatarLabel.trim().slice(0, 1).toUpperCase()
+
+  useEffect(() => {
+    setImageFailed(false)
+  }, [normalizedUri])
+
+  if (normalizedUri && !imageFailed) {
+    return (
+      <Image
+        cachePolicy="memory-disk"
+        contentFit="cover"
+        onError={() => setImageFailed(true)}
+        source={normalizedUri}
+        style={[
+          styles.recentAvatar,
+          {
+            width: props.size,
+            height: props.size,
+            borderRadius: props.size / 2,
+            backgroundColor: props.backgroundColor,
+          },
+        ]}
+        transition={0}
+      />
+    )
+  }
+
+  return (
+    <View
+      style={[
+        styles.recentAvatar,
+        {
+          width: props.size,
+          height: props.size,
+          borderRadius: props.size / 2,
+          backgroundColor: props.backgroundColor,
+        },
+      ]}
+    >
+      {fallbackLabel ? (
+        <Text
+          style={[
+            theme.typography.subheadlineEmphasized,
+            styles.recentAvatarLabel,
+            {
+              color: props.iconColor,
+              fontSize: Math.max(15, Math.round(props.size * 0.34)),
+              lineHeight: Math.max(18, Math.round(props.size * 0.4)),
+            },
+          ]}
+        >
+          {fallbackLabel}
+        </Text>
+      ) : (
+        <SFSymbolIcon color={props.iconColor} fallbackName={props.fallbackName} name={props.name} size={20} weight="medium" />
+      )}
+    </View>
   )
 }
 
@@ -601,8 +685,8 @@ function RecentEmptyState(props: {
 
   return (
     <View style={[styles.emptyCard, { backgroundColor: props.backgroundColor, borderColor: theme.isDark ? theme.colors.border : "transparent" }]}>
-      <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>{props.title}</Text>
-      <Text style={[styles.emptyBody, { color: theme.colors.mutedText }]}>{props.body}</Text>
+      <Text style={[theme.typography.calloutEmphasized, styles.emptyTitle, { color: theme.colors.text }]}>{props.title}</Text>
+      <Text style={[theme.typography.footnote, styles.emptyBody, { color: theme.colors.mutedText }]}>{props.body}</Text>
     </View>
   )
 }
@@ -633,22 +717,17 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   recentSection: {
-    gap: 18,
+    gap: 16,
   },
-  sectionTitle: {
-    fontSize: 18,
-    lineHeight: 24,
-    fontWeight: "800",
-    letterSpacing: -0.36,
-  },
+  sectionTitle: {},
   addressField: {
-    minHeight: 86,
-    borderRadius: 28,
+    minHeight: 64,
+    borderRadius: 22,
     borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 10,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 8 },
     elevation: 2,
@@ -656,15 +735,11 @@ const styles = StyleSheet.create({
   addressInput: {
     flex: 1,
     minWidth: 0,
-    fontSize: 19,
-    lineHeight: 24,
-    fontWeight: "500",
-    letterSpacing: -0.35,
     paddingVertical: 0,
   },
   addressBookButton: {
-    width: 34,
-    height: 34,
+    width: 32,
+    height: 32,
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
@@ -683,22 +758,22 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   suggestionCard: {
-    minHeight: 76,
+    minHeight: 68,
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 24,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
+    gap: 12,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 10 },
     elevation: 2,
   },
   suggestionAvatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -707,33 +782,25 @@ const styles = StyleSheet.create({
     minWidth: 0,
     gap: 3,
   },
-  suggestionTitle: {
-    fontSize: 16,
-    lineHeight: 21,
-    fontWeight: "700",
-    letterSpacing: -0.22,
-  },
-  suggestionSubtitle: {
-    fontSize: 13,
-    lineHeight: 18,
-  },
+  suggestionTitle: {},
+  suggestionSubtitle: {},
   suggestionChevron: {
-    fontSize: 26,
-    lineHeight: 26,
-    fontWeight: "300",
+    fontSize: 20,
+    lineHeight: 20,
+    fontWeight: "400",
   },
   recentStack: {
-    gap: 14,
+    gap: 12,
   },
   recentCard: {
-    minHeight: 110,
+    minHeight: 92,
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 28,
-    paddingHorizontal: 18,
-    paddingVertical: 18,
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     flexDirection: "row",
     alignItems: "center",
-    gap: 16,
+    gap: 14,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 12 },
     elevation: 2,
@@ -743,53 +810,37 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.992 }],
   },
   recentAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
+  },
+  recentAvatarLabel: {
+    textAlign: "center",
   },
   recentTextBlock: {
     flex: 1,
     minWidth: 0,
-    gap: 4,
+    gap: 2,
   },
-  recentTitle: {
-    fontSize: 18,
-    lineHeight: 24,
-    fontWeight: "800",
-    letterSpacing: -0.45,
-  },
-  recentSubtitle: {
-    fontSize: 14,
-    lineHeight: 19,
-    letterSpacing: -0.08,
-  },
+  recentTitle: {},
+  recentSubtitle: {},
   emptyCard: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 28,
+    borderRadius: 24,
     paddingHorizontal: 20,
     paddingVertical: 22,
     gap: 8,
   },
-  emptyTitle: {
-    fontSize: 17,
-    lineHeight: 22,
-    fontWeight: "700",
-    letterSpacing: -0.28,
-  },
-  emptyBody: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
+  emptyTitle: {},
+  emptyBody: {},
   footer: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 6,
+    paddingBottom: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   footerButton: {
-    minHeight: 64,
-    borderRadius: 20,
+    minHeight: 52,
+    borderRadius: 16,
   },
 })
