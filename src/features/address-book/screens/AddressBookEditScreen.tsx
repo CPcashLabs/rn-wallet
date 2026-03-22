@@ -1,17 +1,15 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
+import { useQueryClient } from "@tanstack/react-query"
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import {
-  createAddressBookEntry,
-  deleteAddressBookEntry,
-  getAddressBookDetail,
   type AddressBookDraft,
   type AddressBookEntry,
-  updateAddressBookEntry,
 } from "@/features/address-book/services/addressBookApi"
+import { useAddressBookDetailQuery, useDeleteAddressBookEntryMutation, useSaveAddressBookEntryMutation } from "@/shared/address-book/addressBookQueries"
 import { useAddressBookStore } from "@/features/address-book/store/useAddressBookStore"
 import { HeaderTextAction, HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { ApiError, NativeCapabilityUnavailableError } from "@/shared/errors"
@@ -67,18 +65,20 @@ function resolveScanErrorMessage(error: Error, t: (key: string) => string) {
 export function AddressBookEditScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
-  const refreshEntries = useAddressBookStore(state => state.refreshEntries)
-  const upsertEntry = useAddressBookStore(state => state.upsertEntry)
-  const removeEntry = useAddressBookStore(state => state.removeEntry)
+  const queryClient = useQueryClient()
+  const detailQuery = useAddressBookDetailQuery(route.params?.id)
+  const saveMutation = useSaveAddressBookEntryMutation(queryClient)
+  const deleteMutation = useDeleteAddressBookEntryMutation(queryClient)
+  const presentedDetailErrorAtRef = useRef(0)
   const [name, setName] = useState("")
   const [walletAddress, setWalletAddress] = useState(route.params?.initialAddress ?? "")
   const [chainType, setChainType] = useState<AddressBookChainType | null>(route.params?.chainType ?? null)
-  const [loading, setLoading] = useState(Boolean(route.params?.id))
-  const [submitting, setSubmitting] = useState(false)
-  const [deleting, setDeleting] = useState(false)
   const [addressError, setAddressError] = useState("")
 
   const isEdit = Boolean(route.params?.id)
+  const loading = isEdit && detailQuery.isLoading && !detailQuery.data
+  const submitting = saveMutation.isPending
+  const deleting = deleteMutation.isPending
 
   useEffect(() => {
     const normalized = walletAddress.trim()
@@ -100,44 +100,26 @@ export function AddressBookEditScreen({ navigation, route }: Props) {
   }, [route.params?.chainType, t, walletAddress])
 
   useEffect(() => {
-    const addressBookId = route.params?.id
-    if (!addressBookId) {
+    if (!detailQuery.data) {
       return
     }
 
-    let mounted = true
+    setFormState(detailQuery.data, setName, setWalletAddress, setChainType)
+  }, [detailQuery.data])
 
-    void (async () => {
-      setLoading(true)
-      try {
-        const detail = await getAddressBookDetail(addressBookId)
-        if (!mounted) {
-          return
-        }
-
-        setFormState(detail, setName, setWalletAddress, setChainType)
-      } catch {
-        if (!mounted) {
-          return
-        }
-
-        Alert.alert(t("common.errorTitle"), t("home.addressBook.loadDetailFailed"), [
-          {
-            text: t("common.confirm"),
-            onPress: () => navigation.goBack(),
-          },
-        ])
-      } finally {
-        if (mounted) {
-          setLoading(false)
-        }
-      }
-    })()
-
-    return () => {
-      mounted = false
+  useEffect(() => {
+    if (!isEdit || !detailQuery.error || detailQuery.errorUpdatedAt === presentedDetailErrorAtRef.current) {
+      return
     }
-  }, [navigation, route.params?.id, t])
+
+    presentedDetailErrorAtRef.current = detailQuery.errorUpdatedAt
+    Alert.alert(t("common.errorTitle"), t("home.addressBook.loadDetailFailed"), [
+      {
+        text: t("common.confirm"),
+        onPress: () => navigation.goBack(),
+      },
+    ])
+  }, [detailQuery.error, detailQuery.errorUpdatedAt, isEdit, navigation, t])
 
   const saveDisabled = useMemo(() => {
     return submitting || deleting || !name.trim() || !walletAddress.trim() || !chainType || Boolean(addressError)
@@ -183,20 +165,14 @@ export function AddressBookEditScreen({ navigation, route }: Props) {
       chainType,
     }
 
-    setSubmitting(true)
-
     try {
-      if (route.params?.id) {
-        await updateAddressBookEntry(route.params.id, draft)
-      } else {
-        await createAddressBookEntry(draft)
-      }
-
-      await refreshEntries()
-
-      const latestEntry = useAddressBookStore.getState().findByAddress(draft.walletAddress)
-      if (latestEntry) {
-        upsertEntry(latestEntry)
+      const result = await saveMutation.mutateAsync({
+        id: route.params?.id,
+        draft,
+      })
+      const selectedEntry = useAddressBookStore.getState().selectedEntry
+      if (selectedEntry?.id === route.params?.id && result.entry) {
+        useAddressBookStore.getState().setSelectedEntry(result.entry)
       }
 
       Alert.alert(
@@ -211,8 +187,6 @@ export function AddressBookEditScreen({ navigation, route }: Props) {
       )
     } catch (error) {
       Alert.alert(t("common.errorTitle"), resolveAddressBookSaveError(error, t))
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -221,11 +195,12 @@ export function AddressBookEditScreen({ navigation, route }: Props) {
       return
     }
 
-    setDeleting(true)
-
     try {
-      await deleteAddressBookEntry(route.params.id)
-      removeEntry(route.params.id)
+      await deleteMutation.mutateAsync(route.params.id)
+      const selectedEntry = useAddressBookStore.getState().selectedEntry
+      if (selectedEntry?.id === route.params.id) {
+        useAddressBookStore.getState().setSelectedEntry(null)
+      }
       Alert.alert(t("common.infoTitle"), t("home.addressBook.deleteSuccess"), [
         {
           text: t("common.confirm"),
@@ -234,8 +209,6 @@ export function AddressBookEditScreen({ navigation, route }: Props) {
       ])
     } catch {
       Alert.alert(t("common.errorTitle"), t("home.addressBook.deleteFailed"))
-    } finally {
-      setDeleting(false)
     }
   }
 

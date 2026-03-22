@@ -8,6 +8,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { navigateRoot } from "@/app/navigation/navigationRef"
 import { formatWalletAddress, formatWalletDateTime } from "@/domains/wallet/shared/utils/format"
 import { PrimaryButton } from "@/shared/ui/AppFlowUi"
+import { useAddressBookEntriesQuery } from "@/shared/address-book/addressBookQueries"
 import { useAddressBookStore } from "@/shared/address-book/useAddressBookStore"
 import { HomeScaffold } from "@/shared/ui/HomeScaffold"
 import { getRecentTransferEntries, type TransferChannel } from "@/domains/wallet/transfer/services/transferApi"
@@ -84,8 +85,8 @@ export function TransferAddressScreen({ navigation, route }: Props) {
   const { t } = useTranslation()
   const { presentMessage } = useErrorPresenter()
   const chainId = useWalletStore(state => state.chainId)
-  const addressBookEntries = useAddressBookStore(state => state.entries)
-  const loadEntries = useAddressBookStore(state => state.loadEntries)
+  const addressBookEntriesQuery = useAddressBookEntriesQuery()
+  const addressBookEntries = addressBookEntriesQuery.data ?? []
   const selectedAddressBookEntry = useAddressBookStore(state => state.selectedEntry)
   const setSelectedAddressBookEntry = useAddressBookStore(state => state.setSelectedEntry)
   const selectedChannel = useTransferDraftStore(state => state.selectedChannel)
@@ -175,10 +176,6 @@ export function TransferAddressScreen({ navigation, route }: Props) {
     route.params.title,
     setSelectedChannel,
   ])
-
-  useEffect(() => {
-    void loadEntries()
-  }, [loadEntries])
 
   useEffect(() => {
     let mounted = true

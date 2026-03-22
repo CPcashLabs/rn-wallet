@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react"
+import React, { useCallback, useMemo, useState } from "react"
 
 import { FlatList, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import type { AddressBookEntry } from "@/shared/address-book/addressBookApi"
+import { useAddressBookEntriesQuery } from "@/shared/address-book/addressBookQueries"
 import { useAddressBookStore } from "@/shared/address-book/useAddressBookStore"
 import { useDeferredValueCompat } from "@/shared/hooks/useDeferredValueCompat"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
@@ -22,21 +23,16 @@ type Props = NativeStackScreenProps<AddressBookStackParamList, "AddressBookListS
 export function AddressBookListScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
-  const entries = useAddressBookStore(state => state.entries)
-  const loading = useAddressBookStore(state => state.loading)
-  const refreshing = useAddressBookStore(state => state.refreshing)
-  const loadEntries = useAddressBookStore(state => state.loadEntries)
-  const refreshEntries = useAddressBookStore(state => state.refreshEntries)
+  const entriesQuery = useAddressBookEntriesQuery()
+  const entries = entriesQuery.data ?? []
+  const loading = entriesQuery.isLoading && !entriesQuery.data
+  const refreshing = entriesQuery.isRefetching
   const setSelectedEntry = useAddressBookStore(state => state.setSelectedEntry)
   const [keyword, setKeyword] = useState("")
   const deferredKeyword = useDeferredValueCompat(keyword)
 
   const mode = route.params?.mode ?? "manage"
   const chainType = route.params?.chainType
-
-  useEffect(() => {
-    void loadEntries()
-  }, [loadEntries])
 
   const filteredEntries = useMemo(() => {
     const normalized = deferredKeyword.trim().toLowerCase()
@@ -116,7 +112,7 @@ export function AddressBookListScreen({ navigation, route }: Props) {
         <HeaderTextAction
           disabled={refreshing}
           label={refreshing ? t("common.loading") : t("home.addressBook.refresh")}
-          onPress={() => void refreshEntries()}
+          onPress={() => void entriesQuery.refetch()}
         />
       }
       scroll={false}
