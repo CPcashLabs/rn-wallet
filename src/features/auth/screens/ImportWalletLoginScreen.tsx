@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from "react"
 
+import { Controller, useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -7,6 +9,7 @@ import { AuthButton } from "@/features/auth/components/AuthButton"
 import { AuthScaffold } from "@/features/auth/components/AuthScaffold"
 import { AuthTextField } from "@/features/auth/components/AuthTextField"
 import { createWalletLoginMessage, finalizeWalletLogin } from "@/features/auth/services/walletLogin"
+import { createImportSecretSchema } from "@/features/auth/utils/authEntryFormSchemas"
 import type { AuthStackParamList } from "@/app/navigation/types"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { walletAdapter } from "@/shared/native"
@@ -15,20 +18,40 @@ import { useWalletStore } from "@/shared/store/useWalletStore"
 
 type Props = NativeStackScreenProps<AuthStackParamList, "ImportWalletLoginScreen">
 
+type ImportWalletLoginFormValues = {
+  secret: string
+}
+
 export function ImportWalletLoginScreen({ navigation, route }: Props) {
   const { t } = useTranslation()
   const { presentError, presentMessage } = useErrorPresenter()
   const inviteCode = route.params?.inviteCode
   const setWalletState = useWalletStore(state => state.setWalletState)
   const walletCapability = useMemo(() => walletAdapter.getCapability(), [])
-  const [secret, setSecret] = useState("")
   const [inputError, setInputError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const importSecretSchema = useMemo(
+    () =>
+      createImportSecretSchema({
+        importSecretRequired: t("auth.errors.importSecretRequired"),
+        invalidImportSecret: t("auth.errors.invalidImportSecret"),
+      }),
+    [t],
+  )
+  const {
+    control,
+    formState: { isValid },
+    handleSubmit,
+    watch,
+  } = useForm<ImportWalletLoginFormValues>({
+    defaultValues: {
+      secret: "",
+    },
+    mode: "onChange",
+    resolver: zodResolver(importSecretSchema),
+  })
+  const secret = watch("secret")
   const detectedImport = useMemo(() => tryParseWalletImportInput(secret), [secret])
-
-  const disabled = useMemo(() => {
-    return !secret.trim()
-  }, [secret])
 
   const helperText = useMemo(() => {
     if (!detectedImport) {
@@ -46,25 +69,19 @@ export function ImportWalletLoginScreen({ navigation, route }: Props) {
     })
   }, [detectedImport, t])
 
-  const submit = async () => {
-    if (!secret.trim()) {
-      const message = t("auth.errors.importSecretRequired")
-      setInputError(message)
-      presentMessage(message)
-      return
-    }
-
+  const submit = handleSubmit(async values => {
     setSubmitting(true)
     setInputError(null)
 
     try {
+      const normalizedSecret = values.secret.trim()
       let importedAddress = ""
       let importedChainId: string | null = null
       let signature = ""
       let message = createWalletLoginMessage(importedAddress)
 
       if (walletCapability.supported) {
-        const imported = await walletAdapter.importSecret(secret)
+        const imported = await walletAdapter.importSecret(normalizedSecret)
 
         if (!imported.ok) {
           throw imported.error
@@ -84,7 +101,7 @@ export function ImportWalletLoginScreen({ navigation, route }: Props) {
 
         signature = signatureResult.data.signature
       } else {
-        const parsedImport = detectedImport ?? tryParseWalletImportInput(secret)
+        const parsedImport = detectedImport ?? tryParseWalletImportInput(normalizedSecret)
 
         if (!parsedImport) {
           throw new WalletImportInputError("invalid")
@@ -93,7 +110,7 @@ export function ImportWalletLoginScreen({ navigation, route }: Props) {
         importedAddress = parsedImport.address
         message = createWalletLoginMessage(importedAddress)
 
-        const imported = await signMessageWithWalletImport(secret, JSON.stringify(message))
+        const imported = await signMessageWithWalletImport(normalizedSecret, JSON.stringify(message))
         importedAddress = imported.address
         signature = imported.signature
       }
@@ -134,7 +151,7 @@ export function ImportWalletLoginScreen({ navigation, route }: Props) {
     } finally {
       setSubmitting(false)
     }
-  }
+  })
 
   return (
     <AuthScaffold
@@ -143,24 +160,31 @@ export function ImportWalletLoginScreen({ navigation, route }: Props) {
       title={t("auth.importLogin.title")}
       subtitle={t("auth.importLogin.subtitle")}
     >
-      <AuthTextField
-        autoCapitalize="none"
-        autoCorrect={false}
-        error={inputError}
-        helperText={helperText}
-        label={t("auth.importLogin.secretLabel")}
-        multiline
-        numberOfLines={6}
-        onChangeText={value => {
-          setSecret(value)
-          setInputError(null)
-        }}
-        placeholder={t("auth.importLogin.secretPlaceholder")}
-        value={secret}
+      <Controller
+        control={control}
+        name="secret"
+        render={({ field: { onBlur, onChange, value }, fieldState }) => (
+          <AuthTextField
+            autoCapitalize="none"
+            autoCorrect={false}
+            error={fieldState.error?.message ?? inputError}
+            helperText={helperText}
+            label={t("auth.importLogin.secretLabel")}
+            multiline
+            numberOfLines={6}
+            onBlur={onBlur}
+            onChangeText={nextValue => {
+              onChange(nextValue)
+              setInputError(null)
+            }}
+            placeholder={t("auth.importLogin.secretPlaceholder")}
+            value={value}
+          />
+        )}
       />
 
       <AuthButton
-        disabled={disabled}
+        disabled={!isValid || submitting}
         label={t("auth.importLogin.submit")}
         loading={submitting}
         onPress={() => void submit()}

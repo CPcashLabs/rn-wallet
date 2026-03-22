@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react"
 
 import { Pressable, StyleSheet, Text } from "react-native"
+import { Controller, useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -10,6 +12,7 @@ import { AuthTextField } from "@/features/auth/components/AuthTextField"
 import { bindInviteCode, getPasswordRules, signInWithPassword, validateAddressExists } from "@/features/auth/services/authApi"
 import { persistAuthenticatedSession } from "@/features/auth/services/authSessionOrchestrator"
 import { appendApiDebugSuffix, getAuthErrorMessage, getInviteBindingMessage } from "@/features/auth/utils/authMessages"
+import { createPasswordLoginSchema } from "@/features/auth/utils/authEntryFormSchemas"
 import { resetToMainTabs } from "@/app/navigation/navigationRef"
 import type { AuthStackParamList } from "@/app/navigation/types"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
@@ -19,6 +22,11 @@ import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 type Props = NativeStackScreenProps<AuthStackParamList, "PasswordLoginScreen">
 
+type PasswordLoginFormValues = {
+  address: string
+  password: string
+}
+
 export function PasswordLoginScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
@@ -27,11 +35,36 @@ export function PasswordLoginScreen({ navigation, route }: Props) {
   const walletStatus = useWalletStore(state => state.status)
   const inviteCode = route.params?.inviteCode
   const defaultAddress = route.params?.address ?? walletAddress ?? ""
-  const [address, setAddress] = useState(defaultAddress)
-  const [password, setPassword] = useState("")
   const [minLength, setMinLength] = useState(6)
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const passwordLoginMessages = useMemo(
+    () => ({
+      addressRequired: t("auth.errors.addressRequired"),
+      passwordRequired: t("auth.errors.passwordRequired"),
+      passwordTooShort: t("auth.errors.passwordTooShort", { min: minLength }),
+    }),
+    [minLength, t],
+  )
+  const passwordLoginSchema = useMemo(
+    () => createPasswordLoginSchema(minLength, passwordLoginMessages),
+    [minLength, passwordLoginMessages],
+  )
+  const {
+    control,
+    formState: { isValid },
+    handleSubmit,
+    trigger,
+    watch,
+  } = useForm<PasswordLoginFormValues>({
+    defaultValues: {
+      address: defaultAddress,
+      password: "",
+    },
+    mode: "onChange",
+    resolver: zodResolver(passwordLoginSchema),
+  })
+  const address = watch("address")
 
   useEffect(() => {
     let mounted = true
@@ -54,21 +87,17 @@ export function PasswordLoginScreen({ navigation, route }: Props) {
     }
   }, [])
 
-  const disabled = useMemo(() => {
-    return !address.trim() || password.trim().length < minLength
-  }, [address, minLength, password])
+  useEffect(() => {
+    void trigger()
+  }, [minLength, trigger])
 
-  const submit = async () => {
-    if (!address.trim()) {
-      presentMessage(t("auth.errors.addressRequired"))
-      return
-    }
-
+  const submit = handleSubmit(async values => {
     setSubmitting(true)
     setPasswordError(null)
 
     try {
-      const validation = await validateAddressExists(address)
+      const normalizedAddress = values.address.trim()
+      const validation = await validateAddressExists(normalizedAddress)
 
       if (!validation.accountExists) {
         const message = t("auth.errors.addressNotFound")
@@ -84,12 +113,12 @@ export function PasswordLoginScreen({ navigation, route }: Props) {
         return
       }
 
-      const tokens = await signInWithPassword(address.trim(), password)
-      const loginType = walletStatus === "connected" && walletAddress?.toLowerCase() === address.trim().toLowerCase() ? "wallet" : "password"
+      const tokens = await signInWithPassword(normalizedAddress, values.password)
+      const loginType = walletStatus === "connected" && walletAddress?.toLowerCase() === normalizedAddress.toLowerCase() ? "wallet" : "password"
 
       await persistAuthenticatedSession({
         ...tokens,
-        address: address.trim(),
+        address: normalizedAddress,
         loginType,
       })
 
@@ -108,7 +137,7 @@ export function PasswordLoginScreen({ navigation, route }: Props) {
       const message = appendApiDebugSuffix(getAuthErrorMessage(error, "auth.errors.passwordLoginFailed"), error)
       logErrorSafely("[auth.passwordLogin]", error, {
         context: {
-          address: address.trim(),
+          address: values.address.trim(),
           resolvedMessage: message,
         },
         forwardToConsole: false,
@@ -118,7 +147,7 @@ export function PasswordLoginScreen({ navigation, route }: Props) {
     } finally {
       setSubmitting(false)
     }
-  }
+  })
 
   return (
     <AuthScaffold
@@ -127,27 +156,45 @@ export function PasswordLoginScreen({ navigation, route }: Props) {
       title={t("auth.passwordLogin.title")}
       subtitle={t("auth.passwordLogin.subtitle")}
     >
-      <AuthTextField
-        label={t("auth.passwordLogin.addressLabel")}
-        onChangeText={setAddress}
-        placeholder={t("auth.passwordLogin.addressPlaceholder")}
-        value={address}
+      <Controller
+        control={control}
+        name="address"
+        render={({ field: { onBlur, onChange, value }, fieldState }) => (
+          <AuthTextField
+            error={fieldState.error?.message ?? null}
+            label={t("auth.passwordLogin.addressLabel")}
+            onBlur={onBlur}
+            onChangeText={nextValue => {
+              onChange(nextValue)
+              setPasswordError(null)
+            }}
+            placeholder={t("auth.passwordLogin.addressPlaceholder")}
+            value={value}
+          />
+        )}
       />
-      <AuthTextField
-        error={passwordError}
-        label={t("auth.passwordLogin.passwordLabel")}
-        onChangeText={value => {
-          setPassword(value)
-          setPasswordError(null)
-        }}
-        placeholder={t("auth.passwordLogin.passwordPlaceholder")}
-        secureTextEntry
-        value={password}
+      <Controller
+        control={control}
+        name="password"
+        render={({ field: { onBlur, onChange, value }, fieldState }) => (
+          <AuthTextField
+            error={fieldState.error?.message ?? passwordError}
+            label={t("auth.passwordLogin.passwordLabel")}
+            onBlur={onBlur}
+            onChangeText={nextValue => {
+              onChange(nextValue)
+              setPasswordError(null)
+            }}
+            placeholder={t("auth.passwordLogin.passwordPlaceholder")}
+            secureTextEntry
+            value={value}
+          />
+        )}
       />
       <Text style={[styles.helper, { color: theme.colors.mutedText }]}>
         {t("auth.passwordLogin.passwordRuleHint", { min: minLength })}
       </Text>
-      <AuthButton disabled={disabled} label={t("common.confirm")} loading={submitting} onPress={() => void submit()} />
+      <AuthButton disabled={!isValid || submitting} label={t("common.confirm")} loading={submitting} onPress={() => void submit()} />
       <Pressable
         onPress={() =>
           navigation.navigate("ForgotPasswordAddressScreen", {

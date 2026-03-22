@@ -1,6 +1,8 @@
-import React, { useState } from "react"
+import React, { useMemo, useState } from "react"
 
 import { StyleSheet, Text } from "react-native"
+import { Controller, useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -10,6 +12,7 @@ import { AuthTextField } from "@/features/auth/components/AuthTextField"
 import { bindInviteCode, saveRecentPasskey, signInWithMessageSignature, updateNickname } from "@/features/auth/services/authApi"
 import { persistAuthenticatedSession } from "@/features/auth/services/authSessionOrchestrator"
 import { getInviteBindingMessage } from "@/features/auth/utils/authMessages"
+import { createNicknameSchema } from "@/features/auth/utils/authEntryFormSchemas"
 import { resetToMainTabs } from "@/app/navigation/navigationRef"
 import type { AuthStackParamList } from "@/app/navigation/types"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
@@ -18,6 +21,10 @@ import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 type Props = NativeStackScreenProps<AuthStackParamList, "PasskeySignupScreen">
 
+type PasskeySignupFormValues = {
+  nickname: string
+}
+
 export function PasskeySignupScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
@@ -25,17 +32,29 @@ export function PasskeySignupScreen({ navigation, route }: Props) {
   const inviteCode = route.params?.inviteCode
   const passkeyCapability = passkeyAdapter.getCapability()
   const passkeyActionsEnabled = passkeyCapability.supported
-  const [nickname, setNickname] = useState("")
   const [submitting, setSubmitting] = useState(false)
+  const nicknameSchema = useMemo(
+    () =>
+      createNicknameSchema({
+        nicknameRequired: t("auth.errors.nicknameRequired"),
+      }),
+    [t],
+  )
+  const {
+    control,
+    formState: { isValid },
+    handleSubmit,
+  } = useForm<PasskeySignupFormValues>({
+    defaultValues: {
+      nickname: "",
+    },
+    mode: "onChange",
+    resolver: zodResolver(nicknameSchema),
+  })
 
-  const handleSubmit = async () => {
+  const submit = handleSubmit(async values => {
     if (!passkeyActionsEnabled) {
       presentMessage(passkeyCapability.reason ?? t("auth.errors.passkeyUnavailable"))
-      return
-    }
-
-    if (!nickname.trim()) {
-      presentMessage(t("auth.errors.nicknameRequired"))
       return
     }
 
@@ -43,7 +62,7 @@ export function PasskeySignupScreen({ navigation, route }: Props) {
 
     try {
       const result = await passkeyAdapter.register({
-        username: nickname.trim(),
+        username: values.nickname.trim(),
       })
 
       if (!result.ok) {
@@ -63,7 +82,7 @@ export function PasskeySignupScreen({ navigation, route }: Props) {
         passkeyRawId: result.data.rawId,
       })
 
-      const nicknameWithSuffix = `${nickname.trim()}${result.data.address.slice(-4)}`
+      const nicknameWithSuffix = `${values.nickname.trim()}${result.data.address.slice(-4)}`
       saveRecentPasskey({
         credentialId: result.data.credentialId,
         rawId: result.data.rawId,
@@ -95,7 +114,7 @@ export function PasskeySignupScreen({ navigation, route }: Props) {
     } finally {
       setSubmitting(false)
     }
-  }
+  })
 
   return (
     <AuthScaffold
@@ -106,19 +125,27 @@ export function PasskeySignupScreen({ navigation, route }: Props) {
     >
       {passkeyActionsEnabled ? (
         <>
-          <AuthTextField
-            autoCapitalize="words"
-            label={t("auth.passkeySignup.nicknameLabel")}
-            onChangeText={setNickname}
-            placeholder={t("auth.passkeySignup.nicknamePlaceholder")}
-            value={nickname}
+          <Controller
+            control={control}
+            name="nickname"
+            render={({ field: { onBlur, onChange, value }, fieldState }) => (
+              <AuthTextField
+                autoCapitalize="words"
+                error={fieldState.error?.message ?? null}
+                label={t("auth.passkeySignup.nicknameLabel")}
+                onBlur={onBlur}
+                onChangeText={onChange}
+                placeholder={t("auth.passkeySignup.nicknamePlaceholder")}
+                value={value}
+              />
+            )}
           />
 
           <Text style={[styles.linkText, { color: theme.colors.success }]} onPress={() => navigation.navigate("PasskeyIntroScreen")}>
             {t("auth.passkeySignup.helpLink")}
           </Text>
 
-          <AuthButton disabled={!nickname.trim()} label={t("common.next")} loading={submitting} onPress={() => void handleSubmit()} />
+          <AuthButton disabled={!isValid || submitting} label={t("common.next")} loading={submitting} onPress={() => void submit()} />
         </>
       ) : (
         <AuthButton label={t("common.back")} onPress={navigation.goBack} variant="secondary" />
