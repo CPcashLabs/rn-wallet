@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { Image } from "expo-image"
-import { Alert, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native"
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -24,7 +24,7 @@ import {
 } from "@/domains/wallet/transfer/screens/transferQuote"
 import { useTransferDraftStore } from "@/domains/wallet/transfer/store/useTransferDraftStore"
 import { navigateRoot } from "@/app/navigation/navigationRef"
-import { HomeScaffold } from "@/shared/ui/HomeScaffold"
+import { HeaderTextAction, HomeScaffold } from "@/shared/ui/HomeScaffold"
 import { resolveChainNameById } from "@/shared/api/walletAssets"
 import { formatAmount, parseDecimalInput } from "@/shared/exchange/utils/order"
 import { useWalletBalanceQuery } from "@/shared/queries/balanceQueries"
@@ -36,11 +36,6 @@ import { SFSymbolIcon } from "@/shared/ui/SFSymbolIcon"
 import type { TransferStackParamList } from "@/app/navigation/types"
 
 const QUICK_NOTE_KEYS = ["loan", "thanks", "living", "rent", "shopping", "repayment"] as const
-const NUMERIC_KEY_ROWS = [
-  ["1", "2", "3"],
-  ["4", "5", "6"],
-  ["7", "8", "9"],
-] as const
 
 type Props = NativeStackScreenProps<
   TransferStackParamList,
@@ -50,7 +45,7 @@ type Props = NativeStackScreenProps<
 export function TransferOrderScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
-  const { height: screenHeight, width: screenWidth } = useWindowDimensions()
+  const { fontScale, height: screenHeight, width: screenWidth } = useWindowDimensions()
   const chainId = useWalletStore(state => state.chainId)
   const walletAddress = useWalletStore(state => state.address)
   const profile = useUserStore(state => state.profile)
@@ -79,7 +74,7 @@ export function TransferOrderScreen({ navigation, route }: Props) {
   const [confirmOrderSn, setConfirmOrderSn] = useState<string | null>(null)
   const [confirmVisible, setConfirmVisible] = useState(false)
   const [bannerVisible, setBannerVisible] = useState(true)
-  const [activeField, setActiveField] = useState<"amount" | "note" | null>("amount")
+  const [activeField, setActiveField] = useState<"amount" | "note" | null>(null)
   const amountInputRef = useRef<TextInput>(null)
   const noteInputRef = useRef<TextInput>(null)
   const quoteRequestIdRef = useRef(0)
@@ -243,8 +238,7 @@ export function TransferOrderScreen({ navigation, route }: Props) {
     [t],
   )
   const canSubmit = !submitting && !validationMessage && !loading && options.length > 0
-  const useNativeAmountKeyboard = Platform.OS === "ios"
-  const shouldShowCustomAmountKeyboard = !useNativeAmountKeyboard && activeField === "amount"
+  const showQuickNotes = activeField === "note" || note.length > 0
   const displayCurrencySymbol = useMemo(() => resolveDisplayCurrencySymbol(selectedOption?.sendCoinSymbol || titleSymbol), [selectedOption?.sendCoinSymbol, titleSymbol])
   const recipientAvatarUri = useMemo(() => {
     const normalizedRecipient = recipientAddress.trim().toLowerCase()
@@ -267,22 +261,15 @@ export function TransferOrderScreen({ navigation, route }: Props) {
     return ""
   }, [addressBookEntries, avatarVersion, profile?.address, profile?.avatar, recipientAddress, walletAddress])
   const isCompactHeight = screenHeight < 860
+  const dynamicTypeScale = clamp(fontScale, 1, 1.24)
   const contentHorizontalInset = clamp(Math.round(screenWidth * 0.05), 16, 20)
-  const contentGap = isCompactHeight ? 16 : 18
-  const cardRadius = isCompactHeight ? 20 : 22
-  const recipientAvatarSize = isCompactHeight ? 56 : 60
-  const amountCardMinHeight = clamp(Math.round(screenHeight * 0.185), 156, 184)
-  const amountFontSize = clamp(Math.round(screenWidth * 0.12), 42, 50)
-  const amountCurrencySize = clamp(amountFontSize - 8, 34, 42)
-  const buttonHeight = isCompactHeight ? 52 : 56
-  const keyboardRowHeight = isCompactHeight ? 64 : 68
-  const amountSelection = useMemo(
-    () => ({
-      start: sendAmount.length,
-      end: sendAmount.length,
-    }),
-    [sendAmount.length],
-  )
+  const contentGap = 16
+  const cardRadius = isCompactHeight ? 18 : 20
+  const recipientAvatarSize = isCompactHeight ? 52 : 56
+  const amountCardMinHeight = clamp(Math.round(screenHeight * 0.17), 148, 176)
+  const amountFontSize = clamp(Math.round(screenWidth * 0.106 * dynamicTypeScale), 38, 52)
+  const amountCurrencySize = clamp(Math.round(amountFontSize * 0.7), 28, 38)
+  const buttonHeight = isCompactHeight ? 50 : 52
 
   useEffect(() => {
     let mounted = true
@@ -337,21 +324,6 @@ export function TransferOrderScreen({ navigation, route }: Props) {
     setConfirmOrderSn(null)
     setConfirmVisible(false)
   }, [note, recipientAddress, resolvedOption?.recvCoinCode, resolvedOption?.sendCoinCode, sendAmount])
-
-  useEffect(() => {
-    if (activeField !== "amount") {
-      return
-    }
-
-    const timer = setTimeout(() => {
-      if (!useNativeAmountKeyboard) {
-        Keyboard.dismiss()
-      }
-      amountInputRef.current?.focus()
-    }, 0)
-
-    return () => clearTimeout(timer)
-  }, [activeField, useNativeAmountKeyboard])
 
   const handleSubmit = useCallback(async () => {
     if (confirmOrderSn) {
@@ -449,11 +421,9 @@ export function TransferOrderScreen({ navigation, route }: Props) {
 
   const handleFocusAmount = useCallback(() => {
     noteInputRef.current?.blur()
-    if (!useNativeAmountKeyboard) {
-      Keyboard.dismiss()
-    }
     setActiveField("amount")
-  }, [useNativeAmountKeyboard])
+    amountInputRef.current?.focus()
+  }, [])
 
   const handleAmountChange = useCallback(
     (value: string) => {
@@ -467,15 +437,6 @@ export function TransferOrderScreen({ navigation, route }: Props) {
       setOrderDraft({ note: value.slice(0, 50) })
     },
     [setOrderDraft],
-  )
-
-  const handleAmountKeyboardPress = useCallback(
-    (key: NumericKeyboardInput) => {
-      setOrderDraft({
-        sendAmount: applyNumericKeyboardInput(sendAmount, key),
-      })
-    },
-    [sendAmount, setOrderDraft],
   )
 
   if (!selectedChannel) {
@@ -498,12 +459,9 @@ export function TransferOrderScreen({ navigation, route }: Props) {
   const accentSoftColor = theme.colors.primarySoft ?? `${theme.colors.primary}14`
   const noticeBackgroundColor = accentSoftColor
   const noticeBorderColor = theme.isDark ? "rgba(10,132,255,0.32)" : "rgba(10,132,255,0.18)"
-  const keyboardKeyBackground = cardBackgroundColor
-  const keyboardKeyBorderColor = theme.colors.border
   const submitBackgroundColor = canSubmit ? accentColor : secondarySurfaceColor
   const submitTextColor = canSubmit ? "#FFFFFF" : mutedColor
   const caretColor = accentColor
-  const keyboardHandleColor = theme.isDark ? "#48484A" : "#C7C7CC"
   const availableText = t("transfer.order.availableBalance", {
     amount: formatAmount(availableBalance),
     symbol: selectedOption?.sendCoinSymbol || selectedOption?.sendCoinCode || titleSymbol,
@@ -511,26 +469,17 @@ export function TransferOrderScreen({ navigation, route }: Props) {
 
   return (
     <View style={styles.screenRoot}>
-      <HomeScaffold backgroundColor={pageBackgroundColor} hideHeader reserveFloatingOverlayInset={false} scroll={false} title={t("transfer.order.title")}>
+      <HomeScaffold
+        backgroundColor={pageBackgroundColor}
+        canGoBack
+        contentContainerStyle={styles.scaffoldContent}
+        onBack={navigation.goBack}
+        reserveFloatingOverlayInset={false}
+        right={<HeaderTextAction label={t("transfer.order.recordsAction")} onPress={handleOpenRecords} variant="plain" />}
+        scroll={false}
+        title={t("transfer.order.title")}
+      >
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={[styles.layoutRoot, { backgroundColor: pageBackgroundColor }]}>
-          <View style={styles.headerRow}>
-            <View style={styles.headerSide}>
-              <Pressable accessibilityLabel={t("common.back")} hitSlop={12} onPress={navigation.goBack} style={styles.headerIconButton}>
-                <SFSymbolIcon color={accentColor} fallbackName="chevron-left" name="chevron.left" size={20} weight="medium" />
-              </Pressable>
-            </View>
-            <Text numberOfLines={1} style={[styles.headerTitle, { color: textColor }]}>
-              {t("transfer.order.title")}
-            </Text>
-            <View style={[styles.headerSide, styles.headerSideRight]}>
-              <Pressable accessibilityLabel={t("transfer.order.recordsAction")} hitSlop={12} onPress={handleOpenRecords} style={styles.headerActionButton}>
-                <Text numberOfLines={1} style={[styles.headerActionText, { color: accentColor }]}>
-                  {t("transfer.order.recordsAction")}
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-
           <ScrollView
             bounces={false}
             contentContainerStyle={[
@@ -635,15 +584,11 @@ export function TransferOrderScreen({ navigation, route }: Props) {
                   ) : null}
                   <TextInput
                     ref={amountInputRef}
-                    contextMenuHidden={!useNativeAmountKeyboard}
                     keyboardType="decimal-pad"
                     onChangeText={handleAmountChange}
                     onBlur={() => setActiveField(current => (current === "amount" ? null : current))}
                     onFocus={() => setActiveField("amount")}
-                    selection={amountSelection}
                     selectionColor={caretColor}
-                    selectTextOnFocus={useNativeAmountKeyboard}
-                    showSoftInputOnFocus={useNativeAmountKeyboard ? undefined : false}
                     style={[
                       styles.amountInput,
                       {
@@ -656,29 +601,20 @@ export function TransferOrderScreen({ navigation, route }: Props) {
                   />
                 </View>
               </View>
+              <View style={styles.amountHelperGroup}>
+                <Text style={[styles.amountHelperPrimary, { color: mutedColor }]}>{availableText}</Text>
+                {amountSecondaryMessage ? (
+                  <Text style={[styles.amountHelperSecondary, { color: amountSecondaryColor }]}>{amountSecondaryMessage}</Text>
+                ) : null}
+              </View>
             </Pressable>
-
-            <View
-              style={[
-                styles.amountHelperGroup,
-                {
-                  backgroundColor: secondarySurfaceColor,
-                  borderColor: cardBorderColor,
-                },
-              ]}
-            >
-              <Text style={[styles.amountHelperPrimary, { color: mutedColor }]}>{availableText}</Text>
-              {amountSecondaryMessage ? (
-                <Text style={[styles.amountHelperSecondary, { color: amountSecondaryColor }]}>{amountSecondaryMessage}</Text>
-              ) : null}
-            </View>
 
             <View
               style={[
                 styles.card,
                 styles.noteCard,
                 {
-                  backgroundColor: cardBackgroundColor,
+                  backgroundColor: secondarySurfaceColor,
                   borderColor: activeField === "note" ? noticeBorderColor : cardBorderColor,
                   borderRadius: cardRadius,
                   paddingHorizontal: 20,
@@ -705,95 +641,30 @@ export function TransferOrderScreen({ navigation, route }: Props) {
                 style={[styles.noteInput, { color: textColor }]}
                 value={note}
               />
-              <View style={[styles.noteDivider, { backgroundColor: dividerColor }]} />
-              <View style={styles.quickNoteWrap}>
-                {quickNoteOptions.map(item => (
-                  <Pressable
-                    key={item.key}
-                    onPress={() => handleQuickNotePress(item.label)}
-                    style={[
-                      styles.quickNoteChip,
-                      {
-                        borderColor: note === item.label ? accentColor : cardBorderColor,
-                        backgroundColor: note === item.label ? accentSoftColor : secondarySurfaceColor,
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.quickNoteText, { color: note === item.label ? accentColor : mutedColor }]}>{item.label}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-
-            <View style={styles.assuranceRow}>
-              <SFSymbolIcon color={accentColor} fallbackName="shield-check" name="checkmark.shield.fill" size={16} />
-              <Text style={[styles.assuranceText, { color: mutedColor }]}>{t("transfer.order.assurance")}</Text>
-            </View>
-          </ScrollView>
-
-          {shouldShowCustomAmountKeyboard ? (
-            <View style={[styles.keyboardShell, { backgroundColor: cardBackgroundColor, borderTopColor: keyboardKeyBorderColor }]}>
-              <Pressable
-                hitSlop={10}
-                onPress={() => {
-                  amountInputRef.current?.blur()
-                  setActiveField(null)
-                }}
-                style={[styles.keyboardCollapseBar, { borderBottomColor: keyboardKeyBorderColor }]}
-              >
-                <View style={[styles.keyboardHandle, { backgroundColor: keyboardHandleColor }]} />
-              </Pressable>
-
-              <View style={styles.keyboardGrid}>
-                {NUMERIC_KEY_ROWS.map(row => (
-                  <View key={row.join("")} style={styles.keyboardRow}>
-                    {row.map(item => (
-                      <NumericKeyboardKey
-                        backgroundColor={keyboardKeyBackground}
-                        borderColor={keyboardKeyBorderColor}
-                        key={item}
-                        label={item}
-                        onPress={handleAmountKeyboardPress}
-                        rowHeight={keyboardRowHeight}
-                        textColor={textColor}
-                      />
+              {showQuickNotes ? (
+                <>
+                  <View style={[styles.noteDivider, { backgroundColor: dividerColor }]} />
+                  <View style={styles.quickNoteWrap}>
+                    {quickNoteOptions.map(item => (
+                      <Pressable
+                        key={item.key}
+                        onPress={() => handleQuickNotePress(item.label)}
+                        style={[
+                          styles.quickNoteChip,
+                          {
+                            borderColor: note === item.label ? accentColor : cardBorderColor,
+                            backgroundColor: note === item.label ? accentSoftColor : cardBackgroundColor,
+                          },
+                        ]}
+                      >
+                        <Text style={[styles.quickNoteText, { color: note === item.label ? accentColor : mutedColor }]}>{item.label}</Text>
+                      </Pressable>
                     ))}
                   </View>
-                ))}
-                <View style={styles.keyboardRow}>
-                  <NumericKeyboardKey
-                    backgroundColor={keyboardKeyBackground}
-                    borderColor={keyboardKeyBorderColor}
-                    label="0"
-                    onPress={handleAmountKeyboardPress}
-                    rowHeight={keyboardRowHeight}
-                    textColor={textColor}
-                  />
-                  <NumericKeyboardKey
-                    backgroundColor={keyboardKeyBackground}
-                    borderColor={keyboardKeyBorderColor}
-                    label="."
-                    onPress={handleAmountKeyboardPress}
-                    rowHeight={keyboardRowHeight}
-                    textColor={textColor}
-                  />
-                  <Pressable
-                    onPress={() => handleAmountKeyboardPress("backspace")}
-                    style={[
-                      styles.keyboardKey,
-                      {
-                        backgroundColor: keyboardKeyBackground,
-                        borderColor: keyboardKeyBorderColor,
-                        height: keyboardRowHeight,
-                      },
-                    ]}
-                  >
-                    <SFSymbolIcon color={textColor} fallbackName="backspace-outline" name="delete.left" size={24} />
-                  </Pressable>
-                </View>
-              </View>
+                </>
+              ) : null}
             </View>
-          ) : null}
+          </ScrollView>
 
           <View style={[styles.footerBar, { backgroundColor: cardBackgroundColor, borderTopColor: dividerColor }]}>
             <Pressable
@@ -813,6 +684,10 @@ export function TransferOrderScreen({ navigation, route }: Props) {
                 {submitting ? t("common.loading") : t("transfer.order.submitPrimary")}
               </Text>
             </Pressable>
+            <View style={styles.assuranceRow}>
+              <SFSymbolIcon color={accentColor} fallbackName="shield-check" name="checkmark.shield.fill" size={16} />
+              <Text style={[styles.assuranceText, { color: mutedColor }]}>{t("transfer.order.assurance")}</Text>
+            </View>
           </View>
         </KeyboardAvoidingView>
       </HomeScaffold>
@@ -836,50 +711,11 @@ const styles = StyleSheet.create({
   screenRoot: {
     flex: 1,
   },
+  scaffoldContent: {
+    paddingHorizontal: 0,
+  },
   layoutRoot: {
     flex: 1,
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingLeft: 4,
-    paddingRight: 4,
-    paddingTop: 2,
-    paddingBottom: 6,
-  },
-  headerSide: {
-    width: 104,
-    minHeight: 44,
-    justifyContent: "center",
-  },
-  headerSideRight: {
-    alignItems: "flex-end",
-  },
-  headerIconButton: {
-    width: 44,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  headerTitle: {
-    flex: 1,
-    textAlign: "center",
-    fontSize: 17,
-    lineHeight: 22,
-    fontWeight: "600",
-    letterSpacing: -0.41,
-  },
-  headerActionButton: {
-    height: 44,
-    alignItems: "flex-end",
-    justifyContent: "center",
-    paddingHorizontal: 8,
-  },
-  headerActionText: {
-    fontSize: 17,
-    lineHeight: 22,
-    fontWeight: "400",
   },
   scrollContent: {
     paddingTop: 18,
@@ -1011,26 +847,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
     fontSize: 48,
     lineHeight: 54,
-    fontWeight: "700",
+    fontWeight: "600",
     letterSpacing: -1.1,
     fontVariant: ["tabular-nums"],
   },
   amountHelperGroup: {
-    gap: 6,
-    marginTop: -4,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    gap: 4,
+    paddingTop: 14,
   },
   amountHelperPrimary: {
     fontSize: 13,
     lineHeight: 18,
-    fontWeight: "500",
+    fontWeight: "400",
   },
   amountHelperSecondary: {
-    fontSize: 14,
-    lineHeight: 19,
+    fontSize: 13,
+    lineHeight: 18,
     fontWeight: "400",
   },
   noteCard: {
@@ -1065,69 +897,32 @@ const styles = StyleSheet.create({
   quickNoteWrap: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 10,
+    gap: 12,
   },
   quickNoteChip: {
-    minHeight: 40,
-    paddingHorizontal: 14,
-    borderRadius: 20,
+    minHeight: 44,
+    paddingHorizontal: 16,
+    borderRadius: 22,
     borderWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
     justifyContent: "center",
   },
   quickNoteText: {
     fontSize: 14,
-    lineHeight: 18,
-    fontWeight: "500",
+    lineHeight: 20,
+    fontWeight: "400",
   },
   assuranceRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    paddingTop: 2,
+    marginTop: 12,
   },
   assuranceText: {
     fontSize: 13,
     lineHeight: 18,
     fontWeight: "400",
-  },
-  keyboardShell: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  keyboardCollapseBar: {
-    height: 32,
-    alignItems: "center",
-    justifyContent: "center",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  keyboardHandle: {
-    width: 36,
-    height: 5,
-    borderRadius: 999,
-  },
-  keyboardGrid: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    gap: 8,
-  },
-  keyboardRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  keyboardKey: {
-    flex: 1,
-    height: 72,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 16,
-  },
-  keyboardKeyText: {
-    fontSize: 28,
-    lineHeight: 34,
-    fontWeight: "500",
-    fontVariant: ["tabular-nums"],
   },
   footerBar: {
     paddingHorizontal: 20,
@@ -1148,8 +943,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 })
-
-type NumericKeyboardInput = `${number}` | "." | "backspace"
 
 function RecipientAddressAvatar(props: {
   size: number
@@ -1208,33 +1001,6 @@ function RecipientAddressAvatar(props: {
   )
 }
 
-function NumericKeyboardKey(props: {
-  label: NumericKeyboardInput
-  onPress: (value: NumericKeyboardInput) => void
-  textColor: string
-  backgroundColor: string
-  borderColor: string
-  rowHeight: number
-  flex?: number
-}) {
-  return (
-    <Pressable
-      onPress={() => props.onPress(props.label)}
-      style={[
-        styles.keyboardKey,
-        {
-          backgroundColor: props.backgroundColor,
-          borderColor: props.borderColor,
-          flex: props.flex ?? 1,
-          height: props.rowHeight,
-        },
-      ]}
-    >
-      <Text style={[styles.keyboardKeyText, { color: props.textColor }]}>{props.label}</Text>
-    </Pressable>
-  )
-}
-
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
 }
@@ -1263,25 +1029,4 @@ function resolveDisplayCurrencySymbol(symbol?: string) {
   }
 
   return "¥"
-}
-
-function applyNumericKeyboardInput(currentValue: string, key: NumericKeyboardInput) {
-  if (key === "backspace") {
-    return currentValue.slice(0, -1)
-  }
-
-  if (key === ".") {
-    if (currentValue.includes(".")) {
-      return currentValue
-    }
-
-    return currentValue ? `${currentValue}.` : "0."
-  }
-
-  if (currentValue === "0" && !currentValue.includes(".")) {
-    return key === "0" ? currentValue : key
-  }
-
-  const nextValue = parseDecimalInput(`${currentValue}${key}`)
-  return nextValue.startsWith(".") ? `0${nextValue}` : nextValue
 }

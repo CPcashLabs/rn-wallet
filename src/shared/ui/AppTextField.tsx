@@ -67,17 +67,17 @@ export const AppTextField = React.memo(function AppTextField(props: AppTextField
         style={[
           styles.fieldContainer,
           preset.container,
-          {
-            backgroundColor: resolvedBackgroundColor,
-            borderColor: error ? theme.colors.danger : theme.colors.border,
-            alignItems: multiline ? "flex-start" : "center",
-            shadowColor: theme.colors.shadow,
-            shadowOpacity: theme.isDark ? 0.08 : 0.04,
-            shadowRadius: 10,
-            shadowOffset: { width: 0, height: 6 },
-            elevation: 1,
-          },
-          containerStyle,
+        {
+          backgroundColor: resolvedBackgroundColor,
+          borderColor: error ? theme.colors.danger : theme.colors.border,
+          alignItems: multiline ? "flex-start" : "center",
+          shadowColor: theme.colors.shadow,
+          shadowOpacity: theme.isDark ? 0.05 : 0.02,
+          shadowRadius: 6,
+          shadowOffset: { width: 0, height: 3 },
+          elevation: 1,
+        },
+        containerStyle,
         ]}
       >
         <TextInput
@@ -112,25 +112,26 @@ AppTextField.displayName = "AppTextField"
 const stylePresets: Record<"default" | "auth", { container: ViewStyle; input: TextStyle }> = {
   default: {
     container: {
-      minHeight: 54,
-      borderRadius: 20,
-      paddingHorizontal: 18,
+      minHeight: 52,
+      borderRadius: 16,
+      paddingHorizontal: 16,
     },
     input: {
       paddingVertical: 14,
-      fontSize: 16,
+      fontSize: 17,
       lineHeight: 22,
     },
   },
   auth: {
     container: {
-      minHeight: 54,
-      borderRadius: 22,
-      paddingHorizontal: 18,
+      minHeight: 52,
+      borderRadius: 18,
+      paddingHorizontal: 16,
     },
     input: {
       paddingVertical: 14,
-      fontSize: 16,
+      fontSize: 17,
+      lineHeight: 22,
     },
   },
 }
@@ -140,10 +141,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   label: {
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: "700",
-    letterSpacing: -0.15,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "600",
+    letterSpacing: -0.08,
   },
   labelAuth: {
     fontWeight: "600",
@@ -164,8 +165,10 @@ const styles = StyleSheet.create({
     alignSelf: "center",
   },
   actionText: {
-    fontSize: 13,
+    fontSize: 15,
+    lineHeight: 20,
     fontWeight: "600",
+    letterSpacing: -0.24,
   },
   rightSlot: {
     marginLeft: 12,
@@ -178,5 +181,6 @@ const styles = StyleSheet.create({
   helperText: {
     fontSize: 13,
     lineHeight: 18,
+    fontWeight: "400",
   },
 })

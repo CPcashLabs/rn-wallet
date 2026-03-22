@@ -29,7 +29,7 @@ export function HomeScaffold(props: {
   const insets = useSafeAreaInsets()
   const route = useRoute()
   const backgroundColor = props.backgroundColor ?? theme.colors.background
-  const headerBackgroundColor = props.headerBackgroundColor ?? theme.colors.glassStrong ?? theme.colors.surfaceElevated ?? theme.colors.surface
+  const headerBackgroundColor = props.headerBackgroundColor ?? backgroundColor
   const headerTintColor = props.headerTintColor ?? theme.colors.text
   const backTintColor = props.backTintColor ?? theme.colors.primary
   const titleAlign = props.titleAlign ?? (props.canGoBack ? "center" : "left")
@@ -61,13 +61,7 @@ export function HomeScaffold(props: {
         styles.header,
         isLargeTitle ? styles.headerLarge : null,
         {
-          borderColor: theme.colors.glassBorder ?? theme.colors.border,
           backgroundColor: headerBackgroundColor,
-          shadowColor: theme.colors.shadow,
-          shadowOpacity: theme.isDark ? 0.16 : 0.08,
-          shadowRadius: 18,
-          shadowOffset: { width: 0, height: 8 },
-          elevation: 4,
         },
       ]}
     >
@@ -92,13 +86,7 @@ export function HomeScaffold(props: {
         styles.header,
         isLargeTitle ? styles.headerLarge : null,
         {
-          borderColor: theme.colors.glassBorder ?? theme.colors.border,
           backgroundColor: headerBackgroundColor,
-          shadowColor: theme.colors.shadow,
-          shadowOpacity: theme.isDark ? 0.16 : 0.08,
-          shadowRadius: 18,
-          shadowOffset: { width: 0, height: 8 },
-          elevation: 4,
         },
       ]}
     >
@@ -132,10 +120,10 @@ export function HomeScaffold(props: {
         <View
           style={{
             backgroundColor,
-            paddingTop: insets.top + 8,
-            paddingBottom: 6,
-            paddingLeft: insets.left + 12,
-            paddingRight: insets.right + 12,
+            paddingTop: insets.top + 4,
+            paddingBottom: 4,
+            paddingLeft: insets.left + 16,
+            paddingRight: insets.right + 16,
           }}
         >
           {header}
@@ -205,35 +193,33 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    minHeight: 56,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 22,
-    paddingHorizontal: 14,
-    paddingVertical: 4,
+    minHeight: 44,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
   headerLarge: {
-    minHeight: 64,
-    paddingTop: 8,
-    paddingBottom: 10,
+    minHeight: 52,
+    paddingTop: 2,
+    paddingBottom: 6,
   },
   left: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 8,
     flexShrink: 1,
     flex: 1,
     minWidth: 0,
   },
   right: {
-    marginLeft: 12,
+    marginLeft: 8,
     alignItems: "flex-end",
     justifyContent: "center",
   },
   headerSide: {
-    width: 96,
+    width: 88,
     minHeight: 44,
     justifyContent: "center",
   },
@@ -243,31 +229,34 @@ const styles = StyleSheet.create({
   headerCenter: {
     flex: 1,
     minWidth: 0,
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     alignItems: "center",
     justifyContent: "center",
   },
   backButton: {
-    minHeight: 32,
+    minHeight: 44,
+    minWidth: 44,
     flexDirection: "row",
     alignItems: "center",
-    gap: 2,
-    paddingVertical: 4,
-    marginRight: 4,
+    gap: 3,
+    paddingRight: 8,
   },
   backChevron: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "600",
-    lineHeight: 26,
+    lineHeight: 24,
   },
   backText: {
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: "400",
+    letterSpacing: -0.41,
   },
   title: {
     fontSize: 17,
-    fontWeight: "700",
-    letterSpacing: -0.2,
+    lineHeight: 22,
+    fontWeight: "600",
+    letterSpacing: -0.41,
   },
   titleLeft: {
     flex: 1,
@@ -276,8 +265,9 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   titleLarge: {
-    fontSize: 22,
-    letterSpacing: -0.5,
+    fontSize: 32,
+    lineHeight: 38,
+    letterSpacing: -0.6,
   },
   body: {
     flex: 1,
@@ -293,28 +283,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
   },
   headerTextAction: {
-    minHeight: 32,
-    borderRadius: 999,
+    minHeight: 34,
+    borderRadius: 14,
     paddingHorizontal: 12,
     alignItems: "center",
     justifyContent: "center",
   },
   headerTextActionPlain: {
-    minHeight: 28,
+    minHeight: 44,
     paddingHorizontal: 0,
   },
   headerTextActionDisabled: {
     opacity: 0.45,
   },
   headerTextActionLabel: {
-    fontSize: 13,
-    lineHeight: 17,
+    fontSize: 15,
+    lineHeight: 20,
     fontWeight: "600",
-    letterSpacing: -0.1,
+    letterSpacing: -0.24,
   },
   headerTextActionLabelPlain: {
-    fontSize: 16,
-    lineHeight: 20,
-    letterSpacing: -0.2,
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: "400",
+    letterSpacing: -0.41,
   },
 })

@@ -21,15 +21,15 @@ export const AppButton = React.memo(function AppButton(props: AppButtonProps) {
   const tone = props.tone ?? "default"
   const disabled = Boolean(props.disabled || props.loading)
   const primaryColor = tone === "danger" ? theme.colors.danger : theme.colors.primary
-  const primaryBorderColor = tone === "danger" ? "rgba(255,255,255,0.14)" : theme.isDark ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.56)"
+  const primaryBorderColor = primaryColor
   const secondaryTextColor = tone === "danger" ? theme.colors.danger : theme.colors.text
-  const secondaryBorderColor = tone === "danger" ? theme.colors.dangerBorder : theme.colors.glassBorder
+  const secondaryBorderColor = tone === "danger" ? theme.colors.dangerBorder : theme.colors.border
   const secondaryBackgroundColor =
     tone === "danger"
       ? theme.isDark
         ? "rgba(248,113,113,0.12)"
         : "rgba(220,38,38,0.08)"
-      : theme.colors.glass
+      : theme.colors.surfaceElevated ?? theme.colors.surface
 
   return (
     <Pressable
@@ -43,20 +43,20 @@ export const AppButton = React.memo(function AppButton(props: AppButtonProps) {
               borderColor: primaryBorderColor,
               borderWidth: StyleSheet.hairlineWidth,
               shadowColor: theme.colors.shadow,
-              shadowOpacity: theme.isDark ? 0.22 : 0.12,
-              shadowRadius: 18,
-              shadowOffset: { width: 0, height: 10 },
-              elevation: 4,
+              shadowOpacity: theme.isDark ? 0.14 : 0.06,
+              shadowRadius: 8,
+              shadowOffset: { width: 0, height: 4 },
+              elevation: 2,
             }
           : {
               backgroundColor: secondaryBackgroundColor,
               borderColor: secondaryBorderColor,
               borderWidth: StyleSheet.hairlineWidth,
               shadowColor: theme.colors.shadow,
-              shadowOpacity: theme.isDark ? 0.12 : 0.05,
-              shadowRadius: 14,
-              shadowOffset: { width: 0, height: 8 },
-              elevation: 2,
+              shadowOpacity: theme.isDark ? 0.06 : 0.02,
+              shadowRadius: 6,
+              shadowOffset: { width: 0, height: 3 },
+              elevation: 1,
             },
         disabled ? styles.disabled : null,
         pressed ? styles.pressed : null,
@@ -87,8 +87,8 @@ AppButton.displayName = "AppButton"
 
 const styles = StyleSheet.create({
   base: {
-    minHeight: 54,
-    borderRadius: 999,
+    minHeight: 52,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 24,
@@ -103,9 +103,9 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 17,
     lineHeight: 22,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   labelPrimary: {
-    letterSpacing: -0.3,
+    letterSpacing: -0.41,
   },
 })
