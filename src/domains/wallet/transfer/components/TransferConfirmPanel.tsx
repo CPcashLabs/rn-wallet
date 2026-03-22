@@ -455,6 +455,7 @@ function TransferConfirmBody(props: {
             {props.paymentOptions.map((option, index) => {
               const active = option.sendCoinCode === props.detail?.sendCoinCode
               const symbol = option.sendCoinSymbol || option.sendCoinCode
+              const networkName = option.sendChainFullName || option.sendChainName || symbol
 
               return (
                 <Pressable
@@ -476,7 +477,7 @@ function TransferConfirmBody(props: {
                     />
                   </View>
                   <View style={styles.paymentRowContent}>
-                    <Text style={[styles.paymentRowTitle, { color: theme.colors.text }]}>{symbol}</Text>
+                    <Text style={[styles.paymentRowTitle, { color: theme.colors.text }]}>{networkName}</Text>
                     <Text style={[styles.paymentRowSubtitle, { color: theme.colors.mutedText }]}>
                       {`${t("transfer.order.available")}: ${formatAmount(balances[option.sendCoinCode] ?? 0)} ${symbol}`.trim()}
                     </Text>

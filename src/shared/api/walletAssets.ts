@@ -23,6 +23,7 @@ export type WalletCoin = {
   name: string
   logo: string
   chainName: string
+  chainFullName: string
   chainLogo: string
   chainColor: string
   contract: string
@@ -37,6 +38,7 @@ function toWalletCoin(payload: CoinListPayloadItem): WalletCoin {
     name: payload.name,
     logo: payload.logo,
     chainName: payload.chain_name,
+    chainFullName: payload.chain_full_name,
     chainLogo: payload.chain_logo,
     chainColor: payload.chain_color,
     contract: payload.contract,

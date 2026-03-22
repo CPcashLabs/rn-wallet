@@ -67,6 +67,7 @@ export type TransferOrderOption = {
   sendCoinCode: string
   sendCoinSymbol: string
   sendChainName: string
+  sendChainFullName: string
   sendChainLogo: string
   sendChainColor: string
   recvCoinCode: string
@@ -234,6 +235,7 @@ export async function getTransferOrderOptions(input: {
         sendCoinCode: String(item.send_coin_code ?? ""),
         sendCoinSymbol: String(item.send_coin_symbol ?? coin?.symbol ?? item.send_coin_code ?? ""),
         sendChainName: String(coin?.chainName ?? input.sendChainName),
+        sendChainFullName: String(coin?.chainFullName ?? coin?.chainName ?? input.sendChainName),
         sendChainLogo: String(coin?.chainLogo ?? ""),
         sendChainColor: String(coin?.chainColor ?? ""),
         recvCoinCode: String(item.recv_coin_code ?? ""),
@@ -257,6 +259,7 @@ export async function getTransferOrderOptions(input: {
           sendCoinCode: code,
           sendCoinSymbol: String(item.coin_symbol ?? coin?.symbol ?? code),
           sendChainName: String(coin?.chainName ?? input.sendChainName),
+          sendChainFullName: String(coin?.chainFullName ?? coin?.chainName ?? input.sendChainName),
           sendChainLogo: String(coin?.chainLogo ?? ""),
           sendChainColor: String(coin?.chainColor ?? ""),
           recvCoinCode: "",
