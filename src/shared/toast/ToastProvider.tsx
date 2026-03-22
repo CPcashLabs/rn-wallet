@@ -1,30 +1,25 @@
-import React, { type PropsWithChildren, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import React, { type PropsWithChildren, useCallback, useMemo } from "react"
 
-import { Animated, Easing, Platform, StyleSheet, Text, View } from "react-native"
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+import Toast, { type ToastConfig, type ToastConfigParams } from "react-native-toast-message"
 
-import { stopAnimatedValueListener } from "@/shared/animation/stopAnimatedValueListener"
 import { ToastContext, type ToastInput, type ToastTone } from "@/shared/toast/ToastContext"
 import type { AppTheme } from "@/shared/theme/tokens"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
-type ToastItem = {
+const DEFAULT_DURATION = 2200
+
+type NormalizedToastInput = {
   duration: number
-  id: number
   message: string
   tone: ToastTone
 }
 
-const DEFAULT_DURATION = 2200
-const ENTER_DURATION = 220
-const EXIT_DURATION = 180
-const INITIAL_OFFSET = 16
-
-function normalizeToast(input: ToastInput, id: number): ToastItem {
+function normalizeToast(input: ToastInput): NormalizedToastInput {
   if (typeof input === "string") {
     return {
       duration: DEFAULT_DURATION,
-      id,
       message: input,
       tone: "default",
     }
@@ -32,7 +27,6 @@ function normalizeToast(input: ToastInput, id: number): ToastItem {
 
   return {
     duration: input.duration ?? DEFAULT_DURATION,
-    id,
     message: input.message,
     tone: input.tone ?? "default",
   }
@@ -51,145 +45,90 @@ function resolveToastColors(theme: AppTheme, tone: ToastTone) {
   }
 }
 
+function mapToastToneToType(tone: ToastTone) {
+  switch (tone) {
+    case "success":
+      return "success"
+    case "warning":
+      return "warning"
+    case "error":
+      return "error"
+    default:
+      return "default"
+  }
+}
+
+function AppToastCard({
+  params,
+  theme,
+  tone,
+}: {
+  params: ToastConfigParams<undefined>
+  theme: AppTheme
+  tone: ToastTone
+}) {
+  const colors = resolveToastColors(theme, tone)
+
+  return (
+    <Pressable
+      onPress={params.onPress}
+      style={[
+        styles.toast,
+        {
+          backgroundColor: colors.backgroundColor,
+          borderColor: colors.borderColor,
+          shadowColor: theme.isDark ? "#000000" : "#0F172A",
+        },
+      ]}
+    >
+      <View style={styles.messageWrap}>
+        <Text style={styles.message}>{params.text1}</Text>
+      </View>
+    </Pressable>
+  )
+}
+
+function createToastConfig(theme: AppTheme): ToastConfig {
+  return {
+    default: params => <AppToastCard params={params} theme={theme} tone="default" />,
+    success: params => <AppToastCard params={params} theme={theme} tone="success" />,
+    warning: params => <AppToastCard params={params} theme={theme} tone="warning" />,
+    error: params => <AppToastCard params={params} theme={theme} tone="error" />,
+  }
+}
+
 export function ToastProvider({ children }: PropsWithChildren) {
   const theme = useAppTheme()
   const insets = useSafeAreaInsets()
-  const nextIdRef = useRef(0)
-  const queueRef = useRef<ToastItem[]>([])
-  const currentRef = useRef<ToastItem | null>(null)
-  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const animationRef = useRef<Animated.CompositeAnimation | null>(null)
-  const opacity = useRef(new Animated.Value(0)).current
-  const translateY = useRef(new Animated.Value(INITIAL_OFFSET)).current
-  const [current, setCurrent] = useState<ToastItem | null>(null)
-
-  useEffect(() => {
-    const opacityListenerId = opacity.addListener(() => undefined)
-    const translateYListenerId = translateY.addListener(() => undefined)
-
-    return () => {
-      if (hideTimerRef.current) {
-        clearTimeout(hideTimerRef.current)
-        hideTimerRef.current = null
-      }
-      animationRef.current?.stop()
-      animationRef.current = null
-      stopAnimatedValueListener(opacity, opacityListenerId)
-      stopAnimatedValueListener(translateY, translateYListenerId)
-    }
-  }, [opacity, translateY])
-
-  const clearHideTimer = useCallback(() => {
-    if (hideTimerRef.current) {
-      clearTimeout(hideTimerRef.current)
-      hideTimerRef.current = null
-    }
-  }, [])
-
-  const stopAnimation = useCallback(() => {
-    animationRef.current?.stop()
-    animationRef.current = null
-  }, [])
+  const bottomOffset = Math.max(insets.bottom, 16) + 8
+  const toastConfig = useMemo(() => createToastConfig(theme), [theme])
 
   const hideToast = useCallback(() => {
-    clearHideTimer()
-    stopAnimation()
-
-    animationRef.current = Animated.parallel([
-      Animated.timing(opacity, {
-        duration: EXIT_DURATION,
-        easing: Easing.in(Easing.cubic),
-        toValue: 0,
-        useNativeDriver: true,
-      }),
-      Animated.timing(translateY, {
-        duration: EXIT_DURATION,
-        easing: Easing.in(Easing.cubic),
-        toValue: INITIAL_OFFSET,
-        useNativeDriver: true,
-      }),
-    ])
-
-    animationRef.current.start(({ finished }) => {
-      animationRef.current = null
-      if (!finished) {
-        return
-      }
-
-      currentRef.current = null
-      setCurrent(null)
-    })
-  }, [clearHideTimer, opacity, stopAnimation, translateY])
-
-  const showToast = useCallback((input: ToastInput) => {
-    nextIdRef.current += 1
-    const item = normalizeToast(input, nextIdRef.current)
-
-    if (!item.message.trim()) {
-      return
-    }
-
-    if (currentRef.current) {
-      queueRef.current.push(item)
-      return
-    }
-
-    currentRef.current = item
-    setCurrent(item)
+    Toast.hide()
   }, [])
 
-  useEffect(() => {
-    if (!current) {
-      opacity.setValue(0)
-      translateY.setValue(INITIAL_OFFSET)
-
-      const next = queueRef.current.shift()
-      if (next) {
-        currentRef.current = next
-        setCurrent(next)
-      }
-
-      return
-    }
-
-    clearHideTimer()
-    stopAnimation()
-    opacity.setValue(0)
-    translateY.setValue(INITIAL_OFFSET)
-
-    animationRef.current = Animated.parallel([
-      Animated.timing(opacity, {
-        duration: ENTER_DURATION,
-        easing: Easing.out(Easing.cubic),
-        toValue: 1,
-        useNativeDriver: true,
-      }),
-      Animated.timing(translateY, {
-        duration: ENTER_DURATION,
-        easing: Easing.out(Easing.cubic),
-        toValue: 0,
-        useNativeDriver: true,
-      }),
-    ])
-
-    animationRef.current.start(({ finished }) => {
-      animationRef.current = null
-      if (!finished) {
+  const showToast = useCallback(
+    (input: ToastInput) => {
+      const toast = normalizeToast(input)
+      if (!toast.message.trim()) {
         return
       }
 
-      hideTimerRef.current = setTimeout(() => {
-        hideToast()
-      }, current.duration)
-    })
-  }, [clearHideTimer, current, hideToast, opacity, stopAnimation, translateY])
-
-  useEffect(() => {
-    return () => {
-      clearHideTimer()
-      stopAnimation()
-    }
-  }, [clearHideTimer, stopAnimation])
+      Toast.show({
+        autoHide: true,
+        bottomOffset,
+        onPress: () => {
+          Toast.hide()
+        },
+        position: "bottom",
+        swipeable: true,
+        text1: toast.message,
+        type: mapToastToneToType(toast.tone),
+        visibilityTime: toast.duration,
+      })
+    },
+    [bottomOffset],
+  )
 
   const contextValue = useMemo(
     () => ({
@@ -199,31 +138,18 @@ export function ToastProvider({ children }: PropsWithChildren) {
     [hideToast, showToast],
   )
 
-  const toastColors = current ? resolveToastColors(theme, current.tone) : null
-
   return (
     <ToastContext.Provider value={contextValue}>
       {children}
-      <View pointerEvents="box-none" style={styles.overlay}>
-        {current ? (
-          <View pointerEvents="none" style={[styles.slot, { paddingBottom: Math.max(insets.bottom, 16) + 8 }]}>
-            <Animated.View
-              style={[
-                styles.toast,
-                {
-                  backgroundColor: toastColors?.backgroundColor,
-                  borderColor: toastColors?.borderColor,
-                  opacity,
-                  shadowColor: theme.isDark ? "#000000" : "#0F172A",
-                  transform: [{ translateY }],
-                },
-              ]}
-            >
-              <Text style={styles.message}>{current.message}</Text>
-            </Animated.View>
-          </View>
-        ) : null}
-      </View>
+      <Toast
+        autoHide
+        avoidKeyboard
+        bottomOffset={bottomOffset}
+        config={toastConfig}
+        position="bottom"
+        swipeable
+        visibilityTime={DEFAULT_DURATION}
+      />
     </ToastContext.Provider>
   )
 }
@@ -236,15 +162,8 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     textAlign: "center",
   },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  slot: {
-    position: "absolute",
-    bottom: 0,
-    left: 16,
-    right: 16,
-    alignItems: "center",
+  messageWrap: {
+    flex: 1,
   },
   toast: {
     width: "100%",
@@ -258,11 +177,16 @@ const styles = StyleSheet.create({
         elevation: 6,
       },
       ios: {
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.22,
-        shadowRadius: 24,
+        shadowOpacity: 0.18,
+        shadowRadius: 16,
+        shadowOffset: {
+          width: 0,
+          height: 10,
+        },
       },
       default: {},
     }),
   },
 })
+
+export { DEFAULT_DURATION, mapToastToneToType, normalizeToast }

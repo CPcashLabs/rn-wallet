@@ -4,21 +4,11 @@ import { AppState, type AppStateStatus } from "react-native"
 
 import { resolveAuthenticatedWebSocketUrl, resolveWebSocketUrl } from "@/shared/config/runtime"
 import { logRuntimeInfo, logRuntimeWarn } from "@/shared/logging/appLogger"
+import { websocketAdapter } from "@/shared/native/websocketAdapter"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useSocketStore } from "@/shared/store/useSocketStore"
-import { websocketAdapter } from "@/shared/native/websocketAdapter"
-import {
-  isInternalSocketEvent,
-  isSocketAuthAckEvent,
-} from "@/app/providers/socketAuth"
+import { isInternalSocketEvent, isSocketAuthAckEvent } from "@/app/providers/socketAuth"
 import { resolveSocketInvalidationDomain } from "@/app/providers/socketInvalidation"
-import {
-  DEFAULT_SOCKET_RECONNECT_DELAY_MS,
-  invalidateReconnectAttempt,
-  resolveReconnectDelayMs,
-  scheduleReconnectAttempt,
-  shouldReconnectAfterClose,
-} from "@/app/providers/socketReconnect"
 
 const SOCKET_LIFECYCLE_LOG_TAG = "[socket.lifecycle]"
 const SOCKET_LIFECYCLE_COMPONENT = "socket.lifecycle"
@@ -29,13 +19,12 @@ const SOCKET_LIFECYCLE_LOG_TYPES = {
   authAckReceived: "auth_ack_received",
   socketError: "socket_error",
   closeReconnecting: "close_reconnecting",
-  closeStopped: "close_stopped",
   disconnectFailed: "disconnect_failed",
 } as const
 const SOCKET_AUTH_MODE_QUERY_TOKEN = "query_token"
 const SOCKET_CONNECT_TRIGGERS = {
-  sync: "sync",
   reconnect: "reconnect",
+  sync: "sync",
 } as const
 
 type SocketConnectTrigger = (typeof SOCKET_CONNECT_TRIGGERS)[keyof typeof SOCKET_CONNECT_TRIGGERS]
@@ -67,9 +56,6 @@ function parseSocketPayload(raw: string) {
 export function SocketProvider({ children }: PropsWithChildren) {
   const accessToken = useAuthStore(state => state.session?.accessToken ?? null)
   const isBootstrapped = useAuthStore(state => state.isBootstrapped)
-  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const reconnectGenerationRef = useRef(0)
-  const reconnectAttemptRef = useRef(0)
   const connectSequenceRef = useRef(0)
   const connectStartedAtRef = useRef<number | null>(null)
   const openedAtRef = useRef<number | null>(null)
@@ -86,6 +72,7 @@ export function SocketProvider({ children }: PropsWithChildren) {
       appState: appStateRef.current,
       hasAccessToken: Boolean(accessTokenRef.current),
       authMode: SOCKET_AUTH_MODE_QUERY_TOKEN,
+      retryCount: websocketAdapter.getRetryCount(),
       socketUrl: resolveWebSocketUrl(),
     }
 
@@ -97,14 +84,6 @@ export function SocketProvider({ children }: PropsWithChildren) {
       ...baseDetails,
       ...details,
     }
-  }, [])
-
-  const invalidateReconnect = useCallback(() => {
-    invalidateReconnectAttempt(reconnectTimerRef, reconnectGenerationRef)
-  }, [])
-
-  const resetReconnectAttempts = useCallback(() => {
-    reconnectAttemptRef.current = 0
   }, [])
 
   const disconnectSocket = useCallback(
@@ -162,7 +141,6 @@ export function SocketProvider({ children }: PropsWithChildren) {
         message: "Started a WebSocket connection attempt.",
         details: buildSocketLogDetails({
           trigger,
-          reconnectAttempt: reconnectAttemptRef.current,
         }),
       })
 
@@ -182,7 +160,6 @@ export function SocketProvider({ children }: PropsWithChildren) {
         message: "WebSocket connection attempt failed before the socket opened.",
         details: buildSocketLogDetails({
           trigger,
-          reconnectAttempt: reconnectAttemptRef.current,
           error: result.error.message,
         }),
       })
@@ -190,53 +167,18 @@ export function SocketProvider({ children }: PropsWithChildren) {
     [buildSocketLogDetails],
   )
 
-  const scheduleReconnect = useCallback(() => {
-    const attempt = reconnectAttemptRef.current + 1
-    const delayMs = resolveReconnectDelayMs(attempt, DEFAULT_SOCKET_RECONNECT_DELAY_MS)
-
-    const scheduled = scheduleReconnectAttempt({
-      delayMs,
-      timerRef: reconnectTimerRef,
-      generationRef: reconnectGenerationRef,
-      canReconnect: () =>
-        Boolean(
-          shouldReconnectRef.current &&
-          accessTokenRef.current &&
-          isForeground(appStateRef.current),
-        ),
-      onReconnect: () => {
-        const currentAccessToken = accessTokenRef.current
-        if (!currentAccessToken) {
-          return
-        }
-
-        void connectSocket(SOCKET_CONNECT_TRIGGERS.reconnect)
-      },
-    })
-
-    if (!scheduled) {
-      return null
-    }
-
-    reconnectAttemptRef.current = attempt
-
-    return delayMs
-  }, [connectSocket])
-
   const syncConnection = useCallback(() => {
     const shouldConnect = isBootstrapped && Boolean(accessTokenRef.current) && isForeground(appStateRef.current)
     shouldReconnectRef.current = shouldConnect
-    invalidateReconnect()
 
     if (!shouldConnect || !accessTokenRef.current) {
-      resetReconnectAttempts()
       void disconnectSocket("sync_inactive")
       useSocketStore.getState().reset()
       return
     }
 
     void connectSocket(SOCKET_CONNECT_TRIGGERS.sync)
-  }, [connectSocket, disconnectSocket, invalidateReconnect, isBootstrapped, resetReconnectAttempts])
+  }, [connectSocket, disconnectSocket, isBootstrapped])
 
   useEffect(() => {
     const unsubscribe = websocketAdapter.subscribe(event => {
@@ -247,8 +189,6 @@ export function SocketProvider({ children }: PropsWithChildren) {
           pendingSocketTokenRef.current = null
           connectedSocketTokenRef.current = accessTokenRef.current
           openedAtRef.current = Date.now()
-          invalidateReconnect()
-          resetReconnectAttempts()
           socketStore.setConnected(true)
           logRuntimeInfo({
             tag: SOCKET_LIFECYCLE_LOG_TAG,
@@ -257,7 +197,6 @@ export function SocketProvider({ children }: PropsWithChildren) {
             message: "WebSocket opened and is ready to receive messages.",
             details: buildSocketLogDetails({
               trigger: lastConnectTriggerRef.current,
-              reconnectAttempt: reconnectAttemptRef.current,
               handshakeDurationMs:
                 connectStartedAtRef.current == null ? undefined : openedAtRef.current - connectStartedAtRef.current,
             }),
@@ -266,7 +205,6 @@ export function SocketProvider({ children }: PropsWithChildren) {
         case "message": {
           const parsed = parseSocketPayload(event.data)
           if (isSocketAuthAckEvent(parsed.type)) {
-            resetReconnectAttempts()
             logRuntimeInfo({
               tag: SOCKET_LIFECYCLE_LOG_TAG,
               component: SOCKET_LIFECYCLE_COMPONENT,
@@ -302,7 +240,6 @@ export function SocketProvider({ children }: PropsWithChildren) {
             message: "WebSocket emitted an error event.",
             details: buildSocketLogDetails({
               error: event.error.message,
-              attempt: reconnectAttemptRef.current,
             }),
           })
           socketStore.setConnected(false)
@@ -313,56 +250,30 @@ export function SocketProvider({ children }: PropsWithChildren) {
           connectedSocketTokenRef.current = null
           const connectionLifetimeMs = openedAtRef.current == null ? undefined : Date.now() - openedAtRef.current
           openedAtRef.current = null
-          connectStartedAtRef.current = null
+
           const shouldReconnect = Boolean(
             shouldReconnectRef.current &&
             accessTokenRef.current &&
             isForeground(appStateRef.current),
           )
-          const nextAttempt = reconnectAttemptRef.current + 1
-          const canReconnectAfterClose = shouldReconnectAfterClose({
-            attempt: nextAttempt,
-            reason: event.reason,
-            shouldReconnect,
-          })
 
           if (!shouldReconnect) {
+            connectStartedAtRef.current = null
             return
           }
 
-          if (!canReconnectAfterClose) {
-            reconnectAttemptRef.current = nextAttempt
-
-            logRuntimeWarn({
-              tag: SOCKET_LIFECYCLE_LOG_TAG,
-              component: SOCKET_LIFECYCLE_COMPONENT,
-              event: SOCKET_LIFECYCLE_LOG_TYPES.closeStopped,
-              message: "WebSocket closed repeatedly and reconnecting was stopped.",
-              details: buildSocketLogDetails({
-                code: event.code ?? null,
-                reason: event.reason ?? "unknown",
-                attempt: reconnectAttemptRef.current,
-                connectionLifetimeMs,
-              }),
-            })
-            return
-          }
-
-          const delayMs = scheduleReconnect()
-          if (delayMs == null) {
-            return
-          }
+          connectStartedAtRef.current = Date.now()
+          lastConnectTriggerRef.current = SOCKET_CONNECT_TRIGGERS.reconnect
+          connectSequenceRef.current += 1
 
           logRuntimeWarn({
             tag: SOCKET_LIFECYCLE_LOG_TAG,
             component: SOCKET_LIFECYCLE_COMPONENT,
             event: SOCKET_LIFECYCLE_LOG_TYPES.closeReconnecting,
-            message: "WebSocket closed unexpectedly and a reconnect was scheduled.",
+            message: "WebSocket closed unexpectedly and the reconnecting client stayed active.",
             details: buildSocketLogDetails({
               code: event.code ?? null,
               reason: event.reason ?? "unknown",
-              attempt: reconnectAttemptRef.current,
-              delayMs,
               connectionLifetimeMs,
             }),
           })
@@ -371,11 +282,8 @@ export function SocketProvider({ children }: PropsWithChildren) {
       }
     })
 
-    return () => {
-      invalidateReconnect()
-      unsubscribe()
-    }
-  }, [buildSocketLogDetails, invalidateReconnect, resetReconnectAttempts, scheduleReconnect])
+    return unsubscribe
+  }, [buildSocketLogDetails])
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", nextState => {
@@ -385,13 +293,11 @@ export function SocketProvider({ children }: PropsWithChildren) {
 
     return () => {
       shouldReconnectRef.current = false
-      resetReconnectAttempts()
-      invalidateReconnect()
       subscription.remove()
       void disconnectSocket("provider_cleanup")
       useSocketStore.getState().reset()
     }
-  }, [disconnectSocket, invalidateReconnect, resetReconnectAttempts, syncConnection])
+  }, [disconnectSocket, syncConnection])
 
   useEffect(() => {
     accessTokenRef.current = accessToken

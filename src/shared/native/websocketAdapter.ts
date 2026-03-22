@@ -1,3 +1,5 @@
+import ReconnectingWebSocket from "reconnecting-websocket"
+
 import { NativeCapabilityUnavailableError } from "@/shared/errors"
 import type { AdapterResult, CapabilityDescriptor } from "@/shared/native/types"
 import { unsupportedCapability } from "@/shared/native/types"
@@ -15,10 +17,22 @@ export interface WebSocketAdapter {
   disconnect(code?: number, reason?: string): Promise<AdapterResult<void>>
   subscribe(listener: (event: WebSocketAdapterEvent) => void): () => void
   isConnected(): boolean
+  getRetryCount(): number
 }
 
-let activeSocket: WebSocket | null = null
+const HEARTBEAT_INTERVAL_MS = 10_000
+const RECONNECTING_SOCKET_OPTIONS = {
+  connectionTimeout: 4_000,
+  maxRetries: Infinity,
+  maxReconnectionDelay: 30_000,
+  minReconnectionDelay: 1_500,
+  minUptime: 5_000,
+  reconnectionDelayGrowFactor: 2,
+} as const
+
+let activeSocket: ReconnectingWebSocket | null = null
 let activeUrl: string | null = null
+let activeCleanup: (() => void) | null = null
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null
 const listeners = new Set<(event: WebSocketAdapterEvent) => void>()
 
@@ -37,28 +51,110 @@ function stopHeartbeat() {
   heartbeatTimer = null
 }
 
-function startHeartbeat(socket: WebSocket) {
+function startHeartbeat(socket: ReconnectingWebSocket) {
   stopHeartbeat()
 
   heartbeatTimer = setInterval(() => {
-    if (socket.readyState !== WebSocket.OPEN) {
+    if (socket.readyState !== ReconnectingWebSocket.OPEN) {
       return
     }
 
-    socket.send(
-      JSON.stringify({
-        type: "ping",
-      }),
-    )
-  }, 10_000)
+    try {
+      socket.send(
+        JSON.stringify({
+          type: "ping",
+        }),
+      )
+    } catch {
+      // Ignore heartbeat failures; reconnecting-websocket will manage transport retries.
+    }
+  }, HEARTBEAT_INTERVAL_MS)
 }
 
-function clearSocket(socket: WebSocket) {
-  socket.onopen = null
-  socket.onclose = null
-  socket.onerror = null
-  socket.onmessage = null
+function detachActiveSocket() {
+  activeCleanup?.()
+  activeCleanup = null
   stopHeartbeat()
+}
+
+function attachSocket(nextSocket: ReconnectingWebSocket) {
+  const handleOpen = () => {
+    if (activeSocket !== nextSocket) {
+      return
+    }
+
+    startHeartbeat(nextSocket)
+    emit({ type: "open" })
+  }
+
+  const handleMessage = (event: MessageEvent) => {
+    if (activeSocket !== nextSocket) {
+      return
+    }
+
+    emit({
+      type: "message",
+      data: typeof event.data === "string" ? event.data : String(event.data),
+    })
+  }
+
+  const handleError = (event: { message?: string; error?: unknown }) => {
+    if (activeSocket !== nextSocket) {
+      return
+    }
+
+    emit({
+      type: "error",
+      error:
+        event.error instanceof Error
+          ? event.error
+          : new Error(event.message || "WebSocket connection failed."),
+    })
+  }
+
+  const handleClose = (event: { code?: number; reason?: string }) => {
+    if (activeSocket !== nextSocket) {
+      return
+    }
+
+    stopHeartbeat()
+    emit({
+      type: "close",
+      code: event.code,
+      reason: event.reason,
+    })
+  }
+
+  nextSocket.addEventListener("open", handleOpen)
+  nextSocket.addEventListener("message", handleMessage)
+  nextSocket.addEventListener("error", handleError)
+  nextSocket.addEventListener("close", handleClose)
+
+  activeCleanup = () => {
+    nextSocket.removeEventListener("open", handleOpen)
+    nextSocket.removeEventListener("message", handleMessage)
+    nextSocket.removeEventListener("error", handleError)
+    nextSocket.removeEventListener("close", handleClose)
+  }
+}
+
+function replaceSocket(nextSocket: ReconnectingWebSocket, url: string) {
+  const previousSocket = activeSocket
+
+  activeSocket = nextSocket
+  activeUrl = url
+  detachActiveSocket()
+  attachSocket(nextSocket)
+
+  if (!previousSocket) {
+    return
+  }
+
+  try {
+    previousSocket.close(1000, "replaced")
+  } catch {
+    // Ignore close failures from stale sockets.
+  }
 }
 
 export const websocketAdapter: WebSocketAdapter = {
@@ -80,75 +176,23 @@ export const websocketAdapter: WebSocketAdapter = {
       }
     }
 
-    if (activeSocket && activeUrl === url && (activeSocket.readyState === WebSocket.CONNECTING || activeSocket.readyState === WebSocket.OPEN)) {
+    if (activeSocket && activeUrl === url) {
+      if (activeSocket.readyState === ReconnectingWebSocket.CLOSED) {
+        activeSocket.reconnect()
+      }
+
       return {
         ok: true,
         data: undefined,
       }
     }
 
-    if (activeSocket) {
-      clearSocket(activeSocket)
-
-      try {
-        activeSocket.close(1000, "replaced")
-      } catch {
-        // Ignore close failures from stale sockets.
-      }
-
-      activeSocket = null
-      activeUrl = null
-    }
-
     try {
-      const nextSocket = new WebSocket(url)
-      activeSocket = nextSocket
-      activeUrl = url
-
-      nextSocket.onopen = () => {
-        if (activeSocket !== nextSocket) {
-          return
-        }
-
-        startHeartbeat(nextSocket)
-        emit({ type: "open" })
-      }
-
-      nextSocket.onmessage = event => {
-        if (activeSocket !== nextSocket) {
-          return
-        }
-
-        emit({
-          type: "message",
-          data: typeof event.data === "string" ? event.data : String(event.data),
-        })
-      }
-
-      nextSocket.onerror = () => {
-        if (activeSocket !== nextSocket) {
-          return
-        }
-
-        emit({
-          type: "error",
-          error: new Error("WebSocket connection failed."),
-        })
-      }
-
-      nextSocket.onclose = event => {
-        if (activeSocket === nextSocket) {
-          activeSocket = null
-          activeUrl = null
-        }
-
-        stopHeartbeat()
-        emit({
-          type: "close",
-          code: event.code,
-          reason: event.reason,
-        })
-      }
+      const nextSocket = new ReconnectingWebSocket(url, [], {
+        ...RECONNECTING_SOCKET_OPTIONS,
+        WebSocket,
+      })
+      replaceSocket(nextSocket, url)
 
       return {
         ok: true,
@@ -157,7 +201,7 @@ export const websocketAdapter: WebSocketAdapter = {
     } catch (error) {
       activeSocket = null
       activeUrl = null
-      stopHeartbeat()
+      detachActiveSocket()
 
       return {
         ok: false,
@@ -166,7 +210,7 @@ export const websocketAdapter: WebSocketAdapter = {
     }
   },
   async send(data) {
-    if (!activeSocket || activeSocket.readyState !== WebSocket.OPEN) {
+    if (!activeSocket || activeSocket.readyState !== ReconnectingWebSocket.OPEN) {
       return {
         ok: false,
         error: new Error("WebSocket connection is not open."),
@@ -197,7 +241,7 @@ export const websocketAdapter: WebSocketAdapter = {
     const socket = activeSocket
     activeSocket = null
     activeUrl = null
-    clearSocket(socket)
+    detachActiveSocket()
 
     try {
       socket.close(code, reason)
@@ -227,6 +271,9 @@ export const websocketAdapter: WebSocketAdapter = {
     }
   },
   isConnected() {
-    return activeSocket?.readyState === WebSocket.OPEN
+    return activeSocket?.readyState === ReconnectingWebSocket.OPEN
+  },
+  getRetryCount() {
+    return activeSocket?.retryCount ?? 0
   },
 }

@@ -1,18 +1,23 @@
-type FakeWebSocketInstance = {
+type FakeSocketEventName = "close" | "error" | "message" | "open"
+
+type FakeSocketListener = (event?: { code?: number; data?: unknown; error?: Error; message?: string; reason?: string }) => void
+
+type FakeReconnectingWebSocketInstance = {
   url: string
   readyState: number
+  retryCount: number
   sent: string[]
   send: jest.Mock
   close: jest.Mock
-  onopen: null | (() => void)
-  onclose: null | ((event: { code: number; reason: string }) => void)
-  onerror: null | (() => void)
-  onmessage: null | ((event: { data: unknown }) => void)
+  reconnect: jest.Mock
+  addEventListener: (type: FakeSocketEventName, listener: FakeSocketListener) => void
+  removeEventListener: (type: FakeSocketEventName, listener: FakeSocketListener) => void
+  emit: (type: FakeSocketEventName, event?: { code?: number; data?: unknown; error?: Error; message?: string; reason?: string }) => void
 }
 
-type FakeWebSocketConstructor = {
-  new (url: string): FakeWebSocketInstance
-  instances: FakeWebSocketInstance[]
+type FakeReconnectingWebSocketConstructor = {
+  new (url: string): FakeReconnectingWebSocketInstance
+  instances: FakeReconnectingWebSocketInstance[]
   constructorError: unknown
   CONNECTING: number
   OPEN: number
@@ -20,9 +25,9 @@ type FakeWebSocketConstructor = {
   CLOSED: number
 }
 
-function createFakeWebSocket(): FakeWebSocketConstructor {
-  class FakeWebSocketImpl {
-    static instances: FakeWebSocketInstance[] = []
+jest.mock("reconnecting-websocket", () => {
+  class FakeReconnectingWebSocketImpl {
+    static instances: FakeReconnectingWebSocketInstance[] = []
     static constructorError: unknown = null
     static CONNECTING = 0
     static OPEN = 1
@@ -30,45 +35,77 @@ function createFakeWebSocket(): FakeWebSocketConstructor {
     static CLOSED = 3
 
     url: string
-    readyState = FakeWebSocketImpl.CONNECTING
+    readyState = FakeReconnectingWebSocketImpl.CONNECTING
+    retryCount = 0
     sent: string[] = []
+    listeners = {
+      close: new Set<FakeSocketListener>(),
+      error: new Set<FakeSocketListener>(),
+      message: new Set<FakeSocketListener>(),
+      open: new Set<FakeSocketListener>(),
+    }
     send = jest.fn((data: string) => {
       this.sent.push(data)
     })
     close = jest.fn((_code?: number, _reason?: string) => {
-      this.readyState = FakeWebSocketImpl.CLOSED
+      this.readyState = FakeReconnectingWebSocketImpl.CLOSED
     })
-    onopen: null | (() => void) = null
-    onclose: null | ((event: { code: number; reason: string }) => void) = null
-    onerror: null | (() => void) = null
-    onmessage: null | ((event: { data: unknown }) => void) = null
+    reconnect = jest.fn(() => {
+      this.retryCount += 1
+      this.readyState = FakeReconnectingWebSocketImpl.CONNECTING
+    })
 
     constructor(url: string) {
-      if (FakeWebSocketImpl.constructorError) {
-        throw FakeWebSocketImpl.constructorError
+      if (FakeReconnectingWebSocketImpl.constructorError) {
+        throw FakeReconnectingWebSocketImpl.constructorError
       }
 
       this.url = url
-      FakeWebSocketImpl.instances.push(this)
+      FakeReconnectingWebSocketImpl.instances.push(this as unknown as FakeReconnectingWebSocketInstance)
+    }
+
+    addEventListener(type: FakeSocketEventName, listener: FakeSocketListener) {
+      this.listeners[type].add(listener)
+    }
+
+    removeEventListener(type: FakeSocketEventName, listener: FakeSocketListener) {
+      this.listeners[type].delete(listener)
+    }
+
+    emit(type: FakeSocketEventName, event: { code?: number; data?: unknown; error?: Error; message?: string; reason?: string } = {}) {
+      this.listeners[type].forEach(listener => {
+        listener(event)
+      })
     }
   }
 
-  return FakeWebSocketImpl as unknown as FakeWebSocketConstructor
-}
+  return {
+    __esModule: true,
+    default: FakeReconnectingWebSocketImpl,
+  }
+})
 
 function loadWebsocketAdapter() {
   jest.resetModules()
   return require("@/shared/native/websocketAdapter") as typeof import("@/shared/native/websocketAdapter")
 }
 
+function getFakeReconnectingWebSocket() {
+  return require("reconnecting-websocket").default as FakeReconnectingWebSocketConstructor
+}
+
 describe("websocketAdapter", () => {
   const runtimeGlobals = globalThis as typeof globalThis & {
-    WebSocket?: FakeWebSocketConstructor
+    WebSocket?: unknown
   }
   const originalWebSocket = runtimeGlobals.WebSocket
 
   beforeEach(() => {
     jest.useFakeTimers()
+    const FakeReconnectingWebSocket = getFakeReconnectingWebSocket()
+    FakeReconnectingWebSocket.instances.length = 0
+    FakeReconnectingWebSocket.constructorError = null
+    runtimeGlobals.WebSocket = function MockWebSocket() {} as never
   })
 
   afterEach(() => {
@@ -77,7 +114,7 @@ describe("websocketAdapter", () => {
   })
 
   it("fails closed when WebSocket is unavailable", async () => {
-    delete runtimeGlobals.WebSocket
+    runtimeGlobals.WebSocket = undefined as never
     const { websocketAdapter } = loadWebsocketAdapter()
 
     expect(websocketAdapter.getCapability()).toEqual({
@@ -92,10 +129,9 @@ describe("websocketAdapter", () => {
     })
   })
 
-  it("connects, emits lifecycle events, sends heartbeats and disconnects", async () => {
-    const FakeWebSocket = createFakeWebSocket()
-    runtimeGlobals.WebSocket = FakeWebSocket
+  it("connects, emits lifecycle events, keeps heartbeats and disconnects", async () => {
     const { websocketAdapter } = loadWebsocketAdapter()
+    const FakeReconnectingWebSocket = getFakeReconnectingWebSocket()
     const events: string[] = []
     const unsubscribe = websocketAdapter.subscribe(event => {
       if (event.type === "message") {
@@ -116,24 +152,24 @@ describe("websocketAdapter", () => {
       data: undefined,
     })
 
-    const socket = FakeWebSocket.instances[0]
+    const socket = FakeReconnectingWebSocket.instances[0]
     if (!socket) {
       throw new Error("Missing fake socket instance")
     }
 
-    socket.readyState = FakeWebSocket.OPEN
-    socket.onopen?.()
+    socket.readyState = FakeReconnectingWebSocket.OPEN
+    socket.emit("open")
     expect(websocketAdapter.isConnected()).toBe(true)
 
-    socket.onmessage?.({ data: "hello" })
-    socket.onmessage?.({ data: 123 })
-    socket.onerror?.()
+    socket.emit("message", { data: "hello" })
+    socket.emit("message", { data: 123 })
+    socket.emit("error", { error: new Error("boom") })
 
     jest.advanceTimersByTime(10_000)
     expect(socket.send).toHaveBeenCalledWith(JSON.stringify({ type: "ping" }))
 
-    socket.readyState = FakeWebSocket.CLOSED
-    socket.onclose?.({ code: 4001, reason: "server_closed" })
+    socket.readyState = FakeReconnectingWebSocket.CLOSED
+    socket.emit("close", { code: 4001, reason: "server_closed" })
     expect(websocketAdapter.isConnected()).toBe(false)
 
     unsubscribe()
@@ -151,48 +187,34 @@ describe("websocketAdapter", () => {
     })
   })
 
-  it("reuses an active connection for the same url and replaces stale sockets for a new url", async () => {
-    const FakeWebSocket = createFakeWebSocket()
-    runtimeGlobals.WebSocket = FakeWebSocket
+  it("reuses the same url, reconnects closed sockets and replaces stale ones for new urls", async () => {
     const { websocketAdapter } = loadWebsocketAdapter()
+    const FakeReconnectingWebSocket = getFakeReconnectingWebSocket()
 
     await websocketAdapter.connect("wss://wallet.cp.cash/ws")
-    const firstSocket = FakeWebSocket.instances[0]
+    const firstSocket = FakeReconnectingWebSocket.instances[0]
     if (!firstSocket) {
       throw new Error("Missing first socket instance")
     }
 
-    firstSocket.readyState = FakeWebSocket.OPEN
+    firstSocket.readyState = FakeReconnectingWebSocket.OPEN
     await websocketAdapter.connect("wss://wallet.cp.cash/ws")
-    expect(FakeWebSocket.instances).toHaveLength(1)
+    expect(FakeReconnectingWebSocket.instances).toHaveLength(1)
+    expect(firstSocket.reconnect).not.toHaveBeenCalled()
 
-    firstSocket.close.mockImplementation(() => {
-      throw new Error("close failed")
-    })
-    const savedOpenHandler = firstSocket.onopen
-    const savedMessageHandler = firstSocket.onmessage
-    const savedErrorHandler = firstSocket.onerror
-    const savedCloseHandler = firstSocket.onclose
+    firstSocket.readyState = FakeReconnectingWebSocket.CLOSED
+    await websocketAdapter.connect("wss://wallet.cp.cash/ws")
+    expect(firstSocket.reconnect).toHaveBeenCalledTimes(1)
 
     await websocketAdapter.connect("wss://wallet-preview.cp.cash/ws")
-
-    expect(FakeWebSocket.instances).toHaveLength(2)
-    expect(firstSocket.onopen).toBeNull()
-    expect(firstSocket.onmessage).toBeNull()
-    expect(firstSocket.onerror).toBeNull()
-    expect(firstSocket.onclose).toBeNull()
-
-    savedOpenHandler?.()
-    savedMessageHandler?.({ data: "stale" })
-    savedErrorHandler?.()
-    savedCloseHandler?.({ code: 4000, reason: "stale" })
+    expect(FakeReconnectingWebSocket.instances).toHaveLength(2)
+    expect(firstSocket.close).toHaveBeenCalledWith(1000, "replaced")
   })
 
   it("normalizes constructor, send and close failures", async () => {
-    const FakeWebSocket = createFakeWebSocket()
-    runtimeGlobals.WebSocket = FakeWebSocket
-    FakeWebSocket.constructorError = "constructor failed"
     let mod = loadWebsocketAdapter()
+    const FakeReconnectingWebSocket = getFakeReconnectingWebSocket()
+    FakeReconnectingWebSocket.constructorError = "constructor failed"
 
     await expect(mod.websocketAdapter.connect("wss://wallet.cp.cash/ws")).resolves.toMatchObject({
       ok: false,
@@ -201,10 +223,11 @@ describe("websocketAdapter", () => {
       },
     })
 
-    FakeWebSocket.constructorError = null
+    FakeReconnectingWebSocket.constructorError = null
     mod = loadWebsocketAdapter()
+    const ReloadedFakeReconnectingWebSocket = getFakeReconnectingWebSocket()
     await mod.websocketAdapter.connect("wss://wallet.cp.cash/ws")
-    const socket = FakeWebSocket.instances[0]
+    const socket = ReloadedFakeReconnectingWebSocket.instances[0]
     if (!socket) {
       throw new Error("Missing socket instance")
     }
@@ -216,7 +239,7 @@ describe("websocketAdapter", () => {
       },
     })
 
-    socket.readyState = FakeWebSocket.OPEN
+    socket.readyState = ReloadedFakeReconnectingWebSocket.OPEN
     socket.send.mockImplementation(() => {
       throw "send failed"
     })
@@ -241,10 +264,9 @@ describe("websocketAdapter", () => {
   })
 
   it("preserves Error instances for constructor, send and close failures", async () => {
-    const FakeWebSocket = createFakeWebSocket()
-    runtimeGlobals.WebSocket = FakeWebSocket
-    FakeWebSocket.constructorError = new Error("constructor failed")
     let mod = loadWebsocketAdapter()
+    const FakeReconnectingWebSocket = getFakeReconnectingWebSocket()
+    FakeReconnectingWebSocket.constructorError = new Error("constructor failed")
 
     await expect(mod.websocketAdapter.connect("wss://wallet.cp.cash/ws")).resolves.toMatchObject({
       ok: false,
@@ -253,15 +275,16 @@ describe("websocketAdapter", () => {
       },
     })
 
-    FakeWebSocket.constructorError = null
+    FakeReconnectingWebSocket.constructorError = null
     mod = loadWebsocketAdapter()
+    const ReloadedFakeReconnectingWebSocket = getFakeReconnectingWebSocket()
     await mod.websocketAdapter.connect("wss://wallet.cp.cash/ws")
-    const socket = FakeWebSocket.instances[0]
+    const socket = ReloadedFakeReconnectingWebSocket.instances[0]
     if (!socket) {
       throw new Error("Missing socket instance")
     }
 
-    socket.readyState = FakeWebSocket.OPEN
+    socket.readyState = ReloadedFakeReconnectingWebSocket.OPEN
     socket.send.mockImplementation(() => {
       throw new Error("send failed")
     })
@@ -285,42 +308,18 @@ describe("websocketAdapter", () => {
     })
   })
 
-  it("sends application payloads and emits a manual close event on disconnect", async () => {
-    const FakeWebSocket = createFakeWebSocket()
-    runtimeGlobals.WebSocket = FakeWebSocket
+  it("tracks retry counts exposed by the reconnecting client", async () => {
     const { websocketAdapter } = loadWebsocketAdapter()
-    const events: string[] = []
-
-    websocketAdapter.subscribe(event => {
-      if (event.type === "close") {
-        events.push(`${event.type}:${event.code}:${event.reason}`)
-      }
-    })
+    const FakeReconnectingWebSocket = getFakeReconnectingWebSocket()
 
     await websocketAdapter.connect("wss://wallet.cp.cash/ws")
-    const socket = FakeWebSocket.instances[0]
+    const socket = FakeReconnectingWebSocket.instances[0]
     if (!socket) {
       throw new Error("Missing socket instance")
     }
 
-    socket.readyState = FakeWebSocket.OPEN
-    socket.onopen?.()
-
-    await expect(websocketAdapter.send("payload")).resolves.toEqual({
-      ok: true,
-      data: undefined,
-    })
-    expect(socket.send).toHaveBeenCalledWith("payload")
-
-    socket.readyState = FakeWebSocket.CLOSING
-    jest.advanceTimersByTime(10_000)
-    expect(socket.send).toHaveBeenCalledTimes(1)
-
-    await expect(websocketAdapter.disconnect(4004, "manual-close")).resolves.toEqual({
-      ok: true,
-      data: undefined,
-    })
-    expect(socket.close).toHaveBeenCalledWith(4004, "manual-close")
-    expect(events).toContain("close:4004:manual-close")
+    expect(websocketAdapter.getRetryCount()).toBe(0)
+    socket.retryCount = 2
+    expect(websocketAdapter.getRetryCount()).toBe(2)
   })
 })

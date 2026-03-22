@@ -11,6 +11,7 @@ const mockConnect = jest.fn()
 const mockDisconnect = jest.fn()
 const mockSubscribe = jest.fn()
 const mockIsConnected = jest.fn()
+const mockGetRetryCount = jest.fn()
 const mockSetConnected = jest.fn()
 const mockBumpMessageRevision = jest.fn()
 const mockBumpCopouchRevision = jest.fn()
@@ -53,6 +54,7 @@ jest.mock("@/shared/native/websocketAdapter", () => ({
     disconnect: (...args: unknown[]) => mockDisconnect(...args),
     subscribe: (...args: unknown[]) => mockSubscribe(...args),
     isConnected: (...args: unknown[]) => mockIsConnected(...args),
+    getRetryCount: (...args: unknown[]) => mockGetRetryCount(...args),
   },
 }))
 
@@ -101,6 +103,7 @@ describe("SocketProvider", () => {
     mockSubscribe.mockReset()
     mockIsConnected.mockReset()
     mockSetConnected.mockReset()
+    mockGetRetryCount.mockReset()
     mockBumpMessageRevision.mockReset()
     mockBumpCopouchRevision.mockReset()
     mockResetSocketStore.mockReset()
@@ -115,6 +118,7 @@ describe("SocketProvider", () => {
       data: undefined,
     })
     mockIsConnected.mockReturnValue(false)
+    mockGetRetryCount.mockReturnValue(0)
     mockSubscribe.mockImplementation((listener: (event: WebSocketAdapterEvent) => void) => {
       socketListener = listener
       return jest.fn()
@@ -146,7 +150,7 @@ describe("SocketProvider", () => {
       details: expect.objectContaining({
         connectionId: 1,
         trigger: "sync",
-        reconnectAttempt: 0,
+        retryCount: 0,
         appState: "active",
         hasAccessToken: true,
         authMode: "query_token",
@@ -169,7 +173,7 @@ describe("SocketProvider", () => {
       details: expect.objectContaining({
         connectionId: 1,
         trigger: "sync",
-        reconnectAttempt: 0,
+        retryCount: 0,
         handshakeDurationMs: 300,
         socketUrl: "wss://wallet.cp.cash/ws",
       }),
@@ -195,6 +199,7 @@ describe("SocketProvider", () => {
         connectionId: 1,
         ackType: "authenticated",
         connectionAgeMs: 500,
+        retryCount: 0,
         socketUrl: "wss://wallet.cp.cash/ws",
       }),
     })
@@ -214,14 +219,13 @@ describe("SocketProvider", () => {
       tag: "[socket.lifecycle]",
       component: "socket.lifecycle",
       event: "close_reconnecting",
-      message: "WebSocket closed unexpectedly and a reconnect was scheduled.",
+      message: "WebSocket closed unexpectedly and the reconnecting client stayed active.",
       details: expect.objectContaining({
-        connectionId: 1,
+        connectionId: 2,
         code: 1001,
         reason: "Stream end encountered",
-        attempt: 1,
-        delayMs: 1_500,
         connectionLifetimeMs: 4_300,
+        retryCount: 0,
         socketUrl: "wss://wallet.cp.cash/ws",
       }),
     })
@@ -258,8 +262,8 @@ describe("SocketProvider", () => {
       details: expect.objectContaining({
         connectionId: 1,
         trigger: "sync",
-        reconnectAttempt: 0,
         error: "constructor failed",
+        retryCount: 0,
         socketUrl: "wss://wallet.cp.cash/ws",
       }),
     })
