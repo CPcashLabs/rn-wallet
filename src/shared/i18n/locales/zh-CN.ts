@@ -416,6 +416,8 @@ const home = {
       switchHint: "切换支付币种后，会自动刷新当前订单。",
       switchingPayment: "切换币种中...",
       switchPaymentFailed: "切换支付币种失败。",
+      unavailablePaymentMethods: "以下支付方式暂不可用",
+      balanceInsufficientHint: "余额不足",
       tipTitle: "广播前确认",
       tipBody: "请再次核对地址、金额和钱包网络。交易广播后通常无法撤销。",
       submit: "签名并广播",

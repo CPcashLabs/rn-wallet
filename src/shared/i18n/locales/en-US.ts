@@ -416,6 +416,8 @@ const home = {
       switchHint: "Switching the payment asset will refresh the current order automatically.",
       switchingPayment: "Switching asset...",
       switchPaymentFailed: "Failed to switch the payment asset.",
+      unavailablePaymentMethods: "The following payment methods are unavailable",
+      balanceInsufficientHint: "Insufficient balance",
       tipTitle: "Before broadcasting",
       tipBody: "Please verify the address, amount and wallet network again. Once the transaction is broadcast, it cannot usually be reversed.",
       submit: "Sign and Broadcast",

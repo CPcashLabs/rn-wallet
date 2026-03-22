@@ -17,6 +17,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { formatWalletAddress } from "@/domains/wallet/shared/utils/format"
 import { HomeScaffold } from "@/shared/ui/HomeScaffold"
 import { checkTransferNetwork, getOrderDetail, getReceivingOrder, submitShipOrder } from "@/domains/wallet/transfer/services/transferApi"
+import {
+  resolveTransferConfirmPaymentOptions,
+  type TransferConfirmPaymentOptionItem,
+} from "@/domains/wallet/transfer/components/transferConfirmPaymentOptions"
 import { createBridgeTransferOrder, createNormalTransferOrder } from "@/shared/exchange/services/orderCreationApi"
 import { getTransferOrderOptions, getTransferQuote, type TransferOrderOption } from "@/shared/exchange/services/exchangeApi"
 import {
@@ -395,11 +399,77 @@ function TransferConfirmBody(props: {
     chainId,
   })
   const balances = balanceQuery.data?.balances ?? {}
+  const paymentOptionGroups = useMemo(
+    () =>
+      resolveTransferConfirmPaymentOptions({
+        paymentOptions: props.paymentOptions,
+        detail: props.detail,
+        balances,
+        hasBalanceSnapshot: balanceQuery.data != null,
+      }),
+    [balanceQuery.data, balances, props.detail, props.paymentOptions],
+  )
+  const submitDisabled =
+    props.submitting ||
+    props.loading ||
+    props.switchingPayment ||
+    !props.detail ||
+    Boolean(props.submitUnavailableMessage) ||
+    paymentOptionGroups.selectedOptionUnavailable
   const receiveAddressLabel = useMemo(
     () => props.detail?.receiveAddress || props.detail?.depositAddress || "-",
     [props.detail],
   )
   const formattedRecipientLabel = useMemo(() => formatWalletAddress(receiveAddressLabel, 8, 4), [receiveAddressLabel])
+  const renderPaymentRow = useCallback(
+    (item: TransferConfirmPaymentOptionItem, index: number, total: number) => {
+      const active = item.active && item.unavailableReason == null
+      const disabled = props.loading || props.submitting || props.switchingPayment || item.unavailableReason != null
+      const symbol = item.option.sendCoinSymbol || item.option.sendCoinCode
+      const networkName = item.option.sendChainFullName || item.option.sendChainName || symbol
+
+      return (
+        <Pressable
+          key={`${item.option.sendCoinCode}-${item.option.recvCoinCode || "same-chain"}`}
+          disabled={disabled}
+          onPress={() => void props.onSelectPaymentOption(item.option)}
+          style={[
+            styles.paymentRow,
+            total > 1 && index < total - 1 ? { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.border } : null,
+            active ? { backgroundColor: theme.colors.primarySoft ?? `${theme.colors.primary}12` } : null,
+            item.unavailableReason != null ? { backgroundColor: theme.colors.surfaceMuted } : null,
+          ]}
+        >
+          <View style={styles.paymentRowIcon}>
+            <NetworkLogo
+              chainColor={item.option.sendChainColor || theme.colors.primary}
+              chainName={item.option.sendChainName || props.detail?.sendChainName || symbol}
+              logoUri={item.option.sendChainLogo}
+              size={42}
+            />
+          </View>
+          <View style={styles.paymentRowContent}>
+            <Text style={[styles.paymentRowTitle, { color: item.unavailableReason != null ? theme.colors.mutedText : theme.colors.text }]}>
+              {networkName}
+            </Text>
+            <Text style={[styles.paymentRowSubtitle, { color: theme.colors.mutedText }]}>
+              {`${t("transfer.order.available")}: ${formatAmount(item.availableBalance)} ${symbol}`.trim()}
+            </Text>
+            {item.unavailableReason === "balanceInsufficient" ? (
+              <Text style={[styles.paymentRowReason, { color: theme.colors.danger }]}>
+                {t("transfer.confirm.balanceInsufficientHint")}
+              </Text>
+            ) : null}
+          </View>
+          <View style={styles.paymentRowAccessory}>
+            {active ? <Text style={[styles.paymentRowCheck, { color: theme.colors.primary }]}>✓</Text> : null}
+          </View>
+        </Pressable>
+      )
+    },
+    [props.detail?.sendChainName, props.loading, props.onSelectPaymentOption, props.submitting, props.switchingPayment, t, theme.colors],
+  )
+
   if (props.loading && !props.detail) {
     return (
       <View style={styles.stateWrap}>
@@ -435,7 +505,7 @@ function TransferConfirmBody(props: {
       {props.paymentOptions.length > 0 ? (
         <View style={styles.paymentSection}>
           <View style={styles.paymentHeader}>
-            <Text style={[styles.paymentSectionLabel, { color: theme.colors.mutedText }]}>{t("transfer.confirm.paymentAsset")}</Text>
+            <Text style={[styles.paymentSectionLabel, { color: theme.colors.mutedText }]}>{t("transfer.confirm.paymentMethod")}</Text>
             {props.paymentOptionsLoading || props.switchingPayment ? (
               <View style={styles.paymentLoading}>
                 <ActivityIndicator color={theme.colors.primary} size="small" />
@@ -444,51 +514,38 @@ function TransferConfirmBody(props: {
             ) : null}
           </View>
 
-          <SectionCard
-            style={[
-              styles.paymentGroupCard,
-              {
-                backgroundColor: theme.colors.surfaceElevated ?? theme.colors.surface,
-              },
-            ]}
-          >
-            {props.paymentOptions.map((option, index) => {
-              const active = option.sendCoinCode === props.detail?.sendCoinCode
-              const symbol = option.sendCoinSymbol || option.sendCoinCode
-              const networkName = option.sendChainFullName || option.sendChainName || symbol
+          {paymentOptionGroups.available.length > 0 ? (
+            <SectionCard
+              style={[
+                styles.paymentGroupCard,
+                {
+                  backgroundColor: theme.colors.surfaceElevated ?? theme.colors.surface,
+                },
+              ]}
+            >
+              {paymentOptionGroups.available.map((item, index) => renderPaymentRow(item, index, paymentOptionGroups.available.length))}
+            </SectionCard>
+          ) : null}
 
-              return (
-                <Pressable
-                  key={`${option.sendCoinCode}-${option.recvCoinCode || "same-chain"}`}
-                  disabled={props.loading || props.submitting || props.switchingPayment}
-                  onPress={() => void props.onSelectPaymentOption(option)}
-                  style={[
-                    styles.paymentRow,
-                    index < props.paymentOptions.length - 1 ? { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.border } : null,
-                    active ? { backgroundColor: theme.colors.primarySoft ?? `${theme.colors.primary}12` } : null,
-                  ]}
-                >
-                  <View style={styles.paymentRowIcon}>
-                    <NetworkLogo
-                      chainColor={option.sendChainColor || theme.colors.primary}
-                      chainName={option.sendChainName || props.detail?.sendChainName || symbol}
-                      logoUri={option.sendChainLogo}
-                      size={42}
-                    />
-                  </View>
-                  <View style={styles.paymentRowContent}>
-                    <Text style={[styles.paymentRowTitle, { color: theme.colors.text }]}>{networkName}</Text>
-                    <Text style={[styles.paymentRowSubtitle, { color: theme.colors.mutedText }]}>
-                      {`${t("transfer.order.available")}: ${formatAmount(balances[option.sendCoinCode] ?? 0)} ${symbol}`.trim()}
-                    </Text>
-                  </View>
-                  <View style={styles.paymentRowAccessory}>
-                    {active ? <Text style={[styles.paymentRowCheck, { color: theme.colors.primary }]}>✓</Text> : null}
-                  </View>
-                </Pressable>
-              )
-            })}
-          </SectionCard>
+          {paymentOptionGroups.unavailable.length > 0 ? (
+            <View style={styles.unavailableSection}>
+              <Text style={[styles.paymentSectionLabel, { color: theme.colors.mutedText }]}>
+                {t("transfer.confirm.unavailablePaymentMethods")}
+              </Text>
+              <SectionCard
+                style={[
+                  styles.paymentGroupCard,
+                  {
+                    backgroundColor: theme.colors.surfaceElevated ?? theme.colors.surface,
+                  },
+                ]}
+              >
+                {paymentOptionGroups.unavailable.map((item, index) =>
+                  renderPaymentRow(item, index, paymentOptionGroups.unavailable.length),
+                )}
+              </SectionCard>
+            </View>
+          ) : null}
         </View>
       ) : null}
 
@@ -500,7 +557,7 @@ function TransferConfirmBody(props: {
         </SectionCard>
       ) : null}
       <PrimaryButton
-        disabled={props.submitting || props.loading || props.switchingPayment || !props.detail || Boolean(props.submitUnavailableMessage)}
+        disabled={submitDisabled}
         label={props.submitting || props.switchingPayment ? t("common.loading") : t("transfer.confirm.submit")}
         onPress={props.onSubmit}
       />
@@ -713,6 +770,9 @@ const styles = StyleSheet.create({
   paymentSection: {
     gap: 10,
   },
+  unavailableSection: {
+    gap: 10,
+  },
   paymentSectionLabel: {
     fontSize: 15,
     fontWeight: "500",
@@ -754,6 +814,11 @@ const styles = StyleSheet.create({
   paymentRowSubtitle: {
     fontSize: 13,
     lineHeight: 18,
+  },
+  paymentRowReason: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "600",
   },
   paymentRowAccessory: {
     minWidth: 24,
