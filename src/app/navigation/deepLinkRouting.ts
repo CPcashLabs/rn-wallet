@@ -44,6 +44,28 @@ type NestedScreenParams = {
   params?: Record<string, unknown> | NestedScreenParams
 }
 
+type NormalizedDeepLink = NonNullable<ReturnType<typeof normalizeSegments>>
+
+const INVITE_SCREEN_BY_SEGMENT: Record<string, InviteScreenName> = {
+  invitecode: "InviteCodeScreen",
+  promotion: "InvitePromotionScreen",
+  "how-it-works": "InviteHowItWorksScreen",
+}
+
+const RECEIVE_DEEP_LINK_HEADS = new Set(["receive", "receive-detail", "new-receive-detail"])
+const ORDER_STACK_SCREEN_BY_HEAD = {
+  "order-voucher": "OrderVoucherScreen",
+  digitalreceipt: "DigitalReceiptScreen",
+  flowproof: "FlowProofScreen",
+  refund: "RefundDetailScreen",
+} as const
+
+const TXLOGS_ROUTE_BUILDERS = {
+  orderdetail: (orderSn: string) => toOrderDetail(orderSn),
+  txpaystatus: (orderSn: string) => toTxPayStatus(orderSn),
+  splitdetail: (orderSn: string) => toOrderStackScreen("SplitDetailScreen", orderSn),
+} as const
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object"
 }
@@ -476,6 +498,14 @@ function withAuth(routes: RootRouteDescriptor[], authenticated: boolean, index =
   }
 }
 
+function withHomeTabRoute(route: RootRouteDescriptor, authenticated: boolean) {
+  return withAuth([toHomeTab(), route], authenticated, 1)
+}
+
+function withMeTabRoute(route: RootRouteDescriptor, authenticated: boolean) {
+  return withAuth([toMeTab(), route], authenticated, 1)
+}
+
 function normalizeSegments(url: string) {
   const normalizedUrl = url.startsWith("/") ? `https://share.cpcash.app${url}` : url
   const parsed = deepLinkAdapter.parse(normalizedUrl)
@@ -681,6 +711,227 @@ export function sanitizeWechatTargetPath(value?: string) {
   return canonicalTargetPath
 }
 
+function resolveOrderDeepLink(url: string, head: string, segments: string[], authenticated: boolean) {
+  if (head === "orders") {
+    const orderSn = readRouteId(segments[1])
+    if (!orderSn) {
+      return toNotFound(url)
+    }
+
+    if (segments.length === 2) {
+      return withHomeTabRoute(toOrderDetail(orderSn), authenticated)
+    }
+
+    if (segments.length === 3 && segments[2]?.toLowerCase() === "status") {
+      return withHomeTabRoute(toTxPayStatus(orderSn), authenticated)
+    }
+
+    return toNotFound(url)
+  }
+
+  if (head === "orderbill") {
+    if (segments.length !== 1) {
+      return toNotFound(url)
+    }
+
+    return withHomeTabRoute(toOrderBill(), authenticated)
+  }
+
+  const orderScreen = ORDER_STACK_SCREEN_BY_HEAD[head as keyof typeof ORDER_STACK_SCREEN_BY_HEAD]
+  if (orderScreen) {
+    const orderSn = readRouteId(segments[1])
+    if (!orderSn || segments.length !== 2) {
+      return toNotFound(url)
+    }
+
+    return withHomeTabRoute(toOrderStackScreen(orderScreen, orderSn), authenticated)
+  }
+
+  if (head === "txlogs") {
+    const section = segments[1]?.toLowerCase()
+    const orderSn = readRouteId(segments[2])
+    if (!section || !orderSn || segments.length !== 3) {
+      return toNotFound(url)
+    }
+
+    const routeBuilder = TXLOGS_ROUTE_BUILDERS[section as keyof typeof TXLOGS_ROUTE_BUILDERS]
+    if (!routeBuilder) {
+      return toNotFound(url)
+    }
+
+    return withHomeTabRoute(routeBuilder(orderSn), authenticated)
+  }
+
+  return null
+}
+
+function resolveCopouchDeepLink(url: string, head: string, segments: string[], authenticated: boolean) {
+  if (head !== "copouch" && head !== "cowallet") {
+    return null
+  }
+
+  const isDirectDetail = segments.length === 2
+  const isDetailPath = segments.length === 3 && segments[1]?.toLowerCase() === "detail"
+  const id = readRouteId(isDetailPath ? segments[2] : segments[1])
+  if (!id || (!isDirectDetail && !isDetailPath)) {
+    return toNotFound(url)
+  }
+
+  return withMeTabRoute(toCopouchDetail(id), authenticated)
+}
+
+function resolveInviteDeepLink(
+  url: string,
+  segments: string[],
+  query: Record<string, string>,
+  authenticated: boolean,
+) {
+  if (segments[0]?.toLowerCase() !== "invite") {
+    return null
+  }
+
+  const inviteCode = readValidatedQueryValue(query, ["code"], readInviteCode)
+  if (inviteCode === null) {
+    return toNotFound(url)
+  }
+
+  const screen = segments[1]?.toLowerCase()
+
+  if (!screen) {
+    if (inviteCode) {
+      if (!authenticated) {
+        return toResolution([toLogin(inviteCode)], 0)
+      }
+
+      return toResolution([toHomeTab(inviteCode)], 0)
+    }
+
+    return withAuth([toMeTab("InviteHomeScreen")], authenticated)
+  }
+
+  if (segments.length !== 2) {
+    return toNotFound(url)
+  }
+
+  const inviteScreen = INVITE_SCREEN_BY_SEGMENT[screen]
+  if (!inviteScreen) {
+    return toNotFound(url)
+  }
+
+  return withAuth([toMeTab(inviteScreen)], authenticated)
+}
+
+function resolveReceiveDeepLink(
+  url: string,
+  head: string,
+  normalized: NormalizedDeepLink,
+  authenticated: boolean,
+) {
+  if (!RECEIVE_DEEP_LINK_HEADS.has(head)) {
+    return null
+  }
+
+  const { parsed, segments } = normalized
+  if (segments.length !== 1) {
+    return toNotFound(url)
+  }
+
+  const payChain = readValidatedQueryValue(parsed.query, ["payChain"], readPayChain)
+  const copouch = readValidatedQueryValue(parsed.query, ["copouch", "cowallet"], readWalletAddress)
+  const cowallet = readValidatedQueryValue(parsed.query, ["cowallet"], readWalletAddress)
+  const multisigWalletId = readValidatedQueryValue(parsed.query, ["multisig_wallet_id", "multisigWalletId"], readRouteId)
+  const collapse = readValidatedQueryValue(parsed.query, ["collapse"], readReceiveCollapse)
+  const chainColor = readValidatedQueryValue(parsed.query, ["chain_color", "chainColor"], readChainColor)
+  const receiveMode = readValidatedQueryValue(parsed.query, ["receiveMode"], readReceiveMode)
+
+  if (
+    payChain === null ||
+    copouch === null ||
+    cowallet === null ||
+    multisigWalletId === null ||
+    collapse === null ||
+    chainColor === null ||
+    receiveMode === null
+  ) {
+    return toNotFound(url)
+  }
+
+  return withHomeTabRoute(
+    toReceiveHome({
+      payChain: payChain ?? undefined,
+      copouch: copouch ?? undefined,
+      cowallet: cowallet ?? undefined,
+      multisigWalletId: multisigWalletId ?? undefined,
+      collapse: collapse ?? undefined,
+      chainColor: chainColor ?? undefined,
+      receiveMode: receiveMode ?? undefined,
+    }),
+    authenticated,
+  )
+}
+
+function resolveWechatInterceptorDeepLink(url: string, normalized: NormalizedDeepLink) {
+  const { parsed, segments } = normalized
+  if (segments[0]?.toLowerCase() !== "wechat-interceptor") {
+    return null
+  }
+
+  if (segments.length !== 1) {
+    return toNotFound(url)
+  }
+
+  const targetPath = readValidatedQueryValue(parsed.query, ["target", "path", "redirect"], sanitizeWechatTargetPath)
+  if (targetPath === null) {
+    return toNotFound(url)
+  }
+
+  return toResolution([toWechatInterceptor(targetPath)], 0)
+}
+
+function resolvePublicTransferDeepLink(url: string, head: string, normalized: NormalizedDeepLink) {
+  const { parsed, segments } = normalized
+  if (head === "send") {
+    const publicBaseUrl = resolvePublicBaseUrl(parsed.scheme, parsed.host)
+
+    if (segments.length === 2 && segments[1]?.toLowerCase() === "detail") {
+      const txid = readValidatedQueryValue(parsed.query, ["txid"], readTxid)
+      if (txid === null || !txid) {
+        return toNotFound(url)
+      }
+
+      return toResolution([toPublicTxPayStatus(txid, publicBaseUrl)], 0)
+    }
+
+    if (segments.length !== 1) {
+      return toNotFound(url)
+    }
+
+    const orderSn = readValidatedQueryValue(parsed.query, ["share"], readRouteId)
+    if (orderSn === null || !orderSn) {
+      return toNotFound(url)
+    }
+
+    return toResolution([toPublicSendPaymentInfo(orderSn, publicBaseUrl)], 0)
+  }
+
+  if (head !== "share") {
+    return null
+  }
+
+  if (segments.length !== 1) {
+    return toNotFound(url)
+  }
+
+  const txid = readValidatedQueryValue(parsed.query, ["txid"], readTxid)
+  if (txid === null || !txid) {
+    return toNotFound(url)
+  }
+
+  const publicBaseUrl = resolvePublicBaseUrl(parsed.scheme, parsed.host)
+
+  return toResolution([toPublicTxPayStatus(txid, publicBaseUrl)], 0)
+}
+
 export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkResolution {
   const normalized = normalizeSegments(url)
   if (!normalized) {
@@ -694,250 +945,35 @@ export function resolveDeepLink(url: string, authenticated: boolean): DeepLinkRe
     return toNotFound(url)
   }
 
-  switch (head) {
-    case "orders": {
-      const orderSn = readRouteId(segments[1])
-      if (!orderSn) {
-        return toNotFound(url)
-      }
-
-      if (segments.length === 2) {
-        return withAuth([toHomeTab(), toOrderDetail(orderSn)], authenticated, 1)
-      }
-
-      if (segments.length === 3 && segments[2]?.toLowerCase() === "status") {
-        return withAuth([toHomeTab(), toTxPayStatus(orderSn)], authenticated, 1)
-      }
-
-      return toNotFound(url)
-    }
-
-    case "order-voucher": {
-      const orderSn = readRouteId(segments[1])
-      if (!orderSn || segments.length !== 2) {
-        return toNotFound(url)
-      }
-
-      return withAuth([toHomeTab(), toOrderStackScreen("OrderVoucherScreen", orderSn)], authenticated, 1)
-    }
-
-    case "digitalreceipt": {
-      const orderSn = readRouteId(segments[1])
-      if (!orderSn || segments.length !== 2) {
-        return toNotFound(url)
-      }
-
-      return withAuth([toHomeTab(), toOrderStackScreen("DigitalReceiptScreen", orderSn)], authenticated, 1)
-    }
-
-    case "flowproof": {
-      const orderSn = readRouteId(segments[1])
-      if (!orderSn || segments.length !== 2) {
-        return toNotFound(url)
-      }
-
-      return withAuth([toHomeTab(), toOrderStackScreen("FlowProofScreen", orderSn)], authenticated, 1)
-    }
-
-    case "refund": {
-      const orderSn = readRouteId(segments[1])
-      if (!orderSn || segments.length !== 2) {
-        return toNotFound(url)
-      }
-
-      return withAuth([toHomeTab(), toOrderStackScreen("RefundDetailScreen", orderSn)], authenticated, 1)
-    }
-
-    case "orderbill": {
-      if (segments.length !== 1) {
-        return toNotFound(url)
-      }
-
-      return withAuth([toHomeTab(), toOrderBill()], authenticated, 1)
-    }
-
-    case "txlogs": {
-      const section = segments[1]?.toLowerCase()
-      const orderSn = readRouteId(segments[2])
-      if (!section || !orderSn || segments.length !== 3) {
-        return toNotFound(url)
-      }
-
-      if (section === "orderdetail") {
-        return withAuth([toHomeTab(), toOrderDetail(orderSn)], authenticated, 1)
-      }
-
-      if (section === "txpaystatus") {
-        return withAuth([toHomeTab(), toTxPayStatus(orderSn)], authenticated, 1)
-      }
-
-      if (section === "splitdetail") {
-        return withAuth([toHomeTab(), toOrderStackScreen("SplitDetailScreen", orderSn)], authenticated, 1)
-      }
-
-      return toNotFound(url)
-    }
-
-    case "copouch":
-    case "cowallet": {
-      const isDirectDetail = segments.length === 2
-      const isDetailPath = segments.length === 3 && segments[1]?.toLowerCase() === "detail"
-      const id = readRouteId(isDetailPath ? segments[2] : segments[1])
-      if (!id || (!isDirectDetail && !isDetailPath)) {
-        return toNotFound(url)
-      }
-
-      return withAuth([toMeTab(), toCopouchDetail(id)], authenticated, 1)
-    }
-
-    case "invite": {
-      const inviteCode = readValidatedQueryValue(parsed.query, ["code"], readInviteCode)
-      if (inviteCode === null) {
-        return toNotFound(url)
-      }
-
-      const screen = segments[1]?.toLowerCase()
-
-      if (!screen) {
-        if (inviteCode) {
-          if (!authenticated) {
-            return toResolution([toLogin(inviteCode)], 0)
-          }
-
-          return toResolution([toHomeTab(inviteCode)], 0)
-        }
-
-        return withAuth([toMeTab("InviteHomeScreen")], authenticated)
-      }
-
-      if (segments.length !== 2) {
-        return toNotFound(url)
-      }
-
-      const screenMap: Record<string, InviteScreenName> = {
-        invitecode: "InviteCodeScreen",
-        promotion: "InvitePromotionScreen",
-        "how-it-works": "InviteHowItWorksScreen",
-      }
-      const inviteScreen = screenMap[screen]
-      if (!inviteScreen) {
-        return toNotFound(url)
-      }
-
-      return withAuth([toMeTab(inviteScreen)], authenticated)
-    }
-
-    // These deep-link variants intentionally resolve to the same receive flow.
-    case "receive":
-    case "receive-detail":
-    case "new-receive-detail": {
-      if (segments.length !== 1) {
-        return toNotFound(url)
-      }
-
-      const payChain = readValidatedQueryValue(parsed.query, ["payChain"], readPayChain)
-      const copouch = readValidatedQueryValue(parsed.query, ["copouch", "cowallet"], readWalletAddress)
-      const cowallet = readValidatedQueryValue(parsed.query, ["cowallet"], readWalletAddress)
-      const multisigWalletId = readValidatedQueryValue(parsed.query, ["multisig_wallet_id", "multisigWalletId"], readRouteId)
-      const collapse = readValidatedQueryValue(parsed.query, ["collapse"], readReceiveCollapse)
-      const chainColor = readValidatedQueryValue(parsed.query, ["chain_color", "chainColor"], readChainColor)
-      const receiveMode = readValidatedQueryValue(parsed.query, ["receiveMode"], readReceiveMode)
-
-      if (
-        payChain === null ||
-        copouch === null ||
-        cowallet === null ||
-        multisigWalletId === null ||
-        collapse === null ||
-        chainColor === null ||
-        receiveMode === null
-      ) {
-        return toNotFound(url)
-      }
-
-      return withAuth(
-        [
-          toHomeTab(),
-          toReceiveHome({
-            payChain: payChain ?? undefined,
-            copouch: copouch ?? undefined,
-            cowallet: cowallet ?? undefined,
-            multisigWalletId: multisigWalletId ?? undefined,
-            collapse: collapse ?? undefined,
-            chainColor: chainColor ?? undefined,
-            receiveMode: receiveMode ?? undefined,
-          }),
-        ],
-        authenticated,
-        1,
-      )
-    }
-
-    case "wechat-interceptor": {
-      if (segments.length !== 1) {
-        return toNotFound(url)
-      }
-
-      const targetPath = readValidatedQueryValue(parsed.query, ["target", "path", "redirect"], sanitizeWechatTargetPath)
-      if (targetPath === null) {
-        return toNotFound(url)
-      }
-
-      return toResolution([toWechatInterceptor(targetPath)], 0)
-    }
-
-    case "send": {
-      const publicBaseUrl = resolvePublicBaseUrl(parsed.scheme, parsed.host)
-
-      if (segments.length === 2 && segments[1]?.toLowerCase() === "detail") {
-        const txid = readValidatedQueryValue(parsed.query, ["txid"], readTxid)
-        if (txid === null) {
-          return toNotFound(url)
-        }
-
-        if (!txid) {
-          return toNotFound(url)
-        }
-
-        return toResolution([toPublicTxPayStatus(txid, publicBaseUrl)], 0)
-      }
-
-      if (segments.length !== 1) {
-        return toNotFound(url)
-      }
-
-      const orderSn = readValidatedQueryValue(parsed.query, ["share"], readRouteId)
-      if (orderSn === null) {
-        return toNotFound(url)
-      }
-
-      if (!orderSn) {
-        return toNotFound(url)
-      }
-
-      return toResolution([toPublicSendPaymentInfo(orderSn, publicBaseUrl)], 0)
-    }
-
-    case "share": {
-      if (segments.length !== 1) {
-        return toNotFound(url)
-      }
-
-      const txid = readValidatedQueryValue(parsed.query, ["txid"], readTxid)
-      if (txid === null) {
-        return toNotFound(url)
-      }
-
-      if (!txid) {
-        return toNotFound(url)
-      }
-
-      const publicBaseUrl = resolvePublicBaseUrl(parsed.scheme, parsed.host)
-
-      return toResolution([toPublicTxPayStatus(txid, publicBaseUrl)], 0)
-    }
-
-    default:
-      return toNotFound(url)
+  const orderResolution = resolveOrderDeepLink(url, head, segments, authenticated)
+  if (orderResolution) {
+    return orderResolution
   }
+
+  const copouchResolution = resolveCopouchDeepLink(url, head, segments, authenticated)
+  if (copouchResolution) {
+    return copouchResolution
+  }
+
+  const inviteResolution = resolveInviteDeepLink(url, segments, parsed.query, authenticated)
+  if (inviteResolution) {
+    return inviteResolution
+  }
+
+  const receiveResolution = resolveReceiveDeepLink(url, head, normalized, authenticated)
+  if (receiveResolution) {
+    return receiveResolution
+  }
+
+  const wechatInterceptorResolution = resolveWechatInterceptorDeepLink(url, normalized)
+  if (wechatInterceptorResolution) {
+    return wechatInterceptorResolution
+  }
+
+  const publicTransferResolution = resolvePublicTransferDeepLink(url, head, normalized)
+  if (publicTransferResolution) {
+    return publicTransferResolution
+  }
+
+  return toNotFound(url)
 }
