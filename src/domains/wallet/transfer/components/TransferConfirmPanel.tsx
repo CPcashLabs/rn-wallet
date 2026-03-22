@@ -14,17 +14,22 @@ import {
 import { useTranslation } from "react-i18next"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
+import { formatWalletAddress } from "@/domains/wallet/shared/utils/format"
 import { HomeScaffold } from "@/shared/ui/HomeScaffold"
 import { checkTransferNetwork, getOrderDetail, getReceivingOrder, submitShipOrder } from "@/domains/wallet/transfer/services/transferApi"
+import { createBridgeTransferOrder, createNormalTransferOrder } from "@/shared/exchange/services/orderCreationApi"
+import { getTransferOrderOptions, getTransferQuote, type TransferOrderOption } from "@/shared/exchange/services/exchangeApi"
 import {
   getTransferConfirmRetryDelay,
   isAbortLikeError,
   waitForTransferConfirmRetry,
 } from "@/domains/wallet/transfer/components/transferConfirmRetry"
 import { isCancelledAction } from "@/domains/wallet/transfer/utils/order"
+import { formatAmount } from "@/shared/exchange/utils/order"
 import { NativeCapabilityUnavailableError } from "@/shared/errors"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { walletAdapter } from "@/shared/native/walletAdapter"
+import { useWalletBalanceQuery } from "@/shared/queries/balanceQueries"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
@@ -37,10 +42,17 @@ export type TransferConfirmSuccess = {
   walletId?: string
 }
 
+type TransferConfirmOrderUpdate = {
+  orderSn: string
+  recvCoinCode: string
+  sendCoinCode: string
+}
+
 type SharedProps = {
   enabled?: boolean
   onClose: () => void
   onCompleted: (result: TransferConfirmSuccess) => void
+  onOrderUpdated?: (payload: TransferConfirmOrderUpdate) => void
   orderSn: string
   variant: TransferConfirmVariant
 }
@@ -50,6 +62,20 @@ type ModalProps = SharedProps & {
 }
 
 type OrderDetail = Awaited<ReturnType<typeof getReceivingOrder>>
+
+function dedupePaymentOptions(options: TransferOrderOption[]) {
+  const seen = new Set<string>()
+
+  return options.filter(option => {
+    const key = option.sendCoinCode
+    if (!key || seen.has(key)) {
+      return false
+    }
+
+    seen.add(key)
+    return true
+  })
+}
 
 async function loadTransferConfirmOrder(orderSn: string, signal: AbortSignal) {
   try {
@@ -63,16 +89,26 @@ async function loadTransferConfirmOrder(orderSn: string, signal: AbortSignal) {
   }
 }
 
-function useTransferConfirmController({ enabled = true, onCompleted, orderSn, variant }: Omit<SharedProps, "onClose">) {
+function useTransferConfirmController({ enabled = true, onCompleted, onOrderUpdated, orderSn, variant }: Omit<SharedProps, "onClose">) {
   const { t } = useTranslation()
   const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
   const walletCapability = walletAdapter.getCapability()
   const submitUnavailableMessage = walletCapability.supported ? "" : t("auth.errors.walletUnavailable")
+  const [activeOrderSn, setActiveOrderSn] = useState(orderSn)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [switchingPayment, setSwitchingPayment] = useState(false)
   const [detail, setDetail] = useState<OrderDetail | null>(null)
+  const [paymentOptions, setPaymentOptions] = useState<TransferOrderOption[]>([])
+  const [paymentOptionsLoading, setPaymentOptionsLoading] = useState(false)
+  const [pendingOrderUpdate, setPendingOrderUpdate] = useState<TransferConfirmOrderUpdate | null>(null)
   const mountedRef = useRef(true)
+
+  useEffect(() => {
+    setActiveOrderSn(orderSn)
+    setPendingOrderUpdate(null)
+  }, [orderSn])
 
   useEffect(() => {
     mountedRef.current = true
@@ -92,7 +128,6 @@ function useTransferConfirmController({ enabled = true, onCompleted, orderSn, va
     void (async () => {
       if (mountedRef.current) {
         setLoading(true)
-        setDetail(null)
       }
 
       for (let attempt = 0; attempt < MAX_RETRIES; attempt += 1) {
@@ -101,7 +136,7 @@ function useTransferConfirmController({ enabled = true, onCompleted, orderSn, va
         }
 
         try {
-          const order = await loadTransferConfirmOrder(orderSn, retryController.signal)
+          const order = await loadTransferConfirmOrder(activeOrderSn, retryController.signal)
 
           if (!retryController.signal.aborted && mountedRef.current) {
             setDetail(order)
@@ -136,7 +171,55 @@ function useTransferConfirmController({ enabled = true, onCompleted, orderSn, va
     return () => {
       retryController.abort()
     }
-  }, [enabled, orderSn, t])
+  }, [activeOrderSn, enabled, t])
+
+  useEffect(() => {
+    if (!enabled || !detail) {
+      setPaymentOptions([])
+      setPaymentOptionsLoading(false)
+      return
+    }
+
+    let mounted = true
+    const channelType = variant === "normal" ? "normal" : "bridge"
+
+    void (async () => {
+      setPaymentOptionsLoading(true)
+
+      try {
+        const result = await getTransferOrderOptions({
+          sendChainName: detail.sendChainName,
+          receiveChainName: detail.recvChainName || detail.sendChainName,
+          channelType,
+        })
+
+        if (mounted) {
+          setPaymentOptions(dedupePaymentOptions(result.options))
+        }
+      } catch {
+        if (mounted) {
+          setPaymentOptions([])
+        }
+      } finally {
+        if (mounted) {
+          setPaymentOptionsLoading(false)
+        }
+      }
+    })()
+
+    return () => {
+      mounted = false
+    }
+  }, [detail, enabled, variant])
+
+  useEffect(() => {
+    if (!detail || !pendingOrderUpdate || detail.orderSn !== pendingOrderUpdate.orderSn) {
+      return
+    }
+
+    onOrderUpdated?.(pendingOrderUpdate)
+    setPendingOrderUpdate(null)
+  }, [detail, onOrderUpdated, pendingOrderUpdate])
 
   const handleSubmit = useCallback(async () => {
     if (!detail) {
@@ -212,11 +295,79 @@ function useTransferConfirmController({ enabled = true, onCompleted, orderSn, va
     }
   }, [detail, onCompleted, presentError, showToast, t, variant])
 
+  const handleSelectPaymentOption = useCallback(
+    async (option: TransferOrderOption) => {
+      if (!detail || submitting || switchingPayment || option.sendCoinCode === detail.sendCoinCode) {
+        return
+      }
+
+      setSwitchingPayment(true)
+
+      try {
+        const recvAddress = detail.receiveAddress || detail.depositAddress || ""
+        const nextRecvCoinCode = option.recvCoinCode || detail.recvCoinCode
+        const nextOrder =
+          variant === "normal"
+            ? await createNormalTransferOrder({
+                coinCode: option.sendCoinCode,
+                amount: detail.sendAmount || detail.recvAmount,
+                recvAddress,
+                note: detail.note,
+                multisigWalletId: detail.multisigWalletId ?? undefined,
+              })
+            : await (async () => {
+                const quote = await getTransferQuote({
+                  sendCoinCode: option.sendCoinCode,
+                  recvCoinCode: nextRecvCoinCode,
+                  recvAmount: detail.recvAmount,
+                })
+
+                const quotedSellerId = quote.sellerId > 0 ? quote.sellerId : undefined
+                const fallbackSellerId = option.sellerId ? Number(option.sellerId) : undefined
+
+                return createBridgeTransferOrder({
+                  sellerId: quotedSellerId ?? (fallbackSellerId && fallbackSellerId > 0 ? fallbackSellerId : undefined),
+                  recvAddress,
+                  recvCoinCode: nextRecvCoinCode,
+                  sendCoinCode: option.sendCoinCode,
+                  sendAmount: quote.sendAmount,
+                  note: detail.note,
+                  multisigWalletId: detail.multisigWalletId ?? undefined,
+                })
+              })()
+
+        if (!mountedRef.current) {
+          return
+        }
+
+        setPendingOrderUpdate({
+          orderSn: nextOrder.orderSn,
+          recvCoinCode: nextRecvCoinCode,
+          sendCoinCode: option.sendCoinCode,
+        })
+        setActiveOrderSn(nextOrder.orderSn)
+      } catch (error) {
+        presentError(error, {
+          fallbackKey: "transfer.confirm.switchPaymentFailed",
+        })
+      } finally {
+        if (mountedRef.current) {
+          setSwitchingPayment(false)
+        }
+      }
+    },
+    [detail, presentError, submitting, switchingPayment, variant],
+  )
+
   return {
     detail,
     loading,
+    onSelectPaymentOption: handleSelectPaymentOption,
+    paymentOptions,
+    paymentOptionsLoading,
     submitUnavailableMessage,
     submitting,
+    switchingPayment,
     onSubmit: handleSubmit,
   }
 }
@@ -225,17 +376,36 @@ function TransferConfirmBody(props: {
   detail: OrderDetail | null
   loading: boolean
   onClose: () => void
+  onSelectPaymentOption: (option: TransferOrderOption) => void
   onSubmit: () => void
+  paymentOptions: TransferOrderOption[]
+  paymentOptionsLoading: boolean
   submitUnavailableMessage?: string
   submitting: boolean
+  switchingPayment: boolean
   bottomInset?: number
 }) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const chainId = useWalletStore(state => state.chainId)
+  const walletAddress = useWalletStore(state => state.address)
+  const balanceQuery = useWalletBalanceQuery({
+    address: walletAddress,
+    chainId,
+  })
+  const balances = balanceQuery.data?.balances ?? {}
   const receiveAddressLabel = useMemo(
     () => props.detail?.receiveAddress || props.detail?.depositAddress || "-",
     [props.detail],
   )
+  const formattedRecipientLabel = useMemo(() => formatWalletAddress(receiveAddressLabel, 8, 4), [receiveAddressLabel])
+  const selectedPaymentAssetLabel = useMemo(() => {
+    if (!props.detail) {
+      return "-"
+    }
+
+    return props.detail.sendCoinName || props.detail.sendCoinCode || "-"
+  }, [props.detail])
 
   if (props.loading && !props.detail) {
     return (
@@ -261,12 +431,73 @@ function TransferConfirmBody(props: {
       contentContainerStyle={[styles.content, props.bottomInset != null ? { paddingBottom: props.bottomInset } : null]}
       keyboardShouldPersistTaps="handled"
     >
-      <SectionCard>
+      <View style={[styles.summaryPanel, { backgroundColor: theme.isDark ? theme.colors.surfaceElevated : "#EEF5FF" }]}>
+        <Text style={[styles.summaryRecipient, { color: theme.colors.text }]}>{t("transfer.confirm.sendTo", { address: formattedRecipientLabel })}</Text>
         <Text style={[styles.amountText, { color: theme.colors.text }]}>
           {props.detail ? `${props.detail.sendAmount} ${props.detail.sendCoinName || props.detail.sendCoinCode}` : t("common.loading")}
         </Text>
         <Text style={[styles.chainBadge, { color: theme.colors.mutedText }]}>{props.detail?.recvChainName || "-"}</Text>
-      </SectionCard>
+      </View>
+
+      {props.paymentOptions.length > 0 ? (
+        <View style={styles.paymentSection}>
+          <View style={styles.paymentHeader}>
+            <Text style={[styles.paymentSectionLabel, { color: theme.colors.mutedText }]}>{t("transfer.confirm.paymentAsset")}</Text>
+            {props.paymentOptionsLoading || props.switchingPayment ? (
+              <View style={styles.paymentLoading}>
+                <ActivityIndicator color={theme.colors.primary} size="small" />
+                <Text style={[styles.paymentLoadingText, { color: theme.colors.mutedText }]}>{t("transfer.confirm.switchingPayment")}</Text>
+              </View>
+            ) : null}
+          </View>
+
+          <SectionCard
+            style={[
+              styles.paymentGroupCard,
+              {
+                backgroundColor: theme.colors.surfaceElevated ?? theme.colors.surface,
+              },
+            ]}
+          >
+            {props.paymentOptions.map((option, index) => {
+              const active = option.sendCoinCode === props.detail?.sendCoinCode
+              const symbol = option.sendCoinSymbol || option.sendCoinCode
+
+              return (
+                <Pressable
+                  key={`${option.sendCoinCode}-${option.recvCoinCode || "same-chain"}`}
+                  disabled={props.loading || props.submitting || props.switchingPayment}
+                  onPress={() => void props.onSelectPaymentOption(option)}
+                  style={[
+                    styles.paymentRow,
+                    index < props.paymentOptions.length - 1 ? { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.border } : null,
+                    active ? { backgroundColor: theme.colors.primarySoft ?? `${theme.colors.primary}12` } : null,
+                  ]}
+                >
+                  <View style={[styles.paymentRowIcon, { backgroundColor: active ? theme.colors.primarySoft ?? `${theme.colors.primary}18` : theme.colors.surfaceMuted ?? theme.colors.background }]}>
+                    <Text style={[styles.paymentRowIconText, { color: active ? theme.colors.primary : theme.colors.text }]}>
+                      {symbol.slice(0, 2).toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={styles.paymentRowContent}>
+                    <Text style={[styles.paymentRowTitle, { color: theme.colors.text }]}>{symbol}</Text>
+                    <Text style={[styles.paymentRowSubtitle, { color: theme.colors.mutedText }]}>
+                      {`${t("transfer.order.available")}: ${formatAmount(balances[option.sendCoinCode] ?? 0)} ${symbol}`.trim()}
+                    </Text>
+                  </View>
+                  <View style={styles.paymentRowAccessory}>
+                    {active ? <Text style={[styles.paymentRowCheck, { color: theme.colors.primary }]}>✓</Text> : null}
+                  </View>
+                </Pressable>
+              )
+            })}
+          </SectionCard>
+
+          {props.paymentOptions.length > 1 ? (
+            <Text style={[styles.paymentHint, { color: theme.colors.mutedText }]}>{t("transfer.confirm.switchHint")}</Text>
+          ) : null}
+        </View>
+      ) : null}
 
       <SectionCard>
         <FieldRow label={t("transfer.confirm.to")} value={receiveAddressLabel} />
@@ -278,6 +509,10 @@ function TransferConfirmBody(props: {
         <FieldRow
           label={t("transfer.confirm.fee")}
           value={`${props.detail?.sendEstimateFeeAmount ?? 0} ${props.detail?.sendCoinName || props.detail?.sendCoinCode || ""}`.trim()}
+        />
+        <FieldRow
+          label={t("transfer.confirm.paymentAsset")}
+          value={selectedPaymentAssetLabel}
         />
         <FieldRow
           label={t("transfer.confirm.paymentMethod")}
@@ -300,10 +535,10 @@ function TransferConfirmBody(props: {
       ) : null}
 
       <View style={styles.actions}>
-        <SecondaryButton disabled={props.submitting} label={t("common.cancel")} onPress={props.onClose} />
+        <SecondaryButton disabled={props.submitting || props.switchingPayment} label={t("common.cancel")} onPress={props.onClose} />
         <PrimaryButton
-          disabled={props.submitting || props.loading || !props.detail || Boolean(props.submitUnavailableMessage)}
-          label={props.submitting ? t("common.loading") : t("transfer.confirm.submit")}
+          disabled={props.submitting || props.loading || props.switchingPayment || !props.detail || Boolean(props.submitUnavailableMessage)}
+          label={props.submitting || props.switchingPayment ? t("common.loading") : t("transfer.confirm.submit")}
           onPress={props.onSubmit}
         />
       </View>
@@ -313,22 +548,35 @@ function TransferConfirmBody(props: {
 
 export function TransferConfirmScreenView(props: SharedProps) {
   const { t } = useTranslation()
+  const theme = useAppTheme()
   const controller = useTransferConfirmController({
     enabled: props.enabled,
     onCompleted: props.onCompleted,
+    onOrderUpdated: props.onOrderUpdated,
     orderSn: props.orderSn,
     variant: props.variant,
   })
 
   return (
-    <HomeScaffold canGoBack onBack={props.onClose} scroll={false} title={t("transfer.confirm.title")}>
+    <HomeScaffold
+      canGoBack
+      onBack={props.onClose}
+      scroll={false}
+      title={t("transfer.confirm.title")}
+      backgroundColor={theme.isDark ? theme.colors.background : "#EEF5FF"}
+      headerBackgroundColor={theme.isDark ? theme.colors.surfaceElevated : "#EEF5FF"}
+    >
       <TransferConfirmBody
         detail={controller.detail}
         loading={controller.loading}
         onClose={props.onClose}
+        onSelectPaymentOption={option => void controller.onSelectPaymentOption(option)}
         onSubmit={() => void controller.onSubmit()}
+        paymentOptions={controller.paymentOptions}
+        paymentOptionsLoading={controller.paymentOptionsLoading}
         submitUnavailableMessage={controller.submitUnavailableMessage}
         submitting={controller.submitting}
+        switchingPayment={controller.switchingPayment}
         bottomInset={24}
       />
     </HomeScaffold>
@@ -342,6 +590,7 @@ export function TransferConfirmModal(props: ModalProps) {
   const controller = useTransferConfirmController({
     enabled: props.visible,
     onCompleted: props.onCompleted,
+    onOrderUpdated: props.onOrderUpdated,
     orderSn: props.orderSn,
     variant: props.variant,
   })
@@ -383,7 +632,7 @@ export function TransferConfirmModal(props: ModalProps) {
   }
 
   const dismiss = () => {
-    if (!controller.submitting) {
+    if (!controller.submitting && !controller.switchingPayment) {
       props.onClose()
     }
   }
@@ -398,7 +647,7 @@ export function TransferConfirmModal(props: ModalProps) {
         style={[
           styles.sheetSurface,
           {
-            backgroundColor: theme.colors.background,
+            backgroundColor: theme.isDark ? theme.colors.background : "#EEF5FF",
             borderColor: theme.colors.border,
             top: Math.max(insets.top + 12, 28),
             paddingBottom: Math.max(insets.bottom + 8, 16),
@@ -410,15 +659,15 @@ export function TransferConfirmModal(props: ModalProps) {
           style={[
             styles.sheetHeader,
             {
-              backgroundColor: theme.colors.surfaceElevated ?? theme.colors.surface,
-              borderBottomColor: theme.colors.border,
+              backgroundColor: theme.isDark ? theme.colors.surfaceElevated ?? theme.colors.surface : "#EEF5FF",
+              borderBottomColor: "transparent",
             },
           ]}
         >
           <View style={styles.sheetHeaderSide}>
             <Pressable
               accessibilityShowsLargeContentViewer={false}
-              disabled={controller.submitting}
+              disabled={controller.submitting || controller.switchingPayment}
               hitSlop={8}
               onPress={dismiss}
               style={styles.backButton}
@@ -433,7 +682,7 @@ export function TransferConfirmModal(props: ModalProps) {
           <View style={[styles.sheetHeaderSide, styles.sheetHeaderSideRight]}>
             <Pressable
               accessibilityShowsLargeContentViewer={false}
-              disabled={controller.submitting}
+              disabled={controller.submitting || controller.switchingPayment}
               hitSlop={8}
               onPress={dismiss}
               style={[
@@ -454,9 +703,13 @@ export function TransferConfirmModal(props: ModalProps) {
           detail={controller.detail}
           loading={controller.loading}
           onClose={dismiss}
+          onSelectPaymentOption={option => void controller.onSelectPaymentOption(option)}
           onSubmit={() => void controller.onSubmit()}
+          paymentOptions={controller.paymentOptions}
+          paymentOptionsLoading={controller.paymentOptionsLoading}
           submitUnavailableMessage={controller.submitUnavailableMessage}
           submitting={controller.submitting}
+          switchingPayment={controller.switchingPayment}
         />
       </Animated.View>
     </View>
@@ -468,13 +721,25 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 12,
   },
+  summaryPanel: {
+    borderRadius: 28,
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 16,
+    gap: 6,
+  },
+  summaryRecipient: {
+    fontSize: 16,
+    fontWeight: "500",
+    textAlign: "center",
+  },
   amountText: {
-    fontSize: 28,
-    fontWeight: "700",
+    fontSize: 44,
+    fontWeight: "800",
     textAlign: "center",
   },
   chainBadge: {
-    fontSize: 12,
+    fontSize: 14,
     textAlign: "center",
   },
   tipTitle: {
@@ -484,6 +749,77 @@ const styles = StyleSheet.create({
   tipBody: {
     fontSize: 13,
     lineHeight: 20,
+  },
+  paymentHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  paymentSection: {
+    gap: 10,
+  },
+  paymentSectionLabel: {
+    fontSize: 15,
+    fontWeight: "500",
+    paddingHorizontal: 4,
+  },
+  paymentLoading: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  paymentLoadingText: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  paymentGroupCard: {
+    borderRadius: 26,
+    overflow: "hidden",
+  },
+  paymentRow: {
+    minHeight: 84,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  paymentRowIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  paymentRowIconText: {
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  paymentRowContent: {
+    flex: 1,
+    gap: 4,
+  },
+  paymentRowTitle: {
+    fontSize: 18,
+    fontWeight: "500",
+  },
+  paymentRowSubtitle: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  paymentRowAccessory: {
+    minWidth: 24,
+    alignItems: "flex-end",
+  },
+  paymentRowCheck: {
+    fontSize: 22,
+    fontWeight: "700",
+  },
+  paymentHint: {
+    paddingHorizontal: 4,
+    fontSize: 12,
+    lineHeight: 18,
   },
   capabilityWarning: {
     fontSize: 13,

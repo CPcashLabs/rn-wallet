@@ -333,6 +333,18 @@ export function TransferOrderScreen({ navigation, route }: Props) {
     [navigation],
   )
 
+  const handleConfirmOrderUpdated = useCallback(
+    ({ orderSn, recvCoinCode, sendCoinCode }: { orderSn: string; recvCoinCode: string; sendCoinCode: string }) => {
+      setConfirmOrderSn(orderSn)
+      setLatestOrderSn(orderSn)
+      setOrderDraft({
+        sendCoinCode,
+        recvCoinCode,
+      })
+    },
+    [setLatestOrderSn, setOrderDraft],
+  )
+
   if (!selectedChannel) {
     return (
       <HomeScaffold canGoBack onBack={navigation.goBack} title={t("transfer.order.title")}>
@@ -406,6 +418,7 @@ export function TransferOrderScreen({ navigation, route }: Props) {
           visible
           onClose={() => setConfirmVisible(false)}
           onCompleted={handleConfirmCompleted}
+          onOrderUpdated={handleConfirmOrderUpdated}
           orderSn={confirmOrderSn}
           variant={confirmVariant}
         />
