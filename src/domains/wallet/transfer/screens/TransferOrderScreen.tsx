@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
-import { Alert, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native"
+import { Alert, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -33,7 +33,6 @@ import { SFSymbolIcon } from "@/shared/ui/SFSymbolIcon"
 
 import type { TransferStackParamList } from "@/app/navigation/types"
 
-const KEYBOARD_ROW_HEIGHT = 76
 const QUICK_NOTE_KEYS = ["loan", "thanks", "living", "rent", "shopping", "repayment"] as const
 const NUMERIC_KEY_ROWS = [
   ["1", "2", "3"],
@@ -49,6 +48,7 @@ type Props = NativeStackScreenProps<
 export function TransferOrderScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { height: screenHeight, width: screenWidth } = useWindowDimensions()
   const chainId = useWalletStore(state => state.chainId)
   const walletAddress = useWalletStore(state => state.address)
   const selectedChannel = useTransferDraftStore(state => state.selectedChannel)
@@ -237,6 +237,16 @@ export function TransferOrderScreen({ navigation, route }: Props) {
   )
   const canSubmit = !submitting && !validationMessage && !loading && options.length > 0
   const displayCurrencySymbol = useMemo(() => resolveDisplayCurrencySymbol(selectedOption?.sendCoinSymbol || titleSymbol), [selectedOption?.sendCoinSymbol, titleSymbol])
+  const isCompactHeight = screenHeight < 860
+  const contentHorizontalInset = clamp(Math.round(screenWidth * 0.054), 18, 24)
+  const contentGap = isCompactHeight ? 16 : 20
+  const cardRadius = isCompactHeight ? 24 : 28
+  const recipientAvatarSize = isCompactHeight ? 62 : 68
+  const amountCardMinHeight = clamp(Math.round(screenHeight * 0.2), 168, 196)
+  const amountFontSize = clamp(Math.round(screenWidth * 0.13), 44, 54)
+  const amountCurrencySize = clamp(amountFontSize - 2, 40, 50)
+  const buttonHeight = isCompactHeight ? 54 : 58
+  const keyboardRowHeight = isCompactHeight ? 68 : 72
   const amountSelection = useMemo(
     () => ({
       start: sendAmount.length,
@@ -443,12 +453,13 @@ export function TransferOrderScreen({ navigation, route }: Props) {
     )
   }
 
-  const pageBackgroundColor = theme.isDark ? "#101114" : "#F5F5F5"
+  const pageBackgroundColor = theme.isDark ? "#101114" : "#F2F2F7"
   const cardBackgroundColor = theme.isDark ? "#17191D" : "#FFFFFF"
-  const dividerColor = theme.isDark ? "#2A2D33" : "#F0F0F0"
+  const dividerColor = theme.isDark ? "#2A2D33" : "#E5E5EA"
+  const cardBorderColor = theme.isDark ? "#262A31" : "#E8E8ED"
   const textColor = theme.colors.text
-  const mutedColor = theme.isDark ? "#8B9098" : "#979AA1"
-  const placeholderColor = theme.isDark ? "#5C626D" : "#C8CBD1"
+  const mutedColor = theme.isDark ? "#8B9098" : "#8E8E93"
+  const placeholderColor = theme.isDark ? "#5C626D" : "#C7C7CC"
   const warningBackgroundColor = theme.isDark ? "rgba(255, 120, 28, 0.12)" : "#FFF4E6"
   const warningTextColor = theme.isDark ? "#FFB16B" : "#FF6A00"
   const keyboardKeyBackground = theme.isDark ? "#14161A" : "#FFFFFF"
@@ -466,7 +477,15 @@ export function TransferOrderScreen({ navigation, route }: Props) {
     <View style={styles.screenRoot}>
       <HomeScaffold backgroundColor={cardBackgroundColor} hideHeader reserveFloatingOverlayInset={false} scroll={false} title={t("transfer.order.title")}>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={[styles.layoutRoot, { backgroundColor: pageBackgroundColor }]}>
-          <View style={[styles.headerRow, { backgroundColor: cardBackgroundColor }]}>
+          <View
+            style={[
+              styles.headerRow,
+              {
+                backgroundColor: cardBackgroundColor,
+                borderBottomColor: dividerColor,
+              },
+            ]}
+          >
             <Pressable accessibilityLabel={t("common.back")} hitSlop={12} onPress={navigation.goBack} style={styles.headerIconButton}>
               <SFSymbolIcon color={textColor} fallbackName="chevron-left" name="chevron.left" size={24} />
             </Pressable>
@@ -483,7 +502,7 @@ export function TransferOrderScreen({ navigation, route }: Props) {
           {bannerVisible ? (
             <View style={[styles.bannerRow, { backgroundColor: warningBackgroundColor }]}>
               <View style={styles.bannerContent}>
-                <SFSymbolIcon color={warningTextColor} fallbackName="bullhorn-outline" name="speaker.wave.2.fill" size={22} />
+                <SFSymbolIcon color={warningTextColor} fallbackName="bullhorn-outline" name="speaker.wave.2.fill" size={20} />
                 <Text numberOfLines={1} style={[styles.bannerText, { color: warningTextColor }]}>
                   {t("transfer.order.warningBanner")}
                 </Text>
@@ -496,17 +515,36 @@ export function TransferOrderScreen({ navigation, route }: Props) {
 
           <ScrollView
             bounces={false}
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[
+              styles.scrollContent,
+              {
+                gap: contentGap,
+                paddingHorizontal: contentHorizontalInset,
+                paddingTop: isCompactHeight ? 14 : 18,
+                paddingBottom: isCompactHeight ? 18 : 24,
+              },
+            ]}
             keyboardDismissMode="on-drag"
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.recipientSection}>
-              <View style={[styles.recipientCard, { backgroundColor: pageBackgroundColor }]}>
+              <View
+                style={[
+                  styles.recipientCard,
+                  {
+                    backgroundColor: cardBackgroundColor,
+                    borderColor: cardBorderColor,
+                    borderRadius: cardRadius,
+                    paddingHorizontal: isCompactHeight ? 16 : 18,
+                    paddingVertical: isCompactHeight ? 14 : 16,
+                  },
+                ]}
+              >
                 <AppGlyph
                   backgroundColor={theme.isDark ? "#262932" : "#EEEEEE"}
                   name="person"
-                  size={72}
+                  size={recipientAvatarSize}
                   tintColor={theme.isDark ? "#767D89" : "#BDBDBD"}
                 />
                 <View style={styles.recipientContent}>
@@ -520,10 +558,36 @@ export function TransferOrderScreen({ navigation, route }: Props) {
               </View>
             </View>
 
-            <Pressable onPress={handleFocusAmount} style={[styles.card, styles.amountCard, { backgroundColor: cardBackgroundColor }]}>
+            <Pressable
+              onPress={handleFocusAmount}
+              style={[
+                styles.card,
+                styles.amountCard,
+                {
+                  backgroundColor: cardBackgroundColor,
+                  borderColor: cardBorderColor,
+                  borderRadius: cardRadius,
+                  minHeight: amountCardMinHeight,
+                  paddingHorizontal: isCompactHeight ? 22 : 24,
+                  paddingTop: isCompactHeight ? 20 : 22,
+                  paddingBottom: isCompactHeight ? 18 : 20,
+                },
+              ]}
+            >
               <Text style={[styles.cardTitle, { color: textColor }]}>{t("transfer.order.amountLabel")}</Text>
               <View style={styles.amountInputShell}>
-                <Text style={[styles.amountCurrency, { color: textColor }]}>{displayCurrencySymbol}</Text>
+                <Text
+                  style={[
+                    styles.amountCurrency,
+                    {
+                      color: textColor,
+                      fontSize: amountCurrencySize,
+                      lineHeight: amountCurrencySize + 4,
+                    },
+                  ]}
+                >
+                  {displayCurrencySymbol}
+                </Text>
                 <View style={styles.amountTextShell}>
                   {!sendAmount ? (
                     <Text numberOfLines={1} style={[styles.amountPlaceholder, { color: placeholderColor }]}>
@@ -539,7 +603,14 @@ export function TransferOrderScreen({ navigation, route }: Props) {
                     selection={amountSelection}
                     selectionColor={caretColor}
                     showSoftInputOnFocus={false}
-                    style={[styles.amountInput, { color: textColor }]}
+                    style={[
+                      styles.amountInput,
+                      {
+                        color: textColor,
+                        fontSize: amountFontSize,
+                        lineHeight: amountFontSize + 6,
+                      },
+                    ]}
                     value={sendAmount}
                   />
                 </View>
@@ -553,7 +624,20 @@ export function TransferOrderScreen({ navigation, route }: Props) {
               ) : null}
             </View>
 
-            <View style={[styles.card, styles.noteCard, { backgroundColor: cardBackgroundColor }]}>
+            <View
+              style={[
+                styles.card,
+                styles.noteCard,
+                {
+                  backgroundColor: cardBackgroundColor,
+                  borderColor: cardBorderColor,
+                  borderRadius: cardRadius,
+                  paddingHorizontal: isCompactHeight ? 22 : 24,
+                  paddingTop: isCompactHeight ? 20 : 22,
+                  paddingBottom: isCompactHeight ? 16 : 18,
+                },
+              ]}
+            >
               <Text style={[styles.cardTitle, { color: textColor }]}>{t("transfer.order.noteLabelCompact")}</Text>
               <TextInput
                 ref={noteInputRef}
@@ -616,6 +700,7 @@ export function TransferOrderScreen({ navigation, route }: Props) {
                           key={item}
                           label={item}
                           onPress={handleAmountKeyboardPress}
+                          rowHeight={keyboardRowHeight}
                           textColor={textColor}
                         />
                       ))}
@@ -628,6 +713,7 @@ export function TransferOrderScreen({ navigation, route }: Props) {
                       flex={2}
                       label="0"
                       onPress={handleAmountKeyboardPress}
+                      rowHeight={keyboardRowHeight}
                       textColor={textColor}
                     />
                     <NumericKeyboardKey
@@ -635,6 +721,7 @@ export function TransferOrderScreen({ navigation, route }: Props) {
                       borderColor={keyboardKeyBorderColor}
                       label="."
                       onPress={handleAmountKeyboardPress}
+                      rowHeight={keyboardRowHeight}
                       textColor={textColor}
                     />
                   </View>
@@ -648,7 +735,7 @@ export function TransferOrderScreen({ navigation, route }: Props) {
                       {
                         backgroundColor: keyboardKeyBackground,
                         borderColor: keyboardKeyBorderColor,
-                        height: KEYBOARD_ROW_HEIGHT,
+                        height: keyboardRowHeight,
                       },
                     ]}
                   >
@@ -663,6 +750,7 @@ export function TransferOrderScreen({ navigation, route }: Props) {
                       {
                         backgroundColor: submitBackgroundColor,
                         borderColor: keyboardKeyBorderColor,
+                        minHeight: keyboardRowHeight * 3,
                       },
                     ]}
                   >
@@ -682,6 +770,8 @@ export function TransferOrderScreen({ navigation, route }: Props) {
                   styles.footerSubmitButton,
                   {
                     backgroundColor: canSubmit ? "#F6A04D" : keyboardSideBackground,
+                    borderRadius: buttonHeight / 2,
+                    minHeight: buttonHeight,
                   },
                 ]}
               >
@@ -723,7 +813,8 @@ const styles = StyleSheet.create({
     paddingLeft: 8,
     paddingRight: 18,
     paddingTop: 2,
-    paddingBottom: 14,
+    paddingBottom: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   headerIconButton: {
     width: 44,
@@ -734,9 +825,9 @@ const styles = StyleSheet.create({
   headerTitle: {
     flex: 1,
     textAlign: "center",
-    fontSize: 26,
-    fontWeight: "700",
-    letterSpacing: -0.4,
+    fontSize: 22,
+    fontWeight: "600",
+    letterSpacing: -0.2,
   },
   headerActionButton: {
     minWidth: 96,
@@ -745,13 +836,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   headerActionText: {
-    fontSize: 16,
-    fontWeight: "500",
+    fontSize: 17,
+    fontWeight: "400",
   },
   bannerRow: {
-    minHeight: 42,
-    paddingLeft: 20,
-    paddingRight: 10,
+    minHeight: 44,
+    paddingLeft: 16,
+    paddingRight: 8,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -766,7 +857,7 @@ const styles = StyleSheet.create({
   },
   bannerText: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: "500",
   },
   bannerCloseButton: {
@@ -777,129 +868,138 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 18,
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     paddingBottom: 24,
     gap: 18,
   },
   recipientSection: {
-    paddingTop: 10,
+    paddingTop: 8,
   },
   recipientCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: 16,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   recipientContent: {
     flex: 1,
     minWidth: 0,
-    gap: 6,
+    gap: 4,
   },
   recipientTitle: {
-    fontSize: 22,
-    fontWeight: "700",
+    fontSize: 20,
+    fontWeight: "600",
+    letterSpacing: -0.2,
   },
   recipientSubtitle: {
-    fontSize: 18,
-    fontWeight: "500",
+    fontSize: 17,
+    fontWeight: "400",
   },
   card: {
     borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   amountCard: {
-    minHeight: 220,
-    paddingHorizontal: 26,
-    paddingTop: 24,
-    paddingBottom: 18,
+    minHeight: 188,
+    paddingHorizontal: 24,
+    paddingTop: 22,
+    paddingBottom: 20,
   },
   cardTitle: {
-    fontSize: 18,
-    fontWeight: "500",
+    fontSize: 17,
+    fontWeight: "600",
+    letterSpacing: -0.1,
   },
   amountInputShell: {
     flex: 1,
     flexDirection: "row",
     alignItems: "flex-end",
-    paddingBottom: 6,
-    gap: 8,
+    paddingBottom: 4,
+    paddingTop: 14,
+    gap: 6,
   },
   amountTextShell: {
     flex: 1,
-    minHeight: 92,
-    justifyContent: "center",
+    minHeight: 72,
+    justifyContent: "flex-end",
     position: "relative",
   },
   amountCurrency: {
-    paddingBottom: 10,
-    fontSize: 54,
-    lineHeight: 60,
-    fontWeight: "700",
-    letterSpacing: -1,
+    paddingBottom: 6,
+    fontSize: 46,
+    lineHeight: 50,
+    fontWeight: "600",
+    letterSpacing: -0.5,
   },
   amountPlaceholder: {
     position: "absolute",
     left: 0,
     right: 0,
-    bottom: 12,
-    fontSize: 30,
+    bottom: 6,
+    fontSize: 21,
+    lineHeight: 26,
     fontWeight: "400",
-    letterSpacing: -0.6,
+    letterSpacing: -0.1,
   },
   amountInput: {
-    minHeight: 80,
+    minHeight: 68,
     paddingVertical: 0,
     paddingHorizontal: 0,
     fontSize: 48,
-    lineHeight: 58,
-    fontWeight: "700",
-    letterSpacing: -1.1,
+    lineHeight: 54,
+    fontWeight: "600",
+    letterSpacing: -0.8,
+    fontVariant: ["tabular-nums"],
   },
   amountHelperGroup: {
     gap: 4,
-    marginTop: -6,
+    marginTop: 0,
   },
   amountHelperText: {
-    fontSize: 14,
-    fontWeight: "500",
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: "400",
   },
   noteCard: {
-    paddingHorizontal: 26,
-    paddingTop: 24,
+    paddingHorizontal: 24,
+    paddingTop: 22,
     paddingBottom: 18,
   },
   noteInput: {
-    minHeight: 52,
-    marginTop: 14,
+    minHeight: 44,
+    marginTop: 12,
     paddingVertical: 0,
-    fontSize: 20,
-    fontWeight: "500",
+    fontSize: 17,
+    fontWeight: "400",
   },
   noteDivider: {
     height: StyleSheet.hairlineWidth,
-    marginTop: 14,
-    marginBottom: 18,
+    marginTop: 12,
+    marginBottom: 14,
   },
   quickNoteWrap: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 10,
+    gap: 8,
   },
   quickNoteChip: {
-    minHeight: 36,
-    paddingHorizontal: 14,
-    borderRadius: 18,
+    minHeight: 34,
+    paddingHorizontal: 13,
+    borderRadius: 17,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
   },
   quickNoteText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "500",
   },
   assuranceText: {
     textAlign: "center",
     fontSize: 15,
-    fontWeight: "500",
-    paddingTop: 6,
+    lineHeight: 20,
+    fontWeight: "400",
+    paddingTop: 2,
   },
   keyboardShell: {
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -921,7 +1021,7 @@ const styles = StyleSheet.create({
   },
   keyboardKey: {
     flex: 1,
-    height: KEYBOARD_ROW_HEIGHT,
+    height: 72,
     alignItems: "center",
     justifyContent: "center",
     borderRightWidth: StyleSheet.hairlineWidth,
@@ -931,11 +1031,12 @@ const styles = StyleSheet.create({
     flex: 2,
   },
   keyboardKeyText: {
-    fontSize: 30,
+    fontSize: 32,
     fontWeight: "500",
+    fontVariant: ["tabular-nums"],
   },
   keyboardSideColumn: {
-    width: 108,
+    width: 102,
   },
   keyboardBackspaceKey: {
     alignItems: "center",
@@ -949,27 +1050,27 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderLeftWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    minHeight: KEYBOARD_ROW_HEIGHT * 3,
+    minHeight: 216,
   },
   keyboardSubmitText: {
-    fontSize: 22,
-    fontWeight: "700",
+    fontSize: 21,
+    fontWeight: "600",
   },
   footerBar: {
-    paddingHorizontal: 24,
-    paddingTop: 12,
-    paddingBottom: 16,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 14,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   footerSubmitButton: {
     minHeight: 56,
-    borderRadius: 16,
+    borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
   },
   footerSubmitText: {
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: 20,
+    fontWeight: "600",
   },
 })
 
@@ -981,6 +1082,7 @@ function NumericKeyboardKey(props: {
   textColor: string
   backgroundColor: string
   borderColor: string
+  rowHeight: number
   flex?: number
 }) {
   return (
@@ -993,12 +1095,17 @@ function NumericKeyboardKey(props: {
           backgroundColor: props.backgroundColor,
           borderColor: props.borderColor,
           flex: props.flex ?? 1,
+          height: props.rowHeight,
         },
       ]}
     >
       <Text style={[styles.keyboardKeyText, { color: props.textColor }]}>{props.label}</Text>
     </Pressable>
   )
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
 }
 
 function resolveDisplayCurrencySymbol(symbol?: string) {
