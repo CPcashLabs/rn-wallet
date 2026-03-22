@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
+import { Image } from "expo-image"
 import { Alert, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
@@ -7,6 +8,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { TransferConfirmModal, type TransferConfirmSuccess, type TransferConfirmVariant } from "@/domains/wallet/transfer/components/TransferConfirmPanel"
 import { TransferOrderCreatingOverlay } from "@/domains/wallet/transfer/components/TransferOrderCreatingOverlay"
 import { formatWalletAddress } from "@/domains/wallet/shared/utils/format"
+import { useAddressBookEntriesQuery } from "@/shared/address-book/addressBookQueries"
 import { PageEmpty } from "@/shared/ui/AppFlowUi"
 import {
   getTransferOrderOptions,
@@ -26,9 +28,9 @@ import { HomeScaffold } from "@/shared/ui/HomeScaffold"
 import { resolveChainNameById } from "@/shared/api/walletAssets"
 import { formatAmount, parseDecimalInput } from "@/shared/exchange/utils/order"
 import { useWalletBalanceQuery } from "@/shared/queries/balanceQueries"
+import { useUserStore } from "@/shared/store/useUserStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
-import { AppGlyph } from "@/shared/ui/AppGlyph"
 import { SFSymbolIcon } from "@/shared/ui/SFSymbolIcon"
 
 import type { TransferStackParamList } from "@/app/navigation/types"
@@ -51,6 +53,8 @@ export function TransferOrderScreen({ navigation, route }: Props) {
   const { height: screenHeight, width: screenWidth } = useWindowDimensions()
   const chainId = useWalletStore(state => state.chainId)
   const walletAddress = useWalletStore(state => state.address)
+  const profile = useUserStore(state => state.profile)
+  const avatarVersion = useUserStore(state => state.avatarVersion)
   const selectedChannel = useTransferDraftStore(state => state.selectedChannel)
   const recipientAddress = useTransferDraftStore(state => state.recipientAddress)
   const sendAmount = useTransferDraftStore(state => state.sendAmount)
@@ -63,6 +67,8 @@ export function TransferOrderScreen({ navigation, route }: Props) {
     address: walletAddress,
     chainId,
   })
+  const addressBookEntriesQuery = useAddressBookEntriesQuery()
+  const addressBookEntries = addressBookEntriesQuery.data ?? []
   const [options, setOptions] = useState<TransferOrderOption[]>([])
   const [selectedOptionCode, setSelectedOptionCode] = useState(selectedSendCoinCode)
   const [loading, setLoading] = useState(true)
@@ -237,6 +243,26 @@ export function TransferOrderScreen({ navigation, route }: Props) {
   )
   const canSubmit = !submitting && !validationMessage && !loading && options.length > 0
   const displayCurrencySymbol = useMemo(() => resolveDisplayCurrencySymbol(selectedOption?.sendCoinSymbol || titleSymbol), [selectedOption?.sendCoinSymbol, titleSymbol])
+  const recipientAvatarUri = useMemo(() => {
+    const normalizedRecipient = recipientAddress.trim().toLowerCase()
+    if (!normalizedRecipient) {
+      return ""
+    }
+
+    const matchedAddressBookAvatar = addressBookEntries.find(item => item.walletAddress.trim().toLowerCase() === normalizedRecipient)?.avatar?.trim() || ""
+    if (matchedAddressBookAvatar) {
+      return matchedAddressBookAvatar
+    }
+
+    const normalizedWalletAddress = walletAddress?.trim()?.toLowerCase() || ""
+    const normalizedProfileAddress = profile?.address?.trim().toLowerCase() || ""
+    const normalizedProfileAvatar = profile?.avatar?.trim() || ""
+    if (normalizedProfileAvatar && (normalizedRecipient === normalizedWalletAddress || normalizedRecipient === normalizedProfileAddress)) {
+      return appendAvatarCacheVersion(normalizedProfileAvatar, avatarVersion)
+    }
+
+    return ""
+  }, [addressBookEntries, avatarVersion, profile?.address, profile?.avatar, recipientAddress, walletAddress])
   const isCompactHeight = screenHeight < 860
   const contentHorizontalInset = clamp(Math.round(screenWidth * 0.054), 18, 24)
   const contentGap = isCompactHeight ? 16 : 20
@@ -541,11 +567,11 @@ export function TransferOrderScreen({ navigation, route }: Props) {
                   },
                 ]}
               >
-                <AppGlyph
-                  backgroundColor={theme.isDark ? "#262932" : "#EEEEEE"}
-                  name="person"
+                <RecipientAddressAvatar
+                  uri={recipientAvatarUri}
                   size={recipientAvatarSize}
-                  tintColor={theme.isDark ? "#767D89" : "#BDBDBD"}
+                  backgroundColor={theme.isDark ? "#262932" : "#F1F1F3"}
+                  iconColor={theme.isDark ? "#767D89" : "#BDBDBD"}
                 />
                 <View style={styles.recipientContent}>
                   <Text numberOfLines={1} style={[styles.recipientTitle, { color: textColor }]}>
@@ -881,6 +907,15 @@ const styles = StyleSheet.create({
     gap: 16,
     borderWidth: StyleSheet.hairlineWidth,
   },
+  recipientAvatarShell: {
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  recipientAvatarImage: {
+    width: "100%",
+    height: "100%",
+  },
   recipientContent: {
     flex: 1,
     minWidth: 0,
@@ -1076,6 +1111,63 @@ const styles = StyleSheet.create({
 
 type NumericKeyboardInput = `${number}` | "." | "backspace"
 
+function RecipientAddressAvatar(props: {
+  size: number
+  uri?: string
+  backgroundColor: string
+  iconColor: string
+}) {
+  const [imageFailed, setImageFailed] = useState(false)
+  const normalizedUri = props.uri?.trim() || ""
+
+  useEffect(() => {
+    setImageFailed(false)
+  }, [normalizedUri])
+
+  const borderRadius = Math.round(props.size * 0.32)
+
+  if (normalizedUri && !imageFailed) {
+    return (
+      <View
+        style={[
+          styles.recipientAvatarShell,
+          {
+            width: props.size,
+            height: props.size,
+            borderRadius,
+            backgroundColor: props.backgroundColor,
+          },
+        ]}
+      >
+        <Image
+          cachePolicy="memory-disk"
+          contentFit="cover"
+          onError={() => setImageFailed(true)}
+          source={normalizedUri}
+          style={styles.recipientAvatarImage}
+          transition={0}
+        />
+      </View>
+    )
+  }
+
+  return (
+    <View
+      style={[
+        styles.recipientAvatarShell,
+        {
+          width: props.size,
+          height: props.size,
+          borderRadius,
+          backgroundColor: props.backgroundColor,
+        },
+      ]}
+    >
+      <SFSymbolIcon color={props.iconColor} fallbackName="account" name="person.fill" size={Math.round(props.size * 0.54)} />
+    </View>
+  )
+}
+
 function NumericKeyboardKey(props: {
   label: NumericKeyboardInput
   onPress: (value: NumericKeyboardInput) => void
@@ -1106,6 +1198,18 @@ function NumericKeyboardKey(props: {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
+}
+
+function appendAvatarCacheVersion(uri: string, cacheVersion?: number) {
+  if (!uri) {
+    return ""
+  }
+
+  if (typeof cacheVersion !== "number") {
+    return uri
+  }
+
+  return `${uri}${uri.includes("?") ? "&" : "?"}avatarCache=${cacheVersion}`
 }
 
 function resolveDisplayCurrencySymbol(symbol?: string) {

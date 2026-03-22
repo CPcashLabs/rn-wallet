@@ -4,6 +4,7 @@ import { type ApiEnvelope, unwrapEnvelope } from "@/shared/api/envelope"
 type AddressBookPayload = {
   id: number | string
   name: string
+  avatar?: string | null
   wallet_address: string
   chain_type: "EVM" | "TRON"
   chain_name?: string | null
@@ -14,6 +15,7 @@ type AddressBookPayload = {
 export type AddressBookEntry = {
   id: string
   name: string
+  avatar?: string | null
   walletAddress: string
   chainType: "EVM" | "TRON"
   chainName?: string | null
@@ -31,6 +33,7 @@ function toAddressBookEntry(payload: AddressBookPayload): AddressBookEntry {
   return {
     id: String(payload.id),
     name: payload.name,
+    avatar: payload.avatar ?? null,
     walletAddress: payload.wallet_address,
     chainType: payload.chain_type,
     chainName: payload.chain_name,
