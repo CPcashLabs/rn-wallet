@@ -20,43 +20,37 @@ export const AppButton = React.memo(function AppButton(props: AppButtonProps) {
   const variant = props.variant ?? "primary"
   const tone = props.tone ?? "default"
   const disabled = Boolean(props.disabled || props.loading)
+  const metrics = theme.components.button
   const primaryColor = tone === "danger" ? theme.colors.danger : theme.colors.primary
   const primaryBorderColor = primaryColor
   const secondaryTextColor = tone === "danger" ? theme.colors.danger : theme.colors.text
   const secondaryBorderColor = tone === "danger" ? theme.colors.dangerBorder : theme.colors.border
-  const secondaryBackgroundColor =
-    tone === "danger"
-      ? theme.isDark
-        ? "rgba(248,113,113,0.12)"
-        : "rgba(220,38,38,0.08)"
-      : theme.colors.surfaceElevated ?? theme.colors.surface
+  const secondaryBackgroundColor = tone === "danger" ? theme.colors.dangerSoft : theme.colors.surfaceElevated ?? theme.colors.surface
 
   return (
     <Pressable
+      accessibilityRole="button"
       disabled={disabled}
       onPress={props.onPress}
       style={({ pressed }) => [
         styles.base,
+        {
+          minHeight: metrics.minHeight,
+          borderRadius: metrics.radius,
+          paddingHorizontal: metrics.paddingX,
+        },
         variant === "primary"
           ? {
               backgroundColor: primaryColor,
               borderColor: primaryBorderColor,
-              borderWidth: StyleSheet.hairlineWidth,
-              shadowColor: theme.colors.shadow,
-              shadowOpacity: theme.isDark ? 0.14 : 0.06,
-              shadowRadius: 8,
-              shadowOffset: { width: 0, height: 4 },
-              elevation: 2,
+              borderWidth: metrics.borderWidth,
+              ...theme.shadows.emphasized,
             }
           : {
               backgroundColor: secondaryBackgroundColor,
               borderColor: secondaryBorderColor,
-              borderWidth: StyleSheet.hairlineWidth,
-              shadowColor: theme.colors.shadow,
-              shadowOpacity: theme.isDark ? 0.06 : 0.02,
-              shadowRadius: 6,
-              shadowOffset: { width: 0, height: 3 },
-              elevation: 1,
+              borderWidth: metrics.borderWidth,
+              ...theme.shadows.control,
             },
         disabled ? styles.disabled : null,
         pressed ? styles.pressed : null,
@@ -67,11 +61,9 @@ export const AppButton = React.memo(function AppButton(props: AppButtonProps) {
         <ActivityIndicator color={variant === "primary" ? "#FFFFFF" : primaryColor} />
       ) : (
         <Text
-          adjustsFontSizeToFit
-          numberOfLines={1}
           style={[
             styles.label,
-            variant === "primary" ? styles.labelPrimary : null,
+            theme.typography.button,
             { color: variant === "primary" ? "#FFFFFF" : secondaryTextColor },
             props.textStyle,
           ]}
@@ -87,11 +79,8 @@ AppButton.displayName = "AppButton"
 
 const styles = StyleSheet.create({
   base: {
-    minHeight: 52,
-    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 24,
   },
   disabled: {
     opacity: 0.55,
@@ -101,11 +90,6 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.985 }],
   },
   label: {
-    fontSize: 17,
-    lineHeight: 22,
-    fontWeight: "600",
-  },
-  labelPrimary: {
-    letterSpacing: -0.41,
+    textAlign: "center",
   },
 })

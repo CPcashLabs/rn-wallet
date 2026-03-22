@@ -1,14 +1,9 @@
 import React from "react"
 
-import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native"
+import { View, type StyleProp, type ViewStyle } from "react-native"
 
+export { APP_CARD_GAP, APP_CARD_PADDING, APP_CARD_RADIUS, APP_LIST_ROW_MIN_HEIGHT, APP_LIST_ROW_PADDING } from "@/shared/theme/foundation"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
-
-export const APP_CARD_RADIUS = 20
-export const APP_CARD_PADDING = 18
-export const APP_CARD_GAP = 12
-export const APP_LIST_ROW_MIN_HEIGHT = 60
-export const APP_LIST_ROW_PADDING = 16
 
 type AppCardProps = {
   children: React.ReactNode
@@ -23,23 +18,21 @@ type AppCardProps = {
 
 export function AppCard(props: AppCardProps) {
   const theme = useAppTheme()
+  const metrics = theme.components.card
 
   return (
     <View
       style={[
         styles.base,
+        theme.shadows.card,
         {
           backgroundColor: props.backgroundColor ?? theme.colors.surfaceElevated ?? theme.colors.surface,
           borderColor: props.borderColor ?? theme.colors.border,
-          borderRadius: props.radius ?? APP_CARD_RADIUS,
-          padding: props.padding ?? APP_CARD_PADDING,
-          gap: props.gap ?? APP_CARD_GAP,
+          borderRadius: props.radius ?? metrics.radius,
+          borderWidth: metrics.borderWidth,
+          padding: props.padding ?? metrics.padding,
+          gap: props.gap ?? metrics.gap,
           overflow: props.overflow ?? "visible",
-          shadowColor: theme.colors.shadow,
-          shadowOpacity: theme.isDark ? 0.08 : 0.03,
-          shadowRadius: 8,
-          shadowOffset: { width: 0, height: 4 },
-          elevation: 1,
         },
         props.style,
       ]}
@@ -49,8 +42,6 @@ export function AppCard(props: AppCardProps) {
   )
 }
 
-const styles = StyleSheet.create({
-  base: {
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-})
+const styles = {
+  base: {},
+}

@@ -41,7 +41,7 @@ export const AppTextField = React.memo(function AppTextField(props: AppTextField
     ...inputProps
   } = props
   const [masked, setMasked] = useState(Boolean(secureTextEntry))
-  const preset = variant === "auth" ? stylePresets.auth : stylePresets.default
+  const preset = variant === "auth" ? theme.components.textField.auth : theme.components.textField.default
   const shouldMask = secureTextEntry ? masked : false
   const resolvedBackgroundColor =
     backgroundTone === "surface"
@@ -51,33 +51,40 @@ export const AppTextField = React.memo(function AppTextField(props: AppTextField
   const resolvedInputStyle = useMemo(() => {
     return [
       styles.input,
-      preset.input,
+      theme.typography.body,
+      {
+        paddingVertical: 14,
+        minHeight: multiline ? theme.components.textField.multilineMinHeight : undefined,
+      },
       multiline ? styles.multilineInput : null,
       {
         color: theme.colors.text,
       },
       inputStyle,
     ]
-  }, [inputStyle, multiline, preset.input, theme.colors.text])
+  }, [inputStyle, multiline, theme.colors.text, theme.typography.body])
 
   return (
     <View style={styles.wrapper}>
-      {label ? <Text style={[styles.label, variant === "auth" ? styles.labelAuth : null, { color: theme.colors.text }]}>{label}</Text> : null}
+      {label ? (
+        <Text style={[styles.label, theme.typography.footnoteEmphasized, variant === "auth" ? styles.labelAuth : null, { color: theme.colors.text }]}>
+          {label}
+        </Text>
+      ) : null}
       <View
         style={[
           styles.fieldContainer,
-          preset.container,
-        {
-          backgroundColor: resolvedBackgroundColor,
-          borderColor: error ? theme.colors.danger : theme.colors.border,
-          alignItems: multiline ? "flex-start" : "center",
-          shadowColor: theme.colors.shadow,
-          shadowOpacity: theme.isDark ? 0.05 : 0.02,
-          shadowRadius: 6,
-          shadowOffset: { width: 0, height: 3 },
-          elevation: 1,
-        },
-        containerStyle,
+          theme.shadows.control,
+          {
+            minHeight: preset.minHeight,
+            borderRadius: preset.radius,
+            paddingHorizontal: preset.paddingX,
+            backgroundColor: resolvedBackgroundColor,
+            borderColor: error ? theme.colors.danger : theme.colors.border,
+            alignItems: multiline ? "flex-start" : "center",
+            borderWidth: theme.components.textField.borderWidth,
+          },
+          containerStyle,
         ]}
       >
         <TextInput
@@ -94,84 +101,70 @@ export const AppTextField = React.memo(function AppTextField(props: AppTextField
           value={value}
         />
         {secureTextEntry && secureToggleLabels ? (
-          <Pressable onPress={() => setMasked(previous => !previous)} style={styles.action}>
-            <Text style={[styles.actionText, { color: theme.colors.primary }]}>
+          <Pressable
+            hitSlop={8}
+            onPress={() => setMasked(previous => !previous)}
+            style={[
+              styles.action,
+              {
+                marginLeft: theme.spacing.sm,
+                minHeight: theme.components.secureToggle.minHeight,
+                minWidth: theme.components.secureToggle.minWidth,
+              },
+            ]}
+          >
+            <Text style={[styles.actionText, theme.typography.subheadlineEmphasized, { color: theme.colors.primary }]}>
               {masked ? secureToggleLabels.show : secureToggleLabels.hide}
             </Text>
           </Pressable>
         ) : null}
-        {rightSlot ? <View style={[styles.rightSlot, multiline ? styles.multilineRightSlot : null]}>{rightSlot}</View> : null}
+        {rightSlot ? (
+          <View
+            style={[
+              styles.rightSlot,
+              multiline ? styles.multilineRightSlot : null,
+              {
+                marginLeft: theme.spacing.sm,
+              },
+            ]}
+          >
+            {rightSlot}
+          </View>
+        ) : null}
       </View>
-      {error || helperText ? <Text style={[styles.helperText, { color: helperColor }]}>{error || helperText}</Text> : null}
+      {error || helperText ? <Text style={[styles.helperText, theme.typography.footnote, { color: helperColor }]}>{error || helperText}</Text> : null}
     </View>
   )
 })
 
 AppTextField.displayName = "AppTextField"
 
-const stylePresets: Record<"default" | "auth", { container: ViewStyle; input: TextStyle }> = {
-  default: {
-    container: {
-      minHeight: 52,
-      borderRadius: 16,
-      paddingHorizontal: 16,
-    },
-    input: {
-      paddingVertical: 14,
-      fontSize: 17,
-      lineHeight: 22,
-    },
-  },
-  auth: {
-    container: {
-      minHeight: 52,
-      borderRadius: 18,
-      paddingHorizontal: 16,
-    },
-    input: {
-      paddingVertical: 14,
-      fontSize: 17,
-      lineHeight: 22,
-    },
-  },
-}
-
 const styles = StyleSheet.create({
   wrapper: {
     gap: 8,
   },
   label: {
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: "600",
-    letterSpacing: -0.08,
   },
   labelAuth: {
     fontWeight: "600",
   },
   fieldContainer: {
-    borderWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
   },
   input: {
     flex: 1,
   },
   multilineInput: {
-    minHeight: 96,
     paddingTop: 12,
   },
   action: {
-    marginLeft: 12,
     alignSelf: "center",
+    alignItems: "center",
+    justifyContent: "center",
   },
   actionText: {
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: "600",
-    letterSpacing: -0.24,
   },
   rightSlot: {
-    marginLeft: 12,
     alignSelf: "center",
   },
   multilineRightSlot: {
@@ -179,8 +172,5 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
   },
   helperText: {
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: "400",
   },
 })

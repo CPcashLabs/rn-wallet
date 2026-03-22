@@ -32,6 +32,7 @@ export function HomeScaffold(props: {
   const headerBackgroundColor = props.headerBackgroundColor ?? backgroundColor
   const headerTintColor = props.headerTintColor ?? theme.colors.text
   const backTintColor = props.backTintColor ?? theme.colors.primary
+  const scaffoldMetrics = theme.components.scaffold
   const titleAlign = props.titleAlign ?? (props.canGoBack ? "center" : "left")
   const isLargeTitle = titleAlign === "left" && !props.canGoBack
   const reserveFloatingOverlayInset = props.reserveFloatingOverlayInset ?? props.scroll !== false
@@ -41,7 +42,18 @@ export function HomeScaffold(props: {
 
   const content = props.scroll === false ? (
     <View style={styles.body}>
-      <View style={[styles.bodyInner, contentContainerStyle, { paddingBottom: contentPaddingBottom + floatingBottomInset }]}>{props.children}</View>
+      <View
+        style={[
+          styles.bodyInner,
+          {
+            paddingHorizontal: scaffoldMetrics.contentPaddingX,
+          },
+          contentContainerStyle,
+          { paddingBottom: contentPaddingBottom + floatingBottomInset },
+        ]}
+      >
+        {props.children}
+      </View>
     </View>
   ) : (
     <ScrollView
@@ -51,7 +63,18 @@ export function HomeScaffold(props: {
       keyboardShouldPersistTaps="handled"
       style={styles.body}
     >
-      <View style={[styles.scrollContent, contentContainerStyle, { paddingBottom: contentPaddingBottom + floatingBottomInset }]}>{props.children}</View>
+      <View
+        style={[
+          styles.scrollContent,
+          {
+            paddingHorizontal: scaffoldMetrics.contentPaddingX,
+          },
+          contentContainerStyle,
+          { paddingBottom: contentPaddingBottom + floatingBottomInset },
+        ]}
+      >
+        {props.children}
+      </View>
     </ScrollView>
   )
 
@@ -61,24 +84,27 @@ export function HomeScaffold(props: {
         styles.header,
         isLargeTitle ? styles.headerLarge : null,
         {
+          minHeight: isLargeTitle ? scaffoldMetrics.headerLargeMinHeight : scaffoldMetrics.headerMinHeight,
           backgroundColor: headerBackgroundColor,
         },
       ]}
     >
-      <View style={styles.headerSide}>
+      <View style={[styles.headerSide, { width: scaffoldMetrics.headerSideWidth, minHeight: scaffoldMetrics.headerMinHeight }]}>
         {props.canGoBack ? (
           <Pressable hitSlop={8} onPress={props.onBack} style={styles.backButton}>
             <Text style={[styles.backChevron, { color: backTintColor }]}>‹</Text>
-            <Text style={[styles.backText, { color: backTintColor }]}>{t("common.back")}</Text>
+            <Text style={[styles.backText, theme.typography.body, { color: backTintColor }]}>{t("common.back")}</Text>
           </Pressable>
         ) : null}
       </View>
       <View style={styles.headerCenter}>
-        <Text numberOfLines={1} style={[styles.title, styles.titleCenter, { color: headerTintColor }]}>
+        <Text numberOfLines={1} style={[styles.title, theme.typography.headline, styles.titleCenter, { color: headerTintColor }]}>
           {props.title}
         </Text>
       </View>
-      <View style={[styles.headerSide, styles.headerSideRight]}>{props.right}</View>
+      <View style={[styles.headerSide, styles.headerSideRight, { width: scaffoldMetrics.headerSideWidth, minHeight: scaffoldMetrics.headerMinHeight }]}>
+        {props.right}
+      </View>
     </View>
   ) : (
     <View
@@ -86,6 +112,7 @@ export function HomeScaffold(props: {
         styles.header,
         isLargeTitle ? styles.headerLarge : null,
         {
+          minHeight: isLargeTitle ? scaffoldMetrics.headerLargeMinHeight : scaffoldMetrics.headerMinHeight,
           backgroundColor: headerBackgroundColor,
         },
       ]}
@@ -94,10 +121,19 @@ export function HomeScaffold(props: {
         {props.canGoBack ? (
           <Pressable hitSlop={8} onPress={props.onBack} style={styles.backButton}>
             <Text style={[styles.backChevron, { color: backTintColor }]}>‹</Text>
-            <Text style={[styles.backText, { color: backTintColor }]}>{t("common.back")}</Text>
+            <Text style={[styles.backText, theme.typography.body, { color: backTintColor }]}>{t("common.back")}</Text>
           </Pressable>
         ) : null}
-        <Text numberOfLines={1} style={[styles.title, isLargeTitle ? styles.titleLarge : null, styles.titleLeft, { color: headerTintColor }]}>
+        <Text
+          numberOfLines={1}
+          style={[
+            styles.title,
+            isLargeTitle ? theme.typography.largeTitle : theme.typography.headline,
+            isLargeTitle ? styles.titleLarge : null,
+            styles.titleLeft,
+            { color: headerTintColor },
+          ]}
+        >
           {props.title}
         </Text>
       </View>
@@ -111,7 +147,7 @@ export function HomeScaffold(props: {
         <View
           style={{
             backgroundColor,
-            paddingTop: insets.top + 4,
+            paddingTop: insets.top + scaffoldMetrics.topInsetOffset,
             paddingLeft: insets.left,
             paddingRight: insets.right,
           }}
@@ -120,10 +156,10 @@ export function HomeScaffold(props: {
         <View
           style={{
             backgroundColor,
-            paddingTop: insets.top + 4,
-            paddingBottom: 4,
-            paddingLeft: insets.left + 16,
-            paddingRight: insets.right + 16,
+            paddingTop: insets.top + scaffoldMetrics.topInsetOffset,
+            paddingBottom: scaffoldMetrics.headerBottomInset,
+            paddingLeft: insets.left + theme.layout.screenPadding,
+            paddingRight: insets.right + theme.layout.screenPadding,
           }}
         >
           {header}
@@ -173,12 +209,25 @@ export function HeaderTextAction(props: {
         styles.headerTextAction,
         variant === "plain" ? styles.headerTextActionPlain : null,
         {
+          minHeight: theme.components.headerAction.minHeight,
+          minWidth: theme.components.headerAction.minWidth,
+          paddingHorizontal: variant === "plain" ? 0 : theme.components.headerAction.paddingX,
+          borderRadius: theme.components.headerAction.pillRadius,
           backgroundColor: variant === "plain" ? "transparent" : backgroundColor,
         },
         props.disabled ? styles.headerTextActionDisabled : null,
       ]}
     >
-      <Text style={[styles.headerTextActionLabel, variant === "plain" ? styles.headerTextActionLabelPlain : null, { color }]}>
+      <Text
+        style={[
+          styles.headerTextActionLabel,
+          variant === "plain" ? theme.typography.body : theme.typography.subheadlineEmphasized,
+          variant === "plain" ? styles.headerTextActionLabelPlain : null,
+          {
+            color,
+          },
+        ]}
+      >
         {props.label}
       </Text>
     </Pressable>
@@ -193,7 +242,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    minHeight: 44,
     paddingHorizontal: 0,
     paddingVertical: 0,
     flexDirection: "row",
@@ -201,7 +249,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   headerLarge: {
-    minHeight: 52,
     paddingTop: 2,
     paddingBottom: 6,
   },
@@ -219,8 +266,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   headerSide: {
-    width: 88,
-    minHeight: 44,
     justifyContent: "center",
   },
   headerSideRight: {
@@ -247,16 +292,8 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   backText: {
-    fontSize: 17,
-    lineHeight: 22,
-    fontWeight: "400",
-    letterSpacing: -0.41,
   },
   title: {
-    fontSize: 17,
-    lineHeight: 22,
-    fontWeight: "600",
-    letterSpacing: -0.41,
   },
   titleLeft: {
     flex: 1,
@@ -265,47 +302,29 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   titleLarge: {
-    fontSize: 32,
-    lineHeight: 38,
-    letterSpacing: -0.6,
   },
   body: {
     flex: 1,
   },
   bodyInner: {
     flex: 1,
-    paddingHorizontal: 18,
   },
   scrollContainer: {
     minHeight: "100%",
   },
   scrollContent: {
-    paddingHorizontal: 18,
   },
   headerTextAction: {
-    minHeight: 34,
-    borderRadius: 14,
-    paddingHorizontal: 12,
     alignItems: "center",
     justifyContent: "center",
   },
   headerTextActionPlain: {
-    minHeight: 44,
-    paddingHorizontal: 0,
   },
   headerTextActionDisabled: {
     opacity: 0.45,
   },
   headerTextActionLabel: {
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: "600",
-    letterSpacing: -0.24,
   },
   headerTextActionLabelPlain: {
-    fontSize: 17,
-    lineHeight: 22,
-    fontWeight: "400",
-    letterSpacing: -0.41,
   },
 })

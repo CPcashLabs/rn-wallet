@@ -3,7 +3,7 @@ import React from "react"
 import { Pressable, StyleSheet, Text, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native"
 
 import { useAppTheme } from "@/shared/theme/useAppTheme"
-import { AppCard, APP_LIST_ROW_MIN_HEIGHT, APP_LIST_ROW_PADDING } from "@/shared/ui/AppCard"
+import { AppCard, APP_LIST_ROW_MIN_HEIGHT } from "@/shared/ui/AppCard"
 
 type AppListCardProps = {
   children: React.ReactNode
@@ -38,6 +38,7 @@ AppListCard.displayName = "AppListCard"
 
 export const AppListRow = React.memo(function AppListRow(props: AppListRowProps) {
   const theme = useAppTheme()
+  const metrics = theme.components.list
   const content = (
     <>
       {props.left ? <View style={styles.left}>{props.left}</View> : null}
@@ -47,12 +48,32 @@ export const AppListRow = React.memo(function AppListRow(props: AppListRowProps)
         ) : (
           <>
             {props.title ? (
-              <Text numberOfLines={1} style={[styles.title, { color: theme.colors.text }, props.titleStyle]}>
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.title,
+                  theme.typography.bodyEmphasized,
+                  {
+                    color: theme.colors.text,
+                  },
+                  props.titleStyle,
+                ]}
+              >
                 {props.title}
               </Text>
             ) : null}
             {props.subtitle ? (
-              <Text numberOfLines={2} style={[styles.subtitle, { color: theme.colors.mutedText }, props.subtitleStyle]}>
+              <Text
+                numberOfLines={2}
+                style={[
+                  styles.subtitle,
+                  theme.typography.subheadline,
+                  {
+                    color: theme.colors.mutedText,
+                  },
+                  props.subtitleStyle,
+                ]}
+              >
                 {props.subtitle}
               </Text>
             ) : null}
@@ -67,6 +88,9 @@ export const AppListRow = React.memo(function AppListRow(props: AppListRowProps)
     styles.row,
     {
       minHeight: props.minHeight ?? APP_LIST_ROW_MIN_HEIGHT,
+      paddingHorizontal: metrics.rowPaddingX,
+      paddingVertical: metrics.rowPaddingY,
+      gap: metrics.rowGap,
       borderBottomColor: theme.colors.border,
       backgroundColor: props.selected ? theme.colors.primarySoft ?? `${theme.colors.primary}12` : theme.colors.surfaceElevated ?? theme.colors.surface,
       borderBottomWidth: props.hideDivider ? 0 : StyleSheet.hairlineWidth,
@@ -101,11 +125,8 @@ AppListRow.displayName = "AppListRow"
 
 const styles = StyleSheet.create({
   row: {
-    paddingHorizontal: APP_LIST_ROW_PADDING,
-    paddingVertical: 4,
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
   },
   left: {
     alignItems: "center",
@@ -118,14 +139,8 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   title: {
-    fontSize: 17,
-    lineHeight: 22,
-    fontWeight: "600",
-    letterSpacing: -0.2,
   },
   subtitle: {
-    fontSize: 14,
-    lineHeight: 20,
   },
   arrow: {
     fontSize: 20,

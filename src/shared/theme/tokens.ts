@@ -1,4 +1,53 @@
+import type { ViewStyle } from "react-native"
+
+import { appComponentMetrics, appControls, appLayout, appRadius, appSpacing, appTypography } from "@/shared/theme/foundation"
+
+type AppShadowStyle = Readonly<Pick<ViewStyle, "shadowColor" | "shadowOpacity" | "shadowRadius" | "shadowOffset" | "elevation">>
+
+function createShadows(shadowColor: string, isDark: boolean) {
+  return {
+    card: {
+      shadowColor,
+      shadowOpacity: isDark ? 0.08 : 0.03,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 1,
+    },
+    control: {
+      shadowColor,
+      shadowOpacity: isDark ? 0.08 : 0.03,
+      shadowRadius: 6,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 1,
+    },
+    emphasized: {
+      shadowColor,
+      shadowOpacity: isDark ? 0.14 : 0.06,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 2,
+    },
+    floating: {
+      shadowColor,
+      shadowOpacity: isDark ? 0.12 : 0.05,
+      shadowRadius: 14,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 2,
+    },
+  } as const satisfies Record<string, AppShadowStyle>
+}
+
+const baseThemeTokens = {
+  spacing: appSpacing,
+  radius: appRadius,
+  layout: appLayout,
+  controls: appControls,
+  components: appComponentMetrics,
+  typography: appTypography,
+}
+
 export const lightThemeTokens = {
+  ...baseThemeTokens,
   colors: {
     background: "#F5F5F7",
     backgroundMuted: "#ECECF1",
@@ -34,10 +83,12 @@ export const lightThemeTokens = {
     brand: "#111214",
     brandInverse: "#FFFFFF",
   },
+  shadows: createShadows("#0F172A", false),
   isDark: false,
 }
 
 export const darkThemeTokens = {
+  ...baseThemeTokens,
   colors: {
     background: "#000000",
     backgroundMuted: "#111214",
@@ -73,6 +124,7 @@ export const darkThemeTokens = {
     brand: "#F5F5F7",
     brandInverse: "#111214",
   },
+  shadows: createShadows("#000000", true),
   isDark: true,
 }
 
