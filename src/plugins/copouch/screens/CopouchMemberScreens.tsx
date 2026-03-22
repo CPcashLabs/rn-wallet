@@ -28,6 +28,7 @@ import {
   type CopouchOwner,
 } from "@/plugins/copouch/services/copouchApi"
 import {
+  invalidateCopouchQueries,
   refreshCopouchQueriesInBackground,
   useCopouchDetailQuery,
   useCopouchOverviewQuery,
