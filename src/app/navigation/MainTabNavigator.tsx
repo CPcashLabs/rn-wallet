@@ -20,6 +20,10 @@ export function MainTabNavigator() {
   const { t } = useTranslation()
   const bottomSpacing = Math.max(insets.bottom - 8, 12)
   const baseTabBarStyle = {
+    position: "absolute" as const,
+    left: 18,
+    right: 18,
+    bottom: bottomSpacing,
     backgroundColor: theme.isDark ? "rgba(28,28,30,0.88)" : "rgba(255,255,255,0.94)",
     borderTopWidth: 0,
     borderWidth: StyleSheet.hairlineWidth,
@@ -29,8 +33,6 @@ export function MainTabNavigator() {
     paddingBottom: 8,
     paddingHorizontal: 10,
     borderRadius: 32,
-    marginHorizontal: 18,
-    marginBottom: bottomSpacing,
     overflow: "visible" as const,
     shadowColor: theme.colors.shadow,
     shadowOpacity: theme.isDark ? 0.34 : 0.12,
@@ -64,10 +66,16 @@ export function MainTabNavigator() {
       <Tab.Screen
         name="HomeTab"
         component={HomeTabStackNavigator}
-        options={{
-          title: "Home",
-          tabBarIcon: ({ color, focused }) => <HomeTabIcon color={color} focused={focused} />,
-          tabBarLabel: ({ color }) => <Text style={[styles.tabBarLabel, { color }]}>{t("home.tabs.home")}</Text>,
+        options={({ route }) => {
+          const focusedRouteName = getFocusedRouteNameFromRoute(route) ?? "HomeShellScreen"
+          const shouldHideTabBar = focusedRouteName !== "HomeShellScreen"
+
+          return {
+            title: "Home",
+            tabBarIcon: ({ color, focused }) => <HomeTabIcon color={color} focused={focused} />,
+            tabBarLabel: ({ color }) => <Text style={[styles.tabBarLabel, { color }]}>{t("home.tabs.home")}</Text>,
+            tabBarStyle: shouldHideTabBar ? styles.hiddenTabBar : baseTabBarStyle,
+          }
         }}
       />
       <Tab.Screen
@@ -81,7 +89,7 @@ export function MainTabNavigator() {
             title: "Me",
             tabBarIcon: ({ color, focused }) => <ProfileTabIcon color={color} focused={focused} />,
             tabBarLabel: ({ color }) => <Text style={[styles.tabBarLabel, { color }]}>{t("home.tabs.me")}</Text>,
-            tabBarStyle: shouldHideTabBar ? { display: "none" } : baseTabBarStyle,
+            tabBarStyle: shouldHideTabBar ? styles.hiddenTabBar : baseTabBarStyle,
           }
         }}
       />
@@ -189,6 +197,9 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 8 },
     elevation: 4,
+  },
+  hiddenTabBar: {
+    display: "none",
   },
   homeIconShell: {
     width: 24,
