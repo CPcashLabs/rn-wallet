@@ -1,7 +1,8 @@
 import { create } from "zustand"
+import { persist } from "zustand/middleware"
 
-import { getJson, removeItem, setJson } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
+import { createKvJsonStorage } from "@/shared/store/persistStorage"
 import type { UserProfile } from "@/shared/types/auth"
 
 type UserState = {
@@ -12,25 +13,14 @@ type UserState = {
   clearProfile: () => void
 }
 
+type PersistedUserState = Pick<UserState, "profile">
+
 function normalizeAvatar(avatar?: string | null) {
   return avatar?.trim() || ""
 }
 
 function resolveAvatarVersion(currentVersion: number, prevAvatar?: string | null, nextAvatar?: string | null) {
   return normalizeAvatar(prevAvatar) === normalizeAvatar(nextAvatar) ? currentVersion : currentVersion + 1
-}
-
-function readPersistedProfile() {
-  return getJson<UserProfile>(KvStorageKeys.UserProfile)
-}
-
-function persistProfile(profile: UserProfile | null) {
-  if (profile) {
-    setJson(KvStorageKeys.UserProfile, profile)
-    return
-  }
-
-  removeItem(KvStorageKeys.UserProfile)
 }
 
 function shouldPreserveRemoteField(value: unknown) {
@@ -79,39 +69,53 @@ function areProfilesEqual(left: UserProfile | null, right: UserProfile | null) {
   return true
 }
 
-const initialProfile = readPersistedProfile()
+export const useUserStore = create<UserState>()(
+  persist(
+    set => ({
+      profile: null,
+      avatarVersion: 0,
+      mergeRemoteProfile: profile =>
+        set(state => {
+          const nextProfile = mergeProfiles(state.profile, profile)
 
-export const useUserStore = create<UserState>(set => ({
-  profile: initialProfile,
-  avatarVersion: 0,
-  mergeRemoteProfile: profile =>
-    set(state => {
-      const nextProfile = mergeProfiles(state.profile, profile)
+          if (areProfilesEqual(state.profile, nextProfile)) {
+            return state
+          }
 
-      if (areProfilesEqual(state.profile, nextProfile)) {
-        return state
-      }
+          return {
+            profile: nextProfile,
+            avatarVersion: resolveAvatarVersion(state.avatarVersion, state.profile?.avatar, nextProfile.avatar),
+          }
+        }),
+      patchProfile: patch =>
+        set(state => {
+          const profile = state.profile ? { ...state.profile, ...patch } : ({ ...patch } as UserProfile)
+          const hasAvatarPatch = Object.prototype.hasOwnProperty.call(patch, "avatar")
 
-      persistProfile(nextProfile)
-
-      return {
-        profile: nextProfile,
-        avatarVersion: resolveAvatarVersion(state.avatarVersion, state.profile?.avatar, nextProfile.avatar),
-      }
+          return {
+            profile,
+            avatarVersion: hasAvatarPatch ? state.avatarVersion + 1 : state.avatarVersion,
+          }
+        }),
+      clearProfile: () => set({ profile: null, avatarVersion: 0 }),
     }),
-  patchProfile: patch =>
-    set(state => {
-      const profile = state.profile ? { ...state.profile, ...patch } : ({ ...patch } as UserProfile)
-      const hasAvatarPatch = Object.prototype.hasOwnProperty.call(patch, "avatar")
-      persistProfile(profile)
+    {
+      name: KvStorageKeys.UserProfile,
+      storage: createKvJsonStorage<PersistedUserState>({
+        migrateLegacy: raw => {
+          if (typeof raw !== "object" || raw === null) {
+            return null
+          }
 
-      return {
-        profile,
-        avatarVersion: hasAvatarPatch ? state.avatarVersion + 1 : state.avatarVersion,
-      }
-    }),
-  clearProfile: () => {
-    persistProfile(null)
-    set({ profile: null, avatarVersion: 0 })
-  },
-}))
+          return {
+            profile: raw as UserProfile,
+          }
+        },
+        shouldRemove: state => state.profile === null,
+      }),
+      partialize: state => ({
+        profile: state.profile,
+      }),
+    },
+  ),
+)

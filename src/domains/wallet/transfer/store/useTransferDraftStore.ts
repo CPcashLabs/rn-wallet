@@ -1,8 +1,9 @@
 import { create } from "zustand"
+import { persist } from "zustand/middleware"
 
 import type { TransferChannel } from "@/domains/wallet/transfer/services/transferApi"
-import { getJson, removeItem, setJson } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
+import { createKvJsonStorage } from "@/shared/store/persistStorage"
 
 export type TransferAddressSource = "manual" | "scan" | "recent" | "addressBook" | "suggestion"
 
@@ -46,23 +47,37 @@ type TransferDraftState = PersistedTransferDraft & {
   clearDraft: () => void
 }
 
-function readPersistedDraft(): PersistedTransferDraft {
-  const stored = getJson<PersistedTransferDraft>(KvStorageKeys.TransferDraft)
-
+function createEmptyPersistedTransferDraft(): PersistedTransferDraft {
   return {
-    selectedChannel: stored?.selectedChannel ?? null,
-    recipientAddress: stored?.recipientAddress ?? "",
-    recipientAddressSource: stored?.recipientAddressSource ?? null,
-    sendAmount: stored?.sendAmount ?? "",
-    note: stored?.note ?? "",
-    selectedSendCoinCode: stored?.selectedSendCoinCode ?? "",
-    selectedRecvCoinCode: stored?.selectedRecvCoinCode ?? "",
-    latestOrderSn: stored?.latestOrderSn ?? null,
-    sendHistory: stored?.sendHistory ?? [],
+    selectedChannel: null,
+    recipientAddress: "",
+    recipientAddressSource: null,
+    sendAmount: "",
+    note: "",
+    selectedSendCoinCode: "",
+    selectedRecvCoinCode: "",
+    latestOrderSn: null,
+    sendHistory: [],
   }
 }
 
-function persistDraft(payload: PersistedTransferDraft) {
+function normalizePersistedTransferDraft(stored?: Partial<PersistedTransferDraft> | null): PersistedTransferDraft {
+  const emptyDraft = createEmptyPersistedTransferDraft()
+
+  return {
+    selectedChannel: stored?.selectedChannel ?? emptyDraft.selectedChannel,
+    recipientAddress: stored?.recipientAddress ?? emptyDraft.recipientAddress,
+    recipientAddressSource: stored?.recipientAddressSource ?? emptyDraft.recipientAddressSource,
+    sendAmount: stored?.sendAmount ?? emptyDraft.sendAmount,
+    note: stored?.note ?? emptyDraft.note,
+    selectedSendCoinCode: stored?.selectedSendCoinCode ?? emptyDraft.selectedSendCoinCode,
+    selectedRecvCoinCode: stored?.selectedRecvCoinCode ?? emptyDraft.selectedRecvCoinCode,
+    latestOrderSn: stored?.latestOrderSn ?? emptyDraft.latestOrderSn,
+    sendHistory: stored?.sendHistory ?? emptyDraft.sendHistory,
+  }
+}
+
+function shouldRemovePersistedTransferDraft(payload: PersistedTransferDraft) {
   if (
     !payload.selectedChannel &&
     !payload.recipientAddress &&
@@ -71,11 +86,10 @@ function persistDraft(payload: PersistedTransferDraft) {
     !payload.latestOrderSn &&
     payload.sendHistory.length === 0
   ) {
-    removeItem(KvStorageKeys.TransferDraft)
-    return
+    return true
   }
 
-  setJson(KvStorageKeys.TransferDraft, payload)
+  return false
 }
 
 function toChannelDraft(channel: TransferChannel): TransferChannelDraft {
@@ -92,136 +106,118 @@ function toChannelDraft(channel: TransferChannel): TransferChannelDraft {
   }
 }
 
-const initialState = readPersistedDraft()
+function selectPersistedTransferDraft(state: TransferDraftState): PersistedTransferDraft {
+  return {
+    selectedChannel: state.selectedChannel,
+    recipientAddress: state.recipientAddress,
+    recipientAddressSource: state.recipientAddressSource,
+    sendAmount: state.sendAmount,
+    note: state.note,
+    selectedSendCoinCode: state.selectedSendCoinCode,
+    selectedRecvCoinCode: state.selectedRecvCoinCode,
+    latestOrderSn: state.latestOrderSn,
+    sendHistory: state.sendHistory,
+  }
+}
 
-export const useTransferDraftStore = create<TransferDraftState>(set => ({
-  ...initialState,
-  setSelectedChannel: channel =>
-    set(state => {
-      const nextSelectedChannel = toChannelDraft(channel)
-      const shouldResetAddress = state.selectedChannel?.key && state.selectedChannel.key !== nextSelectedChannel.key
-      const nextState: PersistedTransferDraft = {
-        selectedChannel: nextSelectedChannel,
-        recipientAddress: shouldResetAddress ? "" : state.recipientAddress,
-        recipientAddressSource: shouldResetAddress ? null : state.recipientAddressSource,
-        sendAmount: shouldResetAddress ? "" : state.sendAmount,
-        note: shouldResetAddress ? "" : state.note,
-        selectedSendCoinCode: shouldResetAddress ? "" : state.selectedSendCoinCode,
-        selectedRecvCoinCode: shouldResetAddress ? "" : state.selectedRecvCoinCode,
-        latestOrderSn: state.latestOrderSn,
-        sendHistory: state.sendHistory,
-      }
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null
+}
 
-      persistDraft(nextState)
+export const useTransferDraftStore = create<TransferDraftState>()(
+  persist(
+    set => ({
+      ...createEmptyPersistedTransferDraft(),
+      setSelectedChannel: channel =>
+        set(state => {
+          const nextSelectedChannel = toChannelDraft(channel)
+          const shouldResetAddress = state.selectedChannel?.key && state.selectedChannel.key !== nextSelectedChannel.key
 
-      return nextState
+          return {
+            selectedChannel: nextSelectedChannel,
+            recipientAddress: shouldResetAddress ? "" : state.recipientAddress,
+            recipientAddressSource: shouldResetAddress ? null : state.recipientAddressSource,
+            sendAmount: shouldResetAddress ? "" : state.sendAmount,
+            note: shouldResetAddress ? "" : state.note,
+            selectedSendCoinCode: shouldResetAddress ? "" : state.selectedSendCoinCode,
+            selectedRecvCoinCode: shouldResetAddress ? "" : state.selectedRecvCoinCode,
+            latestOrderSn: state.latestOrderSn,
+            sendHistory: state.sendHistory,
+          }
+        }),
+      setRecipientAddress: (address, source = null) =>
+        set(state => ({
+          selectedChannel: state.selectedChannel,
+          recipientAddress: address.trim(),
+          recipientAddressSource: source,
+          sendAmount: state.sendAmount,
+          note: state.note,
+          selectedSendCoinCode: state.selectedSendCoinCode,
+          selectedRecvCoinCode: state.selectedRecvCoinCode,
+          latestOrderSn: state.latestOrderSn,
+          sendHistory: state.sendHistory,
+        })),
+      setOrderDraft: payload =>
+        set(state => ({
+          ...selectPersistedTransferDraft(state),
+          sendAmount: payload.sendAmount ?? state.sendAmount,
+          note: payload.note ?? state.note,
+          selectedSendCoinCode: payload.sendCoinCode ?? state.selectedSendCoinCode,
+          selectedRecvCoinCode: payload.recvCoinCode ?? state.selectedRecvCoinCode,
+        })),
+      setLatestOrderSn: latestOrderSn =>
+        set(state => ({
+          ...selectPersistedTransferDraft(state),
+          latestOrderSn,
+        })),
+      appendSendHistory: payload =>
+        set(state => ({
+          ...selectPersistedTransferDraft(state),
+          latestOrderSn: payload.orderSn,
+          sendHistory: [
+            {
+              orderSn: payload.orderSn,
+              kind: payload.kind,
+              createdAt: Date.now(),
+            },
+            ...state.sendHistory.filter(item => item.orderSn !== payload.orderSn),
+          ].slice(0, 20),
+        })),
+      clearRecipientAddress: () =>
+        set(state => ({
+          selectedChannel: state.selectedChannel,
+          recipientAddress: "",
+          recipientAddressSource: null,
+          sendAmount: state.sendAmount,
+          note: state.note,
+          selectedSendCoinCode: state.selectedSendCoinCode,
+          selectedRecvCoinCode: state.selectedRecvCoinCode,
+          latestOrderSn: state.latestOrderSn,
+          sendHistory: state.sendHistory,
+        })),
+      clearOrderDraft: () =>
+        set(state => ({
+          ...selectPersistedTransferDraft(state),
+          sendAmount: "",
+          note: "",
+          selectedSendCoinCode: "",
+          selectedRecvCoinCode: "",
+        })),
+      clearDraft: () => set(createEmptyPersistedTransferDraft()),
     }),
-  setRecipientAddress: (address, source = null) =>
-    set(state => {
-      const nextState: PersistedTransferDraft = {
-        selectedChannel: state.selectedChannel,
-        recipientAddress: address.trim(),
-        recipientAddressSource: source,
-        sendAmount: state.sendAmount,
-        note: state.note,
-        selectedSendCoinCode: state.selectedSendCoinCode,
-        selectedRecvCoinCode: state.selectedRecvCoinCode,
-        latestOrderSn: state.latestOrderSn,
-        sendHistory: state.sendHistory,
-      }
+    {
+      name: KvStorageKeys.TransferDraft,
+      storage: createKvJsonStorage<PersistedTransferDraft>({
+        migrateLegacy: raw => {
+          if (!isRecord(raw)) {
+            return null
+          }
 
-      persistDraft(nextState)
-
-      return nextState
-    }),
-  setOrderDraft: payload =>
-    set(state => {
-      const nextState: PersistedTransferDraft = {
-        ...state,
-        sendAmount: payload.sendAmount ?? state.sendAmount,
-        note: payload.note ?? state.note,
-        selectedSendCoinCode: payload.sendCoinCode ?? state.selectedSendCoinCode,
-        selectedRecvCoinCode: payload.recvCoinCode ?? state.selectedRecvCoinCode,
-      }
-
-      persistDraft(nextState)
-
-      return nextState
-    }),
-  setLatestOrderSn: latestOrderSn =>
-    set(state => {
-      const nextState: PersistedTransferDraft = {
-        ...state,
-        latestOrderSn,
-      }
-
-      persistDraft(nextState)
-
-      return nextState
-    }),
-  appendSendHistory: payload =>
-    set(state => {
-      const nextState: PersistedTransferDraft = {
-        ...state,
-        latestOrderSn: payload.orderSn,
-        sendHistory: [
-          {
-            orderSn: payload.orderSn,
-            kind: payload.kind,
-            createdAt: Date.now(),
-          },
-          ...state.sendHistory.filter(item => item.orderSn !== payload.orderSn),
-        ].slice(0, 20),
-      }
-
-      persistDraft(nextState)
-
-      return nextState
-    }),
-  clearRecipientAddress: () =>
-    set(state => {
-      const nextState: PersistedTransferDraft = {
-        selectedChannel: state.selectedChannel,
-        recipientAddress: "",
-        recipientAddressSource: null,
-        sendAmount: state.sendAmount,
-        note: state.note,
-        selectedSendCoinCode: state.selectedSendCoinCode,
-        selectedRecvCoinCode: state.selectedRecvCoinCode,
-        latestOrderSn: state.latestOrderSn,
-        sendHistory: state.sendHistory,
-      }
-
-      persistDraft(nextState)
-
-      return nextState
-    }),
-  clearOrderDraft: () =>
-    set(state => {
-      const nextState: PersistedTransferDraft = {
-        ...state,
-        sendAmount: "",
-        note: "",
-        selectedSendCoinCode: "",
-        selectedRecvCoinCode: "",
-      }
-
-      persistDraft(nextState)
-
-      return nextState
-    }),
-  clearDraft: () => {
-    removeItem(KvStorageKeys.TransferDraft)
-    set({
-      selectedChannel: null,
-      recipientAddress: "",
-      recipientAddressSource: null,
-      sendAmount: "",
-      note: "",
-      selectedSendCoinCode: "",
-      selectedRecvCoinCode: "",
-      latestOrderSn: null,
-      sendHistory: [],
-    })
-  },
-}))
+          return normalizePersistedTransferDraft(raw as Partial<PersistedTransferDraft>)
+        },
+        shouldRemove: shouldRemovePersistedTransferDraft,
+      }),
+      partialize: state => selectPersistedTransferDraft(state),
+    },
+  ),
+)

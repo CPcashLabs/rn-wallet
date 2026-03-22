@@ -1,10 +1,10 @@
-const mockGetJson = jest.fn()
-const mockSetJson = jest.fn()
+const mockGetString = jest.fn()
+const mockSetString = jest.fn()
 const mockRemoveItem = jest.fn()
 
 jest.mock("@/shared/storage/kvStorage", () => ({
-  getJson: (...args: unknown[]) => mockGetJson(...args),
-  setJson: (...args: unknown[]) => mockSetJson(...args),
+  getString: (...args: unknown[]) => mockGetString(...args),
+  setString: (...args: unknown[]) => mockSetString(...args),
   removeItem: (...args: unknown[]) => mockRemoveItem(...args),
 }))
 
@@ -15,19 +15,19 @@ function loadAuthStore() {
 
 describe("useAuthStore", () => {
   beforeEach(() => {
-    mockGetJson.mockReset()
-    mockSetJson.mockReset()
+    mockGetString.mockReset()
+    mockSetString.mockReset()
     mockRemoveItem.mockReset()
   })
 
-  it("hydrates recent passkeys from storage during initialization", () => {
-    mockGetJson.mockReturnValue([
+  it("hydrates recent passkeys from the legacy storage payload during initialization", () => {
+    mockGetString.mockReturnValue(JSON.stringify([
       {
         credentialId: "credential-1",
         rawId: "raw-1",
-        username: "alice",
+        name: "alice",
       },
-    ])
+    ]))
 
     const { useAuthStore } = loadAuthStore()
 
@@ -35,13 +35,13 @@ describe("useAuthStore", () => {
       {
         credentialId: "credential-1",
         rawId: "raw-1",
-        username: "alice",
+        name: "alice",
       },
     ])
   })
 
   it("updates bootstrapped, session and login type state", () => {
-    mockGetJson.mockReturnValue([])
+    mockGetString.mockReturnValue(null)
     const { useAuthStore } = loadAuthStore()
 
     useAuthStore.getState().setBootstrapped(true)
@@ -66,7 +66,7 @@ describe("useAuthStore", () => {
   })
 
   it("falls back to a null login type when the session omits it", () => {
-    mockGetJson.mockReturnValue([])
+    mockGetString.mockReturnValue(null)
     const { useAuthStore } = loadAuthStore()
 
     useAuthStore.getState().setSession({
@@ -84,59 +84,68 @@ describe("useAuthStore", () => {
   })
 
   it("deduplicates and persists the two most recent passkeys", () => {
-    mockGetJson.mockReturnValue([
+    mockGetString.mockReturnValue(JSON.stringify([
       {
         credentialId: "credential-1",
         rawId: "raw-1",
-        username: "alice",
+        name: "alice",
       },
       {
         credentialId: "credential-2",
         rawId: "raw-2",
-        username: "bob",
+        name: "bob",
       },
-    ])
+    ]))
     const { useAuthStore } = loadAuthStore()
 
     useAuthStore.getState().addRecentPasskey({
       credentialId: "credential-2",
       rawId: "raw-2",
-      username: "bob-updated",
+      name: "bob-updated",
     })
     useAuthStore.getState().addRecentPasskey({
       credentialId: "credential-3",
       rawId: "raw-3",
-      username: "carol",
+      name: "carol",
     })
 
     expect(useAuthStore.getState().recentPasskeys).toEqual([
       {
         credentialId: "credential-2",
         rawId: "raw-2",
-        username: "bob-updated",
+        name: "bob-updated",
       },
       {
         credentialId: "credential-3",
         rawId: "raw-3",
-        username: "carol",
+        name: "carol",
       },
     ])
-    expect(mockSetJson).toHaveBeenLastCalledWith("auth.passkey_history", [
-      {
-        credentialId: "credential-2",
-        rawId: "raw-2",
-        username: "bob-updated",
-      },
-      {
-        credentialId: "credential-3",
-        rawId: "raw-3",
-        username: "carol",
-      },
-    ])
+    expect(mockSetString).toHaveBeenCalled()
+    expect(mockSetString).toHaveBeenLastCalledWith(
+      "auth.passkey_history",
+      JSON.stringify({
+        state: {
+          recentPasskeys: [
+            {
+              credentialId: "credential-2",
+              rawId: "raw-2",
+              name: "bob-updated",
+            },
+            {
+              credentialId: "credential-3",
+              rawId: "raw-3",
+              name: "carol",
+            },
+          ],
+        },
+        version: 0,
+      }),
+    )
   })
 
   it("clears recent passkeys and auth session independently", () => {
-    mockGetJson.mockReturnValue([])
+    mockGetString.mockReturnValue(null)
     const { useAuthStore } = loadAuthStore()
 
     useAuthStore.setState({
@@ -149,7 +158,7 @@ describe("useAuthStore", () => {
         {
           credentialId: "credential-1",
           rawId: "raw-1",
-          username: "alice",
+          name: "alice",
         },
       ],
     })
@@ -165,3 +174,5 @@ describe("useAuthStore", () => {
     })
   })
 })
+
+export {}
