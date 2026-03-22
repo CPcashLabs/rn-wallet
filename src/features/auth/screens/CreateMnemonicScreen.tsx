@@ -11,7 +11,7 @@ import { AuthScaffold } from "@/features/auth/components/AuthScaffold"
 import { SecureEntropyLoader } from "@/features/auth/components/SecureEntropyLoader"
 import type { AuthStackParamList } from "@/app/navigation/types"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
-import { walletAdapter } from "@/shared/native"
+import { importLocalWallet } from "@/shared/native/localWalletVault"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { getSecureRandomBytes } from "@/shared/utils/secureRandom"
@@ -39,9 +39,8 @@ function waitForNextFrame() {
 export function CreateMnemonicScreen({ navigation }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
-  const { presentError, presentMessage } = useErrorPresenter()
+  const { presentError } = useErrorPresenter()
   const setWalletState = useWalletStore(state => state.setWalletState)
-  const walletCapability = useMemo(() => walletAdapter.getCapability(), [])
   const mountedRef = useRef(true)
   const generationRequestIdRef = useRef(0)
   const [mnemonic, setMnemonic] = useState<string | null>(null)
@@ -111,28 +110,19 @@ export function CreateMnemonicScreen({ navigation }: Props) {
       return
     }
 
-    if (!walletCapability.supported) {
-      presentMessage(walletCapability.reason ?? t("auth.errors.walletUnavailable"))
-      return
-    }
-
     setSubmitting(true)
 
     try {
-      const imported = await walletAdapter.importSecret(mnemonic)
-
-      if (!imported.ok) {
-        throw imported.error
-      }
+      const imported = await importLocalWallet(mnemonic)
 
       setWalletState({
         status: "connected",
-        address: imported.data.address,
-        chainId: imported.data.chainId ?? null,
+        address: imported.address,
+        chainId: imported.chainId ?? null,
       })
 
       navigation.navigate("FirstSetPasswordScreen", {
-        address: imported.data.address,
+        address: imported.address,
       })
     } catch (error) {
       presentError(error, {

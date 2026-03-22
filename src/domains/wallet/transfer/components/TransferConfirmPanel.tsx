@@ -32,7 +32,7 @@ import { isCancelledAction } from "@/domains/wallet/transfer/utils/order"
 import { formatAmount } from "@/shared/exchange/utils/order"
 import { NativeCapabilityUnavailableError } from "@/shared/errors"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
-import { walletAdapter } from "@/shared/native/walletAdapter"
+import { broadcastTransferWithLocalWallet, readLocalWalletCapability } from "@/shared/native/localWalletVault"
 import { useWalletBalanceQuery } from "@/shared/queries/balanceQueries"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useToast } from "@/shared/toast/useToast"
@@ -100,7 +100,7 @@ function useTransferConfirmController({ enabled = true, onCompleted, onOrderUpda
   const { t } = useTranslation()
   const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
-  const walletCapability = walletAdapter.getCapability()
+  const walletCapability = readLocalWalletCapability()
   const submitUnavailableMessage = walletCapability.supported ? "" : t("auth.errors.walletUnavailable")
   const [activeOrderSn, setActiveOrderSn] = useState(orderSn)
   const [loading, setLoading] = useState(true)
@@ -276,19 +276,14 @@ function useTransferConfirmController({ enabled = true, onCompleted, onOrderUpda
       }
 
       const toAddress = detail.depositAddress || detail.receiveAddress
-      const broadcastResult = await walletAdapter.signAndBroadcastTransfer({
+      const broadcastResult = await broadcastTransferWithLocalWallet({
         toAddress,
         amount: detail.sendAmount,
         coinPrecision: detail.sendCoinPrecision,
         contractAddress: detail.sendCoinContract,
         chainId: walletState.chainId,
       })
-
-      if (!broadcastResult.ok) {
-        throw broadcastResult.error
-      }
-
-      const txid = broadcastResult.data.txHash
+      const txid = broadcastResult.txHash
       const shipAddress = walletAddress || detail.paymentAddress || detail.transferAddress || ""
 
       await submitShipOrder({

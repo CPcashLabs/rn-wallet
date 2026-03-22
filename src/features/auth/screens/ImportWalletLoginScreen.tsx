@@ -12,7 +12,7 @@ import { createWalletLoginMessage, finalizeWalletLogin } from "@/features/auth/s
 import { createImportSecretSchema } from "@/features/auth/utils/authEntryFormSchemas"
 import type { AuthStackParamList } from "@/app/navigation/types"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
-import { walletAdapter } from "@/shared/native"
+import { importLocalWallet } from "@/shared/native/localWalletVault"
 import { signMessageWithWalletImport, tryParseWalletImportInput, WalletImportInputError } from "@/shared/native/walletImport"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 
@@ -27,7 +27,6 @@ export function ImportWalletLoginScreen({ navigation, route }: Props) {
   const { presentError, presentMessage } = useErrorPresenter()
   const inviteCode = route.params?.inviteCode
   const setWalletState = useWalletStore(state => state.setWalletState)
-  const walletCapability = useMemo(() => walletAdapter.getCapability(), [])
   const [inputError, setInputError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const importSecretSchema = useMemo(
@@ -75,55 +74,25 @@ export function ImportWalletLoginScreen({ navigation, route }: Props) {
 
     try {
       const normalizedSecret = values.secret.trim()
-      let importedAddress = ""
-      let importedChainId: string | null = null
-      let signature = ""
-      let message = createWalletLoginMessage(importedAddress)
+      const parsedImport = detectedImport ?? tryParseWalletImportInput(normalizedSecret)
 
-      if (walletCapability.supported) {
-        const imported = await walletAdapter.importSecret(normalizedSecret)
-
-        if (!imported.ok) {
-          throw imported.error
-        }
-
-        importedChainId = imported.data.chainId ?? null
-        importedAddress = imported.data.address
-        message = createWalletLoginMessage(importedAddress)
+      if (!parsedImport) {
+        throw new WalletImportInputError("invalid")
       }
 
-      if (walletCapability.supported) {
-        const signatureResult = await walletAdapter.signMessage(JSON.stringify(message))
-
-        if (!signatureResult.ok) {
-          throw signatureResult.error
-        }
-
-        signature = signatureResult.data.signature
-      } else {
-        const parsedImport = detectedImport ?? tryParseWalletImportInput(normalizedSecret)
-
-        if (!parsedImport) {
-          throw new WalletImportInputError("invalid")
-        }
-
-        importedAddress = parsedImport.address
-        message = createWalletLoginMessage(importedAddress)
-
-        const imported = await signMessageWithWalletImport(normalizedSecret, JSON.stringify(message))
-        importedAddress = imported.address
-        signature = imported.signature
-      }
+      const message = createWalletLoginMessage(parsedImport.address)
+      const signedImport = await signMessageWithWalletImport(normalizedSecret, JSON.stringify(message))
+      const persistedWallet = await importLocalWallet(normalizedSecret)
 
       setWalletState({
         status: "connected",
-        address: importedAddress,
-        chainId: importedChainId,
+        address: persistedWallet.address,
+        chainId: persistedWallet.chainId ?? null,
       })
 
       await finalizeWalletLogin({
-        address: importedAddress,
-        signature,
+        address: signedImport.address,
+        signature: signedImport.signature,
         message,
         inviteCode,
         onInviteBindingMessage: messageText => {
