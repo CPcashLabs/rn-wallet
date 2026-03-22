@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import * as bip39 from "bip39"
-import { Buffer } from "buffer"
 import { Wallet } from "ethers"
 import { InteractionManager, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
@@ -15,21 +14,9 @@ import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { walletAdapter } from "@/shared/native"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { getSecureRandomBytes } from "@/shared/utils/secureRandom"
 
 type Props = NativeStackScreenProps<AuthStackParamList, "CreateMnemonicScreen">
-
-function getSecureRandomBytes(size: number) {
-  const cryptoObject = globalThis.crypto
-
-  if (!cryptoObject?.getRandomValues) {
-    throw new Error("crypto.getRandomValues must be defined")
-  }
-
-  const bytes = new Uint8Array(size)
-  cryptoObject.getRandomValues(bytes)
-
-  return Buffer.from(bytes)
-}
 
 function generateMnemonicSecret() {
   return bip39.generateMnemonic(128, size => getSecureRandomBytes(size))

@@ -1,10 +1,10 @@
-import { Platform } from "react-native"
-import { Contract, Interface, Wallet, id, parseUnits } from "ethers"
+import { Contract, Interface, Wallet, parseUnits } from "ethers"
 
 import { NativeCapabilityUnavailableError } from "@/shared/errors"
 import { parseWalletImportInput } from "@/shared/native/walletImport"
 import { getJson, removeItem } from "@/shared/storage/kvStorage"
 import { getSecureItem, removeSecureItem, setSecureItem } from "@/shared/storage/secureStorage"
+import { hasSecureRandomValues } from "@/shared/utils/secureRandom"
 import { getRpcProvider } from "@/shared/web3/balanceService"
 
 import type { WalletImportType } from "@/shared/native/walletImport"
@@ -42,10 +42,6 @@ type BroadcastTransferParams = {
   contractAddress: string
   chainId?: string | number | null
   gasLimit?: number
-}
-
-function createPrivateKey(seed: string) {
-  return id(`${seed}:${Date.now()}:${Math.random()}:${Platform.OS}`)
 }
 
 function passkeyPrivateKeyKey(rawId: string) {
@@ -92,7 +88,21 @@ async function resolveSigningWallet() {
   return getOrCreateLocalWallet()
 }
 
+function createGeneratedLocalWalletRecord(): LocalWalletRecord {
+  if (!hasSecureRandomValues()) {
+    throw createLocalWalletUnavailableError()
+  }
+
+  return toLocalWalletRecord(Wallet.createRandom().privateKey, "Local Test Wallet")
+}
+
 export function readLocalWalletCapability() {
+  if (!hasSecureRandomValues()) {
+    return {
+      supported: false,
+    }
+  }
+
   return {
     supported: true,
   }
@@ -115,10 +125,10 @@ export async function getOrCreateLocalWallet(): Promise<LocalWalletRecord> {
     return existingWallet
   }
 
-  const privateKey = createPrivateKey("wallet")
-  await setSecureItem(LOCAL_WALLET_KEY, privateKey)
+  const wallet = createGeneratedLocalWalletRecord()
+  await setSecureItem(LOCAL_WALLET_KEY, wallet.privateKey)
 
-  return toLocalWalletRecord(privateKey, "Local Test Wallet")
+  return wallet
 }
 
 export async function importLocalWallet(secret: string): Promise<ImportedLocalWalletConnection> {
