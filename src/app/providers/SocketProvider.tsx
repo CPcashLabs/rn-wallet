@@ -93,21 +93,23 @@ export function SocketProvider({ children }: PropsWithChildren) {
       connectStartedAtRef.current = null
       openedAtRef.current = null
 
-      const result = await websocketAdapter.disconnect(1000, reason)
-      if (result.ok) {
+      try {
+        await websocketAdapter.disconnect(1000, reason)
         return
-      }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "WebSocket disconnect request failed."
 
-      logRuntimeWarn({
-        tag: SOCKET_LIFECYCLE_LOG_TAG,
-        component: SOCKET_LIFECYCLE_COMPONENT,
-        event: SOCKET_LIFECYCLE_LOG_TYPES.disconnectFailed,
-        message: "WebSocket disconnect request failed.",
-        details: buildSocketLogDetails({
-          reason,
-          error: result.error.message,
-        }),
-      })
+        logRuntimeWarn({
+          tag: SOCKET_LIFECYCLE_LOG_TAG,
+          component: SOCKET_LIFECYCLE_COMPONENT,
+          event: SOCKET_LIFECYCLE_LOG_TYPES.disconnectFailed,
+          message: "WebSocket disconnect request failed.",
+          details: buildSocketLogDetails({
+            reason,
+            error: message,
+          }),
+        })
+      }
     },
     [buildSocketLogDetails],
   )
@@ -144,25 +146,27 @@ export function SocketProvider({ children }: PropsWithChildren) {
         }),
       })
 
-      const result = await websocketAdapter.connect(resolveAuthenticatedWebSocketUrl(currentAccessToken))
-      if (result.ok) {
+      try {
+        await websocketAdapter.connect(resolveAuthenticatedWebSocketUrl(currentAccessToken))
         return
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "WebSocket connection attempt failed."
+
+        pendingSocketTokenRef.current = null
+        connectStartedAtRef.current = null
+        useSocketStore.getState().setConnected(false)
+
+        logRuntimeWarn({
+          tag: SOCKET_LIFECYCLE_LOG_TAG,
+          component: SOCKET_LIFECYCLE_COMPONENT,
+          event: SOCKET_LIFECYCLE_LOG_TYPES.connectFailed,
+          message: "WebSocket connection attempt failed before the socket opened.",
+          details: buildSocketLogDetails({
+            trigger,
+            error: message,
+          }),
+        })
       }
-
-      pendingSocketTokenRef.current = null
-      connectStartedAtRef.current = null
-      useSocketStore.getState().setConnected(false)
-
-      logRuntimeWarn({
-        tag: SOCKET_LIFECYCLE_LOG_TAG,
-        component: SOCKET_LIFECYCLE_COMPONENT,
-        event: SOCKET_LIFECYCLE_LOG_TYPES.connectFailed,
-        message: "WebSocket connection attempt failed before the socket opened.",
-        details: buildSocketLogDetails({
-          trigger,
-          error: result.error.message,
-        }),
-      })
     },
     [buildSocketLogDetails],
   )

@@ -1,9 +1,5 @@
 import ReconnectingWebSocket from "reconnecting-websocket"
 
-import { NativeCapabilityUnavailableError } from "@/shared/errors"
-import type { AdapterResult, CapabilityDescriptor } from "@/shared/native/types"
-import { unsupportedCapability } from "@/shared/native/types"
-
 export type WebSocketAdapterEvent =
   | { type: "open" }
   | { type: "close"; code?: number; reason?: string }
@@ -11,10 +7,8 @@ export type WebSocketAdapterEvent =
   | { type: "message"; data: string }
 
 export interface WebSocketAdapter {
-  getCapability(): CapabilityDescriptor
-  connect(url: string): Promise<AdapterResult<void>>
-  send(data: string): Promise<AdapterResult<void>>
-  disconnect(code?: number, reason?: string): Promise<AdapterResult<void>>
+  connect(url: string): Promise<void>
+  disconnect(code?: number, reason?: string): Promise<void>
   subscribe(listener: (event: WebSocketAdapterEvent) => void): () => void
   isConnected(): boolean
   getRetryCount(): number
@@ -157,23 +151,14 @@ function replaceSocket(nextSocket: ReconnectingWebSocket, url: string) {
   }
 }
 
-export const websocketAdapter: WebSocketAdapter = {
-  getCapability() {
-    if (typeof WebSocket !== "function") {
-      return unsupportedCapability("websocket")
-    }
+function createAdapterError(error: unknown, fallbackMessage: string) {
+  return error instanceof Error ? error : new Error(fallbackMessage)
+}
 
-    return {
-      supported: true,
-    }
-  },
+export const websocketAdapter: WebSocketAdapter = {
   async connect(url) {
-    const capability = this.getCapability()
-    if (!capability.supported) {
-      return {
-        ok: false,
-        error: new NativeCapabilityUnavailableError("websocket", capability.reason),
-      }
+    if (typeof WebSocket !== "function") {
+      throw new Error("WebSocket is not available in the current app version.")
     }
 
     if (activeSocket && activeUrl === url) {
@@ -181,10 +166,7 @@ export const websocketAdapter: WebSocketAdapter = {
         activeSocket.reconnect()
       }
 
-      return {
-        ok: true,
-        data: undefined,
-      }
+      return
     }
 
     try {
@@ -193,49 +175,16 @@ export const websocketAdapter: WebSocketAdapter = {
         WebSocket,
       })
       replaceSocket(nextSocket, url)
-
-      return {
-        ok: true,
-        data: undefined,
-      }
     } catch (error) {
       activeSocket = null
       activeUrl = null
       detachActiveSocket()
-
-      return {
-        ok: false,
-        error: error instanceof Error ? error : new Error("Failed to create WebSocket connection."),
-      }
-    }
-  },
-  async send(data) {
-    if (!activeSocket || activeSocket.readyState !== ReconnectingWebSocket.OPEN) {
-      return {
-        ok: false,
-        error: new Error("WebSocket connection is not open."),
-      }
-    }
-
-    try {
-      activeSocket.send(data)
-      return {
-        ok: true,
-        data: undefined,
-      }
-    } catch (error) {
-      return {
-        ok: false,
-        error: error instanceof Error ? error : new Error("Failed to send WebSocket message."),
-      }
+      throw createAdapterError(error, "Failed to create WebSocket connection.")
     }
   },
   async disconnect(code = 1000, reason = "manual_disconnect") {
     if (!activeSocket) {
-      return {
-        ok: true,
-        data: undefined,
-      }
+      return
     }
 
     const socket = activeSocket
@@ -246,10 +195,7 @@ export const websocketAdapter: WebSocketAdapter = {
     try {
       socket.close(code, reason)
     } catch (error) {
-      return {
-        ok: false,
-        error: error instanceof Error ? error : new Error("Failed to close WebSocket connection."),
-      }
+      throw createAdapterError(error, "Failed to close WebSocket connection.")
     }
 
     emit({
@@ -257,11 +203,6 @@ export const websocketAdapter: WebSocketAdapter = {
       code,
       reason,
     })
-
-    return {
-      ok: true,
-      data: undefined,
-    }
   },
   subscribe(listener) {
     listeners.add(listener)

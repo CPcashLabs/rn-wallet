@@ -109,14 +109,8 @@ describe("SocketProvider", () => {
     mockResetSocketStore.mockReset()
     mockAppStateRemove.mockReset()
 
-    mockConnect.mockResolvedValue({
-      ok: true,
-      data: undefined,
-    })
-    mockDisconnect.mockResolvedValue({
-      ok: true,
-      data: undefined,
-    })
+    mockConnect.mockResolvedValue(undefined)
+    mockDisconnect.mockResolvedValue(undefined)
     mockIsConnected.mockReturnValue(false)
     mockGetRetryCount.mockReturnValue(0)
     mockSubscribe.mockImplementation((listener: (event: WebSocketAdapterEvent) => void) => {
@@ -237,10 +231,7 @@ describe("SocketProvider", () => {
   })
 
   it("logs connect failures before the socket opens", async () => {
-    mockConnect.mockResolvedValueOnce({
-      ok: false,
-      error: new Error("constructor failed"),
-    })
+    mockConnect.mockRejectedValueOnce(new Error("constructor failed"))
 
     let renderer!: ReactTestRenderer
 

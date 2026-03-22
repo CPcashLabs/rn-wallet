@@ -113,20 +113,13 @@ describe("websocketAdapter", () => {
     runtimeGlobals.WebSocket = originalWebSocket
   })
 
-  it("fails closed when WebSocket is unavailable", async () => {
+  it("throws when WebSocket is unavailable", async () => {
     runtimeGlobals.WebSocket = undefined as never
     const { websocketAdapter } = loadWebsocketAdapter()
 
-    expect(websocketAdapter.getCapability()).toEqual({
-      supported: false,
-      reason: "websocket is not available in the current app version",
-    })
-    await expect(websocketAdapter.connect("wss://wallet.cp.cash/ws")).resolves.toMatchObject({
-      ok: false,
-      error: {
-        name: "NativeCapabilityUnavailableError",
-      },
-    })
+    await expect(websocketAdapter.connect("wss://wallet.cp.cash/ws")).rejects.toThrow(
+      "WebSocket is not available in the current app version.",
+    )
   })
 
   it("connects, emits lifecycle events, keeps heartbeats and disconnects", async () => {
@@ -147,10 +140,7 @@ describe("websocketAdapter", () => {
       events.push(event.type)
     })
 
-    await expect(websocketAdapter.connect("wss://wallet.cp.cash/ws")).resolves.toEqual({
-      ok: true,
-      data: undefined,
-    })
+    await expect(websocketAdapter.connect("wss://wallet.cp.cash/ws")).resolves.toBeUndefined()
 
     const socket = FakeReconnectingWebSocket.instances[0]
     if (!socket) {
@@ -181,10 +171,7 @@ describe("websocketAdapter", () => {
       "close:4001:server_closed",
     ])
 
-    await expect(websocketAdapter.disconnect()).resolves.toEqual({
-      ok: true,
-      data: undefined,
-    })
+    await expect(websocketAdapter.disconnect()).resolves.toBeUndefined()
   })
 
   it("reuses the same url, reconnects closed sockets and replaces stale ones for new urls", async () => {
@@ -211,17 +198,14 @@ describe("websocketAdapter", () => {
     expect(firstSocket.close).toHaveBeenCalledWith(1000, "replaced")
   })
 
-  it("normalizes constructor, send and close failures", async () => {
+  it("normalizes constructor and close failures", async () => {
     let mod = loadWebsocketAdapter()
     const FakeReconnectingWebSocket = getFakeReconnectingWebSocket()
     FakeReconnectingWebSocket.constructorError = "constructor failed"
 
-    await expect(mod.websocketAdapter.connect("wss://wallet.cp.cash/ws")).resolves.toMatchObject({
-      ok: false,
-      error: {
-        message: "Failed to create WebSocket connection.",
-      },
-    })
+    await expect(mod.websocketAdapter.connect("wss://wallet.cp.cash/ws")).rejects.toThrow(
+      "Failed to create WebSocket connection.",
+    )
 
     FakeReconnectingWebSocket.constructorError = null
     mod = loadWebsocketAdapter()
@@ -231,49 +215,22 @@ describe("websocketAdapter", () => {
     if (!socket) {
       throw new Error("Missing socket instance")
     }
-
-    await expect(mod.websocketAdapter.send("hello")).resolves.toMatchObject({
-      ok: false,
-      error: {
-        message: "WebSocket connection is not open.",
-      },
-    })
-
-    socket.readyState = ReloadedFakeReconnectingWebSocket.OPEN
-    socket.send.mockImplementation(() => {
-      throw "send failed"
-    })
-
-    await expect(mod.websocketAdapter.send("hello")).resolves.toMatchObject({
-      ok: false,
-      error: {
-        message: "Failed to send WebSocket message.",
-      },
-    })
 
     socket.close.mockImplementation(() => {
       throw "close failed"
     })
 
-    await expect(mod.websocketAdapter.disconnect(4999, "manual")).resolves.toMatchObject({
-      ok: false,
-      error: {
-        message: "Failed to close WebSocket connection.",
-      },
-    })
+    await expect(mod.websocketAdapter.disconnect(4999, "manual")).rejects.toThrow(
+      "Failed to close WebSocket connection.",
+    )
   })
 
-  it("preserves Error instances for constructor, send and close failures", async () => {
+  it("preserves Error instances for constructor and close failures", async () => {
     let mod = loadWebsocketAdapter()
     const FakeReconnectingWebSocket = getFakeReconnectingWebSocket()
     FakeReconnectingWebSocket.constructorError = new Error("constructor failed")
 
-    await expect(mod.websocketAdapter.connect("wss://wallet.cp.cash/ws")).resolves.toMatchObject({
-      ok: false,
-      error: {
-        message: "constructor failed",
-      },
-    })
+    await expect(mod.websocketAdapter.connect("wss://wallet.cp.cash/ws")).rejects.toThrow("constructor failed")
 
     FakeReconnectingWebSocket.constructorError = null
     mod = loadWebsocketAdapter()
@@ -284,28 +241,11 @@ describe("websocketAdapter", () => {
       throw new Error("Missing socket instance")
     }
 
-    socket.readyState = ReloadedFakeReconnectingWebSocket.OPEN
-    socket.send.mockImplementation(() => {
-      throw new Error("send failed")
-    })
-
-    await expect(mod.websocketAdapter.send("hello")).resolves.toMatchObject({
-      ok: false,
-      error: {
-        message: "send failed",
-      },
-    })
-
     socket.close.mockImplementation(() => {
       throw new Error("close failed")
     })
 
-    await expect(mod.websocketAdapter.disconnect(4999, "manual")).resolves.toMatchObject({
-      ok: false,
-      error: {
-        message: "close failed",
-      },
-    })
+    await expect(mod.websocketAdapter.disconnect(4999, "manual")).rejects.toThrow("close failed")
   })
 
   it("tracks retry counts exposed by the reconnecting client", async () => {
