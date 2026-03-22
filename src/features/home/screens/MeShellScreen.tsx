@@ -58,27 +58,31 @@ export function MeShellScreen({ navigation }: Props) {
           ]}
         >
           <AppCard
-            backgroundColor={theme.isDark ? theme.colors.surfaceElevated : "#EAF2FF"}
-            borderColor={theme.isDark ? theme.colors.border : "rgba(255,255,255,0.84)"}
-            overflow="hidden"
+            backgroundColor={theme.colors.surfaceElevated ?? theme.colors.surface}
+            borderColor={theme.colors.border}
             style={styles.heroCard}
           >
-            <View style={[styles.heroGlow, styles.heroGlowPrimary, { backgroundColor: theme.colors.primarySoft ?? `${theme.colors.primary}1F` }]} />
-            <View style={[styles.heroGlow, styles.heroGlowSecondary, { backgroundColor: theme.colors.infoSoft ?? `${theme.colors.primary}12` }]} />
-
             <View style={styles.profileCard}>
-              <View style={[styles.avatarShell, { backgroundColor: theme.colors.surfaceElevated ?? theme.colors.surface }]}>
+              <View
+                style={[
+                  styles.avatarShell,
+                  theme.shadows.card,
+                  {
+                    backgroundColor: theme.colors.surfaceMuted ?? theme.colors.background,
+                  },
+                ]}
+              >
                 <UserAvatar accountKey={address} cacheVersion={avatarVersion} label={displayName} size={72} uri={avatar} />
               </View>
 
               <View style={styles.profileMeta}>
-                <Text numberOfLines={1} style={[styles.name, { color: theme.colors.text }]}>
+                <Text numberOfLines={1} style={[styles.name, theme.typography.title2, { color: theme.colors.text }]}>
                   {displayName}
                 </Text>
-                <Text numberOfLines={1} style={[styles.address, { color: theme.colors.mutedText }]}>
+                <Text numberOfLines={1} style={[styles.address, theme.typography.subheadline, { color: theme.colors.mutedText }]}>
                   {formatAddress(address) || "--"}
                 </Text>
-                <Text style={[styles.profileHint, { color: theme.colors.mutedText }]}>{t("home.me.personal")}</Text>
+                <Text style={[styles.profileHint, theme.typography.footnote, { color: theme.colors.mutedText }]}>{t("home.me.personal")}</Text>
                 <View style={styles.statusRow}>
                   <StatusPill label={inviteBound ? t("home.me.inviteBound") : t("home.me.inviteUnbound")} tone={inviteBound ? "primary" : "neutral"} />
                   <StatusPill label={loginType === "passkey" ? "Passkey" : "Wallet"} tone="neutral" />
@@ -130,14 +134,13 @@ function TopActionButton(props: { icon: AppGlyphName; onPress: () => void }) {
       onPress={props.onPress}
       style={({ pressed }) => [
         styles.topActionButton,
+        theme.shadows.control,
         {
-          backgroundColor: theme.colors.glassStrong ?? theme.colors.surface,
-          borderColor: theme.colors.glassBorder ?? theme.colors.border,
-          shadowColor: theme.colors.shadow,
-          shadowOpacity: theme.isDark ? 0.16 : 0.06,
-          shadowRadius: 14,
-          shadowOffset: { width: 0, height: 8 },
-          elevation: 2,
+          width: theme.components.inlineIconButton.size,
+          height: theme.components.inlineIconButton.size,
+          borderRadius: theme.components.inlineIconButton.size / 2,
+          backgroundColor: theme.colors.surfaceElevated ?? theme.colors.surface,
+          borderColor: theme.colors.border,
           transform: [{ scale: pressed ? 0.97 : 1 }],
         },
       ]}
@@ -154,7 +157,7 @@ function MenuRow(props: { label: string; icon: AppGlyphName; badge?: string; onP
     <AppListRow
       hideDivider={props.last}
       left={<AppGlyph name={props.icon} />}
-      minHeight={64}
+      minHeight={theme.controls.listRowProminentMinHeight}
       onPress={props.onPress}
       right={
         props.badge ? (
@@ -167,7 +170,6 @@ function MenuRow(props: { label: string; icon: AppGlyphName; badge?: string; onP
         ) : undefined
       }
       title={props.label}
-      titleStyle={styles.rowTitle}
     />
   )
 }
@@ -179,7 +181,7 @@ function StatusPill(props: { label: string; tone: "primary" | "neutral" }) {
 
   return (
     <View style={[styles.statusPill, { backgroundColor }]}>
-      <Text style={[styles.statusPillText, { color }]}>{props.label}</Text>
+      <Text style={[styles.statusPillText, theme.typography.footnoteEmphasized, { color }]}>{props.label}</Text>
     </View>
   )
 }
@@ -192,13 +194,10 @@ const styles = StyleSheet.create({
   topActions: {
     flexDirection: "row",
     justifyContent: "flex-end",
-    gap: 10,
+    gap: 12,
     marginBottom: 4,
   },
   topActionButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
     justifyContent: "center",
@@ -207,63 +206,35 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   heroCard: {
-    minHeight: 152,
-  },
-  heroGlow: {
-    position: "absolute",
-    borderRadius: 999,
-  },
-  heroGlowPrimary: {
-    width: 214,
-    height: 214,
-    right: -72,
-    top: -124,
-    opacity: 0.9,
-  },
-  heroGlowSecondary: {
-    width: 150,
-    height: 150,
-    left: -48,
-    bottom: -80,
-    opacity: 0.84,
+    minHeight: 148,
   },
   profileCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: 16,
-    minHeight: 116,
+    minHeight: 104,
   },
   avatarShell: {
-    width: 88,
-    height: 88,
-    borderRadius: 30,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#0F172A",
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 2,
   },
   profileMeta: {
     flex: 1,
     minWidth: 0,
-    gap: 6,
+    gap: 4,
   },
   name: {
-    fontSize: 24,
-    fontWeight: "700",
   },
   address: {
-    fontSize: 14,
   },
   profileHint: {
-    fontSize: 13,
-    fontWeight: "500",
   },
   heroArrow: {
-    fontSize: 30,
-    lineHeight: 30,
+    fontSize: 22,
+    lineHeight: 22,
     fontWeight: "300",
     marginLeft: 4,
   },
@@ -274,11 +245,6 @@ const styles = StyleSheet.create({
   },
   listCard: {
     gap: 0,
-    borderRadius: 28,
-  },
-  rowTitle: {
-    fontSize: 17,
-    fontWeight: "600",
   },
   rowRight: {
     flexDirection: "row",
@@ -299,12 +265,12 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   statusPill: {
+    minHeight: 28,
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 4,
     borderRadius: 999,
+    justifyContent: "center",
   },
   statusPillText: {
-    fontSize: 12,
-    fontWeight: "600",
   },
 })

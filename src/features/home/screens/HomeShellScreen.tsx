@@ -26,6 +26,7 @@ import { useUserStore } from "@/shared/store/useUserStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { AppCard } from "@/shared/ui/AppCard"
 import { SFSymbolIcon, type MaterialIconName, type SFSymbolName, type SFSymbolWeight } from "@/shared/ui/SFSymbolIcon"
 
 import type { HomeTabStackParamList } from "@/app/navigation/types"
@@ -371,7 +372,7 @@ export function HomeShellScreen({ navigation, route }: Props) {
               styles.profileHeroAvatarShell,
               {
                 backgroundColor: theme.colors.surfaceElevated ?? theme.colors.surface,
-                borderColor: theme.colors.glassBorder,
+                borderColor: theme.colors.border,
               },
             ]}
           >
@@ -397,23 +398,20 @@ export function HomeShellScreen({ navigation, route }: Props) {
         onPress={() => navigation.navigate("TotalAssetsScreen")}
         style={({ pressed }) => [styles.balanceCardPressable, pressed ? styles.balanceCardPressed : null]}
       >
-        <View
-          style={[
-            styles.balanceCard,
-            {
-              backgroundColor: theme.colors.glassStrong,
-              borderColor: theme.colors.glassBorder,
-              shadowColor: theme.colors.shadow,
-              shadowOpacity: theme.isDark ? 0.18 : 0.08,
-              shadowRadius: 18,
-              shadowOffset: { width: 0, height: 10 },
-              elevation: 3,
-            },
-          ]}
+        <AppCard
+          backgroundColor={theme.colors.surfaceElevated ?? theme.colors.surface}
+          borderColor={theme.colors.border}
+          gap={theme.spacing.md}
+          overflow="hidden"
+          padding={theme.spacing.lg}
+          radius={theme.radius.xxl}
+          style={[styles.balanceCard, theme.shadows.floating]}
         >
           <View style={styles.balanceHeader}>
             <View style={styles.balanceTitleRow}>
-              <Text style={[styles.balanceLabel, { color: theme.colors.text }]}>{t("home.shell.estimatedAssets")}</Text>
+              <Text style={[styles.balanceLabel, theme.typography.subheadlineEmphasized, { color: theme.colors.mutedText }]}>
+                {t("home.shell.estimatedAssets")}
+              </Text>
               <Pressable
                 hitSlop={8}
                 onPress={event => {
@@ -430,33 +428,33 @@ export function HomeShellScreen({ navigation, route }: Props) {
               style={[
                 styles.securityScorePill,
                 {
-                  backgroundColor: theme.colors.successSoft,
-                  borderColor: theme.colors.successBorder,
+                  backgroundColor: theme.colors.surfaceMuted ?? theme.colors.background,
+                  borderColor: theme.colors.border,
                 },
               ]}
             >
               <ShieldBadgeIcon color={theme.colors.success} size={18} />
-              <Text style={[styles.securityScoreText, { color: theme.colors.success }]}>
+              <Text style={[styles.securityScoreText, theme.typography.footnoteEmphasized, { color: theme.colors.success }]}>
                 {t("home.shell.securityScore", { score: 98 })}
               </Text>
             </View>
           </View>
 
-          <Text numberOfLines={1} style={[styles.balanceValue, { color: theme.colors.text }]}>
+          <Text numberOfLines={1} style={[styles.balanceValue, theme.typography.largeTitle, { color: theme.colors.text }]}>
             {showBalance ? formatCurrency(displayedBalanceValue) : "*****"}
           </Text>
 
           {balanceError ? (
-            <Text style={[styles.balanceStatus, { color: theme.colors.danger }]}>
+            <Text style={[styles.balanceStatus, theme.typography.footnoteEmphasized, { color: theme.colors.danger }]}>
               {t(balanceError.kind === "refresh" ? "home.totalAssets.refreshFailed" : "home.totalAssets.loadFailed")}
             </Text>
           ) : (
             <View style={styles.auditRow}>
               <View style={[styles.auditDot, { backgroundColor: theme.colors.success }]} />
-              <Text style={[styles.auditText, { color: theme.colors.mutedText }]}>{t("home.shell.auditPassed")}</Text>
+              <Text style={[styles.auditText, theme.typography.subheadline, { color: theme.colors.mutedText }]}>{t("home.shell.auditPassed")}</Text>
             </View>
           )}
-        </View>
+        </AppCard>
       </Pressable>
 
       <View style={styles.actionGrid}>
@@ -465,27 +463,30 @@ export function HomeShellScreen({ navigation, route }: Props) {
         ))}
       </View>
 
-      <View
-        style={[
-          styles.securityBanner,
-          {
-            backgroundColor: theme.colors.success,
-            shadowColor: theme.colors.shadow,
-            shadowOpacity: theme.isDark ? 0.2 : 0.1,
-            shadowRadius: 18,
-            shadowOffset: { width: 0, height: 10 },
-            elevation: 3,
-          },
-        ]}
+      <AppCard
+        backgroundColor={theme.colors.surfaceElevated ?? theme.colors.surface}
+        borderColor={theme.colors.border}
+        gap={theme.spacing.md}
+        style={styles.securityPanel}
       >
-        <View style={styles.securityBannerContent}>
-          <Text style={[styles.securityBannerTitle, { color: theme.colors.brandInverse }]}>{t("home.shell.securityCenterTitle")}</Text>
-          <Text style={[styles.securityBannerBody, { color: theme.isDark ? theme.colors.brandInverse : "rgba(255,255,255,0.74)" }]}>
+        <View
+          style={[
+            styles.securityPanelBadge,
+            {
+              backgroundColor: theme.colors.successSoft,
+              borderColor: theme.colors.successBorder,
+            },
+          ]}
+        >
+          <ShieldMark color={theme.colors.success} size={22} />
+        </View>
+        <View style={styles.securityPanelContent}>
+          <Text style={[styles.securityPanelTitle, theme.typography.headline, { color: theme.colors.text }]}>{t("home.shell.securityCenterTitle")}</Text>
+          <Text style={[styles.securityPanelBody, theme.typography.subheadline, { color: theme.colors.mutedText }]}>
             {t("home.shell.securityCenterBody")}
           </Text>
         </View>
-        <ShieldMark color={theme.colors.brandInverse} opacity={0.18} size={60} />
-      </View>
+      </AppCard>
 
       <HomeMessagePreview onPress={handleOpenMessages} />
     </HomeScaffold>
@@ -497,6 +498,7 @@ function QuickActionButton(props: { label: string; onPress: () => void; icon: Qu
 
   return (
     <Pressable
+      accessibilityRole="button"
       onPress={props.onPress}
       style={({ pressed }) => [
         styles.actionButtonWrap,
@@ -507,13 +509,8 @@ function QuickActionButton(props: { label: string; onPress: () => void; icon: Qu
         style={[
           styles.actionIconCard,
           {
-            backgroundColor: theme.colors.surface,
-            borderColor: theme.colors.glassBorder,
-            shadowColor: theme.colors.shadow,
-            shadowOpacity: theme.isDark ? 0.12 : 0.04,
-            shadowRadius: 14,
-            shadowOffset: { width: 0, height: 8 },
-            elevation: 2,
+            backgroundColor: theme.colors.surfaceMuted ?? theme.colors.background,
+            borderColor: theme.colors.border,
           },
         ]}
       >
@@ -521,11 +518,11 @@ function QuickActionButton(props: { label: string; onPress: () => void; icon: Qu
           color={theme.colors.primary}
           fallbackName={props.icon.fallbackName}
           name={props.icon.name}
-          size={32}
+          size={28}
           weight={props.icon.weight ?? "semibold"}
         />
       </View>
-      <Text adjustsFontSizeToFit minimumFontScale={0.82} numberOfLines={1} style={[styles.actionLabel, { color: theme.colors.text }]}>
+      <Text numberOfLines={2} style={[styles.actionLabel, theme.typography.footnoteEmphasized, { color: theme.colors.text }]}>
         {props.label}
       </Text>
     </Pressable>
@@ -555,7 +552,7 @@ function ShieldMark(props: { color: string; size: number; opacity?: number }) {
 
 const styles = StyleSheet.create({
   contentStack: {
-    gap: 20,
+    gap: 16,
     paddingTop: 4,
     paddingBottom: 28,
   },
@@ -586,14 +583,15 @@ const styles = StyleSheet.create({
   profileHeroName: {
     flex: 1,
     minWidth: 0,
-    fontSize: 24,
-    lineHeight: 30,
-    fontWeight: "800",
-    letterSpacing: -0.72,
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: "700",
+    letterSpacing: -0.26,
   },
   topBarAction: {
     width: 44,
     height: 44,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -607,16 +605,10 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.992 }],
   },
   balanceCard: {
-    borderRadius: 28,
-    paddingHorizontal: 22,
-    paddingVertical: 20,
-    gap: 18,
-    borderWidth: StyleSheet.hairlineWidth,
-    overflow: "hidden",
   },
   balanceHeader: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
   },
@@ -627,44 +619,29 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   balanceLabel: {
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: "600",
-    letterSpacing: -0.1,
   },
   eyeButton: {
-    width: 28,
-    height: 28,
+    width: 44,
+    height: 44,
     alignItems: "center",
     justifyContent: "center",
   },
   securityScorePill: {
-    minHeight: 34,
+    minHeight: 36,
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 6,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
   },
   securityScoreText: {
-    fontSize: 13,
-    lineHeight: 16,
-    fontWeight: "700",
-    letterSpacing: -0.1,
   },
   balanceValue: {
-    fontSize: 34,
-    lineHeight: 40,
-    letterSpacing: -1.4,
-    fontWeight: "800",
     fontVariant: ["tabular-nums"],
   },
   balanceStatus: {
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: "600",
   },
   auditRow: {
     flexDirection: "row",
@@ -677,9 +654,6 @@ const styles = StyleSheet.create({
     borderRadius: 5,
   },
   auditText: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: "500",
   },
   actionGrid: {
     flexDirection: "row",
@@ -689,7 +663,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     alignItems: "center",
-    gap: 10,
+    gap: 8,
   },
   actionButtonWrapPressed: {
     opacity: 0.9,
@@ -697,42 +671,34 @@ const styles = StyleSheet.create({
   actionIconCard: {
     width: "100%",
     aspectRatio: 1,
-    maxWidth: 88,
-    borderRadius: 24,
+    maxWidth: 84,
+    borderRadius: 20,
     borderWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
     justifyContent: "center",
   },
   actionLabel: {
-    fontSize: 14,
-    lineHeight: 18,
-    fontWeight: "700",
-    letterSpacing: -0.12,
     textAlign: "center",
   },
-  securityBanner: {
-    borderRadius: 26,
-    paddingHorizontal: 22,
-    paddingVertical: 18,
+  securityPanel: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 16,
+    alignItems: "flex-start",
   },
-  securityBannerContent: {
+  securityPanelBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  securityPanelContent: {
     flex: 1,
     minWidth: 0,
     gap: 6,
   },
-  securityBannerTitle: {
-    fontSize: 18,
-    lineHeight: 24,
-    fontWeight: "800",
-    letterSpacing: -0.24,
+  securityPanelTitle: {
   },
-  securityBannerBody: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: "500",
+  securityPanelBody: {
   },
 })
