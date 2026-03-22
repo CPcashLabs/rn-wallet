@@ -32,6 +32,10 @@ type Props = NativeStackScreenProps<TransferStackParamList, "TransferAddressScre
 
 const RECENT_ENTRY_LIMIT = 3
 
+function sanitizeAddressInput(value: string) {
+  return value.replace(/[\r\n]+/g, "")
+}
+
 function isCancelledNativeAction(error: unknown) {
   if (!(error instanceof Error)) {
     return false
@@ -203,8 +207,9 @@ export function TransferAddressScreen({ navigation, route }: Props) {
 
   const handleAddressChange = useCallback(
     (value: string) => {
-      setAddress(value)
-      setRecipientAddress(value, "manual")
+      const nextValue = sanitizeAddressInput(value)
+      setAddress(nextValue)
+      setRecipientAddress(nextValue, "manual")
     },
     [setRecipientAddress],
   )
@@ -377,6 +382,7 @@ export function TransferAddressScreen({ navigation, route }: Props) {
               <TextInput
                 autoCapitalize="none"
                 autoCorrect={false}
+                multiline
                 onChangeText={handleAddressChange}
                 onSubmitEditing={() => {
                   if (canSubmit) {
@@ -386,6 +392,7 @@ export function TransferAddressScreen({ navigation, route }: Props) {
                 placeholder={t("transfer.address.placeholder")}
                 placeholderTextColor={theme.colors.mutedText}
                 returnKeyType="done"
+                scrollEnabled={false}
                 selectionColor={theme.colors.primary}
                 style={[theme.typography.body, styles.addressInput, { color: theme.colors.text }]}
                 value={address}
@@ -594,6 +601,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 16,
+    paddingVertical: 12,
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
@@ -604,6 +612,7 @@ const styles = StyleSheet.create({
   addressInput: {
     flex: 1,
     minWidth: 0,
+    maxHeight: 96,
     paddingVertical: 0,
   },
   addressBookButton: {
