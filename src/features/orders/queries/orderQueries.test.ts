@@ -1,6 +1,6 @@
 import type { InfiniteData, QueryClient } from "@tanstack/react-query"
 
-import { flattenOrderLogPages, getNextOrderLogsPageParam, invalidateOrderQueries, orderKeys } from "@/features/orders/queries/orderQueries"
+import { buildOrderLogsInfinitePlaceholderData, flattenOrderLogPages, getNextOrderLogsPageParam, invalidateOrderQueries, orderKeys } from "@/features/orders/queries/orderQueries"
 
 type OrderLogsPage = {
   data: Array<{ orderSn: string }>
@@ -80,6 +80,36 @@ describe("orderQueries", () => {
         ],
       ),
     ).toBeUndefined()
+  })
+
+  it("builds placeholder infinite data from the persisted order logs snapshot", () => {
+    expect(
+      buildOrderLogsInfinitePlaceholderData(
+        {
+          items: [{ orderSn: "ORDER_9" }] as never,
+          statistics: {
+            paymentAmount: 0,
+            receiptAmount: 0,
+            fee: 0,
+            transactions: 1,
+          },
+          page: 3,
+          total: 21,
+          cachedAt: 1,
+        },
+        "T_OTHER",
+      ),
+    ).toEqual({
+      pages: [
+        {
+          data: [{ orderSn: "ORDER_9" }],
+          total: 21,
+          page: 3,
+          otherAddress: "T_OTHER",
+        },
+      ],
+      pageParams: [3],
+    })
   })
 
   it("invalidates all order queries from the root key", async () => {
