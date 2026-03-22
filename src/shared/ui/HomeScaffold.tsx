@@ -7,6 +7,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { getFloatingOverlayContentInset } from "@/shared/ui/floatingInsets"
+import { SFSymbolIcon } from "@/shared/ui/SFSymbolIcon"
 
 export function HomeScaffold(props: {
   title: string
@@ -18,6 +19,7 @@ export function HomeScaffold(props: {
   scroll?: boolean
   backgroundColor?: string
   headerBackgroundColor?: string
+  headerBorderColor?: string
   headerTintColor?: string
   backTintColor?: string
   contentContainerStyle?: StyleProp<ViewStyle>
@@ -30,6 +32,7 @@ export function HomeScaffold(props: {
   const route = useRoute()
   const backgroundColor = props.backgroundColor ?? theme.colors.background
   const headerBackgroundColor = props.headerBackgroundColor ?? backgroundColor
+  const headerBorderColor = props.headerBorderColor
   const headerTintColor = props.headerTintColor ?? theme.colors.text
   const backTintColor = props.backTintColor ?? theme.colors.primary
   const scaffoldMetrics = theme.components.scaffold
@@ -86,13 +89,15 @@ export function HomeScaffold(props: {
         {
           minHeight: isLargeTitle ? scaffoldMetrics.headerLargeMinHeight : scaffoldMetrics.headerMinHeight,
           backgroundColor: headerBackgroundColor,
+          borderBottomColor: headerBorderColor,
+          borderBottomWidth: headerBorderColor ? StyleSheet.hairlineWidth : 0,
         },
       ]}
     >
       <View style={[styles.headerSide, { width: scaffoldMetrics.headerSideWidth, minHeight: scaffoldMetrics.headerMinHeight }]}>
         {props.canGoBack ? (
           <Pressable hitSlop={8} onPress={props.onBack} style={styles.backButton}>
-            <Text style={[styles.backChevron, { color: backTintColor }]}>‹</Text>
+            <SFSymbolIcon color={backTintColor} fallbackName="chevron-left" name="chevron.backward" size={18} weight="semibold" />
             <Text style={[styles.backText, theme.typography.body, { color: backTintColor }]}>{t("common.back")}</Text>
           </Pressable>
         ) : null}
@@ -114,13 +119,15 @@ export function HomeScaffold(props: {
         {
           minHeight: isLargeTitle ? scaffoldMetrics.headerLargeMinHeight : scaffoldMetrics.headerMinHeight,
           backgroundColor: headerBackgroundColor,
+          borderBottomColor: headerBorderColor,
+          borderBottomWidth: headerBorderColor ? StyleSheet.hairlineWidth : 0,
         },
       ]}
     >
       <View style={styles.left}>
         {props.canGoBack ? (
           <Pressable hitSlop={8} onPress={props.onBack} style={styles.backButton}>
-            <Text style={[styles.backChevron, { color: backTintColor }]}>‹</Text>
+            <SFSymbolIcon color={backTintColor} fallbackName="chevron-left" name="chevron.backward" size={18} weight="semibold" />
             <Text style={[styles.backText, theme.typography.body, { color: backTintColor }]}>{t("common.back")}</Text>
           </Pressable>
         ) : null}
@@ -283,13 +290,8 @@ const styles = StyleSheet.create({
     minWidth: 44,
     flexDirection: "row",
     alignItems: "center",
-    gap: 3,
+    gap: 4,
     paddingRight: 8,
-  },
-  backChevron: {
-    fontSize: 22,
-    fontWeight: "600",
-    lineHeight: 24,
   },
   backText: {
   },

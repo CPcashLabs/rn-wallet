@@ -35,6 +35,7 @@ import { useUserStore } from "@/shared/store/useUserStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { SFSymbolIcon } from "@/shared/ui/SFSymbolIcon"
 
 type Props = NativeStackScreenProps<ReceiveStackParamList, "ReceiveHomeScreen">
 type CollapseKey = "individuals" | "business"
@@ -134,19 +135,8 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
     () => mixReceiveColor(dynamicColor, theme.colors.background, theme.isDark ? 0.68 : 0.9),
     [dynamicColor, theme.colors.background, theme.isDark],
   )
-  const headerBackgroundColor = useMemo(
-    () => mixReceiveColor(dynamicColor, theme.isDark ? "#101112" : "#FFFFFF", theme.isDark ? 0.14 : 0.06),
-    [dynamicColor, theme.isDark],
-  )
-  const headerTintColor = useMemo(() => pickReadableTextColor(headerBackgroundColor, theme.colors.text), [headerBackgroundColor, theme.colors.text])
-  const headerControlBackgroundColor = useMemo(
-    () => buildAlphaColor(headerTintColor, theme.isDark ? 0.14 : 0.1) ?? theme.colors.glass,
-    [headerTintColor, theme.colors.glass, theme.isDark],
-  )
-  const headerControlBorderColor = useMemo(
-    () => buildAlphaColor(headerTintColor, theme.isDark ? 0.18 : 0.14) ?? theme.colors.glassBorder,
-    [headerTintColor, theme.colors.glassBorder, theme.isDark],
-  )
+  const headerBackgroundColor = pageBackgroundColor
+  const headerTintColor = theme.colors.text
 
   const subtitle = useMemo(() => {
     if (isNormalReceive) {
@@ -654,15 +644,30 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
       backTintColor={headerTintColor}
       canGoBack
       headerBackgroundColor={headerBackgroundColor}
+      headerBorderColor={theme.colors.border}
       headerTintColor={headerTintColor}
       onBack={navigation.goBack}
       title={t("receive.home.title")}
       right={
         <Pressable
+          accessibilityLabel={t("receive.home.more")}
+          accessibilityRole="button"
+          hitSlop={8}
           onPress={handleMoreMenu}
-          style={[styles.moreButton, { backgroundColor: headerControlBackgroundColor, borderColor: headerControlBorderColor }]}
+          style={({ pressed }) => [
+            styles.moreButton,
+            {
+              backgroundColor: pressed ? theme.colors.glassOverlay : "transparent",
+            },
+          ]}
         >
-          <Text style={[styles.moreButtonText, { color: headerTintColor }]}>•••</Text>
+          <SFSymbolIcon
+            color={headerTintColor}
+            fallbackName="dots-horizontal-circle-outline"
+            name="ellipsis.circle"
+            size={22}
+            weight="regular"
+          />
         </Pressable>
       }
       contentContainerStyle={styles.scaffoldContent}
@@ -899,44 +904,20 @@ function buildAlphaColor(color: string, alpha: number) {
   return `rgba(${parsedColor.r}, ${parsedColor.g}, ${parsedColor.b}, ${clampedAlpha})`
 }
 
-function pickReadableTextColor(backgroundColor: string, fallback: string) {
-  const parsedColor = parseReceiveColor(backgroundColor)
-
-  if (!parsedColor) {
-    return fallback
-  }
-
-  const normalizeChannel = (value: number) => {
-    const ratio = value / 255
-    return ratio <= 0.03928 ? ratio / 12.92 : ((ratio + 0.055) / 1.055) ** 2.4
-  }
-
-  const luminance =
-    0.2126 * normalizeChannel(parsedColor.r) + 0.7152 * normalizeChannel(parsedColor.g) + 0.0722 * normalizeChannel(parsedColor.b)
-
-  return luminance > 0.56 ? "#111111" : "#FFFFFF"
-}
-
 const styles = StyleSheet.create({
   scaffoldContent: {
-    paddingTop: 12,
+    paddingTop: 8,
     paddingBottom: 28,
   },
   page: {
     gap: SPACE.sm,
   },
   moreButton: {
-    minWidth: 40,
-    minHeight: 40,
+    minWidth: 44,
+    minHeight: 44,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  moreButtonText: {
-    fontSize: FONT.bodyLarge,
-    fontWeight: "700",
-    letterSpacing: 1.5,
   },
   collapseCard: {
     borderRadius: 28,
