@@ -4,7 +4,7 @@ import { clearAuthSession, readTokenPair } from "@/shared/api/auth-session"
 import { mapApiError } from "@/shared/api/error-mapping"
 import { resolveAcceptLanguage } from "@/shared/api/language-header"
 import { ApiError, AuthExpiredError, NetworkUnavailableError } from "@/shared/errors"
-import { logInfoSafely, logWarnSafely } from "@/shared/logging/safeConsole"
+import { logRuntimeInfo, logRuntimeWarn } from "@/shared/logging/appLogger"
 import { resetProfileSyncSession } from "@/shared/session/profileSyncSession"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 
@@ -64,18 +64,16 @@ export function registerInterceptors(client: AxiosInstance) {
       const envelope = response.data as { code?: number | string; message?: string } | undefined
 
       if (envelope && typeof envelope === "object" && "code" in envelope && Number(envelope.code) !== 200) {
-        logWarnSafely(API_RESPONSE_LOG_TAG, {
-          context: {
-            component: API_INTERCEPTORS_COMPONENT,
-            event: API_LOG_TYPES.businessError,
-            message: "API response returned a non-success business code.",
-            httpRequest: describeHttpRequest(response.config, response.status),
-            details: {
-              businessCode: String(envelope.code),
-              config: describeRequestConfig(response.config),
-            },
+        logRuntimeWarn({
+          tag: API_RESPONSE_LOG_TAG,
+          component: API_INTERCEPTORS_COMPONENT,
+          event: API_LOG_TYPES.businessError,
+          message: "API response returned a non-success business code.",
+          httpRequest: describeHttpRequest(response.config, response.status),
+          details: {
+            businessCode: String(envelope.code),
+            config: describeRequestConfig(response.config),
           },
-          forwardToConsole: false,
         })
 
         return Promise.reject(
@@ -99,32 +97,28 @@ export function registerInterceptors(client: AxiosInstance) {
         useAuthStore.getState().clearSession()
         unauthorizedHandler?.()
 
-        logWarnSafely(API_RESPONSE_LOG_TAG, {
-          context: {
-            component: API_INTERCEPTORS_COMPONENT,
-            event: API_LOG_TYPES.authExpired,
-            message: "Cleared local auth state after receiving an expired-session response.",
-            details: {
-              unauthorizedHandlerRegistered: Boolean(unauthorizedHandler),
-            },
+        logRuntimeWarn({
+          tag: API_RESPONSE_LOG_TAG,
+          component: API_INTERCEPTORS_COMPONENT,
+          event: API_LOG_TYPES.authExpired,
+          message: "Cleared local auth state after receiving an expired-session response.",
+          details: {
+            unauthorizedHandlerRegistered: Boolean(unauthorizedHandler),
           },
-          forwardToConsole: false,
         })
       }
 
       if (isNetworkUnavailable) {
         networkUnavailableHandler?.()
 
-        logWarnSafely(API_RESPONSE_LOG_TAG, {
-          context: {
-            component: API_INTERCEPTORS_COMPONENT,
-            event: API_LOG_TYPES.networkUnavailable,
-            message: "Raised the offline handler after mapping a network-unavailable error.",
-            details: {
-              networkHandlerRegistered: Boolean(networkUnavailableHandler),
-            },
+        logRuntimeWarn({
+          tag: API_RESPONSE_LOG_TAG,
+          component: API_INTERCEPTORS_COMPONENT,
+          event: API_LOG_TYPES.networkUnavailable,
+          message: "Raised the offline handler after mapping a network-unavailable error.",
+          details: {
+            networkHandlerRegistered: Boolean(networkUnavailableHandler),
           },
-          forwardToConsole: false,
         })
       }
 
@@ -145,20 +139,18 @@ async function attachHeaders(config: InternalAxiosRequestConfig) {
     config.headers.set("Authorization", `Bearer ${accessToken}`)
   }
 
-  logInfoSafely(API_REQUEST_LOG_TAG, {
-    context: {
-      component: API_INTERCEPTORS_COMPONENT,
-      event: API_LOG_TYPES.attachHeaders,
-      message: "Prepared outbound request headers.",
-      httpRequest: describeHttpRequest(config),
-      details: {
-        acceptLanguage: language,
-        hasAccessToken: Boolean(accessToken),
-        authorizationAttached,
-        config: describeRequestConfig(config),
-      },
+  logRuntimeInfo({
+    tag: API_REQUEST_LOG_TAG,
+    component: API_INTERCEPTORS_COMPONENT,
+    event: API_LOG_TYPES.attachHeaders,
+    message: "Prepared outbound request headers.",
+    httpRequest: describeHttpRequest(config),
+    details: {
+      acceptLanguage: language,
+      hasAccessToken: Boolean(accessToken),
+      authorizationAttached,
+      config: describeRequestConfig(config),
     },
-    forwardToConsole: false,
   })
 
   return config

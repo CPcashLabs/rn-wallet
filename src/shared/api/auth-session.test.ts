@@ -1,6 +1,6 @@
 const mockSecureStore = new Map<string, string>()
-const mockLogInfoSafely = jest.fn()
-const mockLogWarnSafely = jest.fn()
+const mockLogRuntimeInfo = jest.fn()
+const mockLogRuntimeWarn = jest.fn()
 
 type Deferred = {
   promise: Promise<void>
@@ -52,9 +52,9 @@ jest.mock("react-native-keychain", () => ({
   }),
 }))
 
-jest.mock("@/shared/logging/safeConsole", () => ({
-  logInfoSafely: (...args: unknown[]) => mockLogInfoSafely(...args),
-  logWarnSafely: (...args: unknown[]) => mockLogWarnSafely(...args),
+jest.mock("@/shared/logging/appLogger", () => ({
+  logRuntimeInfo: (...args: unknown[]) => mockLogRuntimeInfo(...args),
+  logRuntimeWarn: (...args: unknown[]) => mockLogRuntimeWarn(...args),
 }))
 
 import { SecureStorageKeys } from "@/shared/storage/sessionKeys"
@@ -70,8 +70,8 @@ beforeEach(() => {
   mockCanonicalWriteGate = null
   mockSecureStore.clear()
   jest.clearAllMocks()
-  mockLogInfoSafely.mockReset()
-  mockLogWarnSafely.mockReset()
+  mockLogRuntimeInfo.mockReset()
+  mockLogRuntimeWarn.mockReset()
   resetAuthSessionStateForTests()
 })
 
@@ -105,19 +105,17 @@ describe("auth session storage", () => {
     expect(mockSecureStore.has(SecureStorageKeys.AccessToken)).toBe(false)
     expect(mockSecureStore.has(SecureStorageKeys.RefreshToken)).toBe(false)
     expect(mockSecureStore.has(SecureStorageKeys.SessionMeta)).toBe(false)
-    expect(mockLogInfoSafely).toHaveBeenCalledWith("[auth.session]", {
-      context: {
-        component: "auth.session",
-        event: "legacy_session_migrated",
-        message: "Migrated a legacy auth session into the canonical snapshot format.",
-        details: {
-          hasSession: true,
-          hasAddress: true,
-          loginType: "password",
-          hasPasskeyRawId: false,
-        },
+    expect(mockLogRuntimeInfo).toHaveBeenCalledWith({
+      tag: "[auth.session]",
+      component: "auth.session",
+      event: "legacy_session_migrated",
+      message: "Migrated a legacy auth session into the canonical snapshot format.",
+      details: {
+        hasSession: true,
+        hasAddress: true,
+        loginType: "password",
+        hasPasskeyRawId: false,
       },
-      forwardToConsole: false,
     })
   })
 
@@ -169,20 +167,18 @@ describe("auth session storage", () => {
       address: "0xabc",
       loginType: "wallet",
     })
-    expect(mockLogInfoSafely).toHaveBeenCalledWith("[auth.session]", {
-      context: {
-        component: "auth.session",
-        event: "cache_hit",
-        message: "Read auth session from the in-memory cache.",
-        details: {
-          hasSession: true,
-          hasAddress: true,
-          loginType: "wallet",
-          hasPasskeyRawId: false,
-          hasPersistedVersion: true,
-        },
+    expect(mockLogRuntimeInfo).toHaveBeenCalledWith({
+      tag: "[auth.session]",
+      component: "auth.session",
+      event: "cache_hit",
+      message: "Read auth session from the in-memory cache.",
+      details: {
+        hasSession: true,
+        hasAddress: true,
+        loginType: "wallet",
+        hasPasskeyRawId: false,
+        hasPersistedVersion: true,
       },
-      forwardToConsole: false,
     })
 
     mockSecureStore.set(
@@ -237,13 +233,11 @@ describe("auth session storage", () => {
 
     expect(mockSecureStore.has(SecureStorageKeys.AuthSession)).toBe(false)
     expect(mockSecureStore.get(SecureStorageKeys.AuthSessionVersion)).not.toBe("stale-version")
-    expect(mockLogWarnSafely).toHaveBeenCalledWith("[auth.session]", {
-      context: {
-        component: "auth.session",
-        event: "invalid_canonical_snapshot",
-        message: "Removed an invalid canonical auth session snapshot.",
-      },
-      forwardToConsole: false,
+    expect(mockLogRuntimeWarn).toHaveBeenCalledWith({
+      tag: "[auth.session]",
+      component: "auth.session",
+      event: "invalid_canonical_snapshot",
+      message: "Removed an invalid canonical auth session snapshot.",
     })
   })
 
@@ -264,19 +258,17 @@ describe("auth session storage", () => {
     })
 
     expect(mockSecureStore.get(SecureStorageKeys.AuthSessionVersion)).toBeTruthy()
-    expect(mockLogInfoSafely).toHaveBeenCalledWith("[auth.session]", {
-      context: {
-        component: "auth.session",
-        event: "canonical_version_created",
-        message: "Created a missing version for the canonical auth session snapshot.",
-        details: {
-          hasSession: true,
-          hasAddress: true,
-          loginType: "unknown",
-          hasPasskeyRawId: false,
-        },
+    expect(mockLogRuntimeInfo).toHaveBeenCalledWith({
+      tag: "[auth.session]",
+      component: "auth.session",
+      event: "canonical_version_created",
+      message: "Created a missing version for the canonical auth session snapshot.",
+      details: {
+        hasSession: true,
+        hasAddress: true,
+        loginType: "unknown",
+        hasPasskeyRawId: false,
       },
-      forwardToConsole: false,
     })
   })
 
@@ -299,13 +291,11 @@ describe("auth session storage", () => {
       accessToken: "legacy-access",
       refreshToken: "legacy-refresh",
     })
-    expect(mockLogWarnSafely).toHaveBeenCalledWith("[auth.session]", {
-      context: {
-        component: "auth.session",
-        event: "legacy_meta_parse_failed",
-        message: "Failed to parse legacy auth session metadata.",
-      },
-      forwardToConsole: false,
+    expect(mockLogRuntimeWarn).toHaveBeenCalledWith({
+      tag: "[auth.session]",
+      component: "auth.session",
+      event: "legacy_meta_parse_failed",
+      message: "Failed to parse legacy auth session metadata.",
     })
   })
 })

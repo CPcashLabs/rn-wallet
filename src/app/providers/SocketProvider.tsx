@@ -3,7 +3,7 @@ import React, { type PropsWithChildren, useCallback, useEffect, useRef } from "r
 import { AppState, type AppStateStatus } from "react-native"
 
 import { resolveAuthenticatedWebSocketUrl } from "@/shared/config/runtime"
-import { logWarnSafely } from "@/shared/logging/safeConsole"
+import { logRuntimeWarn } from "@/shared/logging/appLogger"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useSocketStore } from "@/shared/store/useSocketStore"
 import { websocketAdapter } from "@/shared/native/websocketAdapter"
@@ -150,17 +150,15 @@ export function SocketProvider({ children }: PropsWithChildren) {
           return
         }
         case "error":
-          logWarnSafely(SOCKET_LIFECYCLE_LOG_TAG, {
-            context: {
-              component: SOCKET_LIFECYCLE_COMPONENT,
-              event: SOCKET_LIFECYCLE_LOG_TYPES.socketError,
-              message: "WebSocket emitted an error event.",
-              details: {
-                error: event.error.message,
-                attempt: reconnectAttemptRef.current,
-              },
+          logRuntimeWarn({
+            tag: SOCKET_LIFECYCLE_LOG_TAG,
+            component: SOCKET_LIFECYCLE_COMPONENT,
+            event: SOCKET_LIFECYCLE_LOG_TYPES.socketError,
+            message: "WebSocket emitted an error event.",
+            details: {
+              error: event.error.message,
+              attempt: reconnectAttemptRef.current,
             },
-            forwardToConsole: false,
           })
           socketStore.setConnected(false)
           return
@@ -185,20 +183,18 @@ export function SocketProvider({ children }: PropsWithChildren) {
           if (!canReconnectAfterClose) {
             reconnectAttemptRef.current = nextAttempt
 
-            logWarnSafely(SOCKET_LIFECYCLE_LOG_TAG, {
-              context: {
-                component: SOCKET_LIFECYCLE_COMPONENT,
-                event: SOCKET_LIFECYCLE_LOG_TYPES.closeStopped,
-                message: "WebSocket closed repeatedly and reconnecting was stopped.",
-                details: {
-                  code: event.code ?? null,
-                  reason: event.reason ?? "unknown",
-                  attempt: reconnectAttemptRef.current,
-                  appState: appStateRef.current,
-                  hasAccessToken: Boolean(accessTokenRef.current),
-                },
+            logRuntimeWarn({
+              tag: SOCKET_LIFECYCLE_LOG_TAG,
+              component: SOCKET_LIFECYCLE_COMPONENT,
+              event: SOCKET_LIFECYCLE_LOG_TYPES.closeStopped,
+              message: "WebSocket closed repeatedly and reconnecting was stopped.",
+              details: {
+                code: event.code ?? null,
+                reason: event.reason ?? "unknown",
+                attempt: reconnectAttemptRef.current,
+                appState: appStateRef.current,
+                hasAccessToken: Boolean(accessTokenRef.current),
               },
-              forwardToConsole: false,
             })
             return
           }
@@ -208,21 +204,19 @@ export function SocketProvider({ children }: PropsWithChildren) {
             return
           }
 
-          logWarnSafely(SOCKET_LIFECYCLE_LOG_TAG, {
-            context: {
-              component: SOCKET_LIFECYCLE_COMPONENT,
-              event: SOCKET_LIFECYCLE_LOG_TYPES.closeReconnecting,
-              message: "WebSocket closed unexpectedly and a reconnect was scheduled.",
-              details: {
-                code: event.code ?? null,
-                reason: event.reason ?? "unknown",
-                attempt: reconnectAttemptRef.current,
-                delayMs,
-                appState: appStateRef.current,
-                hasAccessToken: Boolean(accessTokenRef.current),
-              },
+          logRuntimeWarn({
+            tag: SOCKET_LIFECYCLE_LOG_TAG,
+            component: SOCKET_LIFECYCLE_COMPONENT,
+            event: SOCKET_LIFECYCLE_LOG_TYPES.closeReconnecting,
+            message: "WebSocket closed unexpectedly and a reconnect was scheduled.",
+            details: {
+              code: event.code ?? null,
+              reason: event.reason ?? "unknown",
+              attempt: reconnectAttemptRef.current,
+              delayMs,
+              appState: appStateRef.current,
+              hasAccessToken: Boolean(accessTokenRef.current),
             },
-            forwardToConsole: false,
           })
           return
         }

@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 import { throwIfAborted } from "@/shared/async/taskController"
-import { logInfoSafely, logWarnSafely } from "@/shared/logging/safeConsole"
+import { logRuntimeInfo, logRuntimeWarn } from "@/shared/logging/appLogger"
 import { getSecureItem, removeSecureItem, setSecureItem } from "@/shared/storage/secureStorage"
 import { SecureStorageKeys } from "@/shared/storage/sessionKeys"
 import type { AuthSession, TokenPair } from "@/shared/types/auth"
@@ -70,17 +70,15 @@ export async function readAuthSession(signal?: AbortSignal): Promise<AuthSession
     throwIfAborted(signal, "Auth session read aborted.")
 
     if (state.cache !== undefined && state.cacheVersion === persistedVersion) {
-      logInfoSafely(AUTH_SESSION_LOG_TAG, {
-        context: {
-          component: AUTH_SESSION_COMPONENT,
-          event: AUTH_SESSION_LOG_TYPES.cacheHit,
-          message: "Read auth session from the in-memory cache.",
-          details: {
-            ...describeSessionState(state.cache),
-            hasPersistedVersion: Boolean(persistedVersion),
-          },
+      logRuntimeInfo({
+        tag: AUTH_SESSION_LOG_TAG,
+        component: AUTH_SESSION_COMPONENT,
+        event: AUTH_SESSION_LOG_TYPES.cacheHit,
+        message: "Read auth session from the in-memory cache.",
+        details: {
+          ...describeSessionState(state.cache),
+          hasPersistedVersion: Boolean(persistedVersion),
         },
-        forwardToConsole: false,
       })
 
       return cloneSession(state.cache)
@@ -90,17 +88,15 @@ export async function readAuthSession(signal?: AbortSignal): Promise<AuthSession
     state.cache = session
     state.cacheVersion = version
 
-    logInfoSafely(AUTH_SESSION_LOG_TAG, {
-      context: {
-        component: AUTH_SESSION_COMPONENT,
-        event: AUTH_SESSION_LOG_TYPES.storageRead,
-        message: "Read auth session from secure storage.",
-        details: {
-          ...describeSessionState(session),
-          hasPersistedVersion: Boolean(version),
-        },
+    logRuntimeInfo({
+      tag: AUTH_SESSION_LOG_TAG,
+      component: AUTH_SESSION_COMPONENT,
+      event: AUTH_SESSION_LOG_TYPES.storageRead,
+      message: "Read auth session from secure storage.",
+      details: {
+        ...describeSessionState(session),
+        hasPersistedVersion: Boolean(version),
       },
-      forwardToConsole: false,
     })
 
     return cloneSession(session)
@@ -120,14 +116,12 @@ export async function writeAuthSession(session: AuthSession) {
     state.cache = normalized
     state.cacheVersion = version
 
-    logInfoSafely(AUTH_SESSION_LOG_TAG, {
-      context: {
-        component: AUTH_SESSION_COMPONENT,
-        event: AUTH_SESSION_LOG_TYPES.write,
-        message: "Persisted auth session to secure storage.",
-        details: describeSessionState(normalized),
-      },
-      forwardToConsole: false,
+    logRuntimeInfo({
+      tag: AUTH_SESSION_LOG_TAG,
+      component: AUTH_SESSION_COMPONENT,
+      event: AUTH_SESSION_LOG_TYPES.write,
+      message: "Persisted auth session to secure storage.",
+      details: describeSessionState(normalized),
     })
   })
 }
@@ -146,16 +140,14 @@ export async function clearAuthSession() {
     state.cache = null
     state.cacheVersion = version
 
-    logInfoSafely(AUTH_SESSION_LOG_TAG, {
-      context: {
-        component: AUTH_SESSION_COMPONENT,
-        event: AUTH_SESSION_LOG_TYPES.clear,
-        message: "Cleared auth session from memory and secure storage.",
-        details: {
-          hasSession: false,
-        },
+    logRuntimeInfo({
+      tag: AUTH_SESSION_LOG_TAG,
+      component: AUTH_SESSION_COMPONENT,
+      event: AUTH_SESSION_LOG_TYPES.clear,
+      message: "Cleared auth session from memory and secure storage.",
+      details: {
+        hasSession: false,
       },
-      forwardToConsole: false,
     })
   })
 }
@@ -176,13 +168,11 @@ function safeParseMeta(raw: string) {
   try {
     return JSON.parse(raw) as Partial<AuthSession>
   } catch {
-    logWarnSafely(AUTH_SESSION_LOG_TAG, {
-      context: {
-        component: AUTH_SESSION_COMPONENT,
-        event: AUTH_SESSION_LOG_TYPES.legacyMetaParseFailed,
-        message: "Failed to parse legacy auth session metadata.",
-      },
-      forwardToConsole: false,
+    logRuntimeWarn({
+      tag: AUTH_SESSION_LOG_TAG,
+      component: AUTH_SESSION_COMPONENT,
+      event: AUTH_SESSION_LOG_TYPES.legacyMetaParseFailed,
+      message: "Failed to parse legacy auth session metadata.",
     })
     return {}
   }
@@ -254,14 +244,12 @@ async function readPersistedAuthSession(
       await setSecureItem(SecureStorageKeys.AuthSessionVersion, nextVersion)
       throwIfAborted(signal, "Auth session read aborted.")
 
-      logInfoSafely(AUTH_SESSION_LOG_TAG, {
-        context: {
-          component: AUTH_SESSION_COMPONENT,
-          event: AUTH_SESSION_LOG_TYPES.canonicalVersionCreated,
-          message: "Created a missing version for the canonical auth session snapshot.",
-          details: describeSessionState(canonical),
-        },
-        forwardToConsole: false,
+      logRuntimeInfo({
+        tag: AUTH_SESSION_LOG_TAG,
+        component: AUTH_SESSION_COMPONENT,
+        event: AUTH_SESSION_LOG_TYPES.canonicalVersionCreated,
+        message: "Created a missing version for the canonical auth session snapshot.",
+        details: describeSessionState(canonical),
       })
 
       return {
@@ -278,13 +266,11 @@ async function readPersistedAuthSession(
     throwIfAborted(signal, "Auth session read aborted.")
     resolvedVersion = nextVersion
 
-    logWarnSafely(AUTH_SESSION_LOG_TAG, {
-      context: {
-        component: AUTH_SESSION_COMPONENT,
-        event: AUTH_SESSION_LOG_TYPES.invalidCanonicalSnapshot,
-        message: "Removed an invalid canonical auth session snapshot.",
-      },
-      forwardToConsole: false,
+    logRuntimeWarn({
+      tag: AUTH_SESSION_LOG_TAG,
+      component: AUTH_SESSION_COMPONENT,
+      event: AUTH_SESSION_LOG_TYPES.invalidCanonicalSnapshot,
+      message: "Removed an invalid canonical auth session snapshot.",
     })
   }
 
@@ -302,14 +288,12 @@ async function readPersistedAuthSession(
   await removeLegacySessionKeys()
   throwIfAborted(signal, "Auth session read aborted.")
 
-  logInfoSafely(AUTH_SESSION_LOG_TAG, {
-    context: {
-      component: AUTH_SESSION_COMPONENT,
-      event: AUTH_SESSION_LOG_TYPES.legacySessionMigrated,
-      message: "Migrated a legacy auth session into the canonical snapshot format.",
-      details: describeSessionState(legacySession),
-    },
-    forwardToConsole: false,
+  logRuntimeInfo({
+    tag: AUTH_SESSION_LOG_TAG,
+    component: AUTH_SESSION_COMPONENT,
+    event: AUTH_SESSION_LOG_TYPES.legacySessionMigrated,
+    message: "Migrated a legacy auth session into the canonical snapshot format.",
+    details: describeSessionState(legacySession),
   })
 
   return {

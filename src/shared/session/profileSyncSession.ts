@@ -1,4 +1,4 @@
-import { logInfoSafely } from "@/shared/logging/safeConsole"
+import { logRuntimeInfo } from "@/shared/logging/appLogger"
 
 let didFetchProfileThisSession = false
 let inFlightProfileSync: Promise<void> | null = null
@@ -22,62 +22,54 @@ export function getProfileSyncInFlightRequest() {
 
 export function runProfileSync(task: () => Promise<boolean>, force = false) {
   if (inFlightProfileSync && !force) {
-    logInfoSafely(PROFILE_SYNC_SESSION_LOG_TAG, {
-      context: {
-        component: PROFILE_SYNC_SESSION_COMPONENT,
-        event: PROFILE_SYNC_SESSION_LOG_TYPES.reuseInflightRequest,
-        message: "Reused the in-flight profile sync request.",
-        details: {
-          force: false,
-        },
+    logRuntimeInfo({
+      tag: PROFILE_SYNC_SESSION_LOG_TAG,
+      component: PROFILE_SYNC_SESSION_COMPONENT,
+      event: PROFILE_SYNC_SESSION_LOG_TYPES.reuseInflightRequest,
+      message: "Reused the in-flight profile sync request.",
+      details: {
+        force: false,
       },
-      forwardToConsole: false,
     })
     return inFlightProfileSync
   }
 
   if (didFetchProfileThisSession && !force) {
-    logInfoSafely(PROFILE_SYNC_SESSION_LOG_TAG, {
-      context: {
-        component: PROFILE_SYNC_SESSION_COMPONENT,
-        event: PROFILE_SYNC_SESSION_LOG_TYPES.skipHydratedSession,
-        message: "Skipped profile sync because the session is already hydrated.",
-        details: {
-          force: false,
-        },
+    logRuntimeInfo({
+      tag: PROFILE_SYNC_SESSION_LOG_TAG,
+      component: PROFILE_SYNC_SESSION_COMPONENT,
+      event: PROFILE_SYNC_SESSION_LOG_TYPES.skipHydratedSession,
+      message: "Skipped profile sync because the session is already hydrated.",
+      details: {
+        force: false,
       },
-      forwardToConsole: false,
     })
     return Promise.resolve()
   }
 
-  logInfoSafely(PROFILE_SYNC_SESSION_LOG_TAG, {
-    context: {
-      component: PROFILE_SYNC_SESSION_COMPONENT,
-      event: PROFILE_SYNC_SESSION_LOG_TYPES.startRequest,
-      message: "Started a profile sync session request.",
-      details: {
-        force,
-      },
+  logRuntimeInfo({
+    tag: PROFILE_SYNC_SESSION_LOG_TAG,
+    component: PROFILE_SYNC_SESSION_COMPONENT,
+    event: PROFILE_SYNC_SESSION_LOG_TYPES.startRequest,
+    message: "Started a profile sync session request.",
+    details: {
+      force,
     },
-    forwardToConsole: false,
   })
 
   const request = task()
     .then(didHydrate => {
       didFetchProfileThisSession = didFetchProfileThisSession || didHydrate
 
-      logInfoSafely(PROFILE_SYNC_SESSION_LOG_TAG, {
-        context: {
-          component: PROFILE_SYNC_SESSION_COMPONENT,
-          event: PROFILE_SYNC_SESSION_LOG_TYPES.finishRequest,
-          message: "Finished a profile sync session request.",
-          details: {
-            force,
-            didHydrate,
-          },
+      logRuntimeInfo({
+        tag: PROFILE_SYNC_SESSION_LOG_TAG,
+        component: PROFILE_SYNC_SESSION_COMPONENT,
+        event: PROFILE_SYNC_SESSION_LOG_TYPES.finishRequest,
+        message: "Finished a profile sync session request.",
+        details: {
+          force,
+          didHydrate,
         },
-        forwardToConsole: false,
       })
     })
     .finally(() => {
@@ -94,12 +86,10 @@ export function resetProfileSyncSession() {
   didFetchProfileThisSession = false
   inFlightProfileSync = null
 
-  logInfoSafely(PROFILE_SYNC_SESSION_LOG_TAG, {
-    context: {
-      component: PROFILE_SYNC_SESSION_COMPONENT,
-      event: PROFILE_SYNC_SESSION_LOG_TYPES.reset,
-      message: "Reset the profile sync session state.",
-    },
-    forwardToConsole: false,
+  logRuntimeInfo({
+    tag: PROFILE_SYNC_SESSION_LOG_TAG,
+    component: PROFILE_SYNC_SESSION_COMPONENT,
+    event: PROFILE_SYNC_SESSION_LOG_TYPES.reset,
+    message: "Reset the profile sync session state.",
   })
 }

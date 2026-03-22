@@ -2,7 +2,7 @@ import { useState } from "react"
 
 import { getCurrentUserProfile } from "@/features/home/services/homeApi"
 import { isAbortLikeError, throwIfAborted } from "@/shared/async/taskController"
-import { logErrorSafely, logInfoSafely } from "@/shared/logging/safeConsole"
+import { logRuntimeError, logRuntimeInfo } from "@/shared/logging/appLogger"
 import { resetProfileSyncSession, runProfileSync } from "@/shared/session/profileSyncSession"
 import { useUserStore } from "@/shared/store/useUserStore"
 
@@ -18,16 +18,14 @@ const PROFILE_SYNC_LOG_TYPES = {
 export async function syncCurrentUserProfile(force = false, signal?: AbortSignal) {
   return runProfileSync(async () => {
     try {
-      logInfoSafely(PROFILE_SYNC_LOG_TAG, {
-        context: {
-          component: PROFILE_SYNC_COMPONENT,
-          event: PROFILE_SYNC_LOG_TYPES.started,
-          message: "Started syncing the current user profile.",
-          details: {
-            force,
-          },
+      logRuntimeInfo({
+        tag: PROFILE_SYNC_LOG_TAG,
+        component: PROFILE_SYNC_COMPONENT,
+        event: PROFILE_SYNC_LOG_TYPES.started,
+        message: "Started syncing the current user profile.",
+        details: {
+          force,
         },
-        forwardToConsole: false,
       })
 
       throwIfAborted(signal, "Profile sync aborted.")
@@ -35,46 +33,41 @@ export async function syncCurrentUserProfile(force = false, signal?: AbortSignal
       throwIfAborted(signal, "Profile sync aborted.")
       useUserStore.getState().mergeRemoteProfile(profile)
 
-      logInfoSafely(PROFILE_SYNC_LOG_TAG, {
-        context: {
-          component: PROFILE_SYNC_COMPONENT,
-          event: PROFILE_SYNC_LOG_TYPES.completed,
-          message: "Completed syncing the current user profile.",
-          details: {
-            force,
-            hasAddress: Boolean(profile.address),
-          },
+      logRuntimeInfo({
+        tag: PROFILE_SYNC_LOG_TAG,
+        component: PROFILE_SYNC_COMPONENT,
+        event: PROFILE_SYNC_LOG_TYPES.completed,
+        message: "Completed syncing the current user profile.",
+        details: {
+          force,
+          hasAddress: Boolean(profile.address),
         },
-        forwardToConsole: false,
       })
 
       return true
     } catch (error) {
       if (isAbortLikeError(error)) {
-        logInfoSafely(PROFILE_SYNC_LOG_TAG, {
-          context: {
-            component: PROFILE_SYNC_COMPONENT,
-            event: PROFILE_SYNC_LOG_TYPES.aborted,
-            message: "Stopped syncing the current user profile because the task was aborted.",
-            details: {
-              force,
-            },
+        logRuntimeInfo({
+          tag: PROFILE_SYNC_LOG_TAG,
+          component: PROFILE_SYNC_COMPONENT,
+          event: PROFILE_SYNC_LOG_TYPES.aborted,
+          message: "Stopped syncing the current user profile because the task was aborted.",
+          details: {
+            force,
           },
-          forwardToConsole: false,
         })
         return false
       }
 
-      logErrorSafely(PROFILE_SYNC_LOG_TAG, error, {
-        context: {
-          component: PROFILE_SYNC_COMPONENT,
-          event: PROFILE_SYNC_LOG_TYPES.failed,
-          message: "Swallowed a profile sync failure and kept the cached profile unchanged.",
-          details: {
-            force,
-          },
+      logRuntimeError({
+        tag: PROFILE_SYNC_LOG_TAG,
+        component: PROFILE_SYNC_COMPONENT,
+        event: PROFILE_SYNC_LOG_TYPES.failed,
+        message: "Swallowed a profile sync failure and kept the cached profile unchanged.",
+        details: {
+          force,
         },
-        forwardToConsole: false,
+        error,
       })
 
       // Keep cached profile untouched when refresh fails.

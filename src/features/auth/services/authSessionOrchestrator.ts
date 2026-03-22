@@ -1,6 +1,6 @@
 import { syncCurrentUserProfile } from "@/features/home/hooks/useProfileSync"
 import { writeAuthSession } from "@/shared/api/auth-session"
-import { logInfoSafely } from "@/shared/logging/safeConsole"
+import { logRuntimeInfo } from "@/shared/logging/appLogger"
 import { resetProfileSyncSession } from "@/shared/session/profileSyncSession"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useUserStore } from "@/shared/store/useUserStore"
@@ -18,18 +18,16 @@ const AUTH_ORCHESTRATOR_LOG_TYPES = {
 } as const
 
 export async function persistAuthenticatedSession(input: AuthenticatedSessionInput) {
-  logInfoSafely(AUTH_ORCHESTRATOR_LOG_TAG, {
-    context: {
-      component: AUTH_ORCHESTRATOR_COMPONENT,
-      event: AUTH_ORCHESTRATOR_LOG_TYPES.persistAuthenticatedSession,
-      message: "Persisted an authenticated session and started local state hydration.",
-      details: {
-        loginType: input.loginType,
-        hasAddress: Boolean(input.address),
-        hasPasskeyRawId: Boolean(input.passkeyRawId),
-      },
+  logRuntimeInfo({
+    tag: AUTH_ORCHESTRATOR_LOG_TAG,
+    component: AUTH_ORCHESTRATOR_COMPONENT,
+    event: AUTH_ORCHESTRATOR_LOG_TYPES.persistAuthenticatedSession,
+    message: "Persisted an authenticated session and started local state hydration.",
+    details: {
+      loginType: input.loginType,
+      hasAddress: Boolean(input.address),
+      hasPasskeyRawId: Boolean(input.passkeyRawId),
     },
-    forwardToConsole: false,
   })
 
   const session = {
@@ -51,16 +49,14 @@ export async function persistAuthenticatedSession(input: AuthenticatedSessionInp
       address: input.address,
     })
 
-    logInfoSafely(AUTH_ORCHESTRATOR_LOG_TAG, {
-      context: {
-        component: AUTH_ORCHESTRATOR_COMPONENT,
-        event: AUTH_ORCHESTRATOR_LOG_TYPES.seedProfileAddress,
-        message: "Seeded the cached profile with the authenticated wallet address.",
-        details: {
-          seededMissingAddress: true,
-        },
+    logRuntimeInfo({
+      tag: AUTH_ORCHESTRATOR_LOG_TAG,
+      component: AUTH_ORCHESTRATOR_COMPONENT,
+      event: AUTH_ORCHESTRATOR_LOG_TYPES.seedProfileAddress,
+      message: "Seeded the cached profile with the authenticated wallet address.",
+      details: {
+        seededMissingAddress: true,
       },
-      forwardToConsole: false,
     })
   }
 
@@ -71,29 +67,25 @@ export async function persistAuthenticatedSession(input: AuthenticatedSessionInp
     chainId: walletState.chainId ?? DEFAULT_WALLET_CHAIN_ID,
   })
 
-  logInfoSafely(AUTH_ORCHESTRATOR_LOG_TAG, {
-    context: {
-      component: AUTH_ORCHESTRATOR_COMPONENT,
-      event: AUTH_ORCHESTRATOR_LOG_TYPES.walletConnected,
-      message: "Marked the wallet store as connected after authentication.",
-      details: {
-        chainId: walletState.chainId ?? DEFAULT_WALLET_CHAIN_ID,
-      },
+  logRuntimeInfo({
+    tag: AUTH_ORCHESTRATOR_LOG_TAG,
+    component: AUTH_ORCHESTRATOR_COMPONENT,
+    event: AUTH_ORCHESTRATOR_LOG_TYPES.walletConnected,
+    message: "Marked the wallet store as connected after authentication.",
+    details: {
+      chainId: walletState.chainId ?? DEFAULT_WALLET_CHAIN_ID,
     },
-    forwardToConsole: false,
   })
 
   void syncCurrentUserProfile()
 
-  logInfoSafely(AUTH_ORCHESTRATOR_LOG_TAG, {
-    context: {
-      component: AUTH_ORCHESTRATOR_COMPONENT,
-      event: AUTH_ORCHESTRATOR_LOG_TYPES.profileSyncTriggered,
-      message: "Triggered a background profile sync after authentication.",
-      details: {
-        mode: "background",
-      },
+  logRuntimeInfo({
+    tag: AUTH_ORCHESTRATOR_LOG_TAG,
+    component: AUTH_ORCHESTRATOR_COMPONENT,
+    event: AUTH_ORCHESTRATOR_LOG_TYPES.profileSyncTriggered,
+    message: "Triggered a background profile sync after authentication.",
+    details: {
+      mode: "background",
     },
-    forwardToConsole: false,
   })
 }
