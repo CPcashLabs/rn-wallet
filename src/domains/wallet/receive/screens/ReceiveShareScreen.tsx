@@ -12,7 +12,7 @@ import { getReceiveShareDetail } from "@/domains/wallet/receive/services/receive
 import { buildQrCodeDataUrl, buildQrMatrix, stripDataUrlPrefix, type QrMatrix } from "@/domains/wallet/receive/utils/qrcode"
 import { logErrorSafely } from "@/shared/logging/safeConsole"
 import { FieldRow, SectionCard } from "@/shared/ui/AppFlowUi"
-import { fileAdapter, shareAdapter } from "@/shared/native"
+import { mediaLibraryAdapter, shareAdapter } from "@/shared/native"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { AppButton } from "@/shared/ui/AppButton"
@@ -49,9 +49,10 @@ export function ReceiveShareScreen({ navigation, route }: Props) {
 
     try {
       const dataUrl = await buildQrCodeDataUrl(detail.address)
-      const result = await fileAdapter.saveImage({
+      const result = await mediaLibraryAdapter.saveImage({
         filename: `receive-${detail.orderSn}.png`,
         base64: stripDataUrlPrefix(dataUrl),
+        mimeType: "image/png",
       })
 
       if (!result.ok) {

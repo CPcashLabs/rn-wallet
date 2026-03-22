@@ -29,7 +29,7 @@ import { buildQrCodeDataUrl, buildQrMatrix, stripDataUrlPrefix, type QrMatrix } 
 import { resolveChainNameById } from "@/shared/api/walletAssets"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { logErrorSafely } from "@/shared/logging/safeConsole"
-import { clipboardAdapter, fileAdapter, shareAdapter } from "@/shared/native"
+import { clipboardAdapter, mediaLibraryAdapter, shareAdapter } from "@/shared/native"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useUserStore } from "@/shared/store/useUserStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
@@ -312,9 +312,10 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
   async function saveQrImage(input: { address: string; filename: string }) {
     try {
       const dataUrl = await buildQrCodeDataUrl(input.address)
-      const result = await fileAdapter.saveImage({
+      const result = await mediaLibraryAdapter.saveImage({
         filename: input.filename,
         base64: stripDataUrlPrefix(dataUrl),
+        mimeType: "image/png",
       })
 
       if (!result.ok) {

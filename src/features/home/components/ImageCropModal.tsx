@@ -1,27 +1,22 @@
 import React from "react"
 
 import {
-  Animated,
   Dimensions,
-  Image,
   Modal,
-  PanResponder,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  type LayoutChangeEvent,
-  type GestureResponderEvent,
-  type PanResponderGestureState,
 } from "react-native"
+import { Image as ExpoImage } from "expo-image"
 import { useTranslation } from "react-i18next"
+import { CropZoom, type CropContextResult, type CropZoomRefType } from "react-native-zoom-toolkit"
 
-import { stopAnimatedValueListener } from "@/shared/animation/stopAnimatedValueListener"
+import { imageCropAdapter, type PickedImageAsset } from "@/shared/native"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { useToast } from "@/shared/toast/useToast"
 
 const SCREEN_WIDTH = Dimensions.get("window").width
-const MIN_SCALE = 1
-const MAX_SCALE = 5
 
 type CropRatio = {
   w: number
@@ -38,173 +33,59 @@ export const PRESET_RATIOS: CropRatio[] = [
 
 type Props = {
   visible: boolean
-  imageUri: string
+  image: PickedImageAsset
   onConfirm: (cropInfo: CropResult) => void
   onCancel: () => void
   initialRatio?: CropRatio
 }
 
-export type CropResult = {
-  sourceUri: string
-  cropX: number
-  cropY: number
-  cropWidth: number
-  cropHeight: number
-  ratio: CropRatio
-}
+export type CropResult = PickedImageAsset
 
-function distance(touches: React.Touch[] | { pageX: number; pageY: number }[]) {
-  if (touches.length < 2) return 0
-  const dx = touches[0].pageX - touches[1].pageX
-  const dy = touches[0].pageY - touches[1].pageY
-  return Math.sqrt(dx * dx + dy * dy)
-}
-
-/**
- * 头像裁剪弹窗（纯 RN Animated + PanResponder，无额外依赖）。
- *
- * 交互：
- *  - 单指拖动平移图片
- *  - 双指捏合缩放图片（1x ~ 5x）
- *  - 底部选择比例预设
- */
-export function ImageCropModal({ visible, imageUri, onConfirm, onCancel, initialRatio }: Props) {
+export function ImageCropModal({ visible, image, onConfirm, onCancel, initialRatio }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { showToast } = useToast()
+  const cropRef = React.useRef<CropZoomRefType | null>(null)
+  const [submitting, setSubmitting] = React.useState(false)
 
   const [ratio, setRatio] = React.useState<CropRatio>(initialRatio ?? PRESET_RATIOS[0])
-  const [imageLayout, setImageLayout] = React.useState({ width: 0, height: 0 })
-  const [cropBoxSize, setCropBoxSize] = React.useState({ width: 0, height: 0 })
-
-  const translateX = React.useRef(new Animated.Value(0)).current
-  const translateY = React.useRef(new Animated.Value(0)).current
-  const scaleAnim = React.useRef(new Animated.Value(1)).current
-
-  // 手势逻辑使用同步 ref 作为真值，避免依赖 Animated listener 的异步时序。
-  const currentTx = React.useRef(0)
-  const currentTy = React.useRef(0)
-  const currentScale = React.useRef(1)
-
-  const setTranslateXValue = React.useCallback((value: number) => {
-    currentTx.current = value
-    translateX.setValue(value)
-  }, [translateX])
-
-  const setTranslateYValue = React.useCallback((value: number) => {
-    currentTy.current = value
-    translateY.setValue(value)
-  }, [translateY])
-
-  const setScaleValue = React.useCallback((value: number) => {
-    currentScale.current = value
-    scaleAnim.setValue(value)
-  }, [scaleAnim])
-
-  React.useEffect(() => {
-    const idS = scaleAnim.addListener(({ value }) => {
-      currentScale.current = value
-    })
-
-    return () => {
-      stopAnimatedValueListener(scaleAnim, idS)
-    }
-  }, [scaleAnim])
-
-  // 重置动画值
-  const resetTransform = React.useCallback(() => {
-    setTranslateXValue(0)
-    setTranslateYValue(0)
-    setScaleValue(1)
-  }, [setScaleValue, setTranslateXValue, setTranslateYValue])
-
-  React.useEffect(() => {
-    if (visible) resetTransform()
-  }, [visible, ratio, resetTransform])
-
-  // 手势状态
-  const lastTouchDist = React.useRef(0)
-  const lastScale = React.useRef(1)
-  const lastTx = React.useRef(0)
-  const lastTy = React.useRef(0)
-  const isPinching = React.useRef(false)
-
-  const panResponder = React.useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: () => true,
-        onPanResponderGrant: (evt: GestureResponderEvent) => {
-          lastTx.current = currentTx.current
-          lastTy.current = currentTy.current
-          lastScale.current = currentScale.current
-          isPinching.current = evt.nativeEvent.touches.length >= 2
-
-          if (isPinching.current) {
-            lastTouchDist.current = distance(evt.nativeEvent.touches as any)
-          }
-        },
-        onPanResponderMove: (evt: GestureResponderEvent, gestureState: PanResponderGestureState) => {
-          const touches = evt.nativeEvent.touches as any[]
-
-          if (touches.length >= 2) {
-            isPinching.current = true
-            const dist = distance(touches)
-            if (lastTouchDist.current > 0) {
-              const newScale = Math.min(
-                MAX_SCALE,
-                Math.max(MIN_SCALE, lastScale.current * (dist / lastTouchDist.current)),
-              )
-              setScaleValue(newScale)
-            }
-          } else if (!isPinching.current) {
-            setTranslateXValue(lastTx.current + gestureState.dx)
-            setTranslateYValue(lastTy.current + gestureState.dy)
-          }
-        },
-        onPanResponderRelease: () => {
-          // 回弹到最小缩放
-          if (currentScale.current < MIN_SCALE) {
-            Animated.spring(scaleAnim, { toValue: MIN_SCALE, useNativeDriver: true }).start()
-          }
-          isPinching.current = false
-          lastTouchDist.current = 0
-        },
-      }),
-    [scaleAnim, setScaleValue, setTranslateXValue, setTranslateYValue],
-  )
 
   const cropAreaWidth = SCREEN_WIDTH - 48
   const cropAreaHeight = cropAreaWidth * (ratio.h / ratio.w)
 
-  const handleImageLayout = (e: LayoutChangeEvent) => {
-    const { width, height } = e.nativeEvent.layout
-    setImageLayout({ width, height })
-  }
+  React.useEffect(() => {
+    if (visible) {
+      setRatio(initialRatio ?? PRESET_RATIOS[0])
+    }
+  }, [initialRatio, visible])
 
-  const handleCropBoxLayout = (e: LayoutChangeEvent) => {
-    const { width, height } = e.nativeEvent.layout
-    setCropBoxSize({ width, height })
-  }
-
-  const handleConfirm = () => {
-    if (!imageLayout.width || !imageLayout.height || !cropBoxSize.width || !cropBoxSize.height) {
-      onConfirm({ sourceUri: imageUri, cropX: 0, cropY: 0, cropWidth: 1, cropHeight: 1, ratio })
+  const handleConfirm = async () => {
+    const cropResult = cropRef.current?.crop()
+    if (!cropResult) {
+      showToast({ message: t("home.personal.avatarUploadFailed"), tone: "error" })
       return
     }
 
-    const sc = currentScale.current
-    const renderedW = imageLayout.width * sc
-    const renderedH = imageLayout.height * sc
-    const imgCenterX = imageLayout.width / 2 + currentTx.current
-    const imgCenterY = imageLayout.height / 2 + currentTy.current
-    const cropLeft = cropBoxSize.width / 2 - imgCenterX
-    const cropTop = cropBoxSize.height / 2 - imgCenterY
-    const normX = Math.max(0, Math.min(1, cropLeft / renderedW))
-    const normY = Math.max(0, Math.min(1, cropTop / renderedH))
-    const normW = Math.min(1 - normX, cropBoxSize.width / renderedW)
-    const normH = Math.min(1 - normY, cropBoxSize.height / renderedH)
+    setSubmitting(true)
 
-    onConfirm({ sourceUri: imageUri, cropX: normX, cropY: normY, cropWidth: normW, cropHeight: normH, ratio })
+    try {
+      const cropped = await imageCropAdapter.cropImage({
+        source: image,
+        transform: mapCropContextResult(cropResult),
+        format: "jpeg",
+        filename: "avatar.jpg",
+      })
+
+      if (!cropped.ok) {
+        throw cropped.error
+      }
+
+      onConfirm(cropped.data)
+    } catch {
+      showToast({ message: t("home.personal.avatarUploadFailed"), tone: "error" })
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const isDark = theme.isDark
@@ -212,35 +93,33 @@ export function ImageCropModal({ visible, imageUri, onConfirm, onCancel, initial
   return (
     <Modal animationType="slide" onRequestClose={onCancel} transparent={false} visible={visible}>
       <View style={[styles.root, { backgroundColor: isDark ? "#000000" : "#111111" }]}>
-        {/* 顶部工具栏 */}
         <View style={styles.topBar}>
-          <TouchableOpacity hitSlop={12} onPress={onCancel} style={styles.topButton}>
+          <TouchableOpacity disabled={submitting} hitSlop={12} onPress={onCancel} style={styles.topButton}>
             <Text style={styles.topButtonText}>{t("home.personal.cropCancel")}</Text>
           </TouchableOpacity>
           <Text style={styles.topTitle}>{t("home.personal.cropTitle")}</Text>
-          <TouchableOpacity hitSlop={12} onPress={handleConfirm} style={styles.topButton}>
-            <Text style={[styles.topButtonText, styles.topButtonConfirm]}>{t("home.personal.cropConfirm")}</Text>
+          <TouchableOpacity disabled={submitting} hitSlop={12} onPress={() => void handleConfirm()} style={styles.topButton}>
+            <Text style={[styles.topButtonText, styles.topButtonConfirm]}>{submitting ? t("common.loading") : t("home.personal.cropConfirm")}</Text>
           </TouchableOpacity>
         </View>
 
-        {/* 裁剪区域 */}
         <View style={styles.cropContainer}>
-          <View
-            onLayout={handleCropBoxLayout}
-            style={[styles.cropBox, { width: cropAreaWidth, height: cropAreaHeight }]}
-            {...panResponder.panHandlers}
-          >
-            <Animated.Image
-              onLayout={handleImageLayout}
-              resizeMode="contain"
-              source={{ uri: imageUri }}
-              style={[
-                styles.cropImage,
-                { width: cropAreaWidth, height: cropAreaHeight },
-                { transform: [{ translateX }, { translateY }, { scale: scaleAnim }] },
-              ]}
-            />
-            {/* 裁剪框叠层 */}
+          <View style={[styles.cropBox, { width: cropAreaWidth, height: cropAreaHeight }]}>
+            <CropZoom
+              key={`${image.uri}:${ratio.label}`}
+              cropSize={{ width: cropAreaWidth, height: cropAreaHeight }}
+              maxScale={6}
+              ref={cropRef}
+              resolution={{ width: image.width, height: image.height }}
+            >
+              <ExpoImage
+                cachePolicy="memory-disk"
+                contentFit="cover"
+                source={image.uri}
+                style={styles.cropImage}
+                transition={0}
+              />
+            </CropZoom>
             <View pointerEvents="none" style={styles.cropFrame}>
               <View style={[styles.gridLine, styles.gridLineH, { top: "33.33%" }]} />
               <View style={[styles.gridLine, styles.gridLineH, { top: "66.66%" }]} />
@@ -256,7 +135,6 @@ export function ImageCropModal({ visible, imageUri, onConfirm, onCancel, initial
           <Text style={styles.hint}>{t("home.personal.cropHint")}</Text>
         </View>
 
-        {/* 比例选择器 */}
         <View style={styles.ratioBar}>
           {PRESET_RATIOS.map(r => {
             const active = r.label === ratio.label
@@ -274,6 +152,14 @@ export function ImageCropModal({ visible, imageUri, onConfirm, onCancel, initial
       </View>
     </Modal>
   )
+}
+
+function mapCropContextResult(result: CropContextResult) {
+  return {
+    crop: result.crop,
+    context: result.context,
+    resize: result.resize,
+  }
 }
 
 const CORNER_SIZE = 18
@@ -318,9 +204,8 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   cropImage: {
-    position: "absolute",
-    top: 0,
-    left: 0,
+    width: "100%",
+    height: "100%",
   },
   cropFrame: {
     ...StyleSheet.absoluteFillObject,

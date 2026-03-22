@@ -228,7 +228,7 @@ didOutputMetadataObjects:(NSArray<__kindof AVMetadataObject *> *)metadataObjects
 
 @implementation CPCashFilePicker
 
-RCT_EXPORT_MODULE(CPCashFilePicker)
+RCT_EXPORT_MODULE(CPCashScanner)
 
 static NSString *const CPCashFilePickerUnsupportedReason = @"Image picking requires iOS 14 or later.";
 

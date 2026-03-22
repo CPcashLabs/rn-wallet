@@ -1,7 +1,7 @@
 import { resolveAcceptLanguage } from "@/shared/api/language-header"
 import { readTokenPair } from "@/shared/api/auth-session"
 import { resolveApiBaseUrl } from "@/shared/config/runtime"
-import { fileAdapter } from "@/shared/native"
+import { documentExportAdapter } from "@/shared/native"
 
 type ExportEnvelope = {
   code?: number | string
@@ -63,7 +63,7 @@ export async function exportOrderBillFile(input: ExportOrderBillInput): Promise<
   }
 
   const filename = resolveExportFilename(contentDisposition, input)
-  const result = await fileAdapter.exportFile({
+  const result = await documentExportAdapter.exportFile({
     filename,
     content: body,
     mimeType: contentType.split(";")[0] || "text/csv",

@@ -5,7 +5,7 @@ function loadNativeScannerModule(input?: {
   jest.resetModules()
   jest.doMock("react-native", () => ({
     NativeModules: {
-      CPCashFilePicker: input?.nativeModule,
+      CPCashScanner: input?.nativeModule,
     },
     Platform: {
       OS: input?.os ?? "ios",

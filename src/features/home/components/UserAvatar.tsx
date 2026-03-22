@@ -1,9 +1,8 @@
 import React from "react"
 
-import { Image, StyleSheet, Text, View } from "react-native"
+import { Image } from "expo-image"
+import { StyleSheet, Text, View } from "react-native"
 
-import { readCachedAvatarEntry, removeCachedAvatarEntry, writeCachedAvatarEntry } from "@/features/home/services/avatarCache"
-import { cacheAvatarToFile, removeAvatarFile, supportsAvatarFileCache } from "@/features/home/services/avatarFileCache"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 type Props = {
@@ -29,93 +28,12 @@ function appendCacheVersion(uri: string, cacheVersion?: number) {
 export function UserAvatar(props: Props) {
   const theme = useAppTheme()
   const [imageFailed, setImageFailed] = React.useState(false)
-  const normalizedAccountKey = props.accountKey?.trim().toLowerCase() || ""
   const normalizedUri = props.uri?.trim() || ""
   const resolvedUri = appendCacheVersion(normalizedUri, props.cacheVersion)
-  const cacheEntry = readCachedAvatarEntry(normalizedAccountKey)
-  const preferredSource = React.useMemo(() => {
-    if (cacheEntry?.localUri) {
-      return {
-        uri: cacheEntry.localUri,
-        kind: "local" as const,
-        remoteUri: cacheEntry.remoteUri || resolvedUri,
-      }
-    }
-
-    const fallbackRemoteUri = resolvedUri || cacheEntry?.fallbackRemoteUri || ""
-    if (fallbackRemoteUri) {
-      return {
-        uri: fallbackRemoteUri,
-        kind: "remote" as const,
-        remoteUri: fallbackRemoteUri,
-      }
-    }
-
-    return {
-      uri: "",
-      kind: "remote" as const,
-      remoteUri: "",
-    }
-  }, [cacheEntry?.fallbackRemoteUri, cacheEntry?.localUri, cacheEntry?.remoteUri, resolvedUri])
-  const [displaySource, setDisplaySource] = React.useState(preferredSource)
 
   React.useEffect(() => {
     setImageFailed(false)
-  }, [displaySource.uri])
-
-  React.useEffect(() => {
-    setDisplaySource(previous =>
-      previous.uri === preferredSource.uri &&
-      previous.kind === preferredSource.kind &&
-      previous.remoteUri === preferredSource.remoteUri
-        ? previous
-        : preferredSource,
-    )
-    setImageFailed(false)
-  }, [preferredSource])
-
-  React.useEffect(() => {
-    if (!normalizedAccountKey || !resolvedUri || !supportsAvatarFileCache()) {
-      return
-    }
-
-    if (cacheEntry?.remoteUri === resolvedUri && cacheEntry.localUri) {
-      return
-    }
-
-    let cancelled = false
-
-    void cacheAvatarToFile({
-      accountKey: normalizedAccountKey,
-      remoteUri: resolvedUri,
-    })
-      .then(localUri => {
-        if (!localUri) {
-          return
-        }
-
-        if (cancelled) {
-          void removeAvatarFile(localUri).catch(() => undefined)
-          return
-        }
-
-        void writeCachedAvatarEntry({
-          accountKey: normalizedAccountKey,
-          remoteUri: resolvedUri,
-          localUri,
-        }).catch(() => undefined)
-        setDisplaySource({
-          uri: localUri,
-          kind: "local",
-          remoteUri: resolvedUri,
-        })
-      })
-      .catch(() => undefined)
-
-    return () => {
-      cancelled = true
-    }
-  }, [cacheEntry?.localUri, cacheEntry?.remoteUri, normalizedAccountKey, resolvedUri])
+  }, [resolvedUri])
 
   const fallbackLabel = props.label.trim().slice(0, 1).toUpperCase() || "?"
   const fontSize = Math.max(12, Math.round(props.size * 0.38))
@@ -125,7 +43,7 @@ export function UserAvatar(props: Props) {
     borderRadius: props.size / 2,
   } as const
 
-  if (!displaySource.uri || imageFailed) {
+  if (!resolvedUri || imageFailed) {
     return (
       <View style={[styles.fallback, shellStyle, { backgroundColor: theme.colors.primary }]}>
         <Text style={[styles.fallbackText, { fontSize }]}>{fallbackLabel}</Text>
@@ -135,25 +53,15 @@ export function UserAvatar(props: Props) {
 
   return (
     <Image
-      fadeDuration={0}
+      cachePolicy="memory-disk"
+      contentFit="cover"
       onError={() => {
-        if (displaySource.kind === "local") {
-          void removeCachedAvatarEntry(normalizedAccountKey).catch(() => undefined)
-          if (resolvedUri) {
-            setDisplaySource({
-              uri: resolvedUri,
-              kind: "remote",
-              remoteUri: resolvedUri,
-            })
-            setImageFailed(false)
-            return
-          }
-        }
-
         setImageFailed(true)
       }}
-      source={{ uri: displaySource.uri, cache: "force-cache" }}
+      recyclingKey={resolvedUri}
+      source={resolvedUri}
       style={[styles.image, shellStyle]}
+      transition={0}
     />
   )
 }

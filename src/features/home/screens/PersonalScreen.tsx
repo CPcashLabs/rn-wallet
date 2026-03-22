@@ -10,7 +10,7 @@ import { useProfileSync } from "@/features/home/hooks/useProfileSync"
 import { UserAvatar } from "@/features/home/components/UserAvatar"
 import { formatAddress } from "@/features/home/utils/format"
 import { updateProfileAvatar, uploadProfileImage } from "@/features/home/services/homeApi"
-import { fileAdapter, isNativeImagePickerCancelledError } from "@/shared/native"
+import { imagePickerAdapter, isImagePickerCancelledError, type PickedImageAsset } from "@/shared/native"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useUserStore } from "@/shared/store/useUserStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
@@ -33,7 +33,7 @@ export function PersonalScreen({ navigation }: Props) {
   const walletAddress = useWalletStore(state => state.address)
   const patchProfile = useUserStore(state => state.patchProfile)
   const [uploading, setUploading] = React.useState(false)
-  const [cropUri, setCropUri] = React.useState<string | null>(null)
+  const [cropAsset, setCropAsset] = React.useState<PickedImageAsset | null>(null)
 
   const address = walletAddress ?? profile?.address ?? session?.address ?? ""
   const nickname = profile?.nickname || t("home.shell.defaultNickname")
@@ -42,7 +42,7 @@ export function PersonalScreen({ navigation }: Props) {
   const avatar = profile?.avatar
 
   const handleAvatarPress = async () => {
-    const capability = fileAdapter.getCapability()
+    const capability = imagePickerAdapter.getCapability()
 
     if (!capability.supported) {
       showToast({ message: t("home.personal.avatarPending"), tone: "warning" })
@@ -50,18 +50,17 @@ export function PersonalScreen({ navigation }: Props) {
     }
 
     try {
-      const picked = await fileAdapter.pickImage()
+      const picked = await imagePickerAdapter.pickImage()
       if (!picked.ok) {
-        if (isNativeImagePickerCancelledError(picked.error)) {
+        if (isImagePickerCancelledError(picked.error)) {
           return
         }
         throw picked.error
       }
 
-      // 打开裁剪弹窗，后续上传在 handleCropConfirm 中进行
-      setCropUri(picked.data.uri)
+      setCropAsset(picked.data)
     } catch (error) {
-      if (isNativeImagePickerCancelledError(error)) {
+      if (isImagePickerCancelledError(error)) {
         return
       }
 
@@ -70,14 +69,14 @@ export function PersonalScreen({ navigation }: Props) {
   }
 
   const handleCropConfirm = async (cropResult: CropResult) => {
-    setCropUri(null)
+    setCropAsset(null)
     setUploading(true)
 
     try {
       const avatarUrl = await uploadProfileImage({
-        uri: cropResult.sourceUri,
-        name: "avatar.jpg",
-        mimeType: "image/jpeg",
+        uri: cropResult.uri,
+        name: cropResult.name,
+        mimeType: cropResult.mimeType,
       })
       if (!avatarUrl) {
         throw new Error("missing avatar url")
@@ -96,14 +95,14 @@ export function PersonalScreen({ navigation }: Props) {
   }
 
   const handleCropCancel = () => {
-    setCropUri(null)
+    setCropAsset(null)
   }
 
   return (
     <HomeScaffold canGoBack contentContainerStyle={styles.page} onBack={navigation.goBack} title={t("home.personal.title")}>
-      {cropUri ? (
+      {cropAsset ? (
         <ImageCropModal
-          imageUri={cropUri}
+          image={cropAsset}
           onCancel={handleCropCancel}
           onConfirm={handleCropConfirm}
           visible

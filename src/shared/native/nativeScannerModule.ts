@@ -17,7 +17,7 @@ type NativeScannerModuleShape = NativeScannerConstants & {
   scanImage(): Promise<NativeScanPayload>
 }
 
-const nativeScannerModule = NativeModules.CPCashFilePicker as NativeScannerModuleShape | undefined
+const nativeScannerModule = NativeModules.CPCashScanner as NativeScannerModuleShape | undefined
 
 export type NativeScannerMode = "camera" | "image"
 

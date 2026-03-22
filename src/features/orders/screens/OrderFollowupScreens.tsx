@@ -29,7 +29,7 @@ import {
 import { PageEmpty, PrimaryButton, SecondaryButton, SectionCard } from "@/shared/ui/AppFlowUi"
 import { openExternalUrl } from "@/features/settings/utils/settingsHub"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
-import { fileAdapter, shareAdapter } from "@/shared/native"
+import { mediaLibraryAdapter, shareAdapter } from "@/shared/native"
 import { buildQrCodeDataUrl } from "@/shared/qrcode"
 import { useUserStore } from "@/shared/store/useUserStore"
 import { useToast } from "@/shared/toast/useToast"
@@ -221,9 +221,10 @@ export function OrderVoucherScreen({ navigation, route }: VoucherProps) {
     }
 
     const base64 = qrCodeUrl.replace(/^data:image\/png;base64,/, "")
-    const result = await fileAdapter.saveImage({
+    const result = await mediaLibraryAdapter.saveImage({
       filename: `voucher_${route.params.orderSn}.png`,
       base64,
+      mimeType: "image/png",
     })
 
     if (!result.ok) {

@@ -1,16 +1,9 @@
 import React from "react"
 
-import { Image, StyleSheet, Text, View } from "react-native"
-import { SvgUri } from "react-native-svg"
+import { Image } from "expo-image"
+import { StyleSheet, Text, View } from "react-native"
 
 import { useAppTheme } from "@/shared/theme/useAppTheme"
-import {
-  buildNetworkLogoCacheKey,
-  readCachedNetworkLogoEntry,
-  removeCachedNetworkLogoEntry,
-  writeCachedNetworkLogoEntry,
-} from "@/shared/ui/networkLogoCache"
-import { cacheNetworkLogoToFile, removeNetworkLogoFile, supportsNetworkLogoFileCache } from "@/shared/ui/networkLogoFileCache"
 
 type NetworkLogoProps = {
   logoUri?: string | null
@@ -18,12 +11,6 @@ type NetworkLogoProps = {
   chainColor?: string | null
   fallbackMode?: "initials" | "cpcash"
   size?: number
-}
-
-type DisplaySource = {
-  uri: string
-  kind: "local" | "remote"
-  remoteUri: string
 }
 
 function buildLogoCandidates(logoUri?: string | null) {
@@ -41,11 +28,6 @@ function buildLogoCandidates(logoUri?: string | null) {
 
   return candidates
 }
-
-function isSvgUri(uri?: string | null) {
-  return /\.svg(?=([?#].*)?$)/i.test(String(uri ?? "").trim())
-}
-
 export function NetworkLogo(props: NetworkLogoProps) {
   const theme = useAppTheme()
   const size = props.size ?? 34
@@ -53,41 +35,8 @@ export function NetworkLogo(props: NetworkLogoProps) {
   const normalizedChainName = props.chainName.trim()
   const logoSize = Math.round(size * 0.72)
   const candidates = React.useMemo(() => buildLogoCandidates(props.logoUri), [props.logoUri])
-  const logoKey = React.useMemo(
-    () =>
-      buildNetworkLogoCacheKey({
-        chainName: normalizedChainName,
-        fallbackMode,
-      }),
-    [fallbackMode, normalizedChainName],
-  )
-  const cacheEntry = readCachedNetworkLogoEntry(logoKey)
   const [candidateIndex, setCandidateIndex] = React.useState(candidates.length > 0 ? 0 : -1)
-  const activeUri = candidateIndex >= 0 ? candidates[candidateIndex] ?? "" : ""
-  const preferredSource = React.useMemo<DisplaySource>(() => {
-    if (activeUri && cacheEntry?.remoteUri === activeUri && cacheEntry.localUri) {
-      return {
-        uri: cacheEntry.localUri,
-        kind: "local",
-        remoteUri: activeUri,
-      }
-    }
-
-    if (activeUri) {
-      return {
-        uri: activeUri,
-        kind: "remote",
-        remoteUri: activeUri,
-      }
-    }
-
-    return {
-      uri: "",
-      kind: "remote",
-      remoteUri: "",
-    }
-  }, [activeUri, cacheEntry?.localUri, cacheEntry?.remoteUri])
-  const [displaySource, setDisplaySource] = React.useState(preferredSource)
+  const activeUri = React.useMemo(() => (candidateIndex >= 0 ? candidates[candidateIndex] ?? "" : ""), [candidateIndex, candidates])
 
   const advanceCandidate = React.useCallback(() => {
     setCandidateIndex(current => {
@@ -99,81 +48,11 @@ export function NetworkLogo(props: NetworkLogoProps) {
     })
   }, [candidates.length])
 
-  const handleAssetError = React.useCallback(() => {
-    if (displaySource.kind === "local") {
-      void removeCachedNetworkLogoEntry(logoKey).catch(() => undefined)
-
-      if (displaySource.remoteUri) {
-        setDisplaySource({
-          uri: displaySource.remoteUri,
-          kind: "remote",
-          remoteUri: displaySource.remoteUri,
-        })
-        return
-      }
-    }
-
-    advanceCandidate()
-  }, [advanceCandidate, displaySource.kind, displaySource.remoteUri, displaySource.uri, logoKey])
-
   React.useEffect(() => {
     setCandidateIndex(candidates.length > 0 ? 0 : -1)
   }, [candidates])
 
-  React.useEffect(() => {
-    setDisplaySource(previous =>
-      previous.uri === preferredSource.uri &&
-      previous.kind === preferredSource.kind &&
-      previous.remoteUri === preferredSource.remoteUri
-        ? previous
-        : preferredSource,
-    )
-  }, [preferredSource])
-
-  React.useEffect(() => {
-    if (!logoKey || !activeUri || !supportsNetworkLogoFileCache()) {
-      return
-    }
-
-    if (cacheEntry?.remoteUri === activeUri && cacheEntry.localUri) {
-      return
-    }
-
-    let cancelled = false
-
-    void cacheNetworkLogoToFile({
-      logoKey,
-      remoteUri: activeUri,
-    })
-      .then(localUri => {
-        if (!localUri) {
-          return
-        }
-
-        if (cancelled) {
-          void removeNetworkLogoFile(localUri).catch(() => undefined)
-          return
-        }
-
-        void writeCachedNetworkLogoEntry({
-          logoKey,
-          remoteUri: activeUri,
-          localUri,
-        }).catch(() => undefined)
-        setDisplaySource({
-          uri: localUri,
-          kind: "local",
-          remoteUri: activeUri,
-        })
-      })
-      .catch(() => undefined)
-
-    return () => {
-      cancelled = true
-    }
-  }, [activeUri, cacheEntry?.localUri, cacheEntry?.remoteUri, logoKey])
-
-  if (displaySource.uri) {
+  if (activeUri) {
     return (
       <View
         style={[
@@ -187,42 +66,22 @@ export function NetworkLogo(props: NetworkLogoProps) {
           },
         ]}
       >
-        {isSvgUri(displaySource.uri) ? (
-          <SvgUri
-            fallback={
-              <View
-                style={[
-                  styles.image,
-                  {
-                    width: logoSize,
-                    height: logoSize,
-                    borderRadius: logoSize / 2,
-                    backgroundColor: theme.colors.surfaceMuted ?? theme.colors.backgroundMuted,
-                  },
-                ]}
-              />
-            }
-            height={logoSize}
-            onError={handleAssetError}
-            uri={displaySource.uri}
-            width={logoSize}
-          />
-        ) : (
-          <Image
-            fadeDuration={0}
-            onError={handleAssetError}
-            resizeMode="contain"
-            source={{ uri: displaySource.uri, cache: "force-cache" }}
-            style={[
-              styles.image,
-              {
-                width: logoSize,
-                height: logoSize,
-                borderRadius: logoSize / 2,
-              },
-            ]}
-          />
-        )}
+        <Image
+          cachePolicy="memory-disk"
+          contentFit="contain"
+          onError={advanceCandidate}
+          recyclingKey={activeUri}
+          source={activeUri}
+          style={[
+            styles.image,
+            {
+              width: logoSize,
+              height: logoSize,
+              borderRadius: logoSize / 2,
+            },
+          ]}
+          transition={0}
+        />
       </View>
     )
   }
