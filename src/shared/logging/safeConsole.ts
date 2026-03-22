@@ -1,4 +1,4 @@
-import { recordDevConsoleEntry } from "@/shared/logging/devConsole"
+import { recordDevConsoleEntry, type DevConsoleLevel } from "@/shared/logging/devConsole"
 
 const CONTROL_CHARACTERS_PATTERN = /[\u0000-\u001F\u007F]/g
 const QUERY_SECRET_PATTERN =
@@ -11,11 +11,13 @@ const TRON_ADDRESS_PATTERN = /(^|[^A-Za-z0-9_])(T[a-zA-Z0-9]{33})(?=[^A-Za-z0-9_
 const JWT_PATTERN = /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9._-]+\.[A-Za-z0-9._-]+\b/g
 const MAX_LOG_STRING_LENGTH = 180
 
-type LogErrorOptions = {
+type RuntimeLogOptions = {
   context?: unknown
   devMode?: boolean
   forwardToConsole?: boolean
 }
+
+type LogErrorOptions = RuntimeLogOptions
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   if (!value || typeof value !== "object") {
@@ -285,4 +287,44 @@ export function logErrorSafely(tag: string, error: unknown, options?: LogErrorOp
   }
 
   console.error(tag, safeError)
+}
+
+function logRuntimeSafely(level: Extract<DevConsoleLevel, "info" | "warn">, tag: string, options?: RuntimeLogOptions) {
+  const devMode = options?.devMode ?? __DEV__
+
+  if (!devMode) {
+    return
+  }
+
+  const args = options?.context !== undefined ? [tag, options.context] : [tag]
+
+  if (options?.forwardToConsole === false) {
+    recordDevConsoleEntry(level, args)
+    return
+  }
+
+  if (level === "warn") {
+    if (options?.context !== undefined) {
+      console.warn(tag, options.context)
+      return
+    }
+
+    console.warn(tag)
+    return
+  }
+
+  if (options?.context !== undefined) {
+    console.info(tag, options.context)
+    return
+  }
+
+  console.info(tag)
+}
+
+export function logInfoSafely(tag: string, options?: RuntimeLogOptions) {
+  logRuntimeSafely("info", tag, options)
+}
+
+export function logWarnSafely(tag: string, options?: RuntimeLogOptions) {
+  logRuntimeSafely("warn", tag, options)
 }

@@ -1,6 +1,7 @@
 import { z } from "zod"
 
 import { throwIfAborted } from "@/shared/async/taskController"
+import { logInfoSafely, logWarnSafely } from "@/shared/logging/safeConsole"
 import { getSecureItem, removeSecureItem, setSecureItem } from "@/shared/storage/secureStorage"
 import { SecureStorageKeys } from "@/shared/storage/sessionKeys"
 import type { AuthSession, TokenPair } from "@/shared/types/auth"
@@ -23,6 +24,18 @@ type AuthSessionState = {
 }
 
 const AUTH_SESSION_STATE_KEY = "__cpcashAuthSessionState__"
+const AUTH_SESSION_LOG_TAG = "[auth.session]"
+const AUTH_SESSION_COMPONENT = "auth.session"
+const AUTH_SESSION_LOG_TYPES = {
+  cacheHit: "cache_hit",
+  storageRead: "storage_read",
+  write: "write",
+  clear: "clear",
+  legacyMetaParseFailed: "legacy_meta_parse_failed",
+  canonicalVersionCreated: "canonical_version_created",
+  invalidCanonicalSnapshot: "invalid_canonical_snapshot",
+  legacySessionMigrated: "legacy_session_migrated",
+} as const
 
 function getAuthSessionState(): AuthSessionState {
   const globalWithState = globalThis as typeof globalThis & {
@@ -40,6 +53,15 @@ function getAuthSessionState(): AuthSessionState {
   return globalWithState[AUTH_SESSION_STATE_KEY] as AuthSessionState
 }
 
+function describeSessionState(session: Partial<AuthSession> | null | undefined) {
+  return {
+    hasSession: Boolean(session),
+    hasAddress: Boolean(session?.address),
+    loginType: session?.loginType ?? "unknown",
+    hasPasskeyRawId: Boolean(session?.passkeyRawId),
+  }
+}
+
 export async function readAuthSession(signal?: AbortSignal): Promise<AuthSession | null> {
   return withAuthSessionLock(async () => {
     throwIfAborted(signal, "Auth session read aborted.")
@@ -48,12 +70,38 @@ export async function readAuthSession(signal?: AbortSignal): Promise<AuthSession
     throwIfAborted(signal, "Auth session read aborted.")
 
     if (state.cache !== undefined && state.cacheVersion === persistedVersion) {
+      logInfoSafely(AUTH_SESSION_LOG_TAG, {
+        context: {
+          component: AUTH_SESSION_COMPONENT,
+          event: AUTH_SESSION_LOG_TYPES.cacheHit,
+          message: "Read auth session from the in-memory cache.",
+          details: {
+            ...describeSessionState(state.cache),
+            hasPersistedVersion: Boolean(persistedVersion),
+          },
+        },
+        forwardToConsole: false,
+      })
+
       return cloneSession(state.cache)
     }
 
     const { session, version } = await readPersistedAuthSession(persistedVersion, signal)
     state.cache = session
     state.cacheVersion = version
+
+    logInfoSafely(AUTH_SESSION_LOG_TAG, {
+      context: {
+        component: AUTH_SESSION_COMPONENT,
+        event: AUTH_SESSION_LOG_TYPES.storageRead,
+        message: "Read auth session from secure storage.",
+        details: {
+          ...describeSessionState(session),
+          hasPersistedVersion: Boolean(version),
+        },
+      },
+      forwardToConsole: false,
+    })
 
     return cloneSession(session)
   }, signal)
@@ -71,6 +119,16 @@ export async function writeAuthSession(session: AuthSession) {
 
     state.cache = normalized
     state.cacheVersion = version
+
+    logInfoSafely(AUTH_SESSION_LOG_TAG, {
+      context: {
+        component: AUTH_SESSION_COMPONENT,
+        event: AUTH_SESSION_LOG_TYPES.write,
+        message: "Persisted auth session to secure storage.",
+        details: describeSessionState(normalized),
+      },
+      forwardToConsole: false,
+    })
   })
 }
 
@@ -87,6 +145,18 @@ export async function clearAuthSession() {
 
     state.cache = null
     state.cacheVersion = version
+
+    logInfoSafely(AUTH_SESSION_LOG_TAG, {
+      context: {
+        component: AUTH_SESSION_COMPONENT,
+        event: AUTH_SESSION_LOG_TYPES.clear,
+        message: "Cleared auth session from memory and secure storage.",
+        details: {
+          hasSession: false,
+        },
+      },
+      forwardToConsole: false,
+    })
   })
 }
 
@@ -106,6 +176,14 @@ function safeParseMeta(raw: string) {
   try {
     return JSON.parse(raw) as Partial<AuthSession>
   } catch {
+    logWarnSafely(AUTH_SESSION_LOG_TAG, {
+      context: {
+        component: AUTH_SESSION_COMPONENT,
+        event: AUTH_SESSION_LOG_TYPES.legacyMetaParseFailed,
+        message: "Failed to parse legacy auth session metadata.",
+      },
+      forwardToConsole: false,
+    })
     return {}
   }
 }
@@ -176,6 +254,16 @@ async function readPersistedAuthSession(
       await setSecureItem(SecureStorageKeys.AuthSessionVersion, nextVersion)
       throwIfAborted(signal, "Auth session read aborted.")
 
+      logInfoSafely(AUTH_SESSION_LOG_TAG, {
+        context: {
+          component: AUTH_SESSION_COMPONENT,
+          event: AUTH_SESSION_LOG_TYPES.canonicalVersionCreated,
+          message: "Created a missing version for the canonical auth session snapshot.",
+          details: describeSessionState(canonical),
+        },
+        forwardToConsole: false,
+      })
+
       return {
         session: canonical,
         version: nextVersion,
@@ -189,6 +277,15 @@ async function readPersistedAuthSession(
     ])
     throwIfAborted(signal, "Auth session read aborted.")
     resolvedVersion = nextVersion
+
+    logWarnSafely(AUTH_SESSION_LOG_TAG, {
+      context: {
+        component: AUTH_SESSION_COMPONENT,
+        event: AUTH_SESSION_LOG_TYPES.invalidCanonicalSnapshot,
+        message: "Removed an invalid canonical auth session snapshot.",
+      },
+      forwardToConsole: false,
+    })
   }
 
   const legacySession = await readLegacyAuthSession(signal)
@@ -204,6 +301,16 @@ async function readPersistedAuthSession(
   await setSecureItem(SecureStorageKeys.AuthSessionVersion, nextVersion)
   await removeLegacySessionKeys()
   throwIfAborted(signal, "Auth session read aborted.")
+
+  logInfoSafely(AUTH_SESSION_LOG_TAG, {
+    context: {
+      component: AUTH_SESSION_COMPONENT,
+      event: AUTH_SESSION_LOG_TYPES.legacySessionMigrated,
+      message: "Migrated a legacy auth session into the canonical snapshot format.",
+      details: describeSessionState(legacySession),
+    },
+    forwardToConsole: false,
+  })
 
   return {
     session: legacySession,

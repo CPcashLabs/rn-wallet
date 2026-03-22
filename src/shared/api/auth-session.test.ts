@@ -1,4 +1,6 @@
 const mockSecureStore = new Map<string, string>()
+const mockLogInfoSafely = jest.fn()
+const mockLogWarnSafely = jest.fn()
 
 type Deferred = {
   promise: Promise<void>
@@ -50,6 +52,11 @@ jest.mock("react-native-keychain", () => ({
   }),
 }))
 
+jest.mock("@/shared/logging/safeConsole", () => ({
+  logInfoSafely: (...args: unknown[]) => mockLogInfoSafely(...args),
+  logWarnSafely: (...args: unknown[]) => mockLogWarnSafely(...args),
+}))
+
 import { SecureStorageKeys } from "@/shared/storage/sessionKeys"
 import {
   clearAuthSession,
@@ -63,6 +70,8 @@ beforeEach(() => {
   mockCanonicalWriteGate = null
   mockSecureStore.clear()
   jest.clearAllMocks()
+  mockLogInfoSafely.mockReset()
+  mockLogWarnSafely.mockReset()
   resetAuthSessionStateForTests()
 })
 
@@ -96,6 +105,20 @@ describe("auth session storage", () => {
     expect(mockSecureStore.has(SecureStorageKeys.AccessToken)).toBe(false)
     expect(mockSecureStore.has(SecureStorageKeys.RefreshToken)).toBe(false)
     expect(mockSecureStore.has(SecureStorageKeys.SessionMeta)).toBe(false)
+    expect(mockLogInfoSafely).toHaveBeenCalledWith("[auth.session]", {
+      context: {
+        component: "auth.session",
+        event: "legacy_session_migrated",
+        message: "Migrated a legacy auth session into the canonical snapshot format.",
+        details: {
+          hasSession: true,
+          hasAddress: true,
+          loginType: "password",
+          hasPasskeyRawId: false,
+        },
+      },
+      forwardToConsole: false,
+    })
   })
 
   it("serializes concurrent write and read operations to avoid partial snapshots", async () => {
@@ -145,6 +168,21 @@ describe("auth session storage", () => {
       refreshToken: "cached-refresh",
       address: "0xabc",
       loginType: "wallet",
+    })
+    expect(mockLogInfoSafely).toHaveBeenCalledWith("[auth.session]", {
+      context: {
+        component: "auth.session",
+        event: "cache_hit",
+        message: "Read auth session from the in-memory cache.",
+        details: {
+          hasSession: true,
+          hasAddress: true,
+          loginType: "wallet",
+          hasPasskeyRawId: false,
+          hasPersistedVersion: true,
+        },
+      },
+      forwardToConsole: false,
     })
 
     mockSecureStore.set(
@@ -199,6 +237,14 @@ describe("auth session storage", () => {
 
     expect(mockSecureStore.has(SecureStorageKeys.AuthSession)).toBe(false)
     expect(mockSecureStore.get(SecureStorageKeys.AuthSessionVersion)).not.toBe("stale-version")
+    expect(mockLogWarnSafely).toHaveBeenCalledWith("[auth.session]", {
+      context: {
+        component: "auth.session",
+        event: "invalid_canonical_snapshot",
+        message: "Removed an invalid canonical auth session snapshot.",
+      },
+      forwardToConsole: false,
+    })
   })
 
   it("creates a canonical session version when the session exists but no version is stored", async () => {
@@ -218,6 +264,20 @@ describe("auth session storage", () => {
     })
 
     expect(mockSecureStore.get(SecureStorageKeys.AuthSessionVersion)).toBeTruthy()
+    expect(mockLogInfoSafely).toHaveBeenCalledWith("[auth.session]", {
+      context: {
+        component: "auth.session",
+        event: "canonical_version_created",
+        message: "Created a missing version for the canonical auth session snapshot.",
+        details: {
+          hasSession: true,
+          hasAddress: true,
+          loginType: "unknown",
+          hasPasskeyRawId: false,
+        },
+      },
+      forwardToConsole: false,
+    })
   })
 
   it("migrates legacy token pairs even when no session meta is stored", async () => {
@@ -238,6 +298,14 @@ describe("auth session storage", () => {
     await expect(readAuthSession()).resolves.toEqual({
       accessToken: "legacy-access",
       refreshToken: "legacy-refresh",
+    })
+    expect(mockLogWarnSafely).toHaveBeenCalledWith("[auth.session]", {
+      context: {
+        component: "auth.session",
+        event: "legacy_meta_parse_failed",
+        message: "Failed to parse legacy auth session metadata.",
+      },
+      forwardToConsole: false,
     })
   })
 })

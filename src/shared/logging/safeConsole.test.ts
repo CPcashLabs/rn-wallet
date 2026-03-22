@@ -1,5 +1,10 @@
 import { clearDevConsoleEntries, getDevConsoleEntriesByFilter } from "@/shared/logging/devConsole"
-import { logErrorSafely, sanitizeLogValue } from "@/shared/logging/safeConsole"
+import {
+  logErrorSafely,
+  logInfoSafely,
+  logWarnSafely,
+  sanitizeLogValue,
+} from "@/shared/logging/safeConsole"
 
 describe("safeConsole", () => {
   afterEach(() => {
@@ -379,6 +384,65 @@ describe("safeConsole", () => {
     })
 
     expect(spy).toHaveBeenCalledWith("[dev]", error)
+  })
+
+  it("captures development runtime info and warn logs without forwarding them to the console", () => {
+    const infoSpy = jest.spyOn(console, "info").mockImplementation(() => {})
+    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {})
+    const runtime = globalThis as typeof globalThis & {
+      __DEV__?: boolean
+    }
+    const originalDev = runtime.__DEV__
+
+    runtime.__DEV__ = true
+
+    try {
+      logInfoSafely("[runtime.info]", {
+        context: {
+          type: "attach_headers",
+          message: "hasToken=true authorizationAttached=true",
+        },
+        forwardToConsole: false,
+      })
+
+      logWarnSafely("[runtime.warn]", {
+        context: {
+          type: "business_error",
+          message: "status=400 code=500",
+        },
+        forwardToConsole: false,
+      })
+    } finally {
+      runtime.__DEV__ = originalDev
+    }
+
+    expect(infoSpy).not.toHaveBeenCalled()
+    expect(warnSpy).not.toHaveBeenCalled()
+    expect(getDevConsoleEntriesByFilter("runtime")[0]?.message).toContain("[runtime.info]")
+    expect(getDevConsoleEntriesByFilter("warn")[0]?.message).toContain("[runtime.warn]")
+  })
+
+  it("skips runtime logs when development mode is disabled", () => {
+    const infoSpy = jest.spyOn(console, "info").mockImplementation(() => {})
+    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {})
+
+    logInfoSafely("[runtime.info]", {
+      context: {
+        type: "disabled",
+      },
+      devMode: false,
+    })
+    logWarnSafely("[runtime.warn]", {
+      context: {
+        type: "disabled",
+      },
+      devMode: false,
+    })
+
+    expect(infoSpy).not.toHaveBeenCalled()
+    expect(warnSpy).not.toHaveBeenCalled()
+    expect(getDevConsoleEntriesByFilter("runtime")).toHaveLength(0)
+    expect(getDevConsoleEntriesByFilter("warn")).toHaveLength(0)
   })
 
   it("uses the runtime __DEV__ flag when devMode is omitted", () => {
