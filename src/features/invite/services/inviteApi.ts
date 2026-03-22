@@ -1,10 +1,5 @@
 import { apiClient } from "@/shared/api/client"
-
-type ApiEnvelope<T> = {
-  code: number
-  message: string
-  data: T
-}
+import { type ApiEnvelope, unwrapEnvelope } from "@/shared/api/envelope"
 
 type InviteCodePayload = {
   invite_code: string
@@ -28,10 +23,6 @@ export type InviteStatsItem = {
   relationLevel: number
   number: number
   orderCount: number
-}
-
-function unwrapEnvelope<T>(payload: ApiEnvelope<T>) {
-  return payload.data
 }
 
 export async function getInviteCodes() {

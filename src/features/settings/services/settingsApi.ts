@@ -1,10 +1,5 @@
 import { apiClient } from "@/shared/api/client"
-
-type ApiEnvelope<T> = {
-  code: number
-  message: string
-  data: T
-}
+import { type ApiEnvelope, unwrapEnvelope } from "@/shared/api/envelope"
 
 type ExchangeRatePayload = {
   currency: string
@@ -30,10 +25,6 @@ export type ChainNodeConfig = {
   chainFullName: string
   chainId: string
   rpcUrls: string[]
-}
-
-function unwrapEnvelope<T>(payload: ApiEnvelope<T>) {
-  return payload.data
 }
 
 export async function updateTransferEmailNotification(enable: boolean) {

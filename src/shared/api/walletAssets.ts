@@ -1,12 +1,7 @@
 import { apiClient } from "@/shared/api/client"
+import { type ApiEnvelope, unwrapEnvelope } from "@/shared/api/envelope"
 
 export type WalletChainName = "BTT" | "BTT_TEST"
-
-type ApiEnvelope<T> = {
-  code: number
-  message: string
-  data: T
-}
 
 type CoinListPayloadItem = {
   name: string
@@ -32,10 +27,6 @@ export type WalletCoin = {
   contract: string
   price: number
   precision: number
-}
-
-function unwrapEnvelope<T>(payload: ApiEnvelope<T>) {
-  return payload.data
 }
 
 function toWalletCoin(payload: CoinListPayloadItem): WalletCoin {

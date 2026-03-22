@@ -1,10 +1,5 @@
 import { apiClient } from "@/shared/api/client"
-
-type ApiEnvelope<T> = {
-  code: number
-  message: string
-  data: T
-}
+import { type ApiEnvelope, unwrapEnvelope } from "@/shared/api/envelope"
 
 type CreateBridgeOrderPayload = {
   serial_number: string
@@ -34,10 +29,6 @@ export type CreatedNormalOrder = {
   orderType: string
   status: number
   note: string
-}
-
-function unwrapEnvelope<T>(payload: ApiEnvelope<T>) {
-  return payload.data
 }
 
 function toCreatedBridgeOrder(payload: CreateBridgeOrderPayload): CreatedBridgeOrder {

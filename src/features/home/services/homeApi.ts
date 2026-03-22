@@ -1,14 +1,9 @@
 import { apiClient } from "@/shared/api/client"
+import { type ApiEnvelope, unwrapEnvelope } from "@/shared/api/envelope"
 import { buildImageUploadFormDataPart, type UploadableImage } from "@/shared/api/uploadFile"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import type { UserProfile } from "@/shared/types/auth"
-
-type ApiEnvelope<T> = {
-  code: number
-  message: string
-  data: T
-}
 
 type UserProfilePayload = {
   id?: string
@@ -33,10 +28,6 @@ type UploadFilePayload =
       path?: string
       filename?: string
     }
-
-function unwrapEnvelope<T>(payload: ApiEnvelope<T>) {
-  return payload.data
-}
 
 function resolveUploadedFileUrl(payload: UploadFilePayload) {
   if (typeof payload === "string") {

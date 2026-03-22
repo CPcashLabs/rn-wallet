@@ -1,15 +1,10 @@
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { apiClient, authClient } from "@/shared/api/client"
+import { type ApiEnvelope, unwrapEnvelope } from "@/shared/api/envelope"
 import { buildOAuthTokenRequestBody } from "@/shared/api/oauth"
 import type { PasskeyHistoryItem } from "@/shared/types/auth"
 
 import type { AddressValidationResult, AuthTokens, PasswordRules } from "@/features/auth/types"
-
-type ApiEnvelope<T> = {
-  code: number
-  message: string
-  data: T
-}
 
 type PasswordRulesPayload = {
   password_min_length: number
@@ -28,10 +23,6 @@ type AddressValidationPayload = {
 type AuthTokenPayload = {
   access_token: string
   refresh_token: string
-}
-
-function unwrapEnvelope<T>(payload: ApiEnvelope<T>) {
-  return payload.data
 }
 
 function toPasswordRules(payload: PasswordRulesPayload): PasswordRules {

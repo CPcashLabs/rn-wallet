@@ -1,10 +1,5 @@
 import { apiClient } from "@/shared/api/client"
-
-type ApiEnvelope<T> = {
-  code: number
-  message: string
-  data: T
-}
+import { type ApiEnvelope, unwrapEnvelope } from "@/shared/api/envelope"
 
 type AddressBookPayload = {
   id: number | string
@@ -30,10 +25,6 @@ export type AddressBookDraft = {
   name: string
   walletAddress: string
   chainType: "EVM" | "TRON"
-}
-
-function unwrapEnvelope<T>(payload: ApiEnvelope<T>) {
-  return payload.data
 }
 
 function toAddressBookEntry(payload: AddressBookPayload): AddressBookEntry {
