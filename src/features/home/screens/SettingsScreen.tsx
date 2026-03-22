@@ -85,7 +85,7 @@ export function SettingsScreen({ navigation }: Props) {
       onBack={navigation.goBack}
       title={t("home.settings.title")}
     >
-      <Text style={[styles.sectionTitle, { color: theme.colors.mutedText }]}>{t("home.settings.accountSection")}</Text>
+      <Text style={[styles.sectionTitle, theme.typography.footnoteEmphasized, { color: theme.colors.mutedText }]}>{t("home.settings.accountSection")}</Text>
       <AppListCard style={styles.card}>
         <SettingsRow
           icon="lock"
@@ -124,7 +124,7 @@ export function SettingsScreen({ navigation }: Props) {
         />
       </AppListCard>
 
-      <Text style={[styles.sectionTitle, { color: theme.colors.mutedText }]}>{t("home.settings.preferenceSection")}</Text>
+      <Text style={[styles.sectionTitle, theme.typography.footnoteEmphasized, { color: theme.colors.mutedText }]}>{t("home.settings.preferenceSection")}</Text>
       <AppListCard style={styles.card}>
         <SettingsRow
           icon="mail"
@@ -156,14 +156,14 @@ function SettingsRow(props: { label: string; detail?: string; onPress: () => voi
   const theme = useAppTheme()
 
   return (
-    <AppListRow
+      <AppListRow
       hideDivider={props.hideDivider}
       left={<AppGlyph name={props.icon} />}
       onPress={props.onPress}
       right={
         <View style={styles.rowAccessory}>
           {props.detail ? (
-            <Text numberOfLines={1} style={[styles.rowDetail, { color: theme.colors.mutedText }]}>
+            <Text numberOfLines={1} style={[styles.rowDetail, theme.typography.subheadline, { color: theme.colors.mutedText }]}>
               {props.detail}
             </Text>
           ) : null}
@@ -177,19 +177,15 @@ function SettingsRow(props: { label: string; detail?: string; onPress: () => voi
 
 const styles = StyleSheet.create({
   page: {
-    gap: 14,
+    gap: 16,
     paddingBottom: 28,
   },
   card: {
     gap: 0,
   },
   sectionTitle: {
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: "600",
-    letterSpacing: -0.1,
     paddingHorizontal: 6,
-    paddingTop: 2,
+    paddingTop: 4,
   },
   rowAccessory: {
     flexDirection: "row",
@@ -199,18 +195,16 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   rowDetail: {
-    maxWidth: 138,
-    fontSize: 15,
-    lineHeight: 20,
+    maxWidth: 150,
     textAlign: "right",
     flexShrink: 1,
   },
   rowChevron: {
-    fontSize: 20,
-    lineHeight: 20,
+    fontSize: 19,
+    lineHeight: 19,
     fontWeight: "300",
   },
   logoutButton: {
-    marginTop: 2,
+    marginTop: 8,
   },
 })

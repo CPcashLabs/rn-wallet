@@ -19,7 +19,7 @@ import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
 const PREVIEW_LIMIT = 2
-const ROW_HEIGHT = 52
+const ROW_HEIGHT = 56
 const PREVIEW_BODY_HEIGHT = PREVIEW_LIMIT * ROW_HEIGHT
 
 type RowAnimationState = {
@@ -176,13 +176,13 @@ export function HomeMessagePreview(props: { onPress: () => void }) {
   const previewContent =
     ready && loadFailed ? (
       <View style={styles.stateWrap}>
-        <Text style={[styles.stateTitle, { color: theme.colors.text }]}>{t("message.preview.loadFailedTitle")}</Text>
-        <Text style={[styles.stateBody, { color: theme.colors.mutedText }]}>{t("message.preview.loadFailedBody")}</Text>
+        <Text style={[styles.stateTitle, theme.typography.subheadlineEmphasized, { color: theme.colors.text }]}>{t("message.preview.loadFailedTitle")}</Text>
+        <Text style={[styles.stateBody, theme.typography.subheadline, { color: theme.colors.mutedText }]}>{t("message.preview.loadFailedBody")}</Text>
       </View>
     ) : ready && items.length === 0 ? (
       <View style={styles.stateWrap}>
-        <Text style={[styles.stateTitle, { color: theme.colors.text }]}>{t("message.preview.emptyTitle")}</Text>
-        <Text style={[styles.stateBody, { color: theme.colors.mutedText }]}>{t("message.preview.emptyBody")}</Text>
+        <Text style={[styles.stateTitle, theme.typography.subheadlineEmphasized, { color: theme.colors.text }]}>{t("message.preview.emptyTitle")}</Text>
+        <Text style={[styles.stateBody, theme.typography.subheadline, { color: theme.colors.mutedText }]}>{t("message.preview.emptyBody")}</Text>
       </View>
     ) : (
       <View style={styles.rowsWrap}>
@@ -199,6 +199,7 @@ export function HomeMessagePreview(props: { onPress: () => void }) {
             ]}
           >
             <Pressable
+              accessibilityRole="button"
               onPress={props.onPress}
               style={[
                 styles.row,
@@ -209,10 +210,10 @@ export function HomeMessagePreview(props: { onPress: () => void }) {
               ]}
             >
               <View style={styles.rowInline}>
-                <Text numberOfLines={1} style={[styles.rowSummary, { color: theme.colors.text }]}>
+                <Text numberOfLines={1} style={[styles.rowSummary, theme.typography.subheadlineEmphasized, { color: theme.colors.text }]}>
                   {buildPreviewSummary(item, t)}
                 </Text>
-                <Text style={[styles.rowTime, { color: theme.colors.mutedText }]}>{formatRelativeTime(item.createdAt, t)}</Text>
+                <Text style={[styles.rowTime, theme.typography.footnote, { color: theme.colors.mutedText }]}>{formatRelativeTime(item.createdAt, t)}</Text>
               </View>
             </Pressable>
           </Animated.View>
@@ -224,11 +225,13 @@ export function HomeMessagePreview(props: { onPress: () => void }) {
     <SectionCard>
       <View style={styles.header}>
         <View style={styles.headerTitleWrap}>
-          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>{t("message.preview.title")}</Text>
+          <Text style={[styles.headerTitle, theme.typography.headline, { color: theme.colors.text }]}>{t("message.preview.title")}</Text>
           {hasUnread ? <View style={[styles.unreadDot, { backgroundColor: theme.colors.danger }]} /> : null}
         </View>
-        <Pressable onPress={props.onPress} style={styles.headerAction}>
-          <Text style={[styles.headerActionText, { color: theme.colors.primary }]}>{t("message.preview.openAll")}</Text>
+        <Pressable accessibilityRole="button" hitSlop={8} onPress={props.onPress} style={styles.headerAction}>
+          <Text style={[styles.headerActionText, theme.typography.subheadlineEmphasized, { color: theme.colors.primary }]}>
+            {t("message.preview.openAll")}
+          </Text>
         </Pressable>
       </View>
       {previewContent}
@@ -258,19 +261,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   headerTitle: {
-    fontSize: 17,
-    lineHeight: 22,
-    fontWeight: "700",
-    letterSpacing: -0.2,
   },
   headerAction: {
-    paddingVertical: 6,
+    minHeight: 44,
+    minWidth: 44,
+    justifyContent: "center",
   },
   headerActionText: {
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: "700",
-    letterSpacing: -0.1,
   },
   unreadDot: {
     width: 8,
@@ -284,13 +281,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   stateTitle: {
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: "700",
   },
   stateBody: {
-    fontSize: 14,
-    lineHeight: 21,
     textAlign: "center",
   },
   rowWrap: {
@@ -304,7 +296,7 @@ const styles = StyleSheet.create({
     height: ROW_HEIGHT,
     borderBottomWidth: StyleSheet.hairlineWidth,
     justifyContent: "center",
-    paddingVertical: 4,
+    paddingVertical: 6,
   },
   rowLast: {
     borderBottomWidth: 0,
@@ -319,14 +311,8 @@ const styles = StyleSheet.create({
   rowSummary: {
     flex: 1,
     minWidth: 0,
-    fontSize: 15,
-    lineHeight: 22,
-    fontWeight: "600",
-    letterSpacing: -0.12,
   },
   rowTime: {
-    fontSize: 13,
-    lineHeight: 18,
     flexShrink: 0,
   },
 })
