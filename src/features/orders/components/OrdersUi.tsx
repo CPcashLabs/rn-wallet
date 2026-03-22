@@ -5,8 +5,10 @@ import { Pressable, StyleSheet, Text, View, type StyleProp, type TextStyle, type
 import { SectionCard } from "@/shared/ui/AppFlowUi"
 import { formatAddress } from "@/features/home/utils/format"
 import { OrderCounterpartyAvatar } from "@/features/orders/components/OrderCounterpartyAvatar"
-import type { OrderListItem } from "@/features/orders/services/ordersApi"
+import { useOrderLogStatisticsQuery } from "@/features/orders/queries/orderQueries"
+import type { OrderListItem, OrderTypeFilter } from "@/features/orders/services/ordersApi"
 import {
+  buildMonthRange,
   formatCompactTimestamp,
   formatMonthKey,
   formatTokenAmount,
@@ -153,10 +155,27 @@ export function OrderMonthSection(props: {
   month: string
   items: OrderListItem[]
   t: Translator
+  orderType?: OrderTypeFilter
+  otherAddress?: string
   onPressItem: (item: OrderListItem) => void
 }) {
   const theme = useAppTheme()
-  const summary = summarizeOrderMonthItems(props.items)
+  const monthRange = React.useMemo(() => buildMonthRange(props.month), [props.month])
+  const statisticsQuery = useOrderLogStatisticsQuery(
+    {
+      otherAddress: props.otherAddress,
+      orderType: props.orderType,
+      startedAt: monthRange?.startedAt,
+      endedAt: monthRange?.endedAt,
+      startedTimestamp: monthRange?.startedTimestamp,
+      endedTimestamp: monthRange?.endedTimestamp,
+    },
+    {
+      enabled: Boolean(monthRange),
+    },
+  )
+  const payment = formatSummaryValue(statisticsQuery.data?.paymentAmount)
+  const receipt = formatSummaryValue(statisticsQuery.data?.receiptAmount)
 
   return (
     <SectionCard style={styles.recordGroupCard}>
@@ -172,7 +191,7 @@ export function OrderMonthSection(props: {
           ]}
         >
           <Text style={[styles.recordSummaryLabel, { color: theme.colors.mutedText }]}>{props.t("orders.summary.payment")}</Text>
-          <Text style={[styles.recordSummaryValue, { color: theme.colors.text }]}>{summary.payment}</Text>
+          <Text style={[styles.recordSummaryValue, { color: theme.colors.text }]}>{payment}</Text>
         </View>
         <View
           style={[
@@ -181,7 +200,7 @@ export function OrderMonthSection(props: {
           ]}
         >
           <Text style={[styles.recordSummaryLabel, { color: theme.colors.mutedText }]}>{props.t("orders.summary.receipt")}</Text>
-          <Text style={[styles.recordSummaryValue, { color: theme.colors.success }]}>{summary.receipt}</Text>
+          <Text style={[styles.recordSummaryValue, { color: theme.colors.success }]}>{receipt}</Text>
         </View>
       </View>
 
@@ -249,23 +268,12 @@ export function OrderMonthSection(props: {
   )
 }
 
-function summarizeOrderMonthItems(items: OrderListItem[]) {
-  let payment = 0
-  let receipt = 0
-
-  items.forEach(item => {
-    if (isIncomingOrderType(item.orderType)) {
-      receipt += item.recvActualAmount || item.recvAmount
-      return
-    }
-
-    payment += item.sendActualAmount || item.sendAmount
-  })
-
-  return {
-    payment: formatTokenAmount(payment, 2),
-    receipt: formatTokenAmount(receipt, 2),
+function formatSummaryValue(value?: number) {
+  if (value === undefined) {
+    return "--"
   }
+
+  return formatTokenAmount(value, 2)
 }
 
 function formatAmountWithSign(item: OrderListItem) {

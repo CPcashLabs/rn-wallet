@@ -241,6 +241,33 @@ export function formatMonthKey(value: number | null) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
 }
 
+export function buildMonthRange(monthKey: string): TimeRange | null {
+  const match = /^(\d{4})-(\d{2})$/.exec(monthKey)
+  if (!match) {
+    return null
+  }
+
+  const year = Number(match[1])
+  const month = Number(match[2]) - 1
+  if (!Number.isInteger(year) || !Number.isInteger(month) || month < 0 || month > 11) {
+    return null
+  }
+
+  const start = new Date(year, month, 1, 0, 0, 0, 0)
+  if (start.getFullYear() !== year || start.getMonth() !== month) {
+    return null
+  }
+
+  const end = new Date(year, month + 1, 0, 23, 59, 59, 999)
+
+  return {
+    startedAt: toApiDateTime(start),
+    endedAt: toApiDateTime(end),
+    startedTimestamp: start.getTime(),
+    endedTimestamp: end.getTime(),
+  }
+}
+
 export function groupOrdersByMonth(items: OrderListItem[]) {
   const map = new Map<string, OrderListItem[]>()
 

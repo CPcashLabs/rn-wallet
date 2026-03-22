@@ -1,6 +1,7 @@
 import {
   OrderStatus,
   buildFlowProofRange,
+  buildMonthRange,
   buildRangeSelection,
   formatAddressLabel,
   formatCompactTimestamp,
@@ -261,6 +262,13 @@ describe("orderHelpers", () => {
     expect(formatMonthKey(null)).toBe("Unknown")
     expect(toApiDateTime(new Date(2026, 2, 15, 10, 20, 30))).toBe("2026-03-15 10:20:30")
     expect(formatMonthKey(new Date(2026, 2, 15, 10, 20, 30).getTime())).toBe("2026-03")
+    expect(buildMonthRange("2026-03")).toEqual({
+      startedAt: "2026-03-01 00:00:00",
+      endedAt: "2026-03-31 23:59:59",
+      startedTimestamp: new Date(2026, 2, 1, 0, 0, 0, 0).getTime(),
+      endedTimestamp: new Date(2026, 2, 31, 23, 59, 59, 999).getTime(),
+    })
+    expect(buildMonthRange("Unknown")).toBeNull()
   })
 
   it("returns placeholders when compact timestamp coercion throws", () => {

@@ -279,6 +279,8 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
           <OrderMonthSection
             month={month}
             items={monthItems}
+            orderType={orderType}
+            otherAddress={props.otherAddress}
             t={t}
             onPressItem={item =>
               props.navigation.navigate("OrderDetailScreen", {

@@ -46,6 +46,10 @@ export type OrderDetailQueryData = {
   labelBinding: OrderLabelBinding
 }
 
+type OrderLogStatisticsQueryOptions = {
+  enabled?: boolean
+}
+
 export const EMPTY_ORDER_LABEL_BINDING: OrderLabelBinding = {
   notes: "",
   notesImageUrl: "",
@@ -169,10 +173,11 @@ export function useOrderLogsInfiniteQuery(args: OrderLogsQueryArgs, perPage = 20
   return query
 }
 
-export function useOrderLogStatisticsQuery(args: OrderLogsQueryArgs) {
+export function useOrderLogStatisticsQuery(args: OrderLogsQueryArgs, options?: OrderLogStatisticsQueryOptions) {
   return useQuery({
     queryKey: orderKeys.logsStats(args),
     queryFn: () => getOrderTxlogStatistics(args),
+    enabled: options?.enabled ?? true,
   })
 }
 
