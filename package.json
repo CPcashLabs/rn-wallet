@@ -20,6 +20,7 @@
     "check:repo": "node ./scripts/verify-repo-standards.mjs"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
     "@react-native-clipboard/clipboard": "^1.16.3",
     "@react-native-documents/picker": "^12.0.1",
     "@react-navigation/bottom-tabs": "^7.2.0",
@@ -41,6 +42,7 @@
     "jsencrypt": "^3.5.4",
     "qrcode": "^1.5.4",
     "react": "^19.1.0",
+    "react-hook-form": "^7.72.0",
     "react-i18next": "^15.2.0",
     "react-native": "^0.81.4",
     "react-native-gesture-handler": "^2.30.0",

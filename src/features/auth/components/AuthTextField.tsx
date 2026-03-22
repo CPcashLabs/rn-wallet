@@ -9,6 +9,7 @@ export function AuthTextField(props: {
   label?: string
   value: string
   onChangeText: (value: string) => void
+  onBlur?: () => void
   placeholder?: string
   secureTextEntry?: boolean
   editable?: boolean
@@ -43,6 +44,7 @@ export function AuthTextField(props: {
         label={props.label}
         multiline={props.multiline}
         numberOfLines={props.numberOfLines}
+        onBlur={props.onBlur}
         onChangeText={props.onChangeText}
         placeholder={props.placeholder}
         rightSlot={props.rightSlot}

@@ -136,6 +136,8 @@ const auth = {
     capabilityUnavailable: "原生能力暂未接入。",
     nicknameRequired: "请先输入昵称。",
     addressRequired: "请输入钱包地址。",
+    passwordRequired: "请输入密码。",
+    confirmPasswordRequired: "请再次输入密码。",
     addressNotFound: "未找到该钱包地址。",
     importSecretRequired: "请输入助记词或私钥。",
     invalidImportSecret: "请输入有效的助记词或私钥。",

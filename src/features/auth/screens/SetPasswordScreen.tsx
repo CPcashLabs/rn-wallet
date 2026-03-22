@@ -1,6 +1,8 @@
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 
 import { Text } from "react-native"
+import { Controller, useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -10,8 +12,8 @@ import { AuthTextField } from "@/features/auth/components/AuthTextField"
 import { getPasswordRules, registerPassword, resetPasswordByAddress, signInWithPassword } from "@/features/auth/services/authApi"
 import { persistAuthenticatedSession } from "@/features/auth/services/authSessionOrchestrator"
 import { getAuthErrorMessage } from "@/features/auth/utils/authMessages"
+import { createPasswordSetupSchema } from "@/features/auth/utils/passwordFormSchema"
 import { encryptByPublicKey } from "@/features/auth/utils/passwordCrypto"
-import { validatePasswordAgainstRules } from "@/features/auth/utils/passwordValidation"
 import { resetToMainTabs } from "@/app/navigation/navigationRef"
 import type { AuthStackParamList } from "@/app/navigation/types"
 import type { PasswordRules } from "@/features/auth/types"
@@ -33,6 +35,11 @@ type PasswordSetupScreenProps = {
   mode: PasswordSetupMode
 }
 
+type PasswordSetupFormValues = {
+  password: string
+  passwordAgain: string
+}
+
 function PasswordSetupScreen(props: PasswordSetupScreenProps) {
   const { t } = useTranslation()
   const { presentMessage } = useErrorPresenter()
@@ -40,10 +47,31 @@ function PasswordSetupScreen(props: PasswordSetupScreenProps) {
   const randomString = props.route.params?.randomString
   const isResetMode = props.mode === "reset"
   const [rules, setRules] = useState<PasswordRules | null>(null)
-  const [password, setPassword] = useState("")
-  const [passwordAgain, setPasswordAgain] = useState("")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const passwordMessages = useMemo(
+    () => ({
+      confirmPasswordRequired: t("auth.errors.confirmPasswordRequired"),
+      currentPasswordRequired: t("auth.errors.passwordRequired"),
+      passwordMismatch: t("auth.errors.passwordMismatch"),
+      passwordRequired: t("auth.errors.passwordRequired"),
+    }),
+    [t],
+  )
+  const passwordSchema = useMemo(() => createPasswordSetupSchema(rules, passwordMessages), [passwordMessages, rules])
+  const {
+    control,
+    formState: { errors, isValid },
+    handleSubmit,
+    trigger,
+  } = useForm<PasswordSetupFormValues>({
+    defaultValues: {
+      password: "",
+      passwordAgain: "",
+    },
+    mode: "onChange",
+    resolver: zodResolver(passwordSchema),
+  })
 
   useEffect(() => {
     let mounted = true
@@ -68,7 +96,15 @@ function PasswordSetupScreen(props: PasswordSetupScreenProps) {
     }
   }, [])
 
-  const submit = async () => {
+  useEffect(() => {
+    if (!rules) {
+      return
+    }
+
+    void trigger()
+  }, [rules, trigger])
+
+  const submit = handleSubmit(async values => {
     if (!address) {
       presentMessage(t("auth.errors.addressRequired"))
       return
@@ -76,17 +112,6 @@ function PasswordSetupScreen(props: PasswordSetupScreenProps) {
 
     if (!rules) {
       presentMessage(t("auth.errors.loadPasswordRulesFailed"))
-      return
-    }
-
-    const validationMessage = validatePasswordAgainstRules(password, rules)
-    if (validationMessage) {
-      setErrorMessage(validationMessage)
-      return
-    }
-
-    if (password !== passwordAgain) {
-      setErrorMessage(t("auth.errors.passwordMismatch"))
       return
     }
 
@@ -99,7 +124,7 @@ function PasswordSetupScreen(props: PasswordSetupScreenProps) {
     setErrorMessage(null)
 
     try {
-      const encryptedPassword = encryptByPublicKey(rules.rsaPublicKey, password)
+      const encryptedPassword = encryptByPublicKey(rules.rsaPublicKey, values.password)
 
       if (isResetMode) {
         await resetPasswordByAddress({
@@ -114,7 +139,7 @@ function PasswordSetupScreen(props: PasswordSetupScreenProps) {
         })
       }
 
-      const tokens = await signInWithPassword(address, password)
+      const tokens = await signInWithPassword(address, values.password)
       await persistAuthenticatedSession({
         ...tokens,
         address,
@@ -132,7 +157,7 @@ function PasswordSetupScreen(props: PasswordSetupScreenProps) {
     } finally {
       setSubmitting(false)
     }
-  }
+  })
 
   return (
     <AuthScaffold
@@ -142,28 +167,43 @@ function PasswordSetupScreen(props: PasswordSetupScreenProps) {
       subtitle={t(isResetMode ? "auth.setPassword.subtitle" : "auth.firstSetPassword.subtitle", { address })}
     >
       <Text>{t("auth.setPassword.ruleHint", { min: rules?.passwordMinLength ?? 6 })}</Text>
-      <AuthTextField
-        error={errorMessage}
-        label={t("auth.setPassword.passwordLabel")}
-        onChangeText={value => {
-          setPassword(value)
-          setErrorMessage(null)
-        }}
-        placeholder={t("auth.setPassword.passwordPlaceholder")}
-        secureTextEntry
-        value={password}
+      <Controller
+        control={control}
+        name="password"
+        render={({ field: { onBlur, onChange, value } }) => (
+          <AuthTextField
+            error={errors.password?.message ?? errorMessage}
+            label={t("auth.setPassword.passwordLabel")}
+            onBlur={onBlur}
+            onChangeText={nextValue => {
+              onChange(nextValue)
+              setErrorMessage(null)
+            }}
+            placeholder={t("auth.setPassword.passwordPlaceholder")}
+            secureTextEntry
+            value={value}
+          />
+        )}
       />
-      <AuthTextField
-        label={t("auth.setPassword.confirmLabel")}
-        onChangeText={value => {
-          setPasswordAgain(value)
-          setErrorMessage(null)
-        }}
-        placeholder={t("auth.setPassword.confirmPlaceholder")}
-        secureTextEntry
-        value={passwordAgain}
+      <Controller
+        control={control}
+        name="passwordAgain"
+        render={({ field: { onBlur, onChange, value } }) => (
+          <AuthTextField
+            error={errors.passwordAgain?.message}
+            label={t("auth.setPassword.confirmLabel")}
+            onBlur={onBlur}
+            onChangeText={nextValue => {
+              onChange(nextValue)
+              setErrorMessage(null)
+            }}
+            placeholder={t("auth.setPassword.confirmPlaceholder")}
+            secureTextEntry
+            value={value}
+          />
+        )}
       />
-      <AuthButton label={t("common.confirm")} loading={submitting} onPress={() => void submit()} />
+      <AuthButton disabled={!rules || !isValid || submitting} label={t("common.confirm")} loading={submitting} onPress={() => void submit()} />
     </AuthScaffold>
   )
 }

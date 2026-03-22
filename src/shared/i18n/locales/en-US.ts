@@ -136,6 +136,8 @@ const auth = {
     capabilityUnavailable: "This native capability is not connected yet.",
     nicknameRequired: "Please enter a nickname first.",
     addressRequired: "Please enter wallet address.",
+    passwordRequired: "Please enter a password.",
+    confirmPasswordRequired: "Please confirm the password.",
     addressNotFound: "This wallet address was not found.",
     importSecretRequired: "Please enter a recovery phrase or private key.",
     invalidImportSecret: "Please enter a valid recovery phrase or private key.",

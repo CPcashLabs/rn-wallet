@@ -1,6 +1,8 @@
 import React, { useState } from "react"
 
 import { Pressable, Switch, Text } from "react-native"
+import { Controller, useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { useTranslation } from "react-i18next"
 
 import { usePersistentCountdown } from "@/shared/hooks/usePersistentCountdown"
@@ -24,6 +26,15 @@ import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { AppTextField } from "@/shared/ui/AppTextField"
 
 import { Card, PrimaryButton, Row, type StackProps, styles, useProfileRefresh } from "@/features/settings/screens/settingsShared"
+import { createEmailCodeSchema, createEmailSchema } from "@/features/settings/utils/emailFormSchemas"
+
+type EmailFormValues = {
+  email: string
+}
+
+type EmailCodeFormValues = {
+  code: string
+}
 
 export function EmailNotificationScreen({ navigation }: StackProps<"EmailNotificationScreen">) {
   const theme = useAppTheme()
@@ -85,9 +96,24 @@ export function EmailHomeScreen({ navigation }: StackProps<"EmailHomeScreen">) {
   const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
   const profile = useUserStore(state => state.profile)
-  const [email, setEmail] = useState(profile?.email ?? "")
   const [loading, setLoading] = useState(false)
-  const emailValid = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)
+  const emailSchema = createEmailSchema({
+    codeInvalid: t("auth.errors.invalidEmailCaptcha"),
+    codeRequired: t("auth.errors.invalidEmailCaptcha"),
+    emailInvalid: t("settingsHub.email.invalid"),
+    emailRequired: t("settingsHub.email.invalid"),
+  })
+  const {
+    control,
+    formState: { isValid },
+    handleSubmit,
+  } = useForm<EmailFormValues>({
+    defaultValues: {
+      email: profile?.email ?? "",
+    },
+    mode: "onChange",
+    resolver: zodResolver(emailSchema),
+  })
 
   if (profile?.email) {
     return (
@@ -101,13 +127,14 @@ export function EmailHomeScreen({ navigation }: StackProps<"EmailHomeScreen">) {
     )
   }
 
-  const handleNext = async () => {
+  const handleNext = handleSubmit(async values => {
     try {
       setLoading(true)
-      await sendBindEmailCaptcha(email.trim())
+      const email = values.email.trim()
+      await sendBindEmailCaptcha(email)
       setNumber(KvStorageKeys.EmailBindCountdownEndAt, Date.now() + 60_000)
       showToast({ message: t("settingsHub.email.codeSent"), tone: "success" })
-      navigation.navigate("VerifyEmailScreen", { email: email.trim() })
+      navigation.navigate("VerifyEmailScreen", { email })
     } catch (error) {
       presentError(error, {
         fallbackKey: "settingsHub.email.sendCodeFailed",
@@ -116,22 +143,29 @@ export function EmailHomeScreen({ navigation }: StackProps<"EmailHomeScreen">) {
     } finally {
       setLoading(false)
     }
-  }
+  })
 
   return (
     <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.email.title")}>
       <Card>
         <Text style={styles.sectionLabel}>{t("settingsHub.email.inputLabel")}</Text>
-        <AppTextField
-          autoCapitalize="none"
-          error={!emailValid && email.length > 0 ? t("settingsHub.email.invalid") : null}
-          keyboardType="email-address"
-          onChangeText={setEmail}
-          placeholder={t("settingsHub.email.placeholder")}
-          value={email}
+        <Controller
+          control={control}
+          name="email"
+          render={({ field: { onBlur, onChange, value }, fieldState }) => (
+            <AppTextField
+              autoCapitalize="none"
+              error={fieldState.error?.message ?? null}
+              keyboardType="email-address"
+              onBlur={onBlur}
+              onChangeText={onChange}
+              placeholder={t("settingsHub.email.placeholder")}
+              value={value}
+            />
+          )}
         />
       </Card>
-      <PrimaryButton disabled={!emailValid} label={t("common.next")} loading={loading} onPress={() => void handleNext()} />
+      <PrimaryButton disabled={!isValid || loading} label={t("common.next")} loading={loading} onPress={() => void handleNext()} />
     </HomeScaffold>
   )
 }
@@ -142,10 +176,26 @@ export function EmailUnbindScreen({ navigation }: StackProps<"EmailUnbindScreen"
   const { showToast } = useToast()
   const profile = useUserStore(state => state.profile)
   const refreshProfile = useProfileRefresh()
-  const [code, setCode] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [sending, setSending] = useState(false)
   const countdown = usePersistentCountdown(KvStorageKeys.EmailUnbindCountdownEndAt, 60_000)
+  const codeSchema = createEmailCodeSchema({
+    codeInvalid: t("auth.errors.invalidEmailCaptcha"),
+    codeRequired: t("auth.errors.invalidEmailCaptcha"),
+    emailInvalid: t("settingsHub.email.invalid"),
+    emailRequired: t("settingsHub.email.invalid"),
+  })
+  const {
+    control,
+    formState: { isValid },
+    handleSubmit,
+  } = useForm<EmailCodeFormValues>({
+    defaultValues: {
+      code: "",
+    },
+    mode: "onChange",
+    resolver: zodResolver(codeSchema),
+  })
 
   const handleSend = async () => {
     try {
@@ -163,10 +213,10 @@ export function EmailUnbindScreen({ navigation }: StackProps<"EmailUnbindScreen"
     }
   }
 
-  const handleConfirm = async () => {
+  const handleConfirm = handleSubmit(async values => {
     try {
       setSubmitting(true)
-      await unbindEmail({ email: profile?.email ?? "", captcha: code.trim() })
+      await unbindEmail({ email: profile?.email ?? "", captcha: values.code.trim() })
       await refreshProfile()
       navigation.navigate("SettingsHomeScreen")
     } catch (error) {
@@ -177,25 +227,33 @@ export function EmailUnbindScreen({ navigation }: StackProps<"EmailUnbindScreen"
     } finally {
       setSubmitting(false)
     }
-  }
+  })
 
   return (
     <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.email.unbindTitle")}>
       <Card>
         <Text style={styles.centerMuted}>{t("settingsHub.email.currentBound")}</Text>
         <Text style={styles.emailValue}>{profile?.email}</Text>
-        <AppTextField
-          keyboardType="number-pad"
-          maxLength={6}
-          onChangeText={setCode}
-          placeholder={t("settingsHub.email.codePlaceholder")}
-          value={code}
+        <Controller
+          control={control}
+          name="code"
+          render={({ field: { onBlur, onChange, value }, fieldState }) => (
+            <AppTextField
+              error={fieldState.error?.message ?? null}
+              keyboardType="number-pad"
+              maxLength={6}
+              onBlur={onBlur}
+              onChangeText={onChange}
+              placeholder={t("settingsHub.email.codePlaceholder")}
+              value={value}
+            />
+          )}
         />
         <Pressable disabled={countdown.isActive || sending} onPress={() => void handleSend()} style={styles.inlineTextButton}>
           <Text style={styles.inlineTextButtonLabel}>{countdown.isActive ? t("settingsHub.email.resendCountdown", { sec: countdown.secondsLeft }) : t("settingsHub.email.sendCode")}</Text>
         </Pressable>
       </Card>
-      <PrimaryButton disabled={code.length !== 6} label={t("common.confirm")} loading={submitting} onPress={() => void handleConfirm()} />
+      <PrimaryButton disabled={!isValid || submitting} label={t("common.confirm")} loading={submitting} onPress={() => void handleConfirm()} />
     </HomeScaffold>
   )
 }
@@ -205,15 +263,31 @@ export function VerifyEmailScreen({ navigation, route }: StackProps<"VerifyEmail
   const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
   const refreshProfile = useProfileRefresh()
-  const [code, setCode] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [sending, setSending] = useState(false)
   const countdown = usePersistentCountdown(KvStorageKeys.EmailBindCountdownEndAt, 60_000)
+  const codeSchema = createEmailCodeSchema({
+    codeInvalid: t("auth.errors.invalidEmailCaptcha"),
+    codeRequired: t("auth.errors.invalidEmailCaptcha"),
+    emailInvalid: t("settingsHub.email.invalid"),
+    emailRequired: t("settingsHub.email.invalid"),
+  })
+  const {
+    control,
+    formState: { isValid },
+    handleSubmit,
+  } = useForm<EmailCodeFormValues>({
+    defaultValues: {
+      code: "",
+    },
+    mode: "onChange",
+    resolver: zodResolver(codeSchema),
+  })
 
-  const handleSubmit = async () => {
+  const submitVerification = handleSubmit(async values => {
     try {
       setSubmitting(true)
-      await bindEmail({ email: route.params.email, captcha: code.trim() })
+      await bindEmail({ email: route.params.email, captcha: values.code.trim() })
       await refreshProfile()
       navigation.navigate("SettingsHomeScreen")
     } catch (error) {
@@ -224,7 +298,7 @@ export function VerifyEmailScreen({ navigation, route }: StackProps<"VerifyEmail
     } finally {
       setSubmitting(false)
     }
-  }
+  })
 
   const handleResend = async () => {
     try {
@@ -247,18 +321,26 @@ export function VerifyEmailScreen({ navigation, route }: StackProps<"VerifyEmail
       <Card>
         <Text style={styles.sectionLabel}>{t("settingsHub.email.verifySentTo")}</Text>
         <Text style={styles.emailValue}>{route.params.email}</Text>
-        <AppTextField
-          keyboardType="number-pad"
-          maxLength={6}
-          onChangeText={setCode}
-          placeholder={t("settingsHub.email.codePlaceholder")}
-          value={code}
+        <Controller
+          control={control}
+          name="code"
+          render={({ field: { onBlur, onChange, value }, fieldState }) => (
+            <AppTextField
+              error={fieldState.error?.message ?? null}
+              keyboardType="number-pad"
+              maxLength={6}
+              onBlur={onBlur}
+              onChangeText={onChange}
+              placeholder={t("settingsHub.email.codePlaceholder")}
+              value={value}
+            />
+          )}
         />
         <Pressable disabled={countdown.isActive || sending} onPress={() => void handleResend()} style={styles.inlineTextButton}>
           <Text style={styles.inlineTextButtonLabel}>{countdown.isActive ? t("settingsHub.email.resendCountdown", { sec: countdown.secondsLeft }) : t("settingsHub.email.resend")}</Text>
         </Pressable>
       </Card>
-      <PrimaryButton disabled={code.length !== 6} label={t("common.confirm")} loading={submitting} onPress={() => void handleSubmit()} />
+      <PrimaryButton disabled={!isValid || submitting} label={t("common.confirm")} loading={submitting} onPress={() => void submitVerification()} />
     </HomeScaffold>
   )
 }
