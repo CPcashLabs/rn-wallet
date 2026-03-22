@@ -262,11 +262,8 @@ export function HomeShellScreen({ navigation, route }: Props) {
   }
 
   const handleOpenProfile = useCallback(() => {
-    navigateRoot("MainTabs", {
-      screen: "MeTab",
-      params: {
-        screen: "PersonalScreen",
-      },
+    navigateRoot("SettingsStack", {
+      screen: "PersonalScreen",
     })
   }, [])
 

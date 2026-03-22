@@ -11,6 +11,7 @@ import { MainTabNavigator } from "@/app/navigation/MainTabNavigator"
 import { MessageStackNavigator } from "@/app/navigation/MessageStackNavigator"
 import { OrdersStackNavigator } from "@/app/navigation/OrdersStackNavigator"
 import { ReceiveStackNavigator } from "@/domains/wallet/receive/ReceiveStackNavigator"
+import { SettingsStackNavigator } from "@/app/navigation/SettingsStackNavigator"
 import { SupportNavigator } from "@/app/navigation/SupportNavigator"
 import { TransferStackNavigator } from "@/domains/wallet/transfer/TransferStackNavigator"
 
@@ -24,6 +25,7 @@ export function RootNavigator() {
       <Stack.Screen name="BootstrapGate" component={BootstrapGate} />
       <Stack.Screen name="AuthStack" component={AuthNavigator} />
       <Stack.Screen name="MainTabs" component={MainTabNavigator} />
+      <Stack.Screen name="SettingsStack" component={SettingsStackNavigator} />
       <Stack.Screen name="MessageStack" component={MessageStackNavigator} />
       <Stack.Screen name="OrdersStack" component={OrdersStackNavigator} />
       <Stack.Screen name="HelpStack" component={HelpStackNavigator} />

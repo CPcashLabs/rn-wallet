@@ -415,6 +415,7 @@ export type RootStackParamList = {
   BootstrapGate: undefined
   AuthStack: NavigatorScreenParams<AuthStackParamList>
   MainTabs: NavigatorScreenParams<MainTabParamList>
+  SettingsStack: NavigatorScreenParams<SettingsStackParamList>
   MessageStack: NavigatorScreenParams<MessageStackParamList>
   OrdersStack: NavigatorScreenParams<OrdersStackParamList>
   HelpStack: NavigatorScreenParams<HelpStackParamList>
