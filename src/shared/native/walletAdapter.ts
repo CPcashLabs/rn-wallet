@@ -1,5 +1,5 @@
 import type { AdapterResult, CapabilityDescriptor } from "@/shared/native/types"
-import { broadcastTransferWithLocalWallet, getOrCreateLocalWallet, importLocalWallet, readLocalWalletCapability, signWithLocalWallet } from "@/shared/native/localWalletVault"
+import { broadcastTransferWithLocalWallet, importLocalWallet, readLocalWalletCapability, signWithLocalWallet } from "@/shared/native/localWalletVault"
 import type { WalletImportType } from "@/shared/native/walletImport"
 
 export type WalletConnection = {
@@ -23,7 +23,6 @@ export type BroadcastTransferParams = {
 
 export interface WalletAdapter {
   getCapability(): CapabilityDescriptor
-  connect(): Promise<AdapterResult<WalletConnection>>
   importSecret(secret: string): Promise<AdapterResult<ImportedWalletConnection>>
   signMessage(message: string): Promise<AdapterResult<{ signature: string }>>
   signAndBroadcastTransfer(params: BroadcastTransferParams): Promise<AdapterResult<{ txHash: string }>>
@@ -32,25 +31,6 @@ export interface WalletAdapter {
 export const walletAdapter: WalletAdapter = {
   getCapability() {
     return readLocalWalletCapability()
-  },
-  async connect() {
-    try {
-      const wallet = await getOrCreateLocalWallet()
-
-      return {
-        ok: true,
-        data: {
-          address: wallet.address,
-          chainId: wallet.chainId,
-          providerName: wallet.providerName,
-        },
-      }
-    } catch (error) {
-      return {
-        ok: false,
-        error: error instanceof Error ? error : new Error("Wallet connection failed"),
-      } as AdapterResult<WalletConnection>
-    }
   },
   async importSecret(secret) {
     try {

@@ -4,7 +4,6 @@ import { NativeCapabilityUnavailableError } from "@/shared/errors"
 import { parseWalletImportInput } from "@/shared/native/walletImport"
 import { getJson, removeItem } from "@/shared/storage/kvStorage"
 import { getSecureItem, removeSecureItem, setSecureItem } from "@/shared/storage/secureStorage"
-import { hasSecureRandomValues } from "@/shared/utils/secureRandom"
 import { getRpcProvider } from "@/shared/web3/balanceService"
 
 import type { WalletImportType } from "@/shared/native/walletImport"
@@ -79,30 +78,16 @@ async function resolveStoredLocalWallet(): Promise<LocalWalletRecord | null> {
   return toLocalWalletRecord(privateKey, "Local Test Wallet")
 }
 
-async function resolveSigningWallet() {
+async function requireStoredLocalWallet() {
   const storedLocalWallet = await resolveStoredLocalWallet()
   if (storedLocalWallet) {
     return storedLocalWallet
   }
 
-  return getOrCreateLocalWallet()
-}
-
-function createGeneratedLocalWalletRecord(): LocalWalletRecord {
-  if (!hasSecureRandomValues()) {
-    throw createLocalWalletUnavailableError()
-  }
-
-  return toLocalWalletRecord(Wallet.createRandom().privateKey, "Local Test Wallet")
+  throw createLocalWalletUnavailableError()
 }
 
 export function readLocalWalletCapability() {
-  if (!hasSecureRandomValues()) {
-    return {
-      supported: false,
-    }
-  }
-
   return {
     supported: true,
   }
@@ -119,18 +104,6 @@ export async function purgeLegacyLocalKeyMaterial() {
   removeItem(PASSKEY_CREDENTIALS_KEY)
 }
 
-export async function getOrCreateLocalWallet(): Promise<LocalWalletRecord> {
-  const existingWallet = await resolveStoredLocalWallet()
-  if (existingWallet) {
-    return existingWallet
-  }
-
-  const wallet = createGeneratedLocalWalletRecord()
-  await setSecureItem(LOCAL_WALLET_KEY, wallet.privateKey)
-
-  return wallet
-}
-
 export async function importLocalWallet(secret: string): Promise<ImportedLocalWalletConnection> {
   const importedWallet = parseWalletImportInput(secret)
   await setSecureItem(LOCAL_WALLET_KEY, importedWallet.privateKey)
@@ -144,7 +117,7 @@ export async function importLocalWallet(secret: string): Promise<ImportedLocalWa
 }
 
 export async function signWithLocalWallet(message: string): Promise<{ signature: string }> {
-  const wallet = await resolveSigningWallet()
+  const wallet = await requireStoredLocalWallet()
   const signer = new Wallet(wallet.privateKey)
 
   return {
@@ -153,7 +126,7 @@ export async function signWithLocalWallet(message: string): Promise<{ signature:
 }
 
 export async function broadcastTransferWithLocalWallet(params: BroadcastTransferParams): Promise<{ txHash: string }> {
-  const wallet = await resolveSigningWallet()
+  const wallet = await requireStoredLocalWallet()
   const provider = getRpcProvider(params.chainId)
   const signer = new Wallet(wallet.privateKey, provider)
   const precision = params.coinPrecision > 0 ? params.coinPrecision : 18

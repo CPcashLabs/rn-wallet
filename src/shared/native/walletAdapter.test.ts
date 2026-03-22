@@ -1,12 +1,10 @@
 const mockReadLocalWalletCapability = jest.fn()
-const mockGetOrCreateLocalWallet = jest.fn()
 const mockImportLocalWallet = jest.fn()
 const mockSignWithLocalWallet = jest.fn()
 const mockBroadcastTransferWithLocalWallet = jest.fn()
 
 jest.mock("@/shared/native/localWalletVault", () => ({
   readLocalWalletCapability: (...args: unknown[]) => mockReadLocalWalletCapability(...args),
-  getOrCreateLocalWallet: (...args: unknown[]) => mockGetOrCreateLocalWallet(...args),
   importLocalWallet: (...args: unknown[]) => mockImportLocalWallet(...args),
   signWithLocalWallet: (...args: unknown[]) => mockSignWithLocalWallet(...args),
   broadcastTransferWithLocalWallet: (...args: unknown[]) => mockBroadcastTransferWithLocalWallet(...args),
@@ -17,7 +15,6 @@ import { walletAdapter } from "@/shared/native/walletAdapter"
 describe("walletAdapter", () => {
   beforeEach(() => {
     mockReadLocalWalletCapability.mockReset()
-    mockGetOrCreateLocalWallet.mockReset()
     mockImportLocalWallet.mockReset()
     mockSignWithLocalWallet.mockReset()
     mockBroadcastTransferWithLocalWallet.mockReset()
@@ -33,12 +30,7 @@ describe("walletAdapter", () => {
     })
   })
 
-  it("connects and imports wallets through the local auth vault", async () => {
-    mockGetOrCreateLocalWallet.mockResolvedValue({
-      address: "0xabc",
-      chainId: "199",
-      providerName: "Local Wallet",
-    })
+  it("imports wallets through the local auth vault", async () => {
     mockImportLocalWallet.mockResolvedValue({
       address: "0xdef",
       chainId: "199",
@@ -46,14 +38,6 @@ describe("walletAdapter", () => {
       importedType: "private-key",
     })
 
-    await expect(walletAdapter.connect()).resolves.toEqual({
-      ok: true,
-      data: {
-        address: "0xabc",
-        chainId: "199",
-        providerName: "Local Wallet",
-      },
-    })
     await expect(walletAdapter.importSecret("secret")).resolves.toEqual({
       ok: true,
       data: {
@@ -95,17 +79,10 @@ describe("walletAdapter", () => {
   })
 
   it("normalizes wallet operation failures", async () => {
-    mockGetOrCreateLocalWallet.mockRejectedValue("connect failed")
     mockImportLocalWallet.mockRejectedValue("import failed")
     mockSignWithLocalWallet.mockRejectedValue("sign failed")
     mockBroadcastTransferWithLocalWallet.mockRejectedValue("broadcast failed")
 
-    await expect(walletAdapter.connect()).resolves.toMatchObject({
-      ok: false,
-      error: {
-        message: "Wallet connection failed",
-      },
-    })
     await expect(walletAdapter.importSecret("secret")).resolves.toMatchObject({
       ok: false,
       error: {
@@ -134,17 +111,10 @@ describe("walletAdapter", () => {
   })
 
   it("preserves Error instances from wallet operations", async () => {
-    mockGetOrCreateLocalWallet.mockRejectedValue(new Error("Wallet locked"))
     mockImportLocalWallet.mockRejectedValue(new Error("Invalid private key"))
     mockSignWithLocalWallet.mockRejectedValue(new Error("Signing rejected"))
     mockBroadcastTransferWithLocalWallet.mockRejectedValue(new Error("RPC unavailable"))
 
-    await expect(walletAdapter.connect()).resolves.toMatchObject({
-      ok: false,
-      error: {
-        message: "Wallet locked",
-      },
-    })
     await expect(walletAdapter.importSecret("secret")).resolves.toMatchObject({
       ok: false,
       error: {

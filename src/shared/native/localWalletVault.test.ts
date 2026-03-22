@@ -93,7 +93,6 @@ jest.mock("react-native-keychain", () => ({
 import {
   broadcastTransferWithLocalWallet,
   createLocalWalletUnavailableError,
-  getOrCreateLocalWallet,
   importLocalWallet,
   purgeLegacyLocalKeyMaterial,
   readLocalWalletCapability,
@@ -110,8 +109,6 @@ const TEST_PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae78
 const TEST_ADDRESS = "0x1234567890abcdef1234567890abcdef12345678"
 
 describe("localWalletVault", () => {
-  const originalCryptoDescriptor = Object.getOwnPropertyDescriptor(globalThis, "crypto")
-
   beforeEach(() => {
     mockGetMmkvStore().clear()
     mockGetSecureStore().clear()
@@ -120,12 +117,6 @@ describe("localWalletVault", () => {
     mockContractTransfer.mockReset()
     ;(Contract as unknown as jest.Mock).mockClear()
     jest.restoreAllMocks()
-  })
-
-  afterEach(() => {
-    if (originalCryptoDescriptor) {
-      Object.defineProperty(globalThis, "crypto", originalCryptoDescriptor)
-    }
   })
 
   it("purges stored local wallet and legacy passkey key material", async () => {
@@ -154,44 +145,12 @@ describe("localWalletVault", () => {
     })
   })
 
-  it("disables local wallet capability when secure random values are unavailable", () => {
-    Object.defineProperty(globalThis, "crypto", {
-      configurable: true,
-      value: undefined,
-    })
-
-    expect(readLocalWalletCapability()).toEqual({
-      supported: false,
-    })
-  })
-
   it("creates a wallet capability unavailable error", () => {
     expect(createLocalWalletUnavailableError()).toMatchObject({
       name: "NativeCapabilityUnavailableError",
       capability: "wallet",
       message: "Local wallet operation is unavailable in the current flow.",
     })
-  })
-
-  it("creates and reuses a local wallet, then signs with the stored key", async () => {
-    const createRandomSpy = jest.spyOn(Wallet, "createRandom").mockReturnValue({
-      privateKey: TEST_PRIVATE_KEY,
-    } as never)
-    const createdWallet = await getOrCreateLocalWallet()
-    const reusedWallet = await getOrCreateLocalWallet()
-    const storedPrivateKey = await getSecureItem(LOCAL_WALLET_KEY)
-
-    expect(reusedWallet).toEqual(createdWallet)
-    expect(createRandomSpy).toHaveBeenCalledTimes(1)
-    expect(storedPrivateKey).not.toBeNull()
-    if (!storedPrivateKey) {
-      throw new Error("Expected stored private key")
-    }
-
-    const signature = await signWithLocalWallet("hello-local-wallet")
-    const expectedSignature = await new Wallet(storedPrivateKey).signMessage("hello-local-wallet")
-
-    expect(signature.signature).toBe(expectedSignature)
   })
 
   it("imports mnemonic and private-key secrets with the expected provider names", async () => {
@@ -209,20 +168,17 @@ describe("localWalletVault", () => {
     })
   })
 
-  it("creates a local wallet on-demand when signing without stored material", async () => {
-    const createRandomSpy = jest.spyOn(Wallet, "createRandom").mockReturnValue({
-      privateKey: TEST_PRIVATE_KEY,
-    } as never)
-    const signature = await signWithLocalWallet("auto-created-wallet")
-    const storedPrivateKey = await getSecureItem(LOCAL_WALLET_KEY)
+  it("signs with an imported wallet and refuses to auto-create one", async () => {
+    await expect(signWithLocalWallet("missing-wallet")).rejects.toMatchObject({
+      name: "NativeCapabilityUnavailableError",
+      capability: "wallet",
+    })
 
-    expect(createRandomSpy).toHaveBeenCalledTimes(1)
-    expect(storedPrivateKey).not.toBeNull()
-    if (!storedPrivateKey) {
-      throw new Error("Expected auto-created private key")
-    }
+    await setSecureItem(LOCAL_WALLET_KEY, TEST_PRIVATE_KEY)
 
-    const expectedSignature = await new Wallet(storedPrivateKey).signMessage("auto-created-wallet")
+    const signature = await signWithLocalWallet("stored-wallet")
+    const expectedSignature = await new Wallet(TEST_PRIVATE_KEY).signMessage("stored-wallet")
+
     expect(signature.signature).toBe(expectedSignature)
   })
 
