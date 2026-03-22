@@ -232,7 +232,8 @@ export function TransferOrderScreen({ navigation, route }: Props) {
     return `${t("transfer.order.receiveEstimate")}: ${formatAmount(resolvedOption.recvEstimateAmount)} ${resolvedOption.recvCoinSymbol}`
   }, [hasCurrentQuote, quoteRequired, resolvedOption?.recvCoinSymbol, resolvedOption?.recvEstimateAmount, t])
   const amountSecondaryMessage = inputValidationMessage || quoteValidationMessage || quoteHint
-  const amountSecondaryColor = inputValidationMessage || quoteFailed ? theme.colors.danger : theme.colors.mutedText
+  const amountSecondaryColor =
+    inputValidationMessage || quoteFailed ? theme.colors.danger : quoteHint ? theme.colors.primary : theme.colors.mutedText
   const quickNoteOptions = useMemo(
     () =>
       QUICK_NOTE_KEYS.map(key => ({
@@ -264,15 +265,15 @@ export function TransferOrderScreen({ navigation, route }: Props) {
     return ""
   }, [addressBookEntries, avatarVersion, profile?.address, profile?.avatar, recipientAddress, walletAddress])
   const isCompactHeight = screenHeight < 860
-  const contentHorizontalInset = clamp(Math.round(screenWidth * 0.054), 18, 24)
-  const contentGap = isCompactHeight ? 16 : 20
-  const cardRadius = isCompactHeight ? 24 : 28
-  const recipientAvatarSize = isCompactHeight ? 62 : 68
-  const amountCardMinHeight = clamp(Math.round(screenHeight * 0.2), 168, 196)
-  const amountFontSize = clamp(Math.round(screenWidth * 0.13), 44, 54)
-  const amountCurrencySize = clamp(amountFontSize - 2, 40, 50)
-  const buttonHeight = isCompactHeight ? 54 : 58
-  const keyboardRowHeight = isCompactHeight ? 68 : 72
+  const contentHorizontalInset = clamp(Math.round(screenWidth * 0.05), 16, 20)
+  const contentGap = isCompactHeight ? 16 : 18
+  const cardRadius = isCompactHeight ? 20 : 22
+  const recipientAvatarSize = isCompactHeight ? 56 : 60
+  const amountCardMinHeight = clamp(Math.round(screenHeight * 0.185), 156, 184)
+  const amountFontSize = clamp(Math.round(screenWidth * 0.12), 42, 50)
+  const amountCurrencySize = clamp(amountFontSize - 8, 34, 42)
+  const buttonHeight = isCompactHeight ? 52 : 56
+  const keyboardRowHeight = isCompactHeight ? 64 : 68
   const amountSelection = useMemo(
     () => ({
       start: sendAmount.length,
@@ -479,21 +480,24 @@ export function TransferOrderScreen({ navigation, route }: Props) {
     )
   }
 
-  const pageBackgroundColor = theme.isDark ? "#101114" : "#F2F2F7"
-  const cardBackgroundColor = theme.isDark ? "#17191D" : "#FFFFFF"
-  const dividerColor = theme.isDark ? "#2A2D33" : "#E5E5EA"
-  const cardBorderColor = theme.isDark ? "#262A31" : "#E8E8ED"
+  const pageBackgroundColor = theme.colors.backgroundMuted ?? theme.colors.background
+  const cardBackgroundColor = theme.colors.surfaceElevated ?? theme.colors.surface
+  const secondarySurfaceColor = theme.colors.surfaceMuted ?? theme.colors.background
+  const dividerColor = theme.colors.border
+  const cardBorderColor = theme.colors.border
   const textColor = theme.colors.text
-  const mutedColor = theme.isDark ? "#8B9098" : "#8E8E93"
-  const placeholderColor = theme.isDark ? "#5C626D" : "#C7C7CC"
-  const warningBackgroundColor = theme.isDark ? "rgba(255, 120, 28, 0.12)" : "#FFF4E6"
-  const warningTextColor = theme.isDark ? "#FFB16B" : "#FF6A00"
-  const keyboardKeyBackground = theme.isDark ? "#14161A" : "#FFFFFF"
-  const keyboardSideBackground = theme.isDark ? "#21252B" : "#F1F1F1"
-  const keyboardKeyBorderColor = theme.isDark ? "#272A30" : "#EAEAEA"
-  const submitBackgroundColor = canSubmit ? "#F6A04D" : keyboardSideBackground
-  const submitTextColor = canSubmit ? "#FFFFFF" : (theme.isDark ? "#7D828C" : "#B6B8BD")
-  const caretColor = "#4E8EF7"
+  const mutedColor = theme.colors.mutedText
+  const placeholderColor = theme.colors.mutedText
+  const accentColor = theme.colors.primary
+  const accentSoftColor = theme.colors.primarySoft ?? `${theme.colors.primary}14`
+  const noticeBackgroundColor = accentSoftColor
+  const noticeBorderColor = theme.isDark ? "rgba(10,132,255,0.32)" : "rgba(10,132,255,0.18)"
+  const keyboardKeyBackground = cardBackgroundColor
+  const keyboardKeyBorderColor = theme.colors.border
+  const submitBackgroundColor = canSubmit ? accentColor : secondarySurfaceColor
+  const submitTextColor = canSubmit ? "#FFFFFF" : mutedColor
+  const caretColor = accentColor
+  const keyboardHandleColor = theme.isDark ? "#48484A" : "#C7C7CC"
   const availableText = t("transfer.order.availableBalance", {
     amount: formatAmount(availableBalance),
     symbol: selectedOption?.sendCoinSymbol || selectedOption?.sendCoinCode || titleSymbol,
@@ -501,43 +505,25 @@ export function TransferOrderScreen({ navigation, route }: Props) {
 
   return (
     <View style={styles.screenRoot}>
-      <HomeScaffold backgroundColor={cardBackgroundColor} hideHeader reserveFloatingOverlayInset={false} scroll={false} title={t("transfer.order.title")}>
+      <HomeScaffold backgroundColor={pageBackgroundColor} hideHeader reserveFloatingOverlayInset={false} scroll={false} title={t("transfer.order.title")}>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={[styles.layoutRoot, { backgroundColor: pageBackgroundColor }]}>
-          <View
-            style={[
-              styles.headerRow,
-              {
-                backgroundColor: cardBackgroundColor,
-                borderBottomColor: dividerColor,
-              },
-            ]}
-          >
-            <Pressable accessibilityLabel={t("common.back")} hitSlop={12} onPress={navigation.goBack} style={styles.headerIconButton}>
-              <SFSymbolIcon color={textColor} fallbackName="chevron-left" name="chevron.left" size={24} />
-            </Pressable>
+          <View style={styles.headerRow}>
+            <View style={styles.headerSide}>
+              <Pressable accessibilityLabel={t("common.back")} hitSlop={12} onPress={navigation.goBack} style={styles.headerIconButton}>
+                <SFSymbolIcon color={accentColor} fallbackName="chevron-left" name="chevron.left" size={20} weight="medium" />
+              </Pressable>
+            </View>
             <Text numberOfLines={1} style={[styles.headerTitle, { color: textColor }]}>
               {t("transfer.order.title")}
             </Text>
-            <Pressable accessibilityLabel={t("transfer.order.recordsAction")} hitSlop={12} onPress={handleOpenRecords} style={styles.headerActionButton}>
-              <Text numberOfLines={1} style={[styles.headerActionText, { color: textColor }]}>
-                {t("transfer.order.recordsAction")}
-              </Text>
-            </Pressable>
-          </View>
-
-          {bannerVisible ? (
-            <View style={[styles.bannerRow, { backgroundColor: warningBackgroundColor }]}>
-              <View style={styles.bannerContent}>
-                <SFSymbolIcon color={warningTextColor} fallbackName="bullhorn-outline" name="speaker.wave.2.fill" size={20} />
-                <Text numberOfLines={1} style={[styles.bannerText, { color: warningTextColor }]}>
-                  {t("transfer.order.warningBanner")}
+            <View style={[styles.headerSide, styles.headerSideRight]}>
+              <Pressable accessibilityLabel={t("transfer.order.recordsAction")} hitSlop={12} onPress={handleOpenRecords} style={styles.headerActionButton}>
+                <Text numberOfLines={1} style={[styles.headerActionText, { color: accentColor }]}>
+                  {t("transfer.order.recordsAction")}
                 </Text>
-              </View>
-              <Pressable hitSlop={10} onPress={() => setBannerVisible(false)} style={styles.bannerCloseButton}>
-                <SFSymbolIcon color={warningTextColor} fallbackName="close" name="xmark" size={20} />
               </Pressable>
             </View>
-          ) : null}
+          </View>
 
           <ScrollView
             bounces={false}
@@ -554,7 +540,8 @@ export function TransferOrderScreen({ navigation, route }: Props) {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <View style={styles.recipientSection}>
+            <View style={styles.sectionGroup}>
+              <Text style={[styles.sectionLabel, { color: mutedColor }]}>{t("transfer.order.recipientLabel")}</Text>
               <View
                 style={[
                   styles.recipientCard,
@@ -562,7 +549,7 @@ export function TransferOrderScreen({ navigation, route }: Props) {
                     backgroundColor: cardBackgroundColor,
                     borderColor: cardBorderColor,
                     borderRadius: cardRadius,
-                    paddingHorizontal: isCompactHeight ? 16 : 18,
+                    paddingHorizontal: 16,
                     paddingVertical: isCompactHeight ? 14 : 16,
                   },
                 ]}
@@ -582,6 +569,26 @@ export function TransferOrderScreen({ navigation, route }: Props) {
                   </Text>
                 </View>
               </View>
+
+              {bannerVisible ? (
+                <View
+                  style={[
+                    styles.noticeCard,
+                    {
+                      backgroundColor: noticeBackgroundColor,
+                      borderColor: noticeBorderColor,
+                    },
+                  ]}
+                >
+                  <View style={styles.noticeContent}>
+                    <SFSymbolIcon color={accentColor} fallbackName="alert-circle-outline" name="exclamationmark.circle.fill" size={18} />
+                    <Text style={[styles.noticeText, { color: textColor }]}>{t("transfer.order.warningBanner")}</Text>
+                  </View>
+                  <Pressable hitSlop={10} onPress={() => setBannerVisible(false)} style={styles.noticeCloseButton}>
+                    <SFSymbolIcon color={mutedColor} fallbackName="close" name="xmark" size={16} />
+                  </Pressable>
+                </View>
+              ) : null}
             </View>
 
             <Pressable
@@ -591,12 +598,12 @@ export function TransferOrderScreen({ navigation, route }: Props) {
                 styles.amountCard,
                 {
                   backgroundColor: cardBackgroundColor,
-                  borderColor: cardBorderColor,
+                  borderColor: activeField === "amount" ? noticeBorderColor : cardBorderColor,
                   borderRadius: cardRadius,
                   minHeight: amountCardMinHeight,
-                  paddingHorizontal: isCompactHeight ? 22 : 24,
-                  paddingTop: isCompactHeight ? 20 : 22,
-                  paddingBottom: isCompactHeight ? 18 : 20,
+                  paddingHorizontal: 20,
+                  paddingTop: isCompactHeight ? 18 : 20,
+                  paddingBottom: isCompactHeight ? 16 : 18,
                 },
               ]}
             >
@@ -643,10 +650,18 @@ export function TransferOrderScreen({ navigation, route }: Props) {
               </View>
             </Pressable>
 
-            <View style={styles.amountHelperGroup}>
-              <Text style={[styles.amountHelperText, { color: mutedColor }]}>{availableText}</Text>
+            <View
+              style={[
+                styles.amountHelperGroup,
+                {
+                  backgroundColor: secondarySurfaceColor,
+                  borderColor: cardBorderColor,
+                },
+              ]}
+            >
+              <Text style={[styles.amountHelperPrimary, { color: mutedColor }]}>{availableText}</Text>
               {amountSecondaryMessage ? (
-                <Text style={[styles.amountHelperText, { color: amountSecondaryColor }]}>{amountSecondaryMessage}</Text>
+                <Text style={[styles.amountHelperSecondary, { color: amountSecondaryColor }]}>{amountSecondaryMessage}</Text>
               ) : null}
             </View>
 
@@ -656,15 +671,18 @@ export function TransferOrderScreen({ navigation, route }: Props) {
                 styles.noteCard,
                 {
                   backgroundColor: cardBackgroundColor,
-                  borderColor: cardBorderColor,
+                  borderColor: activeField === "note" ? noticeBorderColor : cardBorderColor,
                   borderRadius: cardRadius,
-                  paddingHorizontal: isCompactHeight ? 22 : 24,
-                  paddingTop: isCompactHeight ? 20 : 22,
+                  paddingHorizontal: 20,
+                  paddingTop: isCompactHeight ? 18 : 20,
                   paddingBottom: isCompactHeight ? 16 : 18,
                 },
               ]}
             >
-              <Text style={[styles.cardTitle, { color: textColor }]}>{t("transfer.order.noteLabelCompact")}</Text>
+              <View style={styles.noteHeader}>
+                <Text style={[styles.cardTitle, { color: textColor }]}>{t("transfer.order.noteLabelCompact")}</Text>
+                <Text style={[styles.noteCount, { color: mutedColor }]}>{`${note.length}/50`}</Text>
+              </View>
               <TextInput
                 ref={noteInputRef}
                 maxLength={50}
@@ -688,18 +706,21 @@ export function TransferOrderScreen({ navigation, route }: Props) {
                     style={[
                       styles.quickNoteChip,
                       {
-                        borderColor: note === item.label ? "#F6A04D" : keyboardKeyBorderColor,
-                        backgroundColor: note === item.label ? (theme.isDark ? "rgba(246,160,77,0.16)" : "#FFF4E8") : cardBackgroundColor,
+                        borderColor: note === item.label ? accentColor : cardBorderColor,
+                        backgroundColor: note === item.label ? accentSoftColor : secondarySurfaceColor,
                       },
                     ]}
                   >
-                    <Text style={[styles.quickNoteText, { color: note === item.label ? "#E07E1F" : mutedColor }]}>{item.label}</Text>
+                    <Text style={[styles.quickNoteText, { color: note === item.label ? accentColor : mutedColor }]}>{item.label}</Text>
                   </Pressable>
                 ))}
               </View>
             </View>
 
-            <Text style={[styles.assuranceText, { color: mutedColor }]}>{t("transfer.order.assurance")}</Text>
+            <View style={styles.assuranceRow}>
+              <SFSymbolIcon color={accentColor} fallbackName="shield-check" name="checkmark.shield.fill" size={16} />
+              <Text style={[styles.assuranceText, { color: mutedColor }]}>{t("transfer.order.assurance")}</Text>
+            </View>
           </ScrollView>
 
           {activeField === "amount" ? (
@@ -712,52 +733,46 @@ export function TransferOrderScreen({ navigation, route }: Props) {
                 }}
                 style={[styles.keyboardCollapseBar, { borderBottomColor: keyboardKeyBorderColor }]}
               >
-                <SFSymbolIcon color={mutedColor} fallbackName="chevron-down" name="chevron.down" size={22} />
+                <View style={[styles.keyboardHandle, { backgroundColor: keyboardHandleColor }]} />
               </Pressable>
 
               <View style={styles.keyboardGrid}>
-                <View style={styles.keyboardMain}>
-                  {NUMERIC_KEY_ROWS.map(row => (
-                    <View key={row.join("")} style={styles.keyboardRow}>
-                      {row.map(item => (
-                        <NumericKeyboardKey
-                          backgroundColor={keyboardKeyBackground}
-                          borderColor={keyboardKeyBorderColor}
-                          key={item}
-                          label={item}
-                          onPress={handleAmountKeyboardPress}
-                          rowHeight={keyboardRowHeight}
-                          textColor={textColor}
-                        />
-                      ))}
-                    </View>
-                  ))}
-                  <View style={styles.keyboardRow}>
-                    <NumericKeyboardKey
-                      backgroundColor={keyboardKeyBackground}
-                      borderColor={keyboardKeyBorderColor}
-                      flex={2}
-                      label="0"
-                      onPress={handleAmountKeyboardPress}
-                      rowHeight={keyboardRowHeight}
-                      textColor={textColor}
-                    />
-                    <NumericKeyboardKey
-                      backgroundColor={keyboardKeyBackground}
-                      borderColor={keyboardKeyBorderColor}
-                      label="."
-                      onPress={handleAmountKeyboardPress}
-                      rowHeight={keyboardRowHeight}
-                      textColor={textColor}
-                    />
+                {NUMERIC_KEY_ROWS.map(row => (
+                  <View key={row.join("")} style={styles.keyboardRow}>
+                    {row.map(item => (
+                      <NumericKeyboardKey
+                        backgroundColor={keyboardKeyBackground}
+                        borderColor={keyboardKeyBorderColor}
+                        key={item}
+                        label={item}
+                        onPress={handleAmountKeyboardPress}
+                        rowHeight={keyboardRowHeight}
+                        textColor={textColor}
+                      />
+                    ))}
                   </View>
-                </View>
-
-                <View style={styles.keyboardSideColumn}>
+                ))}
+                <View style={styles.keyboardRow}>
+                  <NumericKeyboardKey
+                    backgroundColor={keyboardKeyBackground}
+                    borderColor={keyboardKeyBorderColor}
+                    label="0"
+                    onPress={handleAmountKeyboardPress}
+                    rowHeight={keyboardRowHeight}
+                    textColor={textColor}
+                  />
+                  <NumericKeyboardKey
+                    backgroundColor={keyboardKeyBackground}
+                    borderColor={keyboardKeyBorderColor}
+                    label="."
+                    onPress={handleAmountKeyboardPress}
+                    rowHeight={keyboardRowHeight}
+                    textColor={textColor}
+                  />
                   <Pressable
                     onPress={() => handleAmountKeyboardPress("backspace")}
                     style={[
-                      styles.keyboardBackspaceKey,
+                      styles.keyboardKey,
                       {
                         backgroundColor: keyboardKeyBackground,
                         borderColor: keyboardKeyBorderColor,
@@ -765,48 +780,32 @@ export function TransferOrderScreen({ navigation, route }: Props) {
                       },
                     ]}
                   >
-                    <SFSymbolIcon color={textColor} fallbackName="backspace-outline" name="delete.left" size={26} />
-                  </Pressable>
-
-                  <Pressable
-                    disabled={!canSubmit}
-                    onPress={() => void handleSubmit()}
-                    style={[
-                      styles.keyboardSubmitKey,
-                      {
-                        backgroundColor: submitBackgroundColor,
-                        borderColor: keyboardKeyBorderColor,
-                        minHeight: keyboardRowHeight * 3,
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.keyboardSubmitText, { color: submitTextColor }]}>
-                      {submitting ? t("common.loading") : t("transfer.order.submitPrimary")}
-                    </Text>
+                    <SFSymbolIcon color={textColor} fallbackName="backspace-outline" name="delete.left" size={24} />
                   </Pressable>
                 </View>
               </View>
             </View>
-          ) : (
-            <View style={[styles.footerBar, { backgroundColor: cardBackgroundColor, borderTopColor: dividerColor }]}>
-              <Pressable
-                disabled={!canSubmit}
-                onPress={() => void handleSubmit()}
-                style={[
-                  styles.footerSubmitButton,
-                  {
-                    backgroundColor: canSubmit ? "#F6A04D" : keyboardSideBackground,
-                    borderRadius: buttonHeight / 2,
-                    minHeight: buttonHeight,
-                  },
-                ]}
-              >
-                <Text style={[styles.footerSubmitText, { color: canSubmit ? "#FFFFFF" : submitTextColor }]}>
-                  {submitting ? t("common.loading") : t("transfer.order.submitPrimary")}
-                </Text>
-              </Pressable>
-            </View>
-          )}
+          ) : null}
+
+          <View style={[styles.footerBar, { backgroundColor: cardBackgroundColor, borderTopColor: dividerColor }]}>
+            <Pressable
+              disabled={!canSubmit}
+              onPress={() => void handleSubmit()}
+              style={[
+                styles.footerSubmitButton,
+                {
+                  backgroundColor: submitBackgroundColor,
+                  borderColor: canSubmit ? submitBackgroundColor : cardBorderColor,
+                  borderRadius: 16,
+                  minHeight: buttonHeight,
+                },
+              ]}
+            >
+              <Text style={[styles.footerSubmitText, { color: submitTextColor }]}>
+                {submitting ? t("common.loading") : t("transfer.order.submitPrimary")}
+              </Text>
+            </Pressable>
+          </View>
         </KeyboardAvoidingView>
       </HomeScaffold>
 
@@ -836,11 +835,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingLeft: 8,
-    paddingRight: 18,
+    paddingLeft: 4,
+    paddingRight: 4,
     paddingTop: 2,
-    paddingBottom: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingBottom: 6,
+  },
+  headerSide: {
+    width: 104,
+    minHeight: 44,
+    justifyContent: "center",
+  },
+  headerSideRight: {
+    alignItems: "flex-end",
   },
   headerIconButton: {
     width: 44,
@@ -851,46 +857,21 @@ const styles = StyleSheet.create({
   headerTitle: {
     flex: 1,
     textAlign: "center",
-    fontSize: 22,
+    fontSize: 17,
+    lineHeight: 22,
     fontWeight: "600",
-    letterSpacing: -0.2,
+    letterSpacing: -0.41,
   },
   headerActionButton: {
-    minWidth: 96,
     height: 44,
     alignItems: "flex-end",
     justifyContent: "center",
+    paddingHorizontal: 8,
   },
   headerActionText: {
     fontSize: 17,
+    lineHeight: 22,
     fontWeight: "400",
-  },
-  bannerRow: {
-    minHeight: 44,
-    paddingLeft: 16,
-    paddingRight: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  bannerContent: {
-    flex: 1,
-    minWidth: 0,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  bannerText: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: "500",
-  },
-  bannerCloseButton: {
-    width: 28,
-    height: 28,
-    alignItems: "center",
-    justifyContent: "center",
   },
   scrollContent: {
     paddingTop: 18,
@@ -898,13 +879,20 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     gap: 18,
   },
-  recipientSection: {
-    paddingTop: 8,
+  sectionGroup: {
+    gap: 10,
+  },
+  sectionLabel: {
+    paddingHorizontal: 4,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "600",
+    letterSpacing: -0.08,
   },
   recipientCard: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 16,
+    gap: 14,
     borderWidth: StyleSheet.hairlineWidth,
   },
   recipientAvatarShell: {
@@ -922,13 +910,45 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   recipientTitle: {
-    fontSize: 20,
+    fontSize: 17,
+    lineHeight: 22,
     fontWeight: "600",
-    letterSpacing: -0.2,
+    letterSpacing: -0.41,
   },
   recipientSubtitle: {
-    fontSize: 17,
+    fontSize: 13,
+    lineHeight: 18,
     fontWeight: "400",
+  },
+  noticeCard: {
+    minHeight: 52,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 16,
+    paddingLeft: 14,
+    paddingRight: 8,
+    paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  noticeContent: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  noticeText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 19,
+    fontWeight: "400",
+  },
+  noticeCloseButton: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
   card: {
     borderRadius: 20,
@@ -936,75 +956,97 @@ const styles = StyleSheet.create({
   },
   amountCard: {
     minHeight: 188,
-    paddingHorizontal: 24,
-    paddingTop: 22,
-    paddingBottom: 20,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 18,
   },
   cardTitle: {
-    fontSize: 17,
+    fontSize: 15,
+    lineHeight: 20,
     fontWeight: "600",
-    letterSpacing: -0.1,
+    letterSpacing: -0.24,
   },
   amountInputShell: {
     flex: 1,
     flexDirection: "row",
     alignItems: "flex-end",
-    paddingBottom: 4,
-    paddingTop: 14,
-    gap: 6,
+    paddingBottom: 2,
+    paddingTop: 12,
+    gap: 8,
   },
   amountTextShell: {
     flex: 1,
-    minHeight: 72,
+    minHeight: 66,
     justifyContent: "flex-end",
     position: "relative",
   },
   amountCurrency: {
-    paddingBottom: 6,
+    paddingBottom: 5,
     fontSize: 46,
     lineHeight: 50,
     fontWeight: "600",
-    letterSpacing: -0.5,
+    letterSpacing: -0.8,
   },
   amountPlaceholder: {
     position: "absolute",
     left: 0,
     right: 0,
-    bottom: 6,
-    fontSize: 21,
-    lineHeight: 26,
+    bottom: 4,
+    fontSize: 17,
+    lineHeight: 22,
     fontWeight: "400",
-    letterSpacing: -0.1,
+    letterSpacing: -0.41,
   },
   amountInput: {
-    minHeight: 68,
+    minHeight: 64,
     paddingVertical: 0,
     paddingHorizontal: 0,
     fontSize: 48,
     lineHeight: 54,
-    fontWeight: "600",
-    letterSpacing: -0.8,
+    fontWeight: "700",
+    letterSpacing: -1.1,
     fontVariant: ["tabular-nums"],
   },
   amountHelperGroup: {
-    gap: 4,
-    marginTop: 0,
+    gap: 6,
+    marginTop: -4,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
-  amountHelperText: {
-    fontSize: 15,
-    lineHeight: 20,
+  amountHelperPrimary: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "500",
+  },
+  amountHelperSecondary: {
+    fontSize: 14,
+    lineHeight: 19,
     fontWeight: "400",
   },
   noteCard: {
-    paddingHorizontal: 24,
-    paddingTop: 22,
+    paddingHorizontal: 20,
+    paddingTop: 20,
     paddingBottom: 18,
+  },
+  noteHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  noteCount: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "500",
   },
   noteInput: {
     minHeight: 44,
-    marginTop: 12,
+    marginTop: 10,
     paddingVertical: 0,
     fontSize: 17,
+    lineHeight: 22,
     fontWeight: "400",
   },
   noteDivider: {
@@ -1015,96 +1057,86 @@ const styles = StyleSheet.create({
   quickNoteWrap: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 10,
   },
   quickNoteChip: {
-    minHeight: 34,
-    paddingHorizontal: 13,
-    borderRadius: 17,
-    borderWidth: 1,
+    minHeight: 40,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
     justifyContent: "center",
   },
   quickNoteText: {
-    fontSize: 15,
+    fontSize: 14,
+    lineHeight: 18,
     fontWeight: "500",
   },
-  assuranceText: {
-    textAlign: "center",
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: "400",
+  assuranceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
     paddingTop: 2,
+  },
+  assuranceText: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "400",
   },
   keyboardShell: {
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   keyboardCollapseBar: {
-    height: 44,
+    height: 32,
     alignItems: "center",
     justifyContent: "center",
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  keyboardGrid: {
-    flexDirection: "row",
+  keyboardHandle: {
+    width: 36,
+    height: 5,
+    borderRadius: 999,
   },
-  keyboardMain: {
-    flex: 1,
+  keyboardGrid: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    gap: 8,
   },
   keyboardRow: {
     flexDirection: "row",
+    gap: 8,
   },
   keyboardKey: {
     flex: 1,
     height: 72,
     alignItems: "center",
     justifyContent: "center",
-    borderRightWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  keyboardKeyWide: {
-    flex: 2,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 16,
   },
   keyboardKeyText: {
-    fontSize: 32,
+    fontSize: 28,
+    lineHeight: 34,
     fontWeight: "500",
     fontVariant: ["tabular-nums"],
   },
-  keyboardSideColumn: {
-    width: 102,
-  },
-  keyboardBackspaceKey: {
-    alignItems: "center",
-    justifyContent: "center",
-    borderLeftWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  keyboardSubmitKey: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    borderLeftWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    minHeight: 216,
-  },
-  keyboardSubmitText: {
-    fontSize: 21,
-    fontWeight: "600",
-  },
   footerBar: {
     paddingHorizontal: 20,
-    paddingTop: 10,
+    paddingTop: 12,
     paddingBottom: 14,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   footerSubmitButton: {
+    borderWidth: StyleSheet.hairlineWidth,
     minHeight: 56,
-    borderRadius: 28,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
   },
   footerSubmitText: {
-    fontSize: 20,
+    fontSize: 17,
+    lineHeight: 22,
     fontWeight: "600",
   },
 })
@@ -1182,7 +1214,6 @@ function NumericKeyboardKey(props: {
       onPress={() => props.onPress(props.label)}
       style={[
         styles.keyboardKey,
-        props.flex === 2 ? styles.keyboardKeyWide : null,
         {
           backgroundColor: props.backgroundColor,
           borderColor: props.borderColor,
