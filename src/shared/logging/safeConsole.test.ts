@@ -1,4 +1,9 @@
-import { clearDevConsoleEntries, getDevConsoleEntriesByFilter } from "@/shared/logging/devConsole"
+const mockRecordDevConsoleEntry = jest.fn()
+
+jest.mock("@/shared/logging/devConsole", () => ({
+  recordDevConsoleEntry: (...args: unknown[]) => mockRecordDevConsoleEntry(...args),
+}))
+
 import {
   logErrorSafely,
   logInfoSafely,
@@ -8,7 +13,7 @@ import {
 
 describe("safeConsole", () => {
   afterEach(() => {
-    clearDevConsoleEntries()
+    mockRecordDevConsoleEntry.mockReset()
     jest.restoreAllMocks()
   })
 
@@ -119,8 +124,6 @@ describe("safeConsole", () => {
     runtime.__DEV__ = true
 
     try {
-      clearDevConsoleEntries()
-
       logErrorSafely("[handled]", new Error("network down"), {
         context: {
           resolvedMessage: "网络不可用，请稍后重试。",
@@ -133,8 +136,10 @@ describe("safeConsole", () => {
     }
 
     expect(spy).not.toHaveBeenCalled()
-    expect(getDevConsoleEntriesByFilter("error")[0]?.message).toContain("[handled]")
-    expect(getDevConsoleEntriesByFilter("error")[0]?.message).toContain("network down")
+    expect(mockRecordDevConsoleEntry).toHaveBeenCalledTimes(1)
+    expect(mockRecordDevConsoleEntry.mock.calls[0]?.[0]).toBe("error")
+    expect(String(mockRecordDevConsoleEntry.mock.calls[0]?.[1]?.[0])).toContain("[handled]")
+    expect(String(mockRecordDevConsoleEntry.mock.calls[0]?.[1]?.[1])).toContain("network down")
   })
 
   it("summarizes arrays, unknown objects and plain objects without leaking secrets", () => {
@@ -418,8 +423,20 @@ describe("safeConsole", () => {
 
     expect(infoSpy).not.toHaveBeenCalled()
     expect(warnSpy).not.toHaveBeenCalled()
-    expect(getDevConsoleEntriesByFilter("runtime")[0]?.message).toContain("[runtime.info]")
-    expect(getDevConsoleEntriesByFilter("warn")[0]?.message).toContain("[runtime.warn]")
+    expect(mockRecordDevConsoleEntry).toHaveBeenNthCalledWith(1, "info", [
+      "[runtime.info]",
+      {
+        type: "attach_headers",
+        message: "hasToken=true authorizationAttached=true",
+      },
+    ])
+    expect(mockRecordDevConsoleEntry).toHaveBeenNthCalledWith(2, "warn", [
+      "[runtime.warn]",
+      {
+        type: "business_error",
+        message: "status=400 code=500",
+      },
+    ])
   })
 
   it("skips runtime logs when development mode is disabled", () => {
@@ -441,8 +458,7 @@ describe("safeConsole", () => {
 
     expect(infoSpy).not.toHaveBeenCalled()
     expect(warnSpy).not.toHaveBeenCalled()
-    expect(getDevConsoleEntriesByFilter("runtime")).toHaveLength(0)
-    expect(getDevConsoleEntriesByFilter("warn")).toHaveLength(0)
+    expect(mockRecordDevConsoleEntry).not.toHaveBeenCalled()
   })
 
   it("uses the runtime __DEV__ flag when devMode is omitted", () => {

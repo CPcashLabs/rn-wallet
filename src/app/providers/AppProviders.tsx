@@ -1,6 +1,5 @@
-import React, { type PropsWithChildren } from "react"
+import React, { useEffect, type PropsWithChildren } from "react"
 
-import { DevConsoleProvider } from "@/app/providers/DevConsoleProvider"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 
@@ -9,10 +8,19 @@ import { I18nProvider } from "@/app/providers/I18nProvider"
 import { NavigationProvider } from "@/app/providers/NavigationProvider"
 import { QueryProvider } from "@/app/providers/QueryProvider"
 import { SocketProvider } from "@/app/providers/SocketProvider"
+import { installDevConsoleCapture } from "@/shared/logging/devConsole"
 import { ThemeProvider } from "@/app/providers/ThemeProvider"
 import { ToastProvider } from "@/shared/toast/ToastProvider"
 
 export function AppProviders({ children }: PropsWithChildren) {
+  useEffect(() => {
+    if (!__DEV__) {
+      return
+    }
+
+    installDevConsoleCapture()
+  }, [])
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
@@ -21,17 +29,9 @@ export function AppProviders({ children }: PropsWithChildren) {
             <SocketProvider>
               <QueryProvider>
                 <ThemeProvider>
-                  {__DEV__ ? (
-                    <DevConsoleProvider>
-                      <ToastProvider>
-                        <NavigationProvider>{children}</NavigationProvider>
-                      </ToastProvider>
-                    </DevConsoleProvider>
-                  ) : (
-                    <ToastProvider>
-                      <NavigationProvider>{children}</NavigationProvider>
-                    </ToastProvider>
-                  )}
+                  <ToastProvider>
+                    <NavigationProvider>{children}</NavigationProvider>
+                  </ToastProvider>
                 </ThemeProvider>
               </QueryProvider>
             </SocketProvider>

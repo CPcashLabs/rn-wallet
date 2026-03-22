@@ -1,49 +1,44 @@
-import { useSyncExternalStore } from "react"
-
 export type DevConsoleLevel = "error" | "warn" | "log" | "info" | "debug"
-export type DevConsoleFilter = "all" | "error" | "warn" | "runtime"
 
-export type DevConsoleEntry = {
-  id: string
-  level: DevConsoleLevel
+type StructuredRuntimeContext = {
+  component?: string
+  event: string
   message: string
-  timestamp: number
+  details?: unknown
+  httpRequest?: unknown
 }
 
-type ConsoleMethod = (...args: unknown[]) => void
-
-type DevConsoleStore = {
-  entries: DevConsoleEntry[]
-  installed: boolean
-  listeners: Set<() => void>
-  nextId: number
-  original: Partial<Record<DevConsoleLevel, ConsoleMethod>>
+type ReactotronDisplayPayload = {
+  name: string
+  preview?: string
+  value?: unknown
+  important?: boolean
 }
 
-const DEV_CONSOLE_MAX_ENTRIES = 300
-const DEV_CONSOLE_GLOBAL_KEY = "__CPCASH_DEV_CONSOLE__"
+type ReactotronClient = {
+  configure: (options?: { name?: string }) => ReactotronClient
+  useReactNative: (options?: {
+    errors?: boolean
+    log?: boolean
+    editor?: boolean
+    overlay?: boolean
+    asyncStorage?: boolean
+    networking?: boolean
+    storybook?: boolean
+    devTools?: boolean
+  }) => ReactotronClient
+  connect: () => ReactotronClient
+  clear: () => void
+  display: (payload: ReactotronDisplayPayload) => void
+}
 
-function getStore(): DevConsoleStore {
-  const runtime = globalThis as typeof globalThis & {
-    [DEV_CONSOLE_GLOBAL_KEY]?: DevConsoleStore
+const DEV_CONSOLE_GLOBAL_KEY = "__CPCASH_REACTOTRON_CLIENT__"
+const DEV_CONSOLE_APP_NAME = "CPCash RN"
+
+function getRuntime() {
+  return globalThis as typeof globalThis & {
+    [DEV_CONSOLE_GLOBAL_KEY]?: ReactotronClient
   }
-
-  if (!runtime[DEV_CONSOLE_GLOBAL_KEY]) {
-    runtime[DEV_CONSOLE_GLOBAL_KEY] = {
-      entries: [],
-      installed: false,
-      listeners: new Set(),
-      nextId: 0,
-      original: {},
-    }
-  }
-
-  return runtime[DEV_CONSOLE_GLOBAL_KEY]
-}
-
-function emitChange() {
-  const store = getStore()
-  store.listeners.forEach(listener => listener())
 }
 
 function truncateText(value: string, maxLength = 2400) {
@@ -69,20 +64,8 @@ function compactObjectSummary(value: Record<string, unknown>) {
     .join(" ")
 }
 
-function isStructuredRuntimeContext(
-  value: unknown,
-): value is {
-  component?: string
-  event: string
-  message: string
-  details?: unknown
-  httpRequest?: unknown
-} {
-  return (
-    isPlainObject(value) &&
-    typeof value.event === "string" &&
-    typeof value.message === "string"
-  )
+function isStructuredRuntimeContext(value: unknown): value is StructuredRuntimeContext {
+  return isPlainObject(value) && typeof value.event === "string" && typeof value.message === "string"
 }
 
 function formatHttpRequestSummary(httpRequest: unknown) {
@@ -104,12 +87,7 @@ function formatHttpRequestSummary(httpRequest: unknown) {
   return parts.join(" ")
 }
 
-function formatStructuredRuntimeEntry(tag: string, context: {
-  event: string
-  message: string
-  details?: unknown
-  httpRequest?: unknown
-}) {
+function formatStructuredRuntimeEntry(tag: string, context: StructuredRuntimeContext) {
   const lines = [`${tag} ${context.event}`, context.message]
   const httpSummary = formatHttpRequestSummary(context.httpRequest)
 
@@ -222,7 +200,7 @@ function serializeConsoleValue(
   }
 }
 
-function formatConsoleArgs(args: unknown[]) {
+export function formatDevConsoleArgs(args: unknown[]) {
   if (args.length === 2 && typeof args[0] === "string" && isStructuredRuntimeContext(args[1])) {
     return formatStructuredRuntimeEntry(args[0], args[1])
   }
@@ -230,56 +208,43 @@ function formatConsoleArgs(args: unknown[]) {
   return args.map(argument => serializeConsoleValue(argument)).join(" ")
 }
 
-function appendEntry(level: DevConsoleLevel, args: unknown[]) {
-  const store = getStore()
-
-  store.entries = [
-    {
-      id: `${Date.now()}-${store.nextId}`,
-      level,
-      message: formatConsoleArgs(args),
-      timestamp: Date.now(),
-    },
-    ...store.entries,
-  ].slice(0, DEV_CONSOLE_MAX_ENTRIES)
-  store.nextId += 1
-
-  emitChange()
+function getClient() {
+  return getRuntime()[DEV_CONSOLE_GLOBAL_KEY] ?? null
 }
 
-export function recordDevConsoleEntry(level: DevConsoleLevel, args: unknown[]) {
-  if (!__DEV__) {
-    return
-  }
-
-  appendEntry(level, args)
+function loadReactotronModule(): ReactotronClient {
+  const mod = require("reactotron-react-native") as { default: ReactotronClient }
+  return mod.default
 }
 
 export function installDevConsoleCapture() {
   if (!__DEV__) {
-    return
+    return null
   }
 
-  const store = getStore()
-
-  if (store.installed) {
-    return
+  const existingClient = getClient()
+  if (existingClient) {
+    return existingClient
   }
 
-  const levels: DevConsoleLevel[] = ["error", "warn", "log", "info", "debug"]
+  const client = loadReactotronModule()
+    .configure({
+      name: DEV_CONSOLE_APP_NAME,
+    })
+    .useReactNative({
+      errors: true,
+      log: true,
+      networking: true,
+      editor: false,
+      overlay: false,
+      asyncStorage: false,
+      storybook: false,
+      devTools: false,
+    })
+    .connect()
 
-  levels.forEach(level => {
-    const originalMethod = console[level]?.bind(console) as ConsoleMethod | undefined
-
-    store.original[level] = originalMethod ?? console.log.bind(console)
-
-    console[level] = (...args: unknown[]) => {
-      appendEntry(level, args)
-      store.original[level]?.(...args)
-    }
-  })
-
-  store.installed = true
+  getRuntime()[DEV_CONSOLE_GLOBAL_KEY] = client
+  return client
 }
 
 export function clearDevConsoleEntries() {
@@ -287,41 +252,33 @@ export function clearDevConsoleEntries() {
     return
   }
 
-  const store = getStore()
-  store.entries = []
-  emitChange()
+  getClient()?.clear()
 }
 
-export function useDevConsoleEntries() {
-  return useSyncExternalStore(
-    listener => {
-      const store = getStore()
-      store.listeners.add(listener)
-
-      return () => {
-        store.listeners.delete(listener)
-      }
-    },
-    () => getStore().entries,
-    () => [],
-  )
+export function resetDevConsoleClientForTests() {
+  Reflect.deleteProperty(getRuntime(), DEV_CONSOLE_GLOBAL_KEY)
 }
 
-export function countDevConsoleEntries(filter: DevConsoleFilter) {
-  return getDevConsoleEntriesByFilter(filter).length
-}
-
-export function getDevConsoleEntriesByFilter(filter: DevConsoleFilter) {
-  const entries = getStore().entries
-
-  switch (filter) {
-    case "error":
-      return entries.filter(entry => entry.level === "error")
-    case "warn":
-      return entries.filter(entry => entry.level === "warn")
-    case "runtime":
-      return entries.filter(entry => entry.level === "log" || entry.level === "info" || entry.level === "debug")
-    default:
-      return entries
+export function recordDevConsoleEntry(level: DevConsoleLevel, args: unknown[]) {
+  if (!__DEV__) {
+    return
   }
+
+  const client = installDevConsoleCapture()
+  if (!client) {
+    return
+  }
+
+  const message = formatDevConsoleArgs(args)
+  const preview = message.split("\n")[0] || `[${level}]`
+
+  client.display({
+    name: `log.${level}`,
+    preview: truncateText(preview, 160),
+    value: {
+      level,
+      message,
+    },
+    important: level === "error" || level === "warn",
+  })
 }
