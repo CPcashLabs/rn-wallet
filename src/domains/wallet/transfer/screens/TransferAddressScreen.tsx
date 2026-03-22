@@ -11,7 +11,8 @@ import { PrimaryButton } from "@/shared/ui/AppFlowUi"
 import { useAddressBookEntriesQuery } from "@/shared/address-book/addressBookQueries"
 import { useAddressBookStore } from "@/shared/address-book/useAddressBookStore"
 import { HomeScaffold } from "@/shared/ui/HomeScaffold"
-import { getRecentTransferEntries, type TransferChannel } from "@/domains/wallet/transfer/services/transferApi"
+import { useRecentTransferEntriesQuery } from "@/domains/wallet/transfer/queries/transferQueries"
+import { type TransferChannel } from "@/domains/wallet/transfer/services/transferApi"
 import { useTransferDraftStore, type TransferAddressSource } from "@/domains/wallet/transfer/store/useTransferDraftStore"
 import { buildAddressRegexes, extractTransferAddress, resolveTransferChainType } from "@/domains/wallet/transfer/utils/address"
 import { resolveChainNameById } from "@/shared/api/walletAssets"
@@ -29,7 +30,6 @@ import { AppTextField } from "@/shared/ui/AppTextField"
 import type { TransferStackParamList } from "@/app/navigation/types"
 
 type Props = NativeStackScreenProps<TransferStackParamList, "TransferAddressScreen">
-type RecentEntry = Awaited<ReturnType<typeof getRecentTransferEntries>>[number]
 
 function isCancelledNativeAction(error: unknown) {
   if (!(error instanceof Error)) {
@@ -99,10 +99,14 @@ export function TransferAddressScreen({ navigation, route }: Props) {
     selectedChannel?.receiveChainName === route.params.receiveChainName
   const [address, setAddress] = useState(route.params.initialAddress ?? (shouldReuseDraftAddress ? draftRecipientAddress : ""))
   const deferredAddress = useDeferredValueCompat(address, 100)
-  const [recentEntries, setRecentEntries] = useState<RecentEntry[]>([])
-  const [isRecentLoading, setIsRecentLoading] = useState(true)
 
   const sendChainName = resolveChainNameById(chainId)
+  const recentEntriesQuery = useRecentTransferEntriesQuery({
+    sendChainName,
+    receiveChainName: route.params.receiveChainName,
+  })
+  const recentEntries = recentEntriesQuery.data ?? []
+  const isRecentLoading = recentEntriesQuery.isLoading && !recentEntriesQuery.data
   const regexes = useMemo(
     () => buildAddressRegexes(route.params.addressRegexes, route.params.receiveChainName),
     [route.params.addressRegexes, route.params.receiveChainName],
@@ -176,36 +180,6 @@ export function TransferAddressScreen({ navigation, route }: Props) {
     route.params.title,
     setSelectedChannel,
   ])
-
-  useEffect(() => {
-    let mounted = true
-
-    void (async () => {
-      setIsRecentLoading(true)
-      try {
-        const result = await getRecentTransferEntries({
-          sendChainName,
-          receiveChainName: route.params.receiveChainName,
-        })
-
-        if (mounted) {
-          setRecentEntries(result)
-        }
-      } catch {
-        if (mounted) {
-          setRecentEntries([])
-        }
-      } finally {
-        if (mounted) {
-          setIsRecentLoading(false)
-        }
-      }
-    })()
-
-    return () => {
-      mounted = false
-    }
-  }, [route.params.receiveChainName, sendChainName])
 
   useFocusEffect(
     useCallback(() => {
