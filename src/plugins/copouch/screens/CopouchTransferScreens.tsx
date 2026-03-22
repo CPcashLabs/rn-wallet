@@ -41,7 +41,7 @@ import { FieldRow, PrimaryButton, SectionCard } from "@/shared/ui/AppFlowUi"
 import { formatAmount, parseDecimalInput } from "@/shared/exchange/utils/order"
 import { resolveChainNameById } from "@/shared/api/walletAssets"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
-import { useBalanceStore } from "@/shared/store/useBalanceStore"
+import { useWalletBalanceQuery } from "@/shared/queries/balanceQueries"
 import { useUserStore } from "@/shared/store/useUserStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
@@ -59,8 +59,10 @@ function CopouchTransferScreen(props: {
   const chainId = useWalletStore(state => state.chainId)
   const walletAddress = useWalletStore(state => state.address)
   const profile = useUserStore(state => state.profile)
-  const balances = useBalanceStore(state => state.balances)
-  const loadCoins = useBalanceStore(state => state.loadCoins)
+  const balanceQuery = useWalletBalanceQuery({
+    address: walletAddress,
+    chainId,
+  })
   const currentChainName = resolveChainNameById(chainId)
   const { detail, error: detailError, loading, invalidAccess } = useCopouchWalletDetail(props.route.params.id)
   const assetBreakdownQuery = useCopouchAssetBreakdownQuery({
@@ -86,12 +88,7 @@ function CopouchTransferScreen(props: {
   const [confirmOrder, setConfirmOrder] = useState<{ orderSn: string; variant: TransferConfirmVariant } | null>(null)
   const [confirmVisible, setConfirmVisible] = useState(false)
   const quoteRequestIdRef = useRef(0)
-
-  useEffect(() => {
-    if (props.mode === "deposit") {
-      void loadCoins(chainId).catch(() => null)
-    }
-  }, [chainId, loadCoins, props.mode])
+  const balances = balanceQuery.data?.balances ?? {}
 
   useEffect(() => {
     if (!detailError || isCopouchForbiddenError(detailError)) {

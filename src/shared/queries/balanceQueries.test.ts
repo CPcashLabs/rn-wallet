@@ -1,3 +1,5 @@
+import type { QueryClient } from "@tanstack/react-query"
+
 const mockFetchOnChainBalances = jest.fn()
 const mockGetCoinList = jest.fn()
 const mockResolveChainNameById = jest.fn()
@@ -12,7 +14,16 @@ jest.mock("@/shared/web3/balanceService", () => ({
 }))
 
 import type { WalletCoin } from "@/shared/api/walletAssets"
-import { balanceKeys, buildWalletBalanceKey, getWalletBalanceQueryData, resolveBalanceQueryError, withDefaultBalance } from "@/shared/queries/balanceQueries"
+import {
+  balanceKeys,
+  buildWalletBalanceKey,
+  getWalletBalanceQueryData,
+  invalidateBalanceQueries,
+  refetchBalanceQueries,
+  removeBalanceQueries,
+  resolveBalanceQueryError,
+  withDefaultBalance,
+} from "@/shared/queries/balanceQueries"
 
 describe("balanceQueries", () => {
   const coins: WalletCoin[] = [
@@ -114,6 +125,32 @@ describe("balanceQueries", () => {
       message: "refresh_failed",
     })
     expect(resolveBalanceQueryError(null, false)).toBeNull()
+  })
+
+  it("exposes query client helpers for invalidating, refetching and removing balances", async () => {
+    const invalidateQueries = jest.fn(() => Promise.resolve())
+    const refetchQueries = jest.fn(() => Promise.resolve())
+    const removeQueries = jest.fn()
+    const queryClient = {
+      invalidateQueries,
+      refetchQueries,
+      removeQueries,
+    } as unknown as QueryClient
+
+    await invalidateBalanceQueries(queryClient)
+    await refetchBalanceQueries(queryClient)
+    removeBalanceQueries(queryClient)
+
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: balanceKeys.all,
+    })
+    expect(refetchQueries).toHaveBeenCalledWith({
+      queryKey: balanceKeys.all,
+      type: "all",
+    })
+    expect(removeQueries).toHaveBeenCalledWith({
+      queryKey: balanceKeys.all,
+    })
   })
 })
 

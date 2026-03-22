@@ -18,7 +18,7 @@ import { useTransferDraftStore } from "@/domains/wallet/transfer/store/useTransf
 import { HomeScaffold } from "@/shared/ui/HomeScaffold"
 import { resolveChainNameById } from "@/shared/api/walletAssets"
 import { formatAmount, parseDecimalInput } from "@/shared/exchange/utils/order"
-import { useBalanceStore } from "@/shared/store/useBalanceStore"
+import { useWalletBalanceQuery } from "@/shared/queries/balanceQueries"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { AppTextField } from "@/shared/ui/AppTextField"
@@ -34,6 +34,7 @@ export function TransferOrderScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
   const chainId = useWalletStore(state => state.chainId)
+  const walletAddress = useWalletStore(state => state.address)
   const selectedChannel = useTransferDraftStore(state => state.selectedChannel)
   const recipientAddress = useTransferDraftStore(state => state.recipientAddress)
   const sendAmount = useTransferDraftStore(state => state.sendAmount)
@@ -42,9 +43,10 @@ export function TransferOrderScreen({ navigation, route }: Props) {
   const selectedRecvCoinCode = useTransferDraftStore(state => state.selectedRecvCoinCode)
   const setOrderDraft = useTransferDraftStore(state => state.setOrderDraft)
   const setLatestOrderSn = useTransferDraftStore(state => state.setLatestOrderSn)
-  const balances = useBalanceStore(state => state.balances)
-  const balanceCoins = useBalanceStore(state => state.coins)
-  const loadCoins = useBalanceStore(state => state.loadCoins)
+  const balanceQuery = useWalletBalanceQuery({
+    address: walletAddress,
+    chainId,
+  })
   const [options, setOptions] = useState<TransferOrderOption[]>([])
   const [selectedOptionCode, setSelectedOptionCode] = useState(selectedSendCoinCode)
   const [loading, setLoading] = useState(true)
@@ -57,6 +59,8 @@ export function TransferOrderScreen({ navigation, route }: Props) {
   const sendChainName = resolveChainNameById(chainId)
   const isNormalRoute = route.name === "TransferOrderNormalScreen"
   const confirmVariant: TransferConfirmVariant = isNormalRoute ? "normal" : "default"
+  const balances = balanceQuery.data?.balances ?? {}
+  const balanceCoins = balanceQuery.data?.coins ?? []
 
   const selectedOption = useMemo(() => {
     return (
@@ -97,10 +101,6 @@ export function TransferOrderScreen({ navigation, route }: Props) {
 
     return ""
   }, [availableBalance, numericAmount, recipientAddress, selectedOption, sendAmount, t])
-
-  useEffect(() => {
-    void loadCoins(chainId)
-  }, [chainId, loadCoins])
 
   useEffect(() => {
     let mounted = true

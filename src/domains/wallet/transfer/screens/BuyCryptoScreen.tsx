@@ -9,7 +9,7 @@ import { HomeScaffold } from "@/shared/ui/HomeScaffold"
 import { createNativeOrder, getReceiveConfig } from "@/shared/receive/services/receiveEntryApi"
 import { FieldRow, SectionCard } from "@/shared/ui/AppFlowUi"
 import { getCoinList, resolveChainNameById, type WalletChainName, type WalletCoin } from "@/shared/api/walletAssets"
-import { useBalanceStore } from "@/shared/store/useBalanceStore"
+import { useWalletBalanceQuery } from "@/shared/queries/balanceQueries"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
@@ -24,7 +24,10 @@ export function BuyCryptoScreen({ navigation, route }: Props) {
   const { showToast } = useToast()
   const chainId = useWalletStore(state => state.chainId)
   const walletAddress = useWalletStore(state => state.address)
-  const balances = useBalanceStore(state => state.balances)
+  const balanceQuery = useWalletBalanceQuery({
+    address: walletAddress,
+    chainId,
+  })
   const [amount, setAmount] = useState("")
   const [address, setAddress] = useState(route.params?.recvAddress ?? walletAddress ?? "")
   const [submitting, setSubmitting] = useState(false)
@@ -34,6 +37,7 @@ export function BuyCryptoScreen({ navigation, route }: Props) {
   const [sendCoinCode, setSendCoinCode] = useState(route.params?.sendCoinCode ?? "")
   const [recvCoinCode, setRecvCoinCode] = useState(route.params?.recvCoinCode ?? "")
   const quickAmounts = [10, 50, 100]
+  const balances = balanceQuery.data?.balances ?? {}
 
   useEffect(() => {
     let active = true

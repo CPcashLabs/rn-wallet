@@ -2,14 +2,15 @@ import React, { useEffect, useState } from "react"
 
 import { ActivityIndicator, Text } from "react-native"
 import { useTranslation } from "react-i18next"
+import { useQueryClient } from "@tanstack/react-query"
 
 import { HeaderTextAction, HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { getChainList, getExchangeRates, type ExchangeRateItem } from "@/features/settings/services/settingsApi"
 import { getCurrentLanguage, getLanguagePreference, setLanguagePreference } from "@/shared/i18n"
 import { SYSTEM_LANGUAGE_PREFERENCE, type LanguagePreference } from "@/shared/i18n/languagePreference"
+import { refetchBalanceQueries } from "@/shared/queries/balanceQueries"
 import { getJson, getNumber, setJson, setNumber } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
-import { useBalanceStore } from "@/shared/store/useBalanceStore"
 import { DEFAULT_WALLET_CHAIN_ID, useWalletStore } from "@/shared/store/useWalletStore"
 import { resetRpcProvider } from "@/shared/web3/balanceService"
 
@@ -106,9 +107,8 @@ export function UnitScreen({ navigation }: StackProps<"UnitScreen">) {
 
 export function NodeSetupScreen({ navigation }: StackProps<"NodeSetupScreen">) {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const walletChainId = useWalletStore(state => state.chainId) ?? DEFAULT_WALLET_CHAIN_ID
-  const loadCoins = useBalanceStore(state => state.loadCoins)
-  const clearBalance = useBalanceStore(state => state.clear)
   const [nodes, setNodes] = useState<string[]>(LOCAL_NODE_MAP[String(walletChainId)] ?? LOCAL_NODE_MAP["199"])
   const [selectedIndex, setSelectedIndex] = useState(getNumber(KvStorageKeys.WalletRpcIndex) ?? 0)
 
@@ -130,8 +130,7 @@ export function NodeSetupScreen({ navigation }: StackProps<"NodeSetupScreen">) {
     setSelectedIndex(index)
     setNumber(KvStorageKeys.WalletRpcIndex, index)
     resetRpcProvider(walletChainId)
-    clearBalance()
-    void loadCoins(walletChainId)
+    void refetchBalanceQueries(queryClient)
   }
 
   return (

@@ -3,16 +3,17 @@ import React from "react"
 import { Alert, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
+import { useQueryClient } from "@tanstack/react-query"
 
 import { navigateRoot, resetToAuthStack } from "@/app/navigation/navigationRef"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { clearAuthSession } from "@/shared/api/auth-session"
 import { getCurrentLanguage, getLanguagePreference } from "@/shared/i18n"
+import { removeBalanceQueries } from "@/shared/queries/balanceQueries"
 import { resetProfileSyncSession } from "@/shared/session/profileSyncSession"
 import { getJson, getNumber, setString } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 import { useAuthStore } from "@/shared/store/useAuthStore"
-import { useBalanceStore } from "@/shared/store/useBalanceStore"
 import { useUserStore } from "@/shared/store/useUserStore"
 import { DEFAULT_WALLET_CHAIN_ID, useWalletStore } from "@/shared/store/useWalletStore"
 import { useThemeStore, type ThemeMode } from "@/shared/store/useThemeStore"
@@ -35,6 +36,7 @@ type SelectedCurrency = {
 export function SettingsScreen({ navigation }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const themeMode = useThemeStore(state => state.themeMode)
   const currentLanguage = getCurrentLanguage()
   const languagePreference = getLanguagePreference()
@@ -55,11 +57,7 @@ export function SettingsScreen({ navigation }: Props) {
       address: walletState.address,
       chainId: nextChainId,
     })
-    useBalanceStore.getState().clear()
-
-    if (walletState.address) {
-      void useBalanceStore.getState().loadCoins(nextChainId)
-    }
+    removeBalanceQueries(queryClient)
   }
 
   const logout = async () => {
@@ -73,7 +71,7 @@ export function SettingsScreen({ navigation }: Props) {
         chainId,
       })
       useUserStore.getState().clearProfile()
-      useBalanceStore.getState().clear()
+      removeBalanceQueries(queryClient)
       resetToAuthStack()
     } catch {
       Alert.alert(t("common.errorTitle"), t("home.settings.logoutFailed"))

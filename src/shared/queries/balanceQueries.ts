@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, type QueryClient } from "@tanstack/react-query"
 
 import { getCoinList, resolveChainNameById, type WalletCoin } from "@/shared/api/walletAssets"
 import { fetchOnChainBalances } from "@/shared/web3/balanceService"
@@ -95,6 +95,25 @@ export function resolveBalanceQueryError(error: unknown, isRefetchError: boolean
   }
 
   return toBalanceError(isRefetchError ? "refresh" : "load", error)
+}
+
+export function invalidateBalanceQueries(queryClient: QueryClient) {
+  return queryClient.invalidateQueries({
+    queryKey: balanceKeys.all,
+  })
+}
+
+export function refetchBalanceQueries(queryClient: QueryClient) {
+  return queryClient.refetchQueries({
+    queryKey: balanceKeys.all,
+    type: "all",
+  })
+}
+
+export function removeBalanceQueries(queryClient: QueryClient) {
+  return queryClient.removeQueries({
+    queryKey: balanceKeys.all,
+  })
 }
 
 export function useWalletBalanceQuery(args: WalletBalanceQueryArgs) {
