@@ -95,6 +95,7 @@ export async function createNormalTransferOrder(input: {
     recv_address: input.recvAddress,
     note: input.note,
     multisig_wallet_id: input.multisigWalletId,
+    pay_wallet_type: input.multisigWalletId ? "MULTISIG" : undefined,
   })
 
   return toCreatedNormalOrder(unwrapEnvelope(response.data))
