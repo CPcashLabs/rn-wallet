@@ -17,9 +17,9 @@ import { navigateRoot } from "@/app/navigation/navigationRef"
 import { NativeCapabilityUnavailableError } from "@/shared/errors"
 import { errorCodeOf, resolveErrorMessage } from "@/shared/errors/presentation"
 import { scannerAdapter } from "@/shared/native"
+import { buildWalletBalanceKey, resolveBalanceQueryError, useWalletBalanceQuery } from "@/shared/queries/balanceQueries"
 import { getBoolean, setBoolean } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
-import { useBalanceStore } from "@/shared/store/useBalanceStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
@@ -69,11 +69,10 @@ export function HomeShellScreen({ navigation, route }: Props) {
   const { showToast } = useToast()
   const walletAddress = useWalletStore(state => state.address)
   const walletChainId = useWalletStore(state => state.chainId)
-  const balanceWalletKey = useBalanceStore(state => state.walletKey)
-  const coins = useBalanceStore(state => state.coins)
-  const balances = useBalanceStore(state => state.balances)
-  const balanceError = useBalanceStore(state => state.error)
-  const loadCoins = useBalanceStore(state => state.loadCoins)
+  const balanceQuery = useWalletBalanceQuery({
+    address: walletAddress,
+    chainId: walletChainId,
+  })
   const [showBalance, setShowBalance] = useState(true)
   const mountedRef = useRef(true)
   const inviteHandledRef = useRef(false)
@@ -81,6 +80,16 @@ export function HomeShellScreen({ navigation, route }: Props) {
   const displayedBalanceValueRef = useRef(0)
   const hasAppliedLiveValueRef = useRef(false)
   const [displayedBalanceValue, setDisplayedBalanceValue] = useState(0)
+  const balanceWalletKey = balanceQuery.data?.walletKey ?? buildWalletBalanceKey({
+    address: walletAddress,
+    chainId: walletChainId,
+  })
+  const coins = balanceQuery.data?.coins ?? []
+  const balances = balanceQuery.data?.balances ?? {}
+  const balanceError = useMemo(
+    () => resolveBalanceQueryError(balanceQuery.error, balanceQuery.isRefetchError),
+    [balanceQuery.error, balanceQuery.isRefetchError],
+  )
 
   useEffect(() => {
     mountedRef.current = true
@@ -111,10 +120,6 @@ export function HomeShellScreen({ navigation, route }: Props) {
       setShowBalance(persisted)
     }
   }, [])
-
-  useEffect(() => {
-    void loadCoins(walletChainId)
-  }, [loadCoins, walletAddress, walletChainId])
 
   useEffect(() => {
     const listenerId = balanceValueAnim.addListener(({ value }) => {

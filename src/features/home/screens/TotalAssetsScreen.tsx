@@ -6,9 +6,9 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import { HeaderTextAction, HomeScaffold } from "@/features/home/components/HomeScaffold"
 import { formatCurrency, formatDateTime, formatTokenAmount } from "@/features/home/utils/format"
+import { resolveBalanceQueryError, useWalletBalanceQuery } from "@/shared/queries/balanceQueries"
 import { getBoolean, setBoolean } from "@/shared/storage/kvStorage"
 import { KvStorageKeys } from "@/shared/storage/sessionKeys"
-import { useBalanceStore } from "@/shared/store/useBalanceStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { AppCard, APP_LIST_ROW_PADDING } from "@/shared/ui/AppCard"
@@ -22,15 +22,20 @@ export function TotalAssetsScreen({ navigation }: Props) {
   const { t } = useTranslation()
   const address = useWalletStore(state => state.address)
   const chainId = useWalletStore(state => state.chainId)
-  const coins = useBalanceStore(state => state.coins)
-  const balances = useBalanceStore(state => state.balances)
-  const loading = useBalanceStore(state => state.loading)
-  const refreshing = useBalanceStore(state => state.refreshing)
-  const error = useBalanceStore(state => state.error)
-  const lastUpdatedAt = useBalanceStore(state => state.lastUpdatedAt)
-  const loadCoins = useBalanceStore(state => state.loadCoins)
-  const refreshCoins = useBalanceStore(state => state.refreshCoins)
+  const balanceQuery = useWalletBalanceQuery({
+    address,
+    chainId,
+  })
   const [showBalance, setShowBalance] = useState(true)
+  const coins = balanceQuery.data?.coins ?? []
+  const balances = balanceQuery.data?.balances ?? {}
+  const loading = balanceQuery.isLoading && !balanceQuery.data
+  const refreshing = balanceQuery.isRefetching
+  const error = useMemo(
+    () => resolveBalanceQueryError(balanceQuery.error, balanceQuery.isRefetchError),
+    [balanceQuery.error, balanceQuery.isRefetchError],
+  )
+  const lastUpdatedAt = balanceQuery.data?.lastUpdatedAt ?? null
 
   useEffect(() => {
     const persisted = getBoolean(KvStorageKeys.ShowBalance)
@@ -38,10 +43,6 @@ export function TotalAssetsScreen({ navigation }: Props) {
       setShowBalance(persisted)
     }
   }, [])
-
-  useEffect(() => {
-    void loadCoins(chainId)
-  }, [address, chainId, loadCoins])
 
   const rows = useMemo(() => {
     return coins
@@ -77,9 +78,9 @@ export function TotalAssetsScreen({ navigation }: Props) {
       title={t("home.totalAssets.title")}
       right={
         <HeaderTextAction
-          disabled={refreshing}
+          disabled={refreshing || !address}
           label={refreshing ? t("common.loading") : t("home.totalAssets.refresh")}
-          onPress={() => void refreshCoins(chainId)}
+          onPress={() => void balanceQuery.refetch()}
         />
       }
       scroll={false}
