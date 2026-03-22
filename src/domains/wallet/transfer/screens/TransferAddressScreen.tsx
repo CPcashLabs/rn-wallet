@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 
-import { Image } from "expo-image"
 import { useFocusEffect } from "@react-navigation/native"
 import { ActionSheetIOS, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native"
 import { useTranslation } from "react-i18next"
@@ -21,57 +20,17 @@ import { NativeCapabilityUnavailableError } from "@/shared/errors"
 import { errorCodeOf, resolveErrorMessage } from "@/shared/errors/presentation"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { useDeferredValueCompat } from "@/shared/hooks/useDeferredValueCompat"
+import { SeedAddressAvatar } from "@/shared/avatar/SeedAddressAvatar"
 import { scannerAdapter } from "@/shared/native"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
-import { SFSymbolIcon, type MaterialIconName, type SFSymbolName } from "@/shared/ui/SFSymbolIcon"
+import { SFSymbolIcon } from "@/shared/ui/SFSymbolIcon"
 
 import type { TransferStackParamList } from "@/app/navigation/types"
 
 type Props = NativeStackScreenProps<TransferStackParamList, "TransferAddressScreen">
 
 const RECENT_ENTRY_LIMIT = 3
-const RECENT_AVATAR_TONES: Array<{
-  lightBackground: string
-  lightTint: string
-  darkBackground: string
-  darkTint: string
-  symbol: SFSymbolName
-  fallbackName: MaterialIconName
-}> = [
-  {
-    lightBackground: "#CFF1CB",
-    lightTint: "#35553B",
-    darkBackground: "#233D2A",
-    darkTint: "#B8E9BE",
-    symbol: "person.fill",
-    fallbackName: "account",
-  },
-  {
-    lightBackground: "#CFE3FF",
-    lightTint: "#1563E8",
-    darkBackground: "#1E3657",
-    darkTint: "#A8CCFF",
-    symbol: "wallet.pass.fill",
-    fallbackName: "wallet",
-  },
-  {
-    lightBackground: "#E8E2DE",
-    lightTint: "#465645",
-    darkBackground: "#3A3532",
-    darkTint: "#D9CDC6",
-    symbol: "clock.fill",
-    fallbackName: "clock-outline",
-  },
-  {
-    lightBackground: "#FCE4C5",
-    lightTint: "#8F5E04",
-    darkBackground: "#4A3620",
-    darkTint: "#FFD39B",
-    symbol: "briefcase.fill",
-    fallbackName: "briefcase",
-  },
-]
 
 function isCancelledNativeAction(error: unknown) {
   if (!(error instanceof Error)) {
@@ -120,16 +79,6 @@ function resolveScanErrorMessage(error: Error, mode: "camera" | "image", t: (key
       return undefined
     },
   })
-}
-
-function hashSeed(value: string) {
-  let hash = 0
-
-  for (let index = 0; index < value.length; index += 1) {
-    hash = (hash * 31 + value.charCodeAt(index)) >>> 0
-  }
-
-  return hash
 }
 
 export function TransferAddressScreen({ navigation, route }: Props) {
@@ -487,7 +436,6 @@ export function TransferAddressScreen({ navigation, route }: Props) {
 
                   return (
                     <RecentTransferCard
-                      avatarLabel={contactName ?? ""}
                       avatarUri={contactEntry?.avatar ?? ""}
                       key={`${item.address}-${item.createdAt}`}
                       address={item.address}
@@ -557,7 +505,6 @@ function SuggestionCard(props: {
 
 function RecentTransferCard(props: {
   address: string
-  avatarLabel: string
   avatarUri?: string
   title: string
   subtitle: string
@@ -565,9 +512,6 @@ function RecentTransferCard(props: {
   onPress: () => void
 }) {
   const theme = useAppTheme()
-  const avatarTone = useMemo(() => RECENT_AVATAR_TONES[hashSeed(props.address) % RECENT_AVATAR_TONES.length], [props.address])
-  const avatarBackgroundColor = theme.isDark ? avatarTone.darkBackground : avatarTone.lightBackground
-  const avatarTintColor = theme.isDark ? avatarTone.darkTint : avatarTone.lightTint
 
   return (
     <Pressable
@@ -583,14 +527,11 @@ function RecentTransferCard(props: {
         pressed ? styles.cardPressed : null,
       ]}
     >
-      <RecentTransferAvatar
-        avatarLabel={props.avatarLabel}
-        avatarUri={props.avatarUri}
-        backgroundColor={avatarBackgroundColor}
-        fallbackName={avatarTone.fallbackName}
-        iconColor={avatarTintColor}
-        name={avatarTone.symbol}
+      <SeedAddressAvatar
+        borderColor="transparent"
+        seedSource={props.address}
         size={48}
+        uri={props.avatarUri}
       />
       <View style={styles.recentTextBlock}>
         <Text numberOfLines={1} style={[theme.typography.calloutEmphasized, styles.recentTitle, { color: theme.colors.text }]}>
@@ -601,78 +542,6 @@ function RecentTransferCard(props: {
         </Text>
       </View>
     </Pressable>
-  )
-}
-
-function RecentTransferAvatar(props: {
-  size: number
-  avatarLabel: string
-  avatarUri?: string
-  backgroundColor: string
-  iconColor: string
-  name: SFSymbolName
-  fallbackName: MaterialIconName
-}) {
-  const theme = useAppTheme()
-  const [imageFailed, setImageFailed] = useState(false)
-  const normalizedUri = props.avatarUri?.trim() || ""
-  const fallbackLabel = props.avatarLabel.trim().slice(0, 1).toUpperCase()
-
-  useEffect(() => {
-    setImageFailed(false)
-  }, [normalizedUri])
-
-  if (normalizedUri && !imageFailed) {
-    return (
-      <Image
-        cachePolicy="memory-disk"
-        contentFit="cover"
-        onError={() => setImageFailed(true)}
-        source={normalizedUri}
-        style={[
-          styles.recentAvatar,
-          {
-            width: props.size,
-            height: props.size,
-            borderRadius: props.size / 2,
-            backgroundColor: props.backgroundColor,
-          },
-        ]}
-        transition={0}
-      />
-    )
-  }
-
-  return (
-    <View
-      style={[
-        styles.recentAvatar,
-        {
-          width: props.size,
-          height: props.size,
-          borderRadius: props.size / 2,
-          backgroundColor: props.backgroundColor,
-        },
-      ]}
-    >
-      {fallbackLabel ? (
-        <Text
-          style={[
-            theme.typography.subheadlineEmphasized,
-            styles.recentAvatarLabel,
-            {
-              color: props.iconColor,
-              fontSize: Math.max(15, Math.round(props.size * 0.34)),
-              lineHeight: Math.max(18, Math.round(props.size * 0.4)),
-            },
-          ]}
-        >
-          {fallbackLabel}
-        </Text>
-      ) : (
-        <SFSymbolIcon color={props.iconColor} fallbackName={props.fallbackName} name={props.name} size={20} weight="medium" />
-      )}
-    </View>
   )
 }
 
@@ -808,14 +677,6 @@ const styles = StyleSheet.create({
   cardPressed: {
     opacity: 0.96,
     transform: [{ scale: 0.992 }],
-  },
-  recentAvatar: {
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-  recentAvatarLabel: {
-    textAlign: "center",
   },
   recentTextBlock: {
     flex: 1,
