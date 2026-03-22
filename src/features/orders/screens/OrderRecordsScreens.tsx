@@ -15,9 +15,9 @@ import {
   useOrderBillSummaryQuery,
   useOrderLogsInfiniteQuery,
 } from "@/features/orders/queries/orderQueries"
+import { countNewOrderRecords } from "@/features/orders/queries/orderLogSnapshotStorage"
 import { exportOrderBillFile } from "@/features/orders/services/orderExport"
 import {
-  countNewOrderRecords,
   type OrderListItem,
   type OrderStatistics,
   type OrderTypeFilter,

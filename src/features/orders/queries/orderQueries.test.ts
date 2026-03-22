@@ -1,5 +1,6 @@
 import type { InfiniteData, QueryClient } from "@tanstack/react-query"
 
+import { countNewOrderRecords } from "@/features/orders/queries/orderLogSnapshotStorage"
 import { buildOrderLogsCacheSnapshot, buildOrderLogsInfinitePlaceholderData, flattenOrderLogPages, getNextOrderLogsPageParam, invalidateOrderQueries, orderKeys } from "@/features/orders/queries/orderQueries"
 
 type OrderLogsPage = {
@@ -159,6 +160,15 @@ describe("orderQueries", () => {
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: orderKeys.all,
     })
+  })
+
+  it("counts only newly appeared order records on the first page", () => {
+    expect(
+      countNewOrderRecords(
+        [{ orderSn: "ORDER_1" }, { orderSn: "ORDER_2" }] as never,
+        [{ orderSn: "ORDER_2" }, { orderSn: "ORDER_3" }, { orderSn: "ORDER_4" }] as never,
+      ),
+    ).toBe(2)
   })
 })
 

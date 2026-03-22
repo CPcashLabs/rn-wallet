@@ -802,17 +802,3 @@ export async function uploadOrderNoteImage(image: UploadableImage) {
 
   return resolveUploadedFileUrl(response.data.data)
 }
-
-export {
-  buildOrderBillCacheKey,
-  buildOrderDetailCacheKey,
-  buildOrderLogsCacheKey,
-  countNewOrderRecords,
-  isOrderDetailCacheSnapshotEqual,
-  readOrderBillCache,
-  readOrderDetailCache,
-  readOrderLogsCache,
-  writeOrderBillCache,
-  writeOrderDetailCache,
-  writeOrderLogsCache,
-} from "@/features/orders/services/orderRecordsCache"

@@ -13,19 +13,17 @@ import {
   findOrderLabels,
   getOrderBillAddresses,
   getOrderBillStatistics,
-  buildOrderLogsCacheKey,
   getOrderDetail,
   getOrderTxlogs,
   getOrderTxlogStatistics,
-  readOrderLogsCache,
   type OrderBillAddressItem,
   type OrderDetail,
   type OrderLabelBinding,
   type OrderStatistics,
   type OrderTypeFilter,
   type RangeQuery,
-  writeOrderLogsCache,
 } from "@/features/orders/services/ordersApi"
+import { buildOrderLogSnapshotKey, readOrderLogSnapshot, writeOrderLogSnapshot } from "@/features/orders/queries/orderLogSnapshotStorage"
 
 type OrderLogsQueryArgs = {
   otherAddress?: string
@@ -39,7 +37,7 @@ type OrderBillSummary = {
   items: OrderBillAddressItem[]
 }
 
-type OrderLogsCacheSnapshot = NonNullable<ReturnType<typeof readOrderLogsCache>>
+type OrderLogsCacheSnapshot = NonNullable<ReturnType<typeof readOrderLogSnapshot>>
 
 export type OrderDetailQueryData = {
   detail: OrderDetail
@@ -153,8 +151,8 @@ export function getNextOrderLogsPageParam(lastPage: OrderLogsPage, allPages: Ord
 }
 
 export function useOrderLogsInfiniteQuery(args: OrderLogsQueryArgs, perPage = 20) {
-  const cacheKey = useMemo(() => buildOrderLogsCacheKey(args), [args])
-  const cachedSnapshot = useMemo(() => readOrderLogsCache(cacheKey), [cacheKey])
+  const cacheKey = useMemo(() => buildOrderLogSnapshotKey(args), [args])
+  const cachedSnapshot = useMemo(() => readOrderLogSnapshot(cacheKey), [cacheKey])
   const placeholderData = useMemo(
     () => buildOrderLogsInfinitePlaceholderData(cachedSnapshot, args.otherAddress, perPage),
     [args.otherAddress, cachedSnapshot, perPage],
@@ -182,7 +180,7 @@ export function useOrderLogsInfiniteQuery(args: OrderLogsQueryArgs, perPage = 20
       return
     }
 
-    writeOrderLogsCache(cacheKey, snapshot)
+    writeOrderLogSnapshot(cacheKey, snapshot)
   }, [cacheKey, perPage, query.data, query.isPlaceholderData])
 
   return query
