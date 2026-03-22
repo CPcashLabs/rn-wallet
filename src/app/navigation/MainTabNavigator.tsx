@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { HomeTabStackNavigator } from "@/app/navigation/HomeTabStackNavigator"
 import { SettingsStackNavigator } from "@/app/navigation/SettingsStackNavigator"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { SFSymbolIcon, type MaterialIconName } from "@/shared/ui/SFSymbolIcon"
 
 import type { MainTabParamList } from "@/app/navigation/types"
 
@@ -137,22 +138,30 @@ function AppleTabBarButton(
 }
 
 function ProfileTabIcon(props: { color: string; focused: boolean }) {
-  return (
-    <View style={[styles.profileIconShell, { opacity: props.focused ? 1 : 0.84 }]}>
-      <View style={[styles.profileHead, { borderColor: props.color }]} />
-      <View style={[styles.profileShoulders, { borderColor: props.color }]} />
-    </View>
-  )
+  return <TabBarSymbolIcon color={props.color} fallbackName="account-circle-outline" focused={props.focused} name="person.crop.circle" />
 }
 
 function HomeTabIcon(props: { color: string; focused: boolean }) {
   return (
-    <View style={[styles.homeIconShell, { opacity: props.focused ? 1 : 0.84 }]}>
-      <View style={[styles.homeRoofLeft, { backgroundColor: props.color }]} />
-      <View style={[styles.homeRoofRight, { backgroundColor: props.color }]} />
-      <View style={[styles.homeBody, { borderColor: props.color }]} />
-      <View style={[styles.homeDoor, { backgroundColor: props.color }]} />
-    </View>
+    <TabBarSymbolIcon color={props.color} fallbackName="home-outline" focused={props.focused} name="house.fill" />
+  )
+}
+
+function TabBarSymbolIcon(props: {
+  color: string
+  fallbackName: MaterialIconName
+  focused: boolean
+  name: "house.fill" | "person.crop.circle"
+}) {
+  return (
+    <SFSymbolIcon
+      color={props.color}
+      fallbackName={props.fallbackName}
+      name={props.name}
+      size={22}
+      style={[styles.tabBarSymbol, { opacity: props.focused ? 1 : 0.84 }]}
+      weight={props.focused ? "semibold" : "medium"}
+    />
   )
 }
 
@@ -201,68 +210,8 @@ const styles = StyleSheet.create({
   hiddenTabBar: {
     display: "none",
   },
-  homeIconShell: {
+  tabBarSymbol: {
     width: 24,
     height: 24,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  homeRoofLeft: {
-    position: "absolute",
-    width: 10,
-    height: 2,
-    borderRadius: 2,
-    top: 8,
-    left: 4,
-    transform: [{ rotate: "-38deg" }],
-  },
-  homeRoofRight: {
-    position: "absolute",
-    width: 10,
-    height: 2,
-    borderRadius: 2,
-    top: 8,
-    right: 4,
-    transform: [{ rotate: "38deg" }],
-  },
-  homeBody: {
-    position: "absolute",
-    width: 12,
-    height: 9,
-    left: 7,
-    top: 11,
-    borderWidth: 1.7,
-    borderTopWidth: 0,
-    borderBottomLeftRadius: 2.5,
-    borderBottomRightRadius: 2.5,
-  },
-  homeDoor: {
-    position: "absolute",
-    width: 3,
-    height: 5,
-    borderTopLeftRadius: 1.5,
-    borderTopRightRadius: 1.5,
-    left: 11.5,
-    top: 15,
-  },
-  profileIconShell: {
-    width: 24,
-    height: 24,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  profileHead: {
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
-    borderWidth: 1.7,
-  },
-  profileShoulders: {
-    width: 16,
-    height: 9,
-    borderRadius: 6,
-    borderWidth: 1.7,
-    borderTopWidth: 1.7,
-    marginTop: 2,
   },
 })

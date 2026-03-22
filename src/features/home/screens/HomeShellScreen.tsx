@@ -26,10 +26,17 @@ import { useUserStore } from "@/shared/store/useUserStore"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
+import { SFSymbolIcon, type MaterialIconName, type SFSymbolName, type SFSymbolWeight } from "@/shared/ui/SFSymbolIcon"
 
 import type { HomeTabStackParamList } from "@/app/navigation/types"
 
 type Props = NativeStackScreenProps<HomeTabStackParamList, "HomeShellScreen">
+
+type QuickActionIconSpec = {
+  fallbackName: MaterialIconName
+  name: SFSymbolName
+  weight?: SFSymbolWeight
+}
 
 function isCancelledNativeAction(error: unknown) {
   if (!(error instanceof Error)) {
@@ -308,11 +315,15 @@ export function HomeShellScreen({ navigation, route }: Props) {
     })
   }, [showToast, t])
 
-  const quickActions = [
+  const quickActions: Array<{ key: string; label: string; icon: QuickActionIconSpec; onPress: () => void }> = [
     {
       key: "scan",
       label: t("home.shell.scan"),
-      icon: "scan" as const,
+      icon: {
+        fallbackName: "qrcode-scan",
+        name: "qrcode.viewfinder",
+        weight: "medium",
+      },
       onPress: () => {
         void handleScan()
       },
@@ -320,19 +331,28 @@ export function HomeShellScreen({ navigation, route }: Props) {
     {
       key: "transfer",
       label: t("home.actions.transfer"),
-      icon: "transfer" as const,
+      icon: {
+        fallbackName: "send",
+        name: "paperplane.fill",
+      },
       onPress: handleOpenTransfer,
     },
     {
       key: "receive",
       label: t("home.actions.receive"),
-      icon: "receive" as const,
+      icon: {
+        fallbackName: "arrow-bottom-left",
+        name: "arrow.down.left",
+      },
       onPress: handleOpenReceive,
     },
     {
       key: "copouch",
       label: t("home.actions.copouch"),
-      icon: "grid" as const,
+      icon: {
+        fallbackName: "view-grid",
+        name: "square.grid.2x2.fill",
+      },
       onPress: handleOpenCopouch,
     },
   ]
@@ -368,7 +388,7 @@ export function HomeShellScreen({ navigation, route }: Props) {
           onPress={() => void handleScan()}
           style={({ pressed }) => [styles.topBarAction, pressed ? styles.topBarActionPressed : null]}
         >
-          <QuickActionIcon color={theme.colors.primary} kind="scan" size={28} />
+          <SFSymbolIcon color={theme.colors.primary} fallbackName="qrcode-scan" name="qrcode.viewfinder" size={28} weight="medium" />
         </Pressable>
       </View>
 
@@ -472,7 +492,7 @@ export function HomeShellScreen({ navigation, route }: Props) {
   )
 }
 
-function QuickActionButton(props: { label: string; onPress: () => void; icon: "scan" | "transfer" | "receive" | "grid" }) {
+function QuickActionButton(props: { label: string; onPress: () => void; icon: QuickActionIconSpec }) {
   const theme = useAppTheme()
 
   return (
@@ -497,7 +517,13 @@ function QuickActionButton(props: { label: string; onPress: () => void; icon: "s
           },
         ]}
       >
-        <QuickActionIcon color={theme.colors.primary} kind={props.icon} size={32} />
+        <SFSymbolIcon
+          color={theme.colors.primary}
+          fallbackName={props.icon.fallbackName}
+          name={props.icon.name}
+          size={32}
+          weight={props.icon.weight ?? "semibold"}
+        />
       </View>
       <Text adjustsFontSizeToFit minimumFontScale={0.82} numberOfLines={1} style={[styles.actionLabel, { color: theme.colors.text }]}>
         {props.label}
@@ -507,91 +533,23 @@ function QuickActionButton(props: { label: string; onPress: () => void; icon: "s
 }
 
 function EyeToggleIcon(props: { visible: boolean; color: string }) {
-  return (
-    <View style={styles.eyeIcon}>
-      <View style={[styles.eyeOutline, { borderColor: props.color }]} />
-      <View style={[styles.eyePupil, { backgroundColor: props.visible ? props.color : "transparent", borderColor: props.color }]} />
-      {!props.visible ? <View style={[styles.eyeSlash, { backgroundColor: props.color }]} /> : null}
-    </View>
-  )
+  return <SFSymbolIcon color={props.color} fallbackName={props.visible ? "eye" : "eye-off"} name={props.visible ? "eye.fill" : "eye.slash.fill"} size={18} />
 }
 
 function ShieldBadgeIcon(props: { color: string; size: number }) {
-  return (
-    <View style={[styles.shieldBadgeIcon, { width: props.size, height: props.size }]}>
-      <View style={[styles.shieldBadgeBody, { borderColor: props.color }]} />
-      <View style={[styles.shieldBadgeCheckStem, { backgroundColor: props.color }]} />
-      <View style={[styles.shieldBadgeCheckArm, { backgroundColor: props.color }]} />
-    </View>
-  )
+  return <SFSymbolIcon color={props.color} fallbackName="shield-check" name="checkmark.shield.fill" size={props.size} />
 }
 
 function ShieldMark(props: { color: string; size: number; opacity?: number }) {
   return (
-    <View style={[styles.shieldMark, { width: props.size, height: props.size, opacity: props.opacity ?? 1 }]}>
-      <View style={[styles.shieldMarkBody, { borderColor: props.color }]} />
-      <View style={[styles.shieldMarkShardLeft, { backgroundColor: props.color }]} />
-      <View style={[styles.shieldMarkShardRight, { backgroundColor: props.color }]} />
-    </View>
-  )
-}
-
-function QuickActionIcon(props: { kind: "scan" | "transfer" | "receive" | "grid"; color: string; size: number }) {
-  const scale = props.size / 32
-
-  return (
-    <View style={[styles.quickIconCanvas, { width: props.size, height: props.size }]}>
-      <View style={{ transform: [{ scale }] }}>
-        {props.kind === "scan" ? <ScanGlyph color={props.color} /> : null}
-        {props.kind === "transfer" ? <TransferGlyph color={props.color} /> : null}
-        {props.kind === "receive" ? <ReceiveGlyph color={props.color} /> : null}
-        {props.kind === "grid" ? <GridGlyph color={props.color} /> : null}
-      </View>
-    </View>
-  )
-}
-
-function ScanGlyph(props: { color: string }) {
-  return (
-    <View style={styles.glyphBase}>
-      <View style={[styles.scanCornerTopLeft, { borderTopColor: props.color, borderLeftColor: props.color }]} />
-      <View style={[styles.scanCornerTopRight, { borderTopColor: props.color, borderRightColor: props.color }]} />
-      <View style={[styles.scanCornerBottomLeft, { borderBottomColor: props.color, borderLeftColor: props.color }]} />
-      <View style={[styles.scanCornerBottomRight, { borderBottomColor: props.color, borderRightColor: props.color }]} />
-      <View style={[styles.scanCenterDot, { backgroundColor: props.color }]} />
-    </View>
-  )
-}
-
-function TransferGlyph(props: { color: string }) {
-  return (
-    <View style={styles.glyphBase}>
-      <View style={[styles.transferArrowStem, { backgroundColor: props.color }]} />
-      <View style={[styles.transferArrowHeadTop, { borderLeftColor: props.color }]} />
-      <View style={[styles.transferArrowHeadBottom, { borderLeftColor: props.color }]} />
-    </View>
-  )
-}
-
-function ReceiveGlyph(props: { color: string }) {
-  return (
-    <View style={styles.glyphBase}>
-      <View style={[styles.receiveArrowVertical, { backgroundColor: props.color }]} />
-      <View style={[styles.receiveArrowHorizontal, { backgroundColor: props.color }]} />
-      <View style={[styles.receiveArrowHeadLeft, { borderTopColor: props.color }]} />
-      <View style={[styles.receiveArrowHeadRight, { borderLeftColor: props.color }]} />
-    </View>
-  )
-}
-
-function GridGlyph(props: { color: string }) {
-  return (
-    <View style={styles.glyphBase}>
-      <View style={[styles.gridCell, styles.gridCellTopLeft, { backgroundColor: props.color }]} />
-      <View style={[styles.gridCell, styles.gridCellTopRight, { backgroundColor: props.color }]} />
-      <View style={[styles.gridCell, styles.gridCellBottomLeft, { backgroundColor: props.color }]} />
-      <View style={[styles.gridCell, styles.gridCellBottomRight, { backgroundColor: props.color }]} />
-    </View>
+    <SFSymbolIcon
+      color={props.color}
+      fallbackName="shield"
+      name="shield.fill"
+      size={props.size}
+      style={{ opacity: props.opacity ?? 1 }}
+      weight="regular"
+    />
   )
 }
 
@@ -680,32 +638,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  eyeIcon: {
-    width: 22,
-    height: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  eyeOutline: {
-    position: "absolute",
-    width: 22,
-    height: 14,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  eyePupil: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  eyeSlash: {
-    position: "absolute",
-    width: 24,
-    height: 1.5,
-    borderRadius: 999,
-    transform: [{ rotate: "-24deg" }],
-  },
   securityScorePill: {
     minHeight: 34,
     borderRadius: 999,
@@ -715,39 +647,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-  },
-  shieldBadgeIcon: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  shieldBadgeBody: {
-    position: "absolute",
-    width: 14,
-    height: 16,
-    borderWidth: 1.5,
-    borderTopLeftRadius: 6,
-    borderTopRightRadius: 6,
-    borderBottomLeftRadius: 7,
-    borderBottomRightRadius: 7,
-    transform: [{ rotate: "180deg" }],
-  },
-  shieldBadgeCheckStem: {
-    position: "absolute",
-    width: 2.2,
-    height: 5,
-    borderRadius: 999,
-    left: 6,
-    top: 8,
-    transform: [{ rotate: "-34deg" }],
-  },
-  shieldBadgeCheckArm: {
-    position: "absolute",
-    width: 2.2,
-    height: 8,
-    borderRadius: 999,
-    left: 9,
-    top: 6,
-    transform: [{ rotate: "42deg" }],
   },
   securityScoreText: {
     fontSize: 13,
@@ -835,185 +734,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     fontWeight: "500",
-  },
-  shieldMark: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  shieldMarkBody: {
-    position: "absolute",
-    width: 38,
-    height: 46,
-    borderWidth: 3,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    borderBottomLeftRadius: 18,
-    borderBottomRightRadius: 18,
-    transform: [{ rotate: "180deg" }],
-  },
-  shieldMarkShardLeft: {
-    position: "absolute",
-    width: 15,
-    height: 28,
-    left: 15,
-    top: 14,
-    transform: [{ skewY: "-22deg" }, { rotate: "-8deg" }],
-  },
-  shieldMarkShardRight: {
-    position: "absolute",
-    width: 15,
-    height: 28,
-    right: 15,
-    top: 14,
-    transform: [{ skewY: "22deg" }, { rotate: "8deg" }],
-  },
-  quickIconCanvas: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  glyphBase: {
-    width: 32,
-    height: 32,
-  },
-  scanCornerTopLeft: {
-    position: "absolute",
-    top: 3,
-    left: 3,
-    width: 8,
-    height: 8,
-    borderTopWidth: 2.2,
-    borderLeftWidth: 2.2,
-    borderTopLeftRadius: 4,
-  },
-  scanCornerTopRight: {
-    position: "absolute",
-    top: 3,
-    right: 3,
-    width: 8,
-    height: 8,
-    borderTopWidth: 2.2,
-    borderRightWidth: 2.2,
-    borderTopRightRadius: 4,
-  },
-  scanCornerBottomLeft: {
-    position: "absolute",
-    bottom: 3,
-    left: 3,
-    width: 8,
-    height: 8,
-    borderBottomWidth: 2.2,
-    borderLeftWidth: 2.2,
-    borderBottomLeftRadius: 4,
-  },
-  scanCornerBottomRight: {
-    position: "absolute",
-    bottom: 3,
-    right: 3,
-    width: 8,
-    height: 8,
-    borderBottomWidth: 2.2,
-    borderRightWidth: 2.2,
-    borderBottomRightRadius: 4,
-  },
-  scanCenterDot: {
-    position: "absolute",
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    left: 12,
-    top: 12,
-  },
-  transferArrowStem: {
-    position: "absolute",
-    left: 5,
-    top: 14,
-    width: 14,
-    height: 3,
-    borderRadius: 999,
-  },
-  transferArrowHeadTop: {
-    position: "absolute",
-    right: 5,
-    top: 9,
-    width: 0,
-    height: 0,
-    borderTopWidth: 6,
-    borderBottomWidth: 0,
-    borderLeftWidth: 12,
-    borderTopColor: "transparent",
-    borderBottomColor: "transparent",
-  },
-  transferArrowHeadBottom: {
-    position: "absolute",
-    right: 5,
-    bottom: 9,
-    width: 0,
-    height: 0,
-    borderTopWidth: 0,
-    borderBottomWidth: 6,
-    borderLeftWidth: 12,
-    borderTopColor: "transparent",
-    borderBottomColor: "transparent",
-  },
-  receiveArrowVertical: {
-    position: "absolute",
-    left: 8,
-    top: 6,
-    width: 3,
-    height: 18,
-    borderRadius: 999,
-  },
-  receiveArrowHorizontal: {
-    position: "absolute",
-    left: 8,
-    bottom: 8,
-    width: 16,
-    height: 3,
-    borderRadius: 999,
-  },
-  receiveArrowHeadLeft: {
-    position: "absolute",
-    left: 6,
-    bottom: 8,
-    width: 8,
-    height: 8,
-    borderTopWidth: 2.2,
-    borderLeftWidth: 2.2,
-    borderLeftColor: "transparent",
-    transform: [{ rotate: "-45deg" }],
-  },
-  receiveArrowHeadRight: {
-    position: "absolute",
-    right: 7,
-    bottom: 6,
-    width: 0,
-    height: 0,
-    borderTopWidth: 0,
-    borderBottomWidth: 9,
-    borderLeftWidth: 9,
-    borderTopColor: "transparent",
-    borderBottomColor: "transparent",
-  },
-  gridCell: {
-    position: "absolute",
-    width: 10,
-    height: 10,
-    borderRadius: 2,
-  },
-  gridCellTopLeft: {
-    left: 5,
-    top: 5,
-  },
-  gridCellTopRight: {
-    right: 5,
-    top: 5,
-  },
-  gridCellBottomLeft: {
-    left: 5,
-    bottom: 5,
-  },
-  gridCellBottomRight: {
-    right: 5,
-    bottom: 5,
   },
 })
