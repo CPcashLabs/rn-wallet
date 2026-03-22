@@ -359,7 +359,7 @@ const home = {
       readyForNextStep: "地址和网络已准备完成，下单创建能力将在后续版本开放。",
     },
     order: {
-      title: "创建订单",
+      title: "转账",
       network: "网络",
       address: "收款地址",
       coinTitle: "支付币种",

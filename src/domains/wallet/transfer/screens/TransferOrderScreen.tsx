@@ -9,7 +9,6 @@ import { TransferOrderCreatingOverlay } from "@/domains/wallet/transfer/componen
 import { FieldRow, PageEmpty, PrimaryButton, SectionCard, SecondaryButton } from "@/shared/ui/AppFlowUi"
 import { createPaymentOrder } from "@/domains/wallet/transfer/services/transferApi"
 import {
-  getTransferGasEstimate,
   getTransferOrderOptions,
   getTransferQuote,
   type TransferOrderOption,
@@ -51,7 +50,6 @@ export function TransferOrderScreen({ navigation, route }: Props) {
   const [selectedOptionCode, setSelectedOptionCode] = useState(selectedSendCoinCode)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
-  const [gasLimit, setGasLimit] = useState(0)
   const [quotedOption, setQuotedOption] = useState<TransferOrderOption | null>(null)
   const [confirmOrderSn, setConfirmOrderSn] = useState<string | null>(null)
   const [confirmVisible, setConfirmVisible] = useState(false)
@@ -60,7 +58,6 @@ export function TransferOrderScreen({ navigation, route }: Props) {
   const isNormalRoute = route.name === "TransferOrderNormalScreen"
   const confirmVariant: TransferConfirmVariant = isNormalRoute ? "normal" : "default"
   const balances = balanceQuery.data?.balances ?? {}
-  const balanceCoins = balanceQuery.data?.coins ?? []
 
   const selectedOption = useMemo(() => {
     return (
@@ -150,36 +147,6 @@ export function TransferOrderScreen({ navigation, route }: Props) {
       mounted = false
     }
   }, [selectedChannel, selectedRecvCoinCode, selectedSendCoinCode, sendChainName, setOrderDraft, t])
-
-  useEffect(() => {
-    let mounted = true
-
-    if (!selectedOption?.sendCoinContract) {
-      setGasLimit(0)
-      return
-    }
-
-    void (async () => {
-      try {
-        const gas = await getTransferGasEstimate({
-          chainName: sendChainName,
-          contractAddress: selectedOption.sendCoinContract,
-        })
-
-        if (mounted) {
-          setGasLimit(gas.gasLimit)
-        }
-      } catch {
-        if (mounted) {
-          setGasLimit(0)
-        }
-      }
-    })()
-
-    return () => {
-      mounted = false
-    }
-  }, [selectedOption?.sendCoinContract, sendChainName])
 
   useEffect(() => {
     let mounted = true
@@ -300,8 +267,6 @@ export function TransferOrderScreen({ navigation, route }: Props) {
     )
   }
 
-  const selectedCoin = selectedOption ? balanceCoins.find(item => item.code === selectedOption.sendCoinCode) : null
-
   return (
     <View style={styles.screenRoot}>
       <HomeScaffold canGoBack onBack={navigation.goBack} title={t("transfer.order.title")} scroll={false}>
@@ -333,10 +298,6 @@ export function TransferOrderScreen({ navigation, route }: Props) {
                   : `${formatAmount(numericAmount)} ${selectedOption?.sendCoinSymbol ?? ""}`.trim()
               }
             />
-            <FieldRow label={t("transfer.order.gasLimit")} value={gasLimit > 0 ? String(gasLimit) : "--"} />
-            {selectedCoin ? (
-              <FieldRow label={t("transfer.order.assetChain")} value={`${selectedCoin.chainName} / ${selectedCoin.symbol}`} />
-            ) : null}
           </SectionCard>
 
           <SectionCard>

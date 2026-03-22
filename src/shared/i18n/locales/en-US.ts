@@ -359,7 +359,7 @@ const home = {
       readyForNextStep: "Address and network are ready. Order creation will be available in a future update.",
     },
     order: {
-      title: "Create Order",
+      title: "Transfer",
       network: "Network",
       address: "Recipient Address",
       coinTitle: "Payment Asset",
