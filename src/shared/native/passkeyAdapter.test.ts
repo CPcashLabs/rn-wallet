@@ -1,46 +1,8 @@
 import { NativeCapabilityUnavailableError } from "@/shared/errors"
 import { passkeyAdapter } from "@/shared/native/passkeyAdapter"
-import { readNativePasskeyCapability } from "@/shared/native/nativePasskeyModule"
-
-jest.mock("@/shared/native/nativePasskeyModule", () => ({
-  readNativePasskeyCapability: jest.fn(),
-}))
-
-const mockedReadNativePasskeyCapability = readNativePasskeyCapability as jest.MockedFunction<typeof readNativePasskeyCapability>
 
 describe("passkeyAdapter", () => {
-  afterEach(() => {
-    mockedReadNativePasskeyCapability.mockReset()
-  })
-
-  it("stays disabled even when the native passkey module reports support", () => {
-    mockedReadNativePasskeyCapability.mockReturnValue({
-      supported: true,
-    })
-
-    expect(passkeyAdapter.getCapability()).toEqual({
-      supported: false,
-      reason: "Passkey sign-in is disabled until a hardware-backed native signer replaces the JS private-key derivation flow.",
-    })
-  })
-
-  it("preserves native unsupported reasons while remaining disabled", () => {
-    mockedReadNativePasskeyCapability.mockReturnValue({
-      supported: false,
-      reason: "Passkey native module is not installed.",
-    })
-
-    expect(passkeyAdapter.getCapability()).toEqual({
-      supported: false,
-      reason: "Passkey native module is not installed.",
-    })
-  })
-
-  it("falls back to the disabled reason when native support is absent without a reason", () => {
-    mockedReadNativePasskeyCapability.mockReturnValue({
-      supported: false,
-    })
-
+  it("stays disabled until a hardware-backed signing architecture exists", () => {
     expect(passkeyAdapter.getCapability()).toEqual({
       supported: false,
       reason: "Passkey sign-in is disabled until a hardware-backed native signer replaces the JS private-key derivation flow.",

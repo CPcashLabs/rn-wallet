@@ -1,5 +1,5 @@
 import type { AdapterResult, CapabilityDescriptor } from "@/shared/native/types"
-import { broadcastTransferWithLocalWallet, getOrCreateLocalWallet, importLocalWallet, readLocalWalletCapability, signWithLocalWallet } from "@/shared/native/localAuthVault"
+import { broadcastTransferWithLocalWallet, getOrCreateLocalWallet, importLocalWallet, readLocalWalletCapability, signWithLocalWallet } from "@/shared/native/localWalletVault"
 import type { WalletImportType } from "@/shared/native/walletImport"
 
 export type WalletConnection = {

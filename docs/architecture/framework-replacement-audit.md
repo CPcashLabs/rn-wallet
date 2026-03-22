@@ -8,6 +8,18 @@ The recommendations follow Google-style engineering preferences:
 - prefer mature, actively maintained libraries over bespoke infrastructure
 - avoid rebuilding caching, retries, persistence, or state orchestration when the project already depends on frameworks that solve them
 
+## Current Status
+
+Status updated on March 22, 2026 after the migration work tracked in this audit.
+
+- 1. Completed: avatar selection now uses `react-native-image-picker`, the crop UI is handled by `react-native-zoom-toolkit`, the bitmap crop is applied through `expo-image-manipulator`, and `PersonalScreen` uploads the cropped file URI instead of the original source asset.
+- 2. Completed: document export and image selection use `@react-native-documents/picker` and `react-native-image-picker`, remote image rendering uses `expo-image`, and the legacy `CPCashFilePicker` bridge has been removed from the native projects.
+- 3. Completed: WebSocket reconnect lifecycle now uses `reconnecting-websocket`; app code only handles auth/app-state gating plus invalidation mapping.
+- 4. Completed: API-backed read models were moved onto TanStack Query patterns, and the old order-record cache layers were reduced to a tiny first-page snapshot helper used only for transaction-record placeholder rendering.
+- 5. Completed: manual Zustand persistence moved to shared `persist` middleware and MMKV storage adapters.
+- 6. Completed for the current product scope: passkey signup remains intentionally disabled, the custom native passkey bridge has been removed, and wallet signing now lives in a dedicated local wallet vault instead of a mixed passkey/local-auth module.
+- 7. Completed: toast presentation now delegates queueing, animation, and timing to `react-native-toast-message`.
+
 ## Highest Priority
 
 ### 1. Avatar crop flow should move to a real image-cropping library

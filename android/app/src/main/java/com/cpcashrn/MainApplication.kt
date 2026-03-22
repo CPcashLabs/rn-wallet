@@ -4,7 +4,6 @@ import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ReactNativeHostWrapper
 
 import android.app.Application
-import com.cpcashrn.passkey.CPCashPasskeyPackage
 import com.cpcashrn.scanner.CPCashScannerPackage
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
@@ -23,7 +22,6 @@ class MainApplication : Application(), ReactApplication {
       ReactNativeHostWrapper(this, object : DefaultReactNativeHost(this) {
         override fun getPackages(): List<ReactPackage> =
             PackageList(this).packages.apply {
-              add(CPCashPasskeyPackage())
               add(CPCashScannerPackage())
             }
 

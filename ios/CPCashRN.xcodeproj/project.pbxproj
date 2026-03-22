@@ -8,15 +8,10 @@
 
 /* Begin PBXBuildFile section */
 		00E356F31AD99517003FC87E /* CPCashRNTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 00E356F21AD99517003FC87E /* CPCashRNTests.m */; };
-		08F9A1C10000000000000001 /* AuthenticationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 08F9A1C00000000000000001 /* AuthenticationServices.framework */; };
-		08F9A1C30000000000000001 /* PhotosUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 08F9A1C20000000000000001 /* PhotosUI.framework */; };
-		08F9A1C50000000000000001 /* Photos.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 08F9A1C40000000000000001 /* Photos.framework */; };
 		0C80B921A6F3F58F76C31292 /* libPods-CPCashRN.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DCACB8F33CDC322A6C60F78 /* libPods-CPCashRN.a */; };
 		13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB01A68108700A75B9A /* AppDelegate.mm */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
-		2B094E120000000000000001 /* CPCashPasskey.mm in Sources */ = {isa = PBXBuildFile; fileRef = 2B094E110000000000000001 /* CPCashPasskey.mm */; };
-		2B094E150000000000000001 /* CPCashFilePicker.mm in Sources */ = {isa = PBXBuildFile; fileRef = 2B094E140000000000000001 /* CPCashFilePicker.mm */; };
 		4E3EE94BD2AD176CE8BB455E /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		5BBC766B1EE0C25A8768440D /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5726D351F9BC8A73F8E0F592 /* ExpoModulesProvider.swift */; };
 		7699B88040F8A987B510C191 /* libPods-CPCashRN-CPCashRNTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 19F6CBCC0A4E27FBF8BF4A61 /* libPods-CPCashRN-CPCashRNTests.a */; };
@@ -38,9 +33,6 @@
 		00E356EE1AD99517003FC87E /* CPCashRNTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CPCashRNTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		00E356F11AD99517003FC87E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		00E356F21AD99517003FC87E /* CPCashRNTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CPCashRNTests.m; sourceTree = "<group>"; };
-		08F9A1C00000000000000001 /* AuthenticationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AuthenticationServices.framework; path = System/Library/Frameworks/AuthenticationServices.framework; sourceTree = SDKROOT; };
-		08F9A1C20000000000000001 /* PhotosUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = PhotosUI.framework; path = System/Library/Frameworks/PhotosUI.framework; sourceTree = SDKROOT; };
-		08F9A1C40000000000000001 /* Photos.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Photos.framework; path = System/Library/Frameworks/Photos.framework; sourceTree = SDKROOT; };
 		13B07F961A680F5B00A75B9A /* CPCashRN.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CPCashRN.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FAF1A68108700A75B9A /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AppDelegate.h; path = CPCashRN/AppDelegate.h; sourceTree = "<group>"; };
 		13B07FB01A68108700A75B9A /* AppDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = AppDelegate.mm; path = CPCashRN/AppDelegate.mm; sourceTree = "<group>"; };
@@ -49,11 +41,7 @@
 		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = CPCashRN/main.m; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = CPCashRN/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		19F6CBCC0A4E27FBF8BF4A61 /* libPods-CPCashRN-CPCashRNTests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-CPCashRN-CPCashRNTests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		2B094E100000000000000001 /* CPCashPasskey.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CPCashPasskey.h; path = CPCashRN/CPCashPasskey.h; sourceTree = "<group>"; };
-		2B094E110000000000000001 /* CPCashPasskey.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = CPCashPasskey.mm; path = CPCashRN/CPCashPasskey.mm; sourceTree = "<group>"; };
 		2B094E130000000000000001 /* CPCashRN.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = CPCashRN.entitlements; path = CPCashRN/CPCashRN.entitlements; sourceTree = "<group>"; };
-		2B094E140000000000000001 /* CPCashFilePicker.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = CPCashFilePicker.mm; path = CPCashRN/CPCashFilePicker.mm; sourceTree = "<group>"; };
-		2B094E160000000000000001 /* CPCashFilePicker.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CPCashFilePicker.h; path = CPCashRN/CPCashFilePicker.h; sourceTree = "<group>"; };
 		3B4392A12AC88292D35C810B /* Pods-CPCashRN.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-CPCashRN.debug.xcconfig"; path = "Target Support Files/Pods-CPCashRN/Pods-CPCashRN.debug.xcconfig"; sourceTree = "<group>"; };
 		5709B34CF0A7D63546082F79 /* Pods-CPCashRN.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-CPCashRN.release.xcconfig"; path = "Target Support Files/Pods-CPCashRN/Pods-CPCashRN.release.xcconfig"; sourceTree = "<group>"; };
 		5726D351F9BC8A73F8E0F592 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-CPCashRN-CPCashRNTests/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
@@ -78,9 +66,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				08F9A1C10000000000000001 /* AuthenticationServices.framework in Frameworks */,
-				08F9A1C50000000000000001 /* Photos.framework in Frameworks */,
-				08F9A1C30000000000000001 /* PhotosUI.framework in Frameworks */,
 				0C80B921A6F3F58F76C31292 /* libPods-CPCashRN.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -110,10 +95,6 @@
 			children = (
 				13B07FAF1A68108700A75B9A /* AppDelegate.h */,
 				13B07FB01A68108700A75B9A /* AppDelegate.mm */,
-				2B094E160000000000000001 /* CPCashFilePicker.h */,
-				2B094E140000000000000001 /* CPCashFilePicker.mm */,
-				2B094E100000000000000001 /* CPCashPasskey.h */,
-				2B094E110000000000000001 /* CPCashPasskey.mm */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
@@ -127,9 +108,6 @@
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				08F9A1C00000000000000001 /* AuthenticationServices.framework */,
-				08F9A1C40000000000000001 /* Photos.framework */,
-				08F9A1C20000000000000001 /* PhotosUI.framework */,
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
 				5DCACB8F33CDC322A6C60F78 /* libPods-CPCashRN.a */,
 				19F6CBCC0A4E27FBF8BF4A61 /* libPods-CPCashRN-CPCashRNTests.a */,
@@ -510,8 +488,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */,
-				2B094E150000000000000001 /* CPCashFilePicker.mm in Sources */,
-				2B094E120000000000000001 /* CPCashPasskey.mm in Sources */,
 				13B07FC11A68108700A75B9A /* main.m in Sources */,
 				C0A46E51E3128FB8621555FB /* ExpoModulesProvider.swift in Sources */,
 			);

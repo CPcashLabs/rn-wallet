@@ -4,7 +4,7 @@ const mockImportLocalWallet = jest.fn()
 const mockSignWithLocalWallet = jest.fn()
 const mockBroadcastTransferWithLocalWallet = jest.fn()
 
-jest.mock("@/shared/native/localAuthVault", () => ({
+jest.mock("@/shared/native/localWalletVault", () => ({
   readLocalWalletCapability: (...args: unknown[]) => mockReadLocalWalletCapability(...args),
   getOrCreateLocalWallet: (...args: unknown[]) => mockGetOrCreateLocalWallet(...args),
   importLocalWallet: (...args: unknown[]) => mockImportLocalWallet(...args),

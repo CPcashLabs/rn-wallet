@@ -1,6 +1,5 @@
 import type { AdapterResult, CapabilityDescriptor } from "@/shared/native/types"
 import { NativeCapabilityUnavailableError } from "@/shared/errors"
-import { readNativePasskeyCapability } from "@/shared/native/nativePasskeyModule"
 
 export type PasskeyAssertion = {
   credentialId: string
@@ -32,11 +31,9 @@ function disabledPasskeyResult(): AdapterResult<PasskeyAssertion> {
 
 export const passkeyAdapter: PasskeyAdapter = {
   getCapability() {
-    const nativeCapability = readNativePasskeyCapability()
-
     return {
       supported: false,
-      reason: nativeCapability.supported ? PASSKEY_SIGNER_DISABLED_REASON : nativeCapability.reason ?? PASSKEY_SIGNER_DISABLED_REASON,
+      reason: PASSKEY_SIGNER_DISABLED_REASON,
     }
   },
   async register(_input) {

@@ -6,7 +6,7 @@ import { toNumber } from "@/shared/api/normalize"
 import { apiClient } from "@/shared/api/client"
 import { getCoinList, resolveChainNameById, type WalletCoin } from "@/shared/api/walletAssets"
 import { ApiError } from "@/shared/errors"
-import { createLocalWalletUnavailableError } from "@/shared/native/localAuthVault"
+import { createLocalWalletUnavailableError } from "@/shared/native/localWalletVault"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { fetchOnChainBalances, getRpcProvider } from "@/shared/web3/balanceService"
 
