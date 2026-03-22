@@ -69,6 +69,33 @@ export function ReceiveShareScreen({ navigation, route }: Props) {
     }
   }
 
+  async function shareQrImage() {
+    if (!detail?.address || !detail.orderSn) {
+      return
+    }
+
+    try {
+      const dataUrl = await buildQrCodeDataUrl(detail.address)
+      const result = await shareAdapter.share({
+        title: t("receive.share.title"),
+        image: {
+          filename: `receive-${detail.orderSn}.png`,
+          base64: stripDataUrlPrefix(dataUrl),
+          mimeType: "image/png",
+        },
+      })
+
+      if (!result.ok) {
+        showToast({ message: t("receive.share.shareFailed"), tone: "error" })
+      }
+    } catch (error) {
+      logErrorSafely("[receive][share][qr][share]", error, {
+        forwardToConsole: false,
+      })
+      showToast({ message: t("receive.share.shareFailed"), tone: "error" })
+    }
+  }
+
   return (
     <HomeScaffold canGoBack onBack={navigation.goBack} title={t("receive.share.title")} scroll={false}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -106,25 +133,17 @@ export function ReceiveShareScreen({ navigation, route }: Props) {
             variant="secondary"
           />
           <AppButton
-            disabled={sharing || !detail?.shareUrl}
+            disabled={sharing || !detail?.address || !detail?.orderSn}
             label={sharing ? t("common.loading") : t("receive.share.shareNow")}
             onPress={() => {
-              if (!detail?.shareUrl) {
+              if (!detail?.address || !detail?.orderSn) {
                 return
               }
 
               void (async () => {
                 setSharing(true)
                 try {
-                  const result = await shareAdapter.share({
-                    title: t("receive.share.headline"),
-                    message: detail.shareUrl,
-                    url: detail.shareUrl,
-                  })
-
-                  if (!result.ok) {
-                    showToast({ message: t("receive.share.shareFailed"), tone: "error" })
-                  }
+                  await shareQrImage()
                 } finally {
                   setSharing(false)
                 }

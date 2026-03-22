@@ -577,6 +577,7 @@ const home = {
       qrUnavailable: "当前还没有可保存的二维码。",
       saveQrSuccess: "二维码已保存到相册。",
       saveQrFailed: "二维码保存失败。",
+      shareFailed: "打开系统分享失败。",
       refreshIndividual: "刷新个人收款",
       refreshBusiness: "刷新商业收款",
       createSuccess: "收款单创建成功。",
@@ -670,8 +671,8 @@ const home = {
     },
     share: {
       title: "收款分享",
-      headline: "分享收款链接",
-      body: "这个页面对应 Vue 端的收款分享入口，当前通过原生 share adapter 发送收款链接。",
+      headline: "分享收款二维码",
+      body: "这个页面对应 Vue 端的收款分享入口，当前通过系统分享面板发送收款二维码图片。",
       address: "地址",
       link: "分享链接",
       loadFailed: "收款分享详情加载失败。",

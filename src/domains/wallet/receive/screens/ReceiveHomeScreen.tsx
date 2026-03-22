@@ -338,6 +338,29 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
     }
   }
 
+  async function shareQrImage(input: { address: string; filename: string }) {
+    try {
+      const dataUrl = await buildQrCodeDataUrl(input.address)
+      const result = await shareAdapter.share({
+        title: t("receive.home.title"),
+        image: {
+          filename: input.filename,
+          base64: stripDataUrlPrefix(dataUrl),
+          mimeType: "image/png",
+        },
+      })
+
+      if (!result.ok) {
+        showToast({ message: t("receive.home.shareFailed"), tone: "error" })
+      }
+    } catch (error) {
+      logErrorSafely("[receive][qr][share]", error, {
+        forwardToConsole: false,
+      })
+      showToast({ message: t("receive.home.shareFailed"), tone: "error" })
+    }
+  }
+
   function handleMoreMenu() {
     const menuItems = [
       {
@@ -437,26 +460,15 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
   }
 
   function handleShare() {
-    if (isNormalReceive) {
-      if (!qrSource) {
-        showToast({ message: t("receive.home.qrUnavailable"), tone: "warning" })
-        return
-      }
-
-      void shareAdapter.share({
-        title: t("receive.home.title"),
-        message: qrSource,
-      })
+    if (!qrSource) {
+      showToast({ message: t("receive.home.qrUnavailable"), tone: "warning" })
       return
     }
 
-    if (!currentOrder?.orderSn) {
-      showToast({ message: t("receive.home.emptyBody"), tone: "warning" })
-      return
-    }
-
-    navigation.navigate("ReceiveShareScreen", {
-      orderSn: currentOrder.orderSn,
+    const suffix = currentOrder?.orderSn || route.params?.payChain || activeCollapseKey
+    void shareQrImage({
+      address: qrSource,
+      filename: `receive-${suffix}.png`,
     })
   }
 

@@ -577,6 +577,7 @@ const home = {
       qrUnavailable: "There is no QR image to save right now.",
       saveQrSuccess: "QR image saved to Photos.",
       saveQrFailed: "Failed to save QR image.",
+      shareFailed: "Failed to open the system share sheet.",
       refreshIndividual: "Refresh Personal Receive",
       refreshBusiness: "Refresh Business Receive",
       createSuccess: "Receive order created.",
@@ -670,8 +671,8 @@ const home = {
     },
     share: {
       title: "Receive Share",
-      headline: "Share receive link",
-      body: "This page corresponds to the Vue receive share entry. It uses the native share adapter to send the current receive link.",
+      headline: "Share receive QR code",
+      body: "This page corresponds to the Vue receive share entry. It now uses the system share sheet to send the current receive QR image.",
       address: "Address",
       link: "Share Link",
       loadFailed: "Failed to load receive share detail.",
