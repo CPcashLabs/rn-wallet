@@ -6,7 +6,6 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import type { HelpStackParamList, SettingsStackParamList } from "@/app/navigation/types"
 import { getCurrentUserProfile } from "@/features/home/services/homeApi"
 import type { ExchangeRateItem } from "@/features/settings/services/settingsApi"
-import type { GuideSection } from "@/features/settings/utils/settingsHub"
 import { useUserStore } from "@/shared/store/useUserStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { AppCard, APP_LIST_ROW_MIN_HEIGHT } from "@/shared/ui/AppCard"
@@ -16,17 +15,6 @@ import { AppListCard, AppListRow } from "@/shared/ui/AppList"
 
 export type StackProps<T extends keyof SettingsStackParamList> = NativeStackScreenProps<SettingsStackParamList, T>
 export type HelpStackProps<T extends keyof HelpStackParamList> = NativeStackScreenProps<HelpStackParamList, T>
-
-export type GuideScreenName =
-  | "WalletGuideDetailScreen"
-  | "FAQGuideDetailScreen"
-  | "KnowledgeGuideDetailScreen"
-  | "SafetyGuideDetailScreen"
-
-export type GuideListScreenProps = NativeStackScreenProps<HelpStackParamList, GuideScreenName> & {
-  section: GuideSection
-  titleKey: string
-}
 
 export const DEFAULT_RATES: ExchangeRateItem[] = [
   { currency: "USD", value: "1", symbol: "$" },

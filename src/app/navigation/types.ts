@@ -106,10 +106,9 @@ export type HelpStackParamList = {
   FAQScreen: undefined
   ReceiveDiffScreen: undefined
   UserGuideScreen: undefined
-  WalletGuideDetailScreen: undefined
-  FAQGuideDetailScreen: undefined
-  KnowledgeGuideDetailScreen: undefined
-  SafetyGuideDetailScreen: undefined
+  GuideDetailScreen: {
+    section: "wallet" | "faq" | "knowledge" | "safety"
+  }
 }
 
 export type AddressBookStackParamList = {

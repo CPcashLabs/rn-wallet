@@ -14,7 +14,6 @@ import { AppTextField } from "@/shared/ui/AppTextField"
 
 import {
   Card,
-  type GuideListScreenProps,
   type HelpStackProps,
   ListCard,
   PrimaryButton,
@@ -197,22 +196,30 @@ export function UserGuideScreen({ navigation }: HelpStackProps<"UserGuideScreen"
   return (
     <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.guide.title")}>
       <ListCard>
-        <Row icon="wallet" label={t("settingsHub.guide.wallet")} onPress={() => navigation.navigate("WalletGuideDetailScreen")} />
-        <Row icon="help" label={t("settingsHub.guide.faq")} onPress={() => navigation.navigate("FAQGuideDetailScreen")} />
-        <Row icon="book" label={t("settingsHub.guide.knowledge")} onPress={() => navigation.navigate("KnowledgeGuideDetailScreen")} />
-        <Row hideDivider icon="lock" label={t("settingsHub.guide.safety")} onPress={() => navigation.navigate("SafetyGuideDetailScreen")} />
+        <Row icon="wallet" label={t("settingsHub.guide.wallet")} onPress={() => navigation.navigate("GuideDetailScreen", { section: "wallet" })} />
+        <Row icon="help" label={t("settingsHub.guide.faq")} onPress={() => navigation.navigate("GuideDetailScreen", { section: "faq" })} />
+        <Row icon="book" label={t("settingsHub.guide.knowledge")} onPress={() => navigation.navigate("GuideDetailScreen", { section: "knowledge" })} />
+        <Row hideDivider icon="lock" label={t("settingsHub.guide.safety")} onPress={() => navigation.navigate("GuideDetailScreen", { section: "safety" })} />
       </ListCard>
       <PrimaryButton label={t("settingsHub.help.title")} onPress={() => navigation.navigate("HelpCenterScreen")} />
     </HomeScaffold>
   )
 }
 
-function GuideListScreen(props: GuideListScreenProps) {
+const guideDetailTitleKeyMap = {
+  wallet: "settingsHub.guide.wallet",
+  faq: "settingsHub.guide.faq",
+  knowledge: "settingsHub.guide.knowledge",
+  safety: "settingsHub.guide.safety",
+} as const
+
+export function GuideDetailScreen(props: HelpStackProps<"GuideDetailScreen">) {
   const { t } = useTranslation()
-  const links = getGuideLinks(props.section)
+  const { section } = props.route.params
+  const links = getGuideLinks(section)
 
   return (
-    <HomeScaffold canGoBack onBack={props.navigation.goBack} title={t(props.titleKey)}>
+    <HomeScaffold canGoBack onBack={props.navigation.goBack} title={t(guideDetailTitleKeyMap[section])}>
       <ListCard>
         {links.map(item => (
           <Row hideDivider={item.url === links[links.length - 1]?.url} icon="book" key={item.url} label={item.title} onPress={() => void openExternalUrl(item.url)} />
@@ -220,22 +227,6 @@ function GuideListScreen(props: GuideListScreenProps) {
       </ListCard>
     </HomeScaffold>
   )
-}
-
-export function WalletGuideDetailScreen(props: HelpStackProps<"WalletGuideDetailScreen">) {
-  return <GuideListScreen {...props} section="wallet" titleKey="settingsHub.guide.wallet" />
-}
-
-export function FAQGuideDetailScreen(props: HelpStackProps<"FAQGuideDetailScreen">) {
-  return <GuideListScreen {...props} section="faq" titleKey="settingsHub.guide.faq" />
-}
-
-export function KnowledgeGuideDetailScreen(props: HelpStackProps<"KnowledgeGuideDetailScreen">) {
-  return <GuideListScreen {...props} section="knowledge" titleKey="settingsHub.guide.knowledge" />
-}
-
-export function SafetyGuideDetailScreen(props: HelpStackProps<"SafetyGuideDetailScreen">) {
-  return <GuideListScreen {...props} section="safety" titleKey="settingsHub.guide.safety" />
 }
 
 const localStyles = {
