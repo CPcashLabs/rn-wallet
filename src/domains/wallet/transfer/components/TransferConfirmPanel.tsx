@@ -9,6 +9,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native"
 import { useTranslation } from "react-i18next"
@@ -39,6 +40,7 @@ import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { PageEmpty, PrimaryButton, SectionCard } from "@/shared/ui/AppFlowUi"
 import { NetworkLogo } from "@/shared/ui/NetworkLogo"
+import { SFSymbolIcon } from "@/shared/ui/SFSymbolIcon"
 
 export type TransferConfirmVariant = "default" | "normal"
 
@@ -408,6 +410,8 @@ function TransferConfirmPaymentRow(props: {
   const highlightProgress = useRef(new Animated.Value(props.active ? 1 : 0)).current
   const checkProgress = useRef(new Animated.Value(props.active ? 1 : 0)).current
   const pressProgress = useRef(new Animated.Value(0)).current
+  const activeBorderColor = theme.isDark ? "rgba(10,132,255,0.34)" : "rgba(10,132,255,0.22)"
+  const rowBackgroundColor = props.item.unavailableReason != null ? theme.colors.surfaceMuted : theme.colors.surfaceElevated ?? theme.colors.surface
   const highlightScale = highlightProgress.interpolate({
     inputRange: [0, 1],
     outputRange: [0.985, 1],
@@ -490,7 +494,10 @@ function TransferConfirmPaymentRow(props: {
       onPressOut={handlePressOut}
       style={[
         styles.paymentRow,
-        props.item.unavailableReason != null ? { backgroundColor: theme.colors.surfaceMuted } : null,
+        {
+          backgroundColor: rowBackgroundColor,
+          borderColor: props.active ? activeBorderColor : theme.colors.border,
+        },
       ]}
     >
       <Animated.View
@@ -536,7 +543,7 @@ function TransferConfirmPaymentRow(props: {
               },
             ]}
           >
-            <Text style={[styles.paymentRowCheck, { color: theme.colors.primary }]}>✓</Text>
+            <SFSymbolIcon color={theme.colors.primary} fallbackName="check-circle" name="checkmark.circle.fill" size={20} />
           </Animated.View>
         </View>
       </Animated.View>
@@ -560,6 +567,7 @@ function TransferConfirmBody(props: {
 }) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const { fontScale } = useWindowDimensions()
   const chainId = useWalletStore(state => state.chainId)
   const walletAddress = useWalletStore(state => state.address)
   const balanceQuery = useWalletBalanceQuery({
@@ -567,6 +575,12 @@ function TransferConfirmBody(props: {
     chainId,
   })
   const balances = balanceQuery.data?.balances ?? {}
+  const pageBackgroundColor = theme.colors.backgroundMuted ?? theme.colors.background
+  const cardBackgroundColor = theme.colors.surfaceElevated ?? theme.colors.surface
+  const secondarySurfaceColor = theme.colors.surfaceMuted ?? theme.colors.background
+  const cardBorderColor = theme.colors.border
+  const dynamicTypeScale = clamp(fontScale, 1, 1.18)
+  const summaryAmountFontSize = clamp(Math.round(35 * dynamicTypeScale), 36, 42)
   const paymentOptionGroups = useMemo(
     () =>
       resolveTransferConfirmPaymentOptions({
@@ -591,17 +605,22 @@ function TransferConfirmBody(props: {
   )
   const formattedRecipientLabel = useMemo(() => formatWalletAddress(receiveAddressLabel, 8, 4), [receiveAddressLabel])
   const selectedPaymentCoinCode = props.pendingPaymentCoinCode ?? props.detail?.sendCoinCode ?? ""
+  const summaryAmountLabel = useMemo(() => {
+    if (!props.detail) {
+      return t("common.loading")
+    }
+
+    return `${formatAmount(props.detail.sendAmount)} ${props.detail.sendCoinName || props.detail.sendCoinCode}`
+  }, [props.detail, t])
+  const chainLabel = props.detail?.recvChainName || props.detail?.sendChainName || "-"
   const renderPaymentRow = useCallback(
-    (item: TransferConfirmPaymentOptionItem, index: number, total: number) => {
+    (item: TransferConfirmPaymentOptionItem) => {
       const disabled = props.loading || props.submitting || props.switchingPayment || item.unavailableReason != null
 
       return (
         <View
           key={`${item.option.sendCoinCode}-${item.option.recvCoinCode || "same-chain"}`}
-          style={[
-            styles.paymentRowContainer,
-            total > 1 && index < total - 1 ? { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.border } : null,
-          ]}
+          style={styles.paymentRowContainer}
         >
           <TransferConfirmPaymentRow
             active={item.option.sendCoinCode === selectedPaymentCoinCode && item.unavailableReason == null}
@@ -612,7 +631,7 @@ function TransferConfirmBody(props: {
         </View>
       )
     },
-    [props.loading, props.onSelectPaymentOption, props.submitting, props.switchingPayment, selectedPaymentCoinCode, theme.colors.border],
+    [props.loading, props.onSelectPaymentOption, props.submitting, props.switchingPayment, selectedPaymentCoinCode],
   )
 
   if (props.loading && !props.detail) {
@@ -637,16 +656,45 @@ function TransferConfirmBody(props: {
     <View style={styles.bodyLayout}>
       <ScrollView
         bounces={false}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: 20 }]}
         keyboardShouldPersistTaps="handled"
         style={styles.scrollBody}
       >
-        <View style={[styles.summaryPanel, { backgroundColor: theme.isDark ? theme.colors.surfaceElevated : "#EEF5FF" }]}>
-          <Text style={[styles.summaryRecipient, { color: theme.colors.text }]}>{t("transfer.confirm.sendTo", { address: formattedRecipientLabel })}</Text>
-          <Text style={[styles.amountText, { color: theme.colors.text }]}>
-            {props.detail ? `${props.detail.sendAmount} ${props.detail.sendCoinName || props.detail.sendCoinCode}` : t("common.loading")}
+        <View
+          style={[
+            styles.summaryPanel,
+            {
+              backgroundColor: cardBackgroundColor,
+              borderColor: cardBorderColor,
+            },
+          ]}
+        >
+          <Text style={[styles.summaryRecipient, { color: theme.colors.mutedText }]}>{t("transfer.confirm.sendTo", { address: formattedRecipientLabel })}</Text>
+          <Text
+            style={[
+              styles.amountText,
+              {
+                color: theme.colors.text,
+                fontSize: summaryAmountFontSize,
+                lineHeight: summaryAmountFontSize + 4,
+              },
+            ]}
+          >
+            {summaryAmountLabel}
           </Text>
-          <Text style={[styles.chainBadge, { color: theme.colors.mutedText }]}>{props.detail?.recvChainName || "-"}</Text>
+          <View style={styles.summaryMeta}>
+            <View
+              style={[
+                styles.chainBadge,
+                {
+                  backgroundColor: secondarySurfaceColor,
+                  borderColor: cardBorderColor,
+                },
+              ]}
+            >
+              <Text style={[styles.chainBadgeText, { color: theme.colors.mutedText }]}>{chainLabel}</Text>
+            </View>
+          </View>
         </View>
 
         {props.paymentOptions.length > 0 ? (
@@ -662,16 +710,7 @@ function TransferConfirmBody(props: {
             </View>
 
             {paymentOptionGroups.available.length > 0 ? (
-              <SectionCard
-                style={[
-                  styles.paymentGroupCard,
-                  {
-                    backgroundColor: theme.colors.surfaceElevated ?? theme.colors.surface,
-                  },
-                ]}
-              >
-                {paymentOptionGroups.available.map((item, index) => renderPaymentRow(item, index, paymentOptionGroups.available.length))}
-              </SectionCard>
+              <View style={styles.paymentGroup}>{paymentOptionGroups.available.map(item => renderPaymentRow(item))}</View>
             ) : null}
 
             {paymentOptionGroups.unavailable.length > 0 ? (
@@ -679,25 +718,31 @@ function TransferConfirmBody(props: {
                 <Text style={[styles.paymentSectionLabel, { color: theme.colors.mutedText }]}>
                   {t("transfer.confirm.unavailablePaymentMethods")}
                 </Text>
-                <SectionCard
+                <View
                   style={[
-                    styles.paymentGroupCard,
+                    styles.paymentGroup,
                     {
-                      backgroundColor: theme.colors.surfaceElevated ?? theme.colors.surface,
+                      opacity: 0.82,
                     },
                   ]}
                 >
-                  {paymentOptionGroups.unavailable.map((item, index) =>
-                    renderPaymentRow(item, index, paymentOptionGroups.unavailable.length),
-                  )}
-                </SectionCard>
+                  {paymentOptionGroups.unavailable.map(item => renderPaymentRow(item))}
+                </View>
               </View>
             ) : null}
           </View>
         ) : null}
 
         {props.submitUnavailableMessage ? (
-          <SectionCard>
+          <SectionCard
+            style={[
+              styles.capabilityWarningCard,
+              {
+                backgroundColor: theme.colors.warningSoft,
+                borderColor: theme.colors.warningBorder,
+              },
+            ]}
+          >
             <Text style={[styles.capabilityWarning, { color: theme.colors.warning }]}>
               {props.submitUnavailableMessage}
             </Text>
@@ -709,7 +754,8 @@ function TransferConfirmBody(props: {
         style={[
           styles.footer,
           {
-            backgroundColor: theme.isDark ? theme.colors.background : "#EEF5FF",
+            backgroundColor: pageBackgroundColor,
+            borderTopColor: theme.colors.border,
             paddingBottom: footerInset,
           },
         ]}
@@ -721,6 +767,7 @@ function TransferConfirmBody(props: {
           onPress={props.onSubmit}
           style={props.switchingPayment ? styles.footerButtonStableDisabled : null}
         />
+        <Text style={[styles.footerCaption, { color: theme.colors.mutedText }]}>{t("transfer.order.assurance")}</Text>
       </View>
     </View>
   )
@@ -743,8 +790,8 @@ export function TransferConfirmScreenView(props: SharedProps) {
       onBack={props.onClose}
       scroll={false}
       title={t("transfer.confirm.title")}
-      backgroundColor={theme.isDark ? theme.colors.background : "#EEF5FF"}
-      headerBackgroundColor={theme.isDark ? theme.colors.surfaceElevated : "#EEF5FF"}
+      backgroundColor={theme.colors.backgroundMuted ?? theme.colors.background}
+      headerBackgroundColor={theme.colors.backgroundMuted ?? theme.colors.background}
     >
       <TransferConfirmBody
         detail={controller.detail}
@@ -828,53 +875,52 @@ export function TransferConfirmModal(props: ModalProps) {
         style={[
           styles.sheetSurface,
           {
-            backgroundColor: theme.isDark ? theme.colors.background : "#EEF5FF",
+            backgroundColor: theme.colors.backgroundMuted ?? theme.colors.background,
             borderColor: theme.colors.border,
-            top: Math.max(insets.top + 12, 28),
+            top: Math.max(insets.top + 8, 20),
             transform: [{ translateY: sheetTranslateY }],
           },
         ]}
       >
         <View
           style={[
-            styles.sheetHeader,
+            styles.sheetChrome,
             {
-              backgroundColor: theme.isDark ? theme.colors.surfaceElevated ?? theme.colors.surface : "#EEF5FF",
-              borderBottomColor: "transparent",
+              backgroundColor: theme.colors.backgroundMuted ?? theme.colors.background,
             },
           ]}
         >
-          <View style={styles.sheetHeaderSide}>
-            <Pressable
-              accessibilityShowsLargeContentViewer={false}
-              disabled={controller.submitting || controller.switchingPayment}
-              hitSlop={8}
-              onPress={dismiss}
-              style={styles.backButton}
-            >
-              <Text style={[styles.backChevron, { color: theme.colors.primary }]}>‹</Text>
-              <Text style={[styles.backText, { color: theme.colors.primary }]}>{t("common.back")}</Text>
-            </Pressable>
-          </View>
-          <Text numberOfLines={1} style={[styles.sheetTitle, { color: theme.colors.text }]}>
-            {t("transfer.confirm.title")}
-          </Text>
-          <View style={[styles.sheetHeaderSide, styles.sheetHeaderSideRight]}>
-            <Pressable
-              accessibilityShowsLargeContentViewer={false}
-              disabled={controller.submitting || controller.switchingPayment}
-              hitSlop={8}
-              onPress={dismiss}
-              style={[
-                styles.closeButton,
-                {
-                  backgroundColor: theme.colors.surfaceMuted,
-                  borderColor: theme.colors.border,
-                },
-              ]}
-            >
-              <Text style={[styles.closeButtonText, { color: theme.colors.text }]}>{t("common.close")}</Text>
-            </Pressable>
+          <View
+            style={[
+              styles.sheetGrabber,
+              {
+                backgroundColor: theme.isDark ? "#48484A" : "#C7C7CC",
+              },
+            ]}
+          />
+          <View style={styles.sheetHeader}>
+            <View style={styles.sheetHeaderSide} />
+            <Text numberOfLines={1} style={[styles.sheetTitle, { color: theme.colors.text }]}>
+              {t("transfer.confirm.title")}
+            </Text>
+            <View style={[styles.sheetHeaderSide, styles.sheetHeaderSideRight]}>
+              <Pressable
+                accessibilityLabel={t("common.close")}
+                accessibilityShowsLargeContentViewer={false}
+                disabled={controller.submitting || controller.switchingPayment}
+                hitSlop={8}
+                onPress={dismiss}
+                style={[
+                  styles.closeButton,
+                  {
+                    backgroundColor: theme.colors.surfaceMuted,
+                    borderColor: theme.colors.border,
+                  },
+                ]}
+              >
+                <SFSymbolIcon color={theme.colors.text} fallbackName="close" name="xmark" size={13} weight="semibold" />
+              </Pressable>
+            </View>
           </View>
         </View>
 
@@ -905,37 +951,54 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: 16,
-    gap: 12,
-    paddingBottom: 16,
-  },
-  footer: {
     paddingHorizontal: 16,
     paddingTop: 12,
+    gap: 16,
+  },
+  footer: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: 10,
   },
   footerButtonStableDisabled: {
     opacity: 1,
   },
   summaryPanel: {
-    borderRadius: 28,
-    paddingHorizontal: 24,
-    paddingTop: 12,
-    paddingBottom: 16,
-    gap: 6,
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 18,
+    gap: 8,
   },
   summaryRecipient: {
-    fontSize: 16,
-    fontWeight: "500",
+    fontSize: 14,
+    lineHeight: 19,
+    fontWeight: "400",
     textAlign: "center",
   },
   amountText: {
-    fontSize: 44,
-    fontWeight: "800",
+    fontSize: 38,
+    fontWeight: "600",
+    letterSpacing: -0.9,
     textAlign: "center",
   },
+  summaryMeta: {
+    alignItems: "center",
+  },
   chainBadge: {
-    fontSize: 14,
-    textAlign: "center",
+    minHeight: 30,
+    paddingHorizontal: 12,
+    borderRadius: 15,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  chainBadgeText: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "500",
   },
   paymentHeader: {
     flexDirection: "row",
@@ -944,15 +1007,17 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   paymentSection: {
-    gap: 10,
+    gap: 12,
   },
   unavailableSection: {
     gap: 10,
   },
   paymentSectionLabel: {
-    fontSize: 15,
-    fontWeight: "500",
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "600",
     paddingHorizontal: 4,
+    letterSpacing: -0.08,
   },
   paymentLoading: {
     flexDirection: "row",
@@ -960,30 +1025,33 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   paymentLoadingText: {
-    fontSize: 12,
-    fontWeight: "500",
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "400",
   },
-  paymentGroupCard: {
-    borderRadius: 26,
-    overflow: "hidden",
+  paymentGroup: {
+    gap: 10,
   },
   paymentRowContainer: {
-    overflow: "hidden",
+    overflow: "visible",
   },
   paymentRow: {
-    minHeight: 84,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
+    minHeight: 78,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     position: "relative",
     overflow: "hidden",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 18,
   },
   paymentRowHighlight: {
     ...StyleSheet.absoluteFillObject,
+    borderRadius: 18,
   },
   paymentRowInner: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
+    gap: 12,
   },
   paymentRowIcon: {
     alignItems: "center",
@@ -991,11 +1059,13 @@ const styles = StyleSheet.create({
   },
   paymentRowContent: {
     flex: 1,
-    gap: 4,
+    gap: 3,
   },
   paymentRowTitle: {
-    fontSize: 18,
-    fontWeight: "500",
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: "600",
+    letterSpacing: -0.41,
   },
   paymentRowSubtitle: {
     fontSize: 13,
@@ -1004,25 +1074,24 @@ const styles = StyleSheet.create({
   paymentRowReason: {
     fontSize: 13,
     lineHeight: 18,
-    fontWeight: "600",
+    fontWeight: "500",
   },
   paymentRowAccessory: {
-    minWidth: 24,
+    minWidth: 28,
     alignItems: "flex-end",
     justifyContent: "center",
   },
   paymentRowCheckWrap: {
-    minWidth: 24,
+    minWidth: 28,
     alignItems: "center",
   },
-  paymentRowCheck: {
-    fontSize: 22,
-    fontWeight: "700",
+  capabilityWarningCard: {
+    borderRadius: 18,
   },
   capabilityWarning: {
     fontSize: 13,
-    lineHeight: 20,
-    fontWeight: "600",
+    lineHeight: 18,
+    fontWeight: "500",
   },
   stateWrap: {
     flex: 1,
@@ -1051,60 +1120,63 @@ const styles = StyleSheet.create({
   },
   modalBackdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(15,23,42,0.22)",
+    backgroundColor: "rgba(15,23,42,0.18)",
   },
   sheetSurface: {
     position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     borderWidth: StyleSheet.hairlineWidth,
     overflow: "hidden",
   },
+  sheetChrome: {
+    paddingTop: 8,
+    gap: 4,
+  },
+  sheetGrabber: {
+    alignSelf: "center",
+    width: 36,
+    height: 5,
+    borderRadius: 999,
+  },
   sheetHeader: {
-    minHeight: 68,
+    minHeight: 52,
     paddingHorizontal: 16,
     flexDirection: "row",
     alignItems: "center",
-    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   sheetHeaderSide: {
-    minWidth: 72,
+    minWidth: 44,
   },
   sheetHeaderSideRight: {
     alignItems: "flex-end",
   },
   sheetTitle: {
     flex: 1,
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: "600",
+    letterSpacing: -0.41,
     textAlign: "center",
   },
-  backButton: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  backChevron: {
-    fontSize: 22,
-    lineHeight: 22,
-    marginRight: 2,
-  },
-  backText: {
-    fontSize: 17,
-    fontWeight: "500",
-  },
   closeButton: {
-    minWidth: 74,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 999,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
+    justifyContent: "center",
   },
-  closeButtonText: {
-    fontSize: 15,
-    fontWeight: "600",
+  footerCaption: {
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: "center",
   },
 })
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
+}
