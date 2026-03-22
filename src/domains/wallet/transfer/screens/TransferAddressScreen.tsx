@@ -1,16 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 
 import { useFocusEffect } from "@react-navigation/native"
-import { ActionSheetIOS, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
+import { ActionSheetIOS, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import { navigateRoot } from "@/app/navigation/navigationRef"
-import { formatWalletAddress, formatWalletDateTime } from "@/domains/wallet/shared/utils/format"
+import { formatWalletAddress } from "@/domains/wallet/shared/utils/format"
 import { PrimaryButton } from "@/shared/ui/AppFlowUi"
 import { useAddressBookEntriesQuery } from "@/shared/address-book/addressBookQueries"
 import { useAddressBookStore } from "@/shared/address-book/useAddressBookStore"
-import { SeedAddressAvatar } from "@/shared/avatar/SeedAddressAvatar"
 import { HomeScaffold } from "@/shared/ui/HomeScaffold"
 import { useRecentTransferEntriesQuery } from "@/domains/wallet/transfer/queries/transferQueries"
 import { type TransferChannel } from "@/domains/wallet/transfer/services/transferApi"
@@ -24,14 +23,54 @@ import { useDeferredValueCompat } from "@/shared/hooks/useDeferredValueCompat"
 import { scannerAdapter } from "@/shared/native"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
-import { AppEmptyState } from "@/shared/ui/AppEmptyState"
-import { AppListCard, AppListRow } from "@/shared/ui/AppList"
-import { AppTextField } from "@/shared/ui/AppTextField"
+import { SFSymbolIcon, type MaterialIconName, type SFSymbolName } from "@/shared/ui/SFSymbolIcon"
 
 import type { TransferStackParamList } from "@/app/navigation/types"
 
 type Props = NativeStackScreenProps<TransferStackParamList, "TransferAddressScreen">
+
 const RECENT_ENTRY_LIMIT = 3
+const RECENT_AVATAR_TONES: Array<{
+  lightBackground: string
+  lightTint: string
+  darkBackground: string
+  darkTint: string
+  symbol: SFSymbolName
+  fallbackName: MaterialIconName
+}> = [
+  {
+    lightBackground: "#CFF1CB",
+    lightTint: "#35553B",
+    darkBackground: "#233D2A",
+    darkTint: "#B8E9BE",
+    symbol: "person.fill",
+    fallbackName: "account",
+  },
+  {
+    lightBackground: "#CFE3FF",
+    lightTint: "#1563E8",
+    darkBackground: "#1E3657",
+    darkTint: "#A8CCFF",
+    symbol: "wallet.pass.fill",
+    fallbackName: "wallet",
+  },
+  {
+    lightBackground: "#E8E2DE",
+    lightTint: "#465645",
+    darkBackground: "#3A3532",
+    darkTint: "#D9CDC6",
+    symbol: "clock.fill",
+    fallbackName: "clock-outline",
+  },
+  {
+    lightBackground: "#FCE4C5",
+    lightTint: "#8F5E04",
+    darkBackground: "#4A3620",
+    darkTint: "#FFD39B",
+    symbol: "briefcase.fill",
+    fallbackName: "briefcase",
+  },
+]
 
 function isCancelledNativeAction(error: unknown) {
   if (!(error instanceof Error)) {
@@ -82,6 +121,16 @@ function resolveScanErrorMessage(error: Error, mode: "camera" | "image", t: (key
   })
 }
 
+function hashSeed(value: string) {
+  let hash = 0
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0
+  }
+
+  return hash
+}
+
 export function TransferAddressScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
@@ -119,6 +168,9 @@ export function TransferAddressScreen({ navigation, route }: Props) {
   )
   const normalizedAddress = address.trim()
   const deferredNormalizedAddress = deferredAddress.trim()
+  const pageBackgroundColor = theme.colors.surfaceElevated ?? theme.colors.background
+  const fieldBackgroundColor = theme.colors.surfaceMuted ?? theme.colors.backgroundMuted
+  const cardBackgroundColor = theme.colors.surfaceMuted ?? theme.colors.surface
   const validateAddress = useCallback(
     (value: string) => {
       if (!value) {
@@ -221,26 +273,10 @@ export function TransferAddressScreen({ navigation, route }: Props) {
     }
   }
 
-  const runScan = useCallback(async (mode: "camera" | "image") => {
-    const capability = scannerAdapter.getCapability(mode)
-    if (!capability.supported) {
-      presentMessage(
-        mode === "camera" ? t("transfer.address.scanUnavailable") : t("transfer.address.scanImageUnavailable"),
-        {
-          titleKey: "common.infoTitle",
-        },
-      )
-      return
-    }
-
-    const result = mode === "camera" ? await scannerAdapter.scan() : await scannerAdapter.scanImage()
-
-    if (!result.ok) {
-      if (isCancelledNativeAction(result.error)) {
-        return
-      }
-
-      if (result.error instanceof NativeCapabilityUnavailableError) {
+  const runScan = useCallback(
+    async (mode: "camera" | "image") => {
+      const capability = scannerAdapter.getCapability(mode)
+      if (!capability.supported) {
         presentMessage(
           mode === "camera" ? t("transfer.address.scanUnavailable") : t("transfer.address.scanImageUnavailable"),
           {
@@ -250,18 +286,37 @@ export function TransferAddressScreen({ navigation, route }: Props) {
         return
       }
 
-      presentMessage(resolveScanErrorMessage(result.error, mode, t))
-      return
-    }
+      const result = mode === "camera" ? await scannerAdapter.scan() : await scannerAdapter.scanImage()
 
-    const nextAddress = extractTransferAddress(result.data.value, regexes)
-    if (!nextAddress) {
-      presentMessage(t("transfer.address.scanUnrecognized"))
-      return
-    }
+      if (!result.ok) {
+        if (isCancelledNativeAction(result.error)) {
+          return
+        }
 
-    syncAddress(nextAddress, "scan")
-  }, [presentMessage, regexes, syncAddress, t])
+        if (result.error instanceof NativeCapabilityUnavailableError) {
+          presentMessage(
+            mode === "camera" ? t("transfer.address.scanUnavailable") : t("transfer.address.scanImageUnavailable"),
+            {
+              titleKey: "common.infoTitle",
+            },
+          )
+          return
+        }
+
+        presentMessage(resolveScanErrorMessage(result.error, mode, t))
+        return
+      }
+
+      const nextAddress = extractTransferAddress(result.data.value, regexes)
+      if (!nextAddress) {
+        presentMessage(t("transfer.address.scanUnrecognized"))
+        return
+      }
+
+      syncAddress(nextAddress, "scan")
+    },
+    [presentMessage, regexes, syncAddress, t],
+  )
 
   const handleOpenScanOptions = useCallback(() => {
     const cameraCapability = scannerAdapter.getCapability("camera")
@@ -320,7 +375,7 @@ export function TransferAddressScreen({ navigation, route }: Props) {
     ])
   }, [presentMessage, runScan, t])
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     if (!canSubmit) {
       presentMessage(t("transfer.address.invalid"))
       return
@@ -330,128 +385,124 @@ export function TransferAddressScreen({ navigation, route }: Props) {
     navigation.navigate(route.params.channelType === "normal" ? "TransferOrderNormalScreen" : "TransferOrderScreen", {
       multisigWalletId: route.params.multisigWalletId,
     })
-  }
-
-  const formatRecentTime = useCallback(
-    (timestamp: number) => {
-      if (!timestamp) {
-        return "--"
-      }
-
-      const now = new Date()
-      const target = new Date(timestamp)
-      const diffMs = now.getTime() - target.getTime()
-
-      if (diffMs < 0) {
-        return formatWalletDateTime(timestamp)
-      }
-
-      const diffMinutes = Math.max(1, Math.floor(diffMs / 60_000))
-      if (diffMinutes < 60) {
-        return t("notifications.time.minutesAgo", { count: diffMinutes })
-      }
-
-      const diffHours = Math.floor(diffMinutes / 60)
-      if (diffHours < 24 && now.toDateString() === target.toDateString()) {
-        return t("notifications.time.hoursAgo", { count: diffHours })
-      }
-
-      const yesterday = new Date(now)
-      yesterday.setDate(now.getDate() - 1)
-      if (yesterday.toDateString() === target.toDateString()) {
-        return t("orders.filters.yesterday")
-      }
-
-      const diffDays = Math.floor(diffHours / 24)
-      if (diffDays < 7) {
-        return t("notifications.time.daysAgo", { count: diffDays })
-      }
-
-      return formatWalletDateTime(timestamp)
-    },
-    [t],
-  )
+  }, [canSubmit, navigation, normalizedAddress, presentMessage, route.params.channelType, route.params.multisigWalletId, setRecipientAddress, t])
 
   return (
-    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("transfer.address.title")} scroll={false}>
-      <ScrollView
-        bounces={false}
-        contentContainerStyle={styles.content}
-        keyboardDismissMode="on-drag"
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={[styles.inputCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <AppTextField
-            autoCapitalize="none"
-            autoCorrect={false}
-            backgroundTone="background"
-            error={addressWarning}
-            label={t("transfer.address.label")}
-            multiline
-            onChangeText={handleAddressChange}
-            placeholder={t("transfer.address.placeholder")}
-            value={address}
-          />
-          <View style={styles.inlineActions}>
-            <Pressable onPress={handleOpenScanOptions} style={styles.inlineButton}>
-              <Text style={[styles.inlineButtonText, { color: theme.colors.primary }]}>{t("transfer.address.scan")}</Text>
-            </Pressable>
-            <Pressable onPress={handleOpenAddressBook} style={styles.inlineButton}>
-              <Text style={[styles.inlineButtonText, { color: theme.colors.primary }]}>{t("transfer.address.fromAddressBook")}</Text>
-            </Pressable>
-          </View>
-        </View>
-
-        {addressSuggestions.length > 0 ? (
-          <>
-            <SectionTitle title={t("transfer.address.suggestions")} />
-            <AppListCard>
-              {addressSuggestions.map((item, index) => (
-                <AppListRow
-                  key={item.id}
-                  hideDivider={index === addressSuggestions.length - 1}
-                  onPress={() => syncAddress(item.walletAddress, "suggestion")}
-                  subtitle={formatWalletAddress(item.walletAddress)}
-                  subtitleStyle={styles.rowSubtitle}
-                  title={item.name}
-                  titleStyle={styles.rowTitle}
-                />
-              ))}
-            </AppListCard>
-          </>
-        ) : null}
-
-        <SectionTitle title={t("transfer.address.recent")} />
-        <AppListCard>
-          {isRecentLoading ? (
-            <AppEmptyState body={t("transfer.address.loadingRecent")} title={t("common.loading")} />
-          ) : recentPreviewEntries.length === 0 ? (
-            <AppEmptyState body={t("transfer.address.noRecent")} title={t("transfer.address.noRecentTitle")} />
-          ) : (
-            recentPreviewEntries.map((item, index, source) => (
-              <RecentAddressRow
-                key={`${item.address}-${item.createdAt}`}
-                address={item.address}
-                isLast={index === source.length - 1}
-                onPress={() => syncAddress(item.address, "recent")}
-                subtitle={
-                  recentAddressBookNameByAddress.get(item.address.toLowerCase())
-                    ? `${formatWalletAddress(item.address, 7, 4)} · ${formatRecentTime(item.createdAt)}`
-                    : `${t(`transfer.address.direction.${item.direction}`)} · ${item.coinName} · ${formatRecentTime(item.createdAt)}`
-                }
-                title={recentAddressBookNameByAddress.get(item.address.toLowerCase()) || formatWalletAddress(item.address)}
+    <HomeScaffold
+      backgroundColor={pageBackgroundColor}
+      canGoBack
+      headerBackgroundColor={pageBackgroundColor}
+      onBack={navigation.goBack}
+      right={
+        <Pressable accessibilityLabel={t("transfer.address.scan")} hitSlop={10} onPress={handleOpenScanOptions} style={({ pressed }) => [styles.headerAction, pressed ? styles.headerActionPressed : null]}>
+          <SFSymbolIcon color={theme.colors.primary} fallbackName="qrcode-scan" name="qrcode.viewfinder" size={28} weight="medium" />
+        </Pressable>
+      }
+      scroll={false}
+      title={t("transfer.address.title")}
+    >
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.page}>
+        <ScrollView
+          bounces={false}
+          contentContainerStyle={styles.content}
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          style={styles.scroll}
+        >
+          <View style={styles.section}>
+            <SectionTitle title={t("transfer.address.label")} />
+            <View
+              style={[
+                styles.addressField,
+                {
+                  backgroundColor: fieldBackgroundColor,
+                  borderColor: addressWarning ? theme.colors.dangerBorder : theme.colors.glassBorder,
+                  shadowColor: theme.colors.shadow,
+                  shadowOpacity: theme.isDark ? 0.18 : 0.04,
+                },
+              ]}
+            >
+              <SFSymbolIcon color={theme.colors.mutedText} fallbackName="magnify" name="magnifyingglass" size={20} weight="medium" />
+              <TextInput
+                autoCapitalize="none"
+                autoCorrect={false}
+                onChangeText={handleAddressChange}
+                onSubmitEditing={() => {
+                  if (canSubmit) {
+                    handleNext()
+                  }
+                }}
+                placeholder={t("transfer.address.placeholder")}
+                placeholderTextColor={theme.colors.mutedText}
+                returnKeyType="done"
+                selectionColor={theme.colors.primary}
+                style={[styles.addressInput, { color: theme.colors.text }]}
+                value={address}
               />
-            ))
-          )}
-        </AppListCard>
+              <Pressable
+                accessibilityLabel={t("transfer.address.fromAddressBook")}
+                hitSlop={8}
+                onPress={handleOpenAddressBook}
+                style={({ pressed }) => [styles.addressBookButton, { backgroundColor: theme.colors.primary }, pressed ? styles.iconButtonPressed : null]}
+              >
+                <SFSymbolIcon color="#FFFFFF" fallbackName="account-box" name="person.text.rectangle.fill" size={17} weight="medium" />
+              </Pressable>
+            </View>
+            {addressWarning ? <Text style={[styles.fieldHint, { color: theme.colors.danger }]}>{addressWarning}</Text> : null}
+          </View>
 
-        <View style={[styles.riskCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <Text style={[styles.riskTitle, { color: theme.colors.text }]}>{t("transfer.address.riskTitle")}</Text>
-          <Text style={[styles.riskBody, { color: theme.colors.mutedText }]}>{t("transfer.address.riskDefault")}</Text>
+          {addressSuggestions.length > 0 ? (
+            <View style={styles.section}>
+              <SectionTitle title={t("transfer.address.suggestions")} />
+              <View style={styles.suggestionStack}>
+                {addressSuggestions.map(item => (
+                  <SuggestionCard
+                    key={item.id}
+                    backgroundColor={cardBackgroundColor}
+                    onPress={() => syncAddress(item.walletAddress, "suggestion")}
+                    subtitle={formatWalletAddress(item.walletAddress, 7, 4)}
+                    title={item.name}
+                  />
+                ))}
+              </View>
+            </View>
+          ) : null}
+
+          <View style={styles.recentSection}>
+            <SectionTitle title={t("transfer.address.recent")} />
+            <View style={styles.recentStack}>
+              {isRecentLoading ? (
+                <RecentEmptyState backgroundColor={cardBackgroundColor} body={t("transfer.address.loadingRecent")} title={t("common.loading")} />
+              ) : recentPreviewEntries.length === 0 ? (
+                <RecentEmptyState backgroundColor={cardBackgroundColor} body={t("transfer.address.noRecent")} title={t("transfer.address.noRecentTitle")} />
+              ) : (
+                recentPreviewEntries.map(item => {
+                  const contactName = recentAddressBookNameByAddress.get(item.address.toLowerCase())
+                  const transferRecord = item.coinName
+                    ? `${t(`transfer.address.direction.${item.direction}`)} · ${item.coinName}`
+                    : t(`transfer.address.direction.${item.direction}`)
+
+                  return (
+                    <RecentTransferCard
+                      key={`${item.address}-${item.createdAt}`}
+                      address={item.address}
+                      backgroundColor={cardBackgroundColor}
+                      onPress={() => syncAddress(item.address, "recent")}
+                      subtitle={contactName ? formatWalletAddress(item.address, 7, 4) : transferRecord}
+                      title={contactName || formatWalletAddress(item.address, 10, 4)}
+                    />
+                  )
+                })
+              )}
+            </View>
+          </View>
+        </ScrollView>
+
+        <View style={[styles.footer, { backgroundColor: pageBackgroundColor, borderTopColor: theme.isDark ? theme.colors.border : "transparent" }]}>
+          <PrimaryButton disabled={!canSubmit} label={`${t("transfer.address.next")}  →`} onPress={handleNext} style={styles.footerButton} />
         </View>
-
-        <PrimaryButton disabled={!canSubmit} label={t("transfer.address.next")} onPress={handleNext} />
-      </ScrollView>
+      </KeyboardAvoidingView>
     </HomeScaffold>
   )
 }
@@ -462,11 +513,10 @@ function SectionTitle(props: { title: string }) {
   return <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{props.title}</Text>
 }
 
-function RecentAddressRow(props: {
-  address: string
+function SuggestionCard(props: {
   title: string
   subtitle: string
-  isLast: boolean
+  backgroundColor: string
   onPress: () => void
 }) {
   const theme = useAppTheme()
@@ -475,116 +525,271 @@ function RecentAddressRow(props: {
     <Pressable
       onPress={props.onPress}
       style={({ pressed }) => [
-        styles.recentRow,
-        !props.isLast ? { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.border } : null,
-        pressed ? { backgroundColor: theme.colors.surfaceMuted ?? theme.colors.background } : null,
+        styles.suggestionCard,
+        {
+          backgroundColor: props.backgroundColor,
+          borderColor: theme.isDark ? theme.colors.border : "transparent",
+          shadowColor: theme.colors.shadow,
+          shadowOpacity: theme.isDark ? 0.14 : 0.025,
+        },
+        pressed ? styles.cardPressed : null,
       ]}
     >
-      <View style={styles.recentRowMain}>
-        <SeedAddressAvatar seedSource={props.address} size={48} />
-        <View style={styles.recentRowText}>
-          <Text numberOfLines={1} style={[styles.recentRowTitle, { color: theme.colors.text }]}>
-            {props.title}
-          </Text>
-          <Text numberOfLines={1} style={[styles.recentRowSubtitle, { color: theme.colors.mutedText }]}>
-            {props.subtitle}
-          </Text>
-        </View>
+      <View style={[styles.suggestionAvatar, { backgroundColor: theme.colors.primarySoft ?? `${theme.colors.primary}16` }]}>
+        <SFSymbolIcon color={theme.colors.primary} fallbackName="account-box" name="person.text.rectangle.fill" size={18} weight="medium" />
       </View>
-      <Text style={[styles.recentRowChevron, { color: theme.colors.mutedText }]}>›</Text>
+      <View style={styles.suggestionBody}>
+        <Text numberOfLines={1} style={[styles.suggestionTitle, { color: theme.colors.text }]}>
+          {props.title}
+        </Text>
+        <Text numberOfLines={1} style={[styles.suggestionSubtitle, { color: theme.colors.mutedText }]}>
+          {props.subtitle}
+        </Text>
+      </View>
+      <Text style={[styles.suggestionChevron, { color: theme.colors.mutedText }]}>›</Text>
     </Pressable>
   )
 }
 
+function RecentTransferCard(props: {
+  address: string
+  title: string
+  subtitle: string
+  backgroundColor: string
+  onPress: () => void
+}) {
+  const theme = useAppTheme()
+  const avatarTone = useMemo(() => RECENT_AVATAR_TONES[hashSeed(props.address) % RECENT_AVATAR_TONES.length], [props.address])
+  const avatarBackgroundColor = theme.isDark ? avatarTone.darkBackground : avatarTone.lightBackground
+  const avatarTintColor = theme.isDark ? avatarTone.darkTint : avatarTone.lightTint
+
+  return (
+    <Pressable
+      onPress={props.onPress}
+      style={({ pressed }) => [
+        styles.recentCard,
+        {
+          backgroundColor: props.backgroundColor,
+          borderColor: theme.isDark ? theme.colors.border : "transparent",
+          shadowColor: theme.colors.shadow,
+          shadowOpacity: theme.isDark ? 0.16 : 0.03,
+        },
+        pressed ? styles.cardPressed : null,
+      ]}
+    >
+      <View style={[styles.recentAvatar, { backgroundColor: avatarBackgroundColor }]}>
+        <SFSymbolIcon color={avatarTintColor} fallbackName={avatarTone.fallbackName} name={avatarTone.symbol} size={24} weight="medium" />
+      </View>
+      <View style={styles.recentTextBlock}>
+        <Text numberOfLines={1} style={[styles.recentTitle, { color: theme.colors.text }]}>
+          {props.title}
+        </Text>
+        <Text numberOfLines={1} style={[styles.recentSubtitle, { color: theme.colors.mutedText }]}>
+          {props.subtitle}
+        </Text>
+      </View>
+    </Pressable>
+  )
+}
+
+function RecentEmptyState(props: {
+  title: string
+  body: string
+  backgroundColor: string
+}) {
+  const theme = useAppTheme()
+
+  return (
+    <View style={[styles.emptyCard, { backgroundColor: props.backgroundColor, borderColor: theme.isDark ? theme.colors.border : "transparent" }]}>
+      <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>{props.title}</Text>
+      <Text style={[styles.emptyBody, { color: theme.colors.mutedText }]}>{props.body}</Text>
+    </View>
+  )
+}
+
 const styles = StyleSheet.create({
+  page: {
+    flex: 1,
+  },
+  scroll: {
+    flex: 1,
+  },
   content: {
-    padding: 16,
-    paddingBottom: 24,
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 28,
+    gap: 30,
+  },
+  headerAction: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerActionPressed: {
+    opacity: 0.82,
+  },
+  section: {
     gap: 14,
   },
-  inputCard: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 16,
-    padding: 14,
-    gap: 8,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  inlineActions: {
-    flexDirection: "row",
-    gap: 10,
-    flexWrap: "wrap",
-  },
-  inlineButton: {
-    paddingVertical: 4,
-  },
-  inlineButtonText: {
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  riskCard: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 16,
-    padding: 14,
-    gap: 6,
-  },
-  riskTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  riskBody: {
-    fontSize: 13,
-    lineHeight: 20,
+  recentSection: {
+    gap: 18,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: "700",
-    letterSpacing: -0.2,
+    lineHeight: 24,
+    fontWeight: "800",
+    letterSpacing: -0.36,
   },
-  rowTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  rowSubtitle: {
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  recentRow: {
-    minHeight: 82,
+  addressField: {
+    minHeight: 86,
+    borderRadius: 28,
+    borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 18,
-    paddingVertical: 14,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     gap: 12,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 2,
   },
-  recentRowMain: {
+  addressInput: {
     flex: 1,
     minWidth: 0,
+    fontSize: 19,
+    lineHeight: 24,
+    fontWeight: "500",
+    letterSpacing: -0.35,
+    paddingVertical: 0,
+  },
+  addressBookButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconButtonPressed: {
+    opacity: 0.9,
+    transform: [{ scale: 0.97 }],
+  },
+  fieldHint: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: -4,
+    paddingHorizontal: 4,
+  },
+  suggestionStack: {
+    gap: 12,
+  },
+  suggestionCard: {
+    minHeight: 76,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 24,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 2,
   },
-  recentRowText: {
+  suggestionAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  suggestionBody: {
+    flex: 1,
+    minWidth: 0,
+    gap: 3,
+  },
+  suggestionTitle: {
+    fontSize: 16,
+    lineHeight: 21,
+    fontWeight: "700",
+    letterSpacing: -0.22,
+  },
+  suggestionSubtitle: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  suggestionChevron: {
+    fontSize: 26,
+    lineHeight: 26,
+    fontWeight: "300",
+  },
+  recentStack: {
+    gap: 14,
+  },
+  recentCard: {
+    minHeight: 110,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 28,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 2,
+  },
+  cardPressed: {
+    opacity: 0.96,
+    transform: [{ scale: 0.992 }],
+  },
+  recentAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  recentTextBlock: {
     flex: 1,
     minWidth: 0,
     gap: 4,
   },
-  recentRowTitle: {
-    fontSize: 16,
+  recentTitle: {
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: "800",
+    letterSpacing: -0.45,
+  },
+  recentSubtitle: {
+    fontSize: 14,
+    lineHeight: 19,
+    letterSpacing: -0.08,
+  },
+  emptyCard: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 28,
+    paddingHorizontal: 20,
+    paddingVertical: 22,
+    gap: 8,
+  },
+  emptyTitle: {
+    fontSize: 17,
     lineHeight: 22,
     fontWeight: "700",
-    letterSpacing: -0.2,
+    letterSpacing: -0.28,
   },
-  recentRowSubtitle: {
+  emptyBody: {
     fontSize: 14,
     lineHeight: 20,
   },
-  recentRowChevron: {
-    fontSize: 26,
-    lineHeight: 26,
-    fontWeight: "300",
+  footer: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 6,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  footerButton: {
+    minHeight: 64,
+    borderRadius: 20,
   },
 })
