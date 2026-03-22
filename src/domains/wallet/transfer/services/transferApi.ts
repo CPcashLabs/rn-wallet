@@ -439,23 +439,38 @@ export async function submitShipOrder(input: {
   variant?: "default" | "normal"
   multisigWalletId?: string | null
 }) {
-  const variants =
-    input.variant === "normal" && input.multisigWalletId
-      ? (["normal", "default"] as const)
-      : ([input.variant ?? "default"] as const)
-  let lastError: unknown
-
-  for (const variant of variants) {
-    const endpoint =
-      variant === "normal"
-        ? `/api/order/member/order/ship-normal/${input.orderSn}`
-        : `/api/order/member/order/ship/${input.orderSn}`
-
-    try {
-      await apiClient.put(endpoint, {
+  const attempts = [
+    {
+      endpoint: `/api/order/member/order/cp-cash-ship/${input.orderSn}`,
+      payload: {
+        txid: input.txid,
+        success: true,
+      },
+    },
+    ...(input.variant === "normal"
+      ? [
+          {
+            endpoint: `/api/order/member/order/ship-normal/${input.orderSn}`,
+            payload: {
+              txid: input.txid,
+              address: input.address,
+            },
+          },
+        ]
+      : []),
+    {
+      endpoint: `/api/order/member/order/ship/${input.orderSn}`,
+      payload: {
         txid: input.txid,
         address: input.address,
-      })
+      },
+    },
+  ] as const
+  let lastError: unknown
+
+  for (const attempt of attempts) {
+    try {
+      await apiClient.put(attempt.endpoint, attempt.payload)
       return
     } catch (error) {
       lastError = error

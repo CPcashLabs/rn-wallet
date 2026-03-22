@@ -537,18 +537,19 @@ describe("transferApi guest token", () => {
       chainName: "TRON",
     })
 
-    expect(mockApiPut).toHaveBeenNthCalledWith(1, "/api/order/member/order/ship/ORDER_1", {
+    expect(mockApiPut).toHaveBeenNthCalledWith(1, "/api/order/member/order/cp-cash-ship/ORDER_1", {
       txid: "0xtx",
-      address: "T_RECEIVE",
+      success: true,
     })
-    expect(mockApiPut).toHaveBeenNthCalledWith(2, "/api/order/member/order/ship-normal/ORDER_2", {
+    expect(mockApiPut).toHaveBeenNthCalledWith(2, "/api/order/member/order/cp-cash-ship/ORDER_2", {
       txid: "0xtx2",
-      address: "T_RECEIVE_2",
+      success: true,
     })
   })
 
-  it("falls back to the default ship endpoint for CoPouch normal orders", async () => {
+  it("falls back across legacy ship endpoints for normal orders", async () => {
     mockApiPut
+      .mockRejectedValueOnce(new Error("cp-cash-ship rejected"))
       .mockRejectedValueOnce(new Error("ship-normal rejected"))
       .mockResolvedValueOnce(undefined)
 
@@ -557,16 +558,40 @@ describe("transferApi guest token", () => {
       txid: "0xtx3",
       address: "0xsender",
       variant: "normal",
-      multisigWalletId: "COPOUCH_1",
     })
 
-    expect(mockApiPut).toHaveBeenNthCalledWith(1, "/api/order/member/order/ship-normal/ORDER_MULTI", {
+    expect(mockApiPut).toHaveBeenNthCalledWith(1, "/api/order/member/order/cp-cash-ship/ORDER_MULTI", {
+      txid: "0xtx3",
+      success: true,
+    })
+    expect(mockApiPut).toHaveBeenNthCalledWith(2, "/api/order/member/order/ship-normal/ORDER_MULTI", {
       txid: "0xtx3",
       address: "0xsender",
     })
-    expect(mockApiPut).toHaveBeenNthCalledWith(2, "/api/order/member/order/ship/ORDER_MULTI", {
+    expect(mockApiPut).toHaveBeenNthCalledWith(3, "/api/order/member/order/ship/ORDER_MULTI", {
       txid: "0xtx3",
       address: "0xsender",
+    })
+  })
+
+  it("falls back to the legacy default ship endpoint when cp-cash ship is unavailable", async () => {
+    mockApiPut
+      .mockRejectedValueOnce(new Error("cp-cash-ship rejected"))
+      .mockResolvedValueOnce(undefined)
+
+    await submitShipOrder({
+      orderSn: "ORDER_LEGACY",
+      txid: "0xtx4",
+      address: "T_RECEIVE_4",
+    })
+
+    expect(mockApiPut).toHaveBeenNthCalledWith(1, "/api/order/member/order/cp-cash-ship/ORDER_LEGACY", {
+      txid: "0xtx4",
+      success: true,
+    })
+    expect(mockApiPut).toHaveBeenNthCalledWith(2, "/api/order/member/order/ship/ORDER_LEGACY", {
+      txid: "0xtx4",
+      address: "T_RECEIVE_4",
     })
   })
 
