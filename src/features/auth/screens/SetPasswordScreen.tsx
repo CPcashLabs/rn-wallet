@@ -7,7 +7,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { AuthButton } from "@/features/auth/components/AuthButton"
 import { AuthScaffold } from "@/features/auth/components/AuthScaffold"
 import { AuthTextField } from "@/features/auth/components/AuthTextField"
-import { getPasswordRules, resetPasswordByAddress, signInWithPassword } from "@/features/auth/services/authApi"
+import { getPasswordRules, registerPassword, resetPasswordByAddress, signInWithPassword } from "@/features/auth/services/authApi"
 import { persistAuthenticatedSession } from "@/features/auth/services/authSessionOrchestrator"
 import { getAuthErrorMessage } from "@/features/auth/utils/authMessages"
 import { encryptByPublicKey } from "@/features/auth/utils/passwordCrypto"
@@ -17,13 +17,28 @@ import type { AuthStackParamList } from "@/app/navigation/types"
 import type { PasswordRules } from "@/features/auth/types"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 
-type Props = NativeStackScreenProps<AuthStackParamList, "SetPasswordScreen">
+type SetPasswordProps = NativeStackScreenProps<AuthStackParamList, "SetPasswordScreen">
+type FirstSetPasswordProps = NativeStackScreenProps<AuthStackParamList, "FirstSetPasswordScreen">
 
-export function SetPasswordScreen({ navigation, route }: Props) {
+type PasswordSetupMode = "reset" | "firstSet"
+
+type PasswordSetupScreenProps = {
+  navigation: SetPasswordProps["navigation"] | FirstSetPasswordProps["navigation"]
+  route: {
+    params?: {
+      address?: string
+      randomString?: string
+    }
+  }
+  mode: PasswordSetupMode
+}
+
+function PasswordSetupScreen(props: PasswordSetupScreenProps) {
   const { t } = useTranslation()
   const { presentMessage } = useErrorPresenter()
-  const address = route.params?.address?.trim() ?? ""
-  const randomString = route.params?.randomString
+  const address = props.route.params?.address?.trim() ?? ""
+  const randomString = props.route.params?.randomString
+  const isResetMode = props.mode === "reset"
   const [rules, setRules] = useState<PasswordRules | null>(null)
   const [password, setPassword] = useState("")
   const [passwordAgain, setPasswordAgain] = useState("")
@@ -75,7 +90,7 @@ export function SetPasswordScreen({ navigation, route }: Props) {
       return
     }
 
-    if (!randomString) {
+    if (isResetMode && !randomString) {
       setErrorMessage(t("auth.errors.missingResetToken"))
       return
     }
@@ -86,22 +101,32 @@ export function SetPasswordScreen({ navigation, route }: Props) {
     try {
       const encryptedPassword = encryptByPublicKey(rules.rsaPublicKey, password)
 
-      await resetPasswordByAddress({
-        address,
-        passwordEncrypted: encryptedPassword,
-        randomString,
-      })
+      if (isResetMode) {
+        await resetPasswordByAddress({
+          address,
+          passwordEncrypted: encryptedPassword,
+          randomString,
+        })
+      } else {
+        await registerPassword({
+          address,
+          passwordEncrypted: encryptedPassword,
+        })
+      }
 
       const tokens = await signInWithPassword(address, password)
       await persistAuthenticatedSession({
         ...tokens,
         address,
-        loginType: "password",
+        loginType: isResetMode ? "password" : "wallet",
       })
 
       resetToMainTabs()
     } catch (error) {
-      const message = getAuthErrorMessage(error, "auth.errors.resetPasswordFailed")
+      const message = getAuthErrorMessage(
+        error,
+        isResetMode ? "auth.errors.resetPasswordFailed" : "auth.errors.firstSetPasswordFailed",
+      )
       setErrorMessage(message)
       presentMessage(message)
     } finally {
@@ -112,9 +137,9 @@ export function SetPasswordScreen({ navigation, route }: Props) {
   return (
     <AuthScaffold
       canGoBack
-      onBack={navigation.goBack}
-      title={t("auth.setPassword.title")}
-      subtitle={t("auth.setPassword.subtitle", { address })}
+      onBack={props.navigation.goBack}
+      title={t(isResetMode ? "auth.setPassword.title" : "auth.firstSetPassword.title")}
+      subtitle={t(isResetMode ? "auth.setPassword.subtitle" : "auth.firstSetPassword.subtitle", { address })}
     >
       <Text>{t("auth.setPassword.ruleHint", { min: rules?.passwordMinLength ?? 6 })}</Text>
       <AuthTextField
@@ -141,4 +166,12 @@ export function SetPasswordScreen({ navigation, route }: Props) {
       <AuthButton label={t("common.confirm")} loading={submitting} onPress={() => void submit()} />
     </AuthScaffold>
   )
+}
+
+export function SetPasswordScreen(props: SetPasswordProps) {
+  return <PasswordSetupScreen {...props} mode="reset" />
+}
+
+export function FirstSetPasswordScreen(props: FirstSetPasswordProps) {
+  return <PasswordSetupScreen {...props} mode="firstSet" />
 }
