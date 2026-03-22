@@ -1,3 +1,4 @@
+import { ImageFormat, Skia } from "@shopify/react-native-skia"
 import QRCode, { type QRCodeToDataURLOptions } from "qrcode"
 
 export type QrMatrix = {
@@ -18,6 +19,22 @@ const DEFAULT_QR_CODE_OPTIONS: QRCodeToDataURLOptions = {
     dark: "#000000",
     light: "#FFFFFFFF",
   },
+}
+
+function normalizeMargin(value: number | undefined) {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return DEFAULT_QR_CODE_OPTIONS.margin ?? 0
+  }
+
+  return Math.max(0, Math.floor(value))
+}
+
+function normalizeScale(value: number | undefined) {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return DEFAULT_QR_CODE_OPTIONS.scale ?? 1
+  }
+
+  return Math.max(1, Math.floor(value))
 }
 
 function encodeUtf8(value: string) {
@@ -74,7 +91,56 @@ function mergeQrCodeOptions(options?: QRCodeToDataURLOptions): QRCodeToDataURLOp
 }
 
 export async function buildQrCodeDataUrl(value: string, options?: QRCodeToDataURLOptions) {
-  return QRCode.toDataURL(buildQrCodeSegments(value), mergeQrCodeOptions(options))
+  const resolvedOptions = mergeQrCodeOptions(options)
+  const matrix = buildQrMatrix(value, {
+    errorCorrectionLevel: resolvedOptions.errorCorrectionLevel,
+  })
+  const margin = normalizeMargin(resolvedOptions.margin)
+  const scale = normalizeScale(resolvedOptions.scale)
+  const dimension = (matrix.size + margin * 2) * scale
+  const surface = Skia.Surface.MakeOffscreen(dimension, dimension)
+
+  if (surface === null) {
+    throw new Error("Failed to create QR code surface")
+  }
+
+  const canvas = surface.getCanvas()
+  const backgroundPaint = Skia.Paint()
+  backgroundPaint.setAntiAlias(false)
+  backgroundPaint.setColor(
+    Skia.Color(resolvedOptions.color?.light ?? DEFAULT_QR_CODE_OPTIONS.color?.light ?? "#FFFFFFFF"),
+  )
+  canvas.drawRect(Skia.XYWHRect(0, 0, dimension, dimension), backgroundPaint)
+
+  const foregroundPaint = Skia.Paint()
+  foregroundPaint.setAntiAlias(false)
+  foregroundPaint.setColor(
+    Skia.Color(resolvedOptions.color?.dark ?? DEFAULT_QR_CODE_OPTIONS.color?.dark ?? "#000000"),
+  )
+
+  for (let rowIndex = 0; rowIndex < matrix.size; rowIndex += 1) {
+    for (let columnIndex = 0; columnIndex < matrix.size; columnIndex += 1) {
+      if (!matrix.rows[rowIndex]?.[columnIndex]) {
+        continue
+      }
+
+      canvas.drawRect(
+        Skia.XYWHRect((columnIndex + margin) * scale, (rowIndex + margin) * scale, scale, scale),
+        foregroundPaint,
+      )
+    }
+  }
+
+  surface.flush()
+
+  const image = surface.makeImageSnapshot()
+  const encoded = image.encodeToBase64(ImageFormat.PNG, 100)
+
+  if (!encoded) {
+    throw new Error("Failed to encode QR code image")
+  }
+
+  return `data:image/png;base64,${encoded}`
 }
 
 export function buildQrMatrix(value: string, options?: Pick<QRCodeToDataURLOptions, "errorCorrectionLevel">): QrMatrix {
