@@ -12,18 +12,12 @@ export function SeedAddressAvatar(props: {
   borderColor?: string
 }) {
   const theme = useAppTheme()
-  const [imageFailed, setImageFailed] = React.useState(false)
   const normalizedUri = props.uri?.trim() || ""
   const jazzicon = React.useMemo(() => createJazziconSpec(props.size, resolveJazziconSeed(props.seedSource)), [props.seedSource, props.size])
 
-  React.useEffect(() => {
-    setImageFailed(false)
-  }, [normalizedUri])
-
-  if (normalizedUri && !imageFailed) {
+  if (normalizedUri) {
     return (
       <Image
-        onError={() => setImageFailed(true)}
         source={{ uri: normalizedUri }}
         style={[
           styles.imageShell,
