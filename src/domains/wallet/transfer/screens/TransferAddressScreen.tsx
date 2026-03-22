@@ -10,6 +10,7 @@ import { formatWalletAddress, formatWalletDateTime } from "@/domains/wallet/shar
 import { PrimaryButton } from "@/shared/ui/AppFlowUi"
 import { useAddressBookEntriesQuery } from "@/shared/address-book/addressBookQueries"
 import { useAddressBookStore } from "@/shared/address-book/useAddressBookStore"
+import { SeedAddressAvatar } from "@/shared/avatar/SeedAddressAvatar"
 import { HomeScaffold } from "@/shared/ui/HomeScaffold"
 import { useRecentTransferEntriesQuery } from "@/domains/wallet/transfer/queries/transferQueries"
 import { type TransferChannel } from "@/domains/wallet/transfer/services/transferApi"
@@ -30,6 +31,7 @@ import { AppTextField } from "@/shared/ui/AppTextField"
 import type { TransferStackParamList } from "@/app/navigation/types"
 
 type Props = NativeStackScreenProps<TransferStackParamList, "TransferAddressScreen">
+const RECENT_ENTRY_LIMIT = 3
 
 function isCancelledNativeAction(error: unknown) {
   if (!(error instanceof Error)) {
@@ -107,6 +109,10 @@ export function TransferAddressScreen({ navigation, route }: Props) {
   })
   const recentEntries = recentEntriesQuery.data ?? []
   const isRecentLoading = recentEntriesQuery.isLoading && !recentEntriesQuery.data
+  const recentAddressBookNameByAddress = useMemo(() => {
+    return new Map(addressBookEntries.map(item => [item.walletAddress.toLowerCase(), item.name.trim()]))
+  }, [addressBookEntries])
+  const recentPreviewEntries = useMemo(() => recentEntries.slice(0, RECENT_ENTRY_LIMIT), [recentEntries])
   const regexes = useMemo(
     () => buildAddressRegexes(route.params.addressRegexes, route.params.receiveChainName),
     [route.params.addressRegexes, route.params.receiveChainName],
@@ -291,6 +297,46 @@ export function TransferAddressScreen({ navigation, route }: Props) {
     })
   }
 
+  const formatRecentTime = useCallback(
+    (timestamp: number) => {
+      if (!timestamp) {
+        return "--"
+      }
+
+      const now = new Date()
+      const target = new Date(timestamp)
+      const diffMs = now.getTime() - target.getTime()
+
+      if (diffMs < 0) {
+        return formatWalletDateTime(timestamp)
+      }
+
+      const diffMinutes = Math.max(1, Math.floor(diffMs / 60_000))
+      if (diffMinutes < 60) {
+        return t("notifications.time.minutesAgo", { count: diffMinutes })
+      }
+
+      const diffHours = Math.floor(diffMinutes / 60)
+      if (diffHours < 24 && now.toDateString() === target.toDateString()) {
+        return t("notifications.time.hoursAgo", { count: diffHours })
+      }
+
+      const yesterday = new Date(now)
+      yesterday.setDate(now.getDate() - 1)
+      if (yesterday.toDateString() === target.toDateString()) {
+        return t("orders.filters.yesterday")
+      }
+
+      const diffDays = Math.floor(diffHours / 24)
+      if (diffDays < 7) {
+        return t("notifications.time.daysAgo", { count: diffDays })
+      }
+
+      return formatWalletDateTime(timestamp)
+    },
+    [t],
+  )
+
   return (
     <HomeScaffold canGoBack onBack={navigation.goBack} title={t("transfer.address.title")} scroll={false}>
       <ScrollView
@@ -353,31 +399,34 @@ export function TransferAddressScreen({ navigation, route }: Props) {
           </Pressable>
         ) : null}
 
-        <View style={[styles.riskCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <Text style={[styles.riskTitle, { color: theme.colors.text }]}>{t("transfer.address.riskTitle")}</Text>
-          <Text style={[styles.riskBody, { color: theme.colors.mutedText }]}>{t("transfer.address.riskDefault")}</Text>
-        </View>
-
         <SectionTitle title={t("transfer.address.recent")} />
         <AppListCard>
           {isRecentLoading ? (
             <AppEmptyState body={t("transfer.address.loadingRecent")} title={t("common.loading")} />
-          ) : recentEntries.length === 0 ? (
+          ) : recentPreviewEntries.length === 0 ? (
             <AppEmptyState body={t("transfer.address.noRecent")} title={t("transfer.address.noRecentTitle")} />
           ) : (
-            recentEntries.slice(0, 5).map((item, index, source) => (
-              <AppListRow
+            recentPreviewEntries.map((item, index, source) => (
+              <RecentAddressRow
                 key={`${item.address}-${item.createdAt}`}
-                hideDivider={index === source.length - 1}
+                address={item.address}
+                isLast={index === source.length - 1}
                 onPress={() => syncAddress(item.address, "recent")}
-                subtitle={`${t(`transfer.address.direction.${item.direction}`)} · ${item.coinName} · ${formatWalletDateTime(item.createdAt)}`}
-                subtitleStyle={styles.rowSubtitle}
-                title={formatWalletAddress(item.address)}
-                titleStyle={styles.rowTitle}
+                subtitle={
+                  recentAddressBookNameByAddress.get(item.address.toLowerCase())
+                    ? `${formatWalletAddress(item.address, 7, 4)} · ${formatRecentTime(item.createdAt)}`
+                    : `${t(`transfer.address.direction.${item.direction}`)} · ${item.coinName} · ${formatRecentTime(item.createdAt)}`
+                }
+                title={recentAddressBookNameByAddress.get(item.address.toLowerCase()) || formatWalletAddress(item.address)}
               />
             ))
           )}
         </AppListCard>
+
+        <View style={[styles.riskCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+          <Text style={[styles.riskTitle, { color: theme.colors.text }]}>{t("transfer.address.riskTitle")}</Text>
+          <Text style={[styles.riskBody, { color: theme.colors.mutedText }]}>{t("transfer.address.riskDefault")}</Text>
+        </View>
 
         <PrimaryButton disabled={!canSubmit} label={t("transfer.address.next")} onPress={handleNext} />
       </ScrollView>
@@ -391,10 +440,45 @@ function SectionTitle(props: { title: string }) {
   return <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{props.title}</Text>
 }
 
+function RecentAddressRow(props: {
+  address: string
+  title: string
+  subtitle: string
+  isLast: boolean
+  onPress: () => void
+}) {
+  const theme = useAppTheme()
+
+  return (
+    <Pressable
+      onPress={props.onPress}
+      style={({ pressed }) => [
+        styles.recentRow,
+        !props.isLast ? { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.border } : null,
+        pressed ? { backgroundColor: theme.colors.surfaceMuted ?? theme.colors.background } : null,
+      ]}
+    >
+      <View style={styles.recentRowMain}>
+        <SeedAddressAvatar seedSource={props.address} size={48} />
+        <View style={styles.recentRowText}>
+          <Text numberOfLines={1} style={[styles.recentRowTitle, { color: theme.colors.text }]}>
+            {props.title}
+          </Text>
+          <Text numberOfLines={1} style={[styles.recentRowSubtitle, { color: theme.colors.mutedText }]}>
+            {props.subtitle}
+          </Text>
+        </View>
+      </View>
+      <Text style={[styles.recentRowChevron, { color: theme.colors.mutedText }]}>›</Text>
+    </Pressable>
+  )
+}
+
 const styles = StyleSheet.create({
   content: {
     padding: 16,
-    gap: 12,
+    paddingBottom: 24,
+    gap: 14,
   },
   inputCard: {
     borderWidth: StyleSheet.hairlineWidth,
@@ -447,8 +531,9 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   sectionTitle: {
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: "700",
+    letterSpacing: -0.2,
   },
   rowTitle: {
     fontSize: 14,
@@ -457,5 +542,41 @@ const styles = StyleSheet.create({
   rowSubtitle: {
     fontSize: 13,
     lineHeight: 18,
+  },
+  recentRow: {
+    minHeight: 82,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  recentRowMain: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  recentRowText: {
+    flex: 1,
+    minWidth: 0,
+    gap: 4,
+  },
+  recentRowTitle: {
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: "700",
+    letterSpacing: -0.2,
+  },
+  recentRowSubtitle: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  recentRowChevron: {
+    fontSize: 26,
+    lineHeight: 26,
+    fontWeight: "300",
   },
 })
