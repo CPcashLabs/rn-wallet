@@ -17,6 +17,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import type { ReceiveStackParamList } from "@/app/navigation/types"
 import { HomeScaffold } from "@/shared/ui/HomeScaffold"
+import { useCreateReceiveOrderMutation, useReceiveHomeQuery } from "@/domains/wallet/receive/queries/receiveHomeQueries"
 import { buildReceiveAutoCreateKey, shouldAttemptReceiveAutoCreate } from "@/domains/wallet/receive/screens/receiveAutoCreate"
 import {
   readCachedReceiveChainColor,
@@ -24,7 +25,6 @@ import {
   shouldPrimeReceiveChainColorFromRoute,
   writeCachedReceiveChainColor,
 } from "@/domains/wallet/receive/services/receiveColorCache"
-import { useReceiveStore } from "@/domains/wallet/receive/store/useReceiveStore"
 import { buildQrCodeDataUrl, buildQrMatrix, stripDataUrlPrefix, type QrMatrix } from "@/domains/wallet/receive/utils/qrcode"
 import { resolveChainNameById } from "@/shared/api/walletAssets"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
@@ -87,13 +87,6 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
   const profile = useUserStore(state => state.profile)
   const walletAddress = useWalletStore(state => state.address)
   const chainId = useWalletStore(state => state.chainId)
-  const loadHome = useReceiveStore(state => state.loadHome)
-  const createOrder = useReceiveStore(state => state.createOrder)
-  const config = useReceiveStore(state => state.config)
-  const loading = useReceiveStore(state => state.loading)
-  const creating = useReceiveStore(state => state.creating)
-  const personalOrder = useReceiveStore(state => state.personalOrder)
-  const businessOrder = useReceiveStore(state => state.businessOrder)
   const isNormalReceive = route.params?.receiveMode === "normal"
   const supportsBusinessReceive = !isNormalReceive
   const [expandedCard, setExpandedCard] = useState<CollapseKey>(
@@ -102,12 +95,30 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
   const [qrMatrix, setQrMatrix] = useState<QrMatrix | null>(null)
   const [countdownText, setCountdownText] = useState("--:--:--")
   const autoCreateAttemptKeyRef = useRef<string | null>(null)
+  const presentedLoadErrorAtRef = useRef(0)
   const receiveAddress = route.params?.copouch || route.params?.cowallet || profile?.address || session?.address || walletAddress || ""
+  const requestedPayChain = route.params?.payChain ?? resolveChainNameById(chainId)
+  const receiveHomeArgs = useMemo(
+    () => ({
+      payChain: requestedPayChain,
+      chainId,
+      walletAddress: receiveAddress,
+      multisigWalletId: route.params?.multisigWalletId,
+    }),
+    [chainId, receiveAddress, requestedPayChain, route.params?.multisigWalletId],
+  )
+  const receiveHomeQuery = useReceiveHomeQuery(receiveHomeArgs, {
+    enabled: !isNormalReceive,
+  })
+  const { createOrder: createReceiveOrder, creating } = useCreateReceiveOrderMutation(receiveHomeArgs)
+  const config = receiveHomeQuery.data?.config ?? null
+  const loading = !isNormalReceive && receiveHomeQuery.isLoading && !receiveHomeQuery.data
+  const personalOrder = receiveHomeQuery.data?.personalOrder ?? null
+  const businessOrder = receiveHomeQuery.data?.businessOrder ?? null
   const activeCollapseKey: CollapseKey = supportsBusinessReceive ? expandedCard : "individuals"
   const currentOrder = activeCollapseKey === "individuals" ? personalOrder : businessOrder
   const currentVariant = activeCollapseKey === "individuals" ? "short" : "long"
   const currentOrderType = activeCollapseKey === "individuals" ? "TRACE" : "TRACE_LONG_TERM"
-  const requestedPayChain = route.params?.payChain ?? resolveChainNameById(chainId)
   const routeChainColor = normalizeReceiveColor(route.params?.chainColor)
   const cachedChainColor = useMemo(() => normalizeReceiveColor(readCachedReceiveChainColor(requestedPayChain)), [requestedPayChain])
   const [dynamicColor, setDynamicColor] = useState(() =>
@@ -224,28 +235,22 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
   }, [config?.payChain, config?.payChainColor, requestedPayChain])
 
   useEffect(() => {
-    if (isNormalReceive) {
+    if (isNormalReceive || !receiveHomeQuery.error || receiveHomeQuery.errorUpdatedAt === presentedLoadErrorAtRef.current) {
       return
     }
 
-    void loadHome({
-      payChain: requestedPayChain,
-      chainId,
-      walletAddress: receiveAddress,
-      multisigWalletId: route.params?.multisigWalletId,
-    }).catch(error => {
-      presentError(error, {
-        fallbackKey: "receive.home.loadFailed",
-        customResolver: currentError => {
-          if (currentError instanceof Error && currentError.message.startsWith("receive_config_missing")) {
-            return t("receive.home.configMissing")
-          }
+    presentedLoadErrorAtRef.current = receiveHomeQuery.errorUpdatedAt
+    presentError(receiveHomeQuery.error, {
+      fallbackKey: "receive.home.loadFailed",
+      customResolver: currentError => {
+        if (currentError instanceof Error && currentError.message.startsWith("receive_config_missing")) {
+          return t("receive.home.configMissing")
+        }
 
-          return undefined
-        },
-      })
+        return undefined
+      },
     })
-  }, [chainId, isNormalReceive, loadHome, presentError, receiveAddress, requestedPayChain, route.params?.multisigWalletId, t])
+  }, [isNormalReceive, presentError, receiveHomeQuery.error, receiveHomeQuery.errorUpdatedAt, t])
 
   useEffect(() => {
     if (!qrSource) {
@@ -278,16 +283,17 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
 
     autoCreateAttemptKeyRef.current = autoCreateContextKey
 
-    void createOrder({
+    void createReceiveOrder({
       variant: "short",
       walletAddress: receiveAddress,
       multisigWalletId: route.params?.multisigWalletId,
+      config,
     }).catch(error => {
       presentError(error, {
         fallbackKey: "receive.home.createFailed",
       })
     })
-  }, [autoCreateContextKey, config, createOrder, creating, isNormalReceive, loading, personalOrder, presentError, receiveAddress, route.params?.multisigWalletId])
+  }, [autoCreateContextKey, config, createReceiveOrder, creating, isNormalReceive, loading, personalOrder, presentError, receiveAddress, route.params?.multisigWalletId])
 
   useEffect(() => {
     const expiredAt = currentOrder?.expiredAt
@@ -475,10 +481,11 @@ export function ReceiveHomeScreen({ navigation, route }: Props) {
       return
     }
 
-    void createOrder({
+    void createReceiveOrder({
       variant: currentVariant,
       walletAddress: receiveAddress,
       multisigWalletId: route.params?.multisigWalletId,
+      config,
     })
       .then(result => {
         if (result?.orderSn) {

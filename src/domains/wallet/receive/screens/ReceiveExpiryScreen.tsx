@@ -1,13 +1,14 @@
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import type { ReceiveStackParamList } from "@/app/navigation/types"
+import { useCreateReceiveOrderMutation, useReceiveHomeQuery } from "@/domains/wallet/receive/queries/receiveHomeQueries"
 import { HomeScaffold } from "@/shared/ui/HomeScaffold"
 import { getReceiveExpireOptions, markReceiveExpireDuration, type ReceiveExpireOption } from "@/domains/wallet/receive/services/receiveApi"
-import { useReceiveStore } from "@/domains/wallet/receive/store/useReceiveStore"
+import { resolveChainNameById } from "@/shared/api/walletAssets"
 import { SectionCard } from "@/shared/ui/AppFlowUi"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useToast } from "@/shared/toast/useToast"
@@ -35,11 +36,33 @@ export function ReceiveExpiryScreen({ navigation, route }: Props) {
   const { t } = useTranslation()
   const { showToast } = useToast()
   const walletAddress = useWalletStore(state => state.address)
-  const createOrder = useReceiveStore(state => state.createOrder)
+  const chainId = useWalletStore(state => state.chainId)
+  const receiveHomeArgs = useMemo(
+    () => ({
+      payChain: route.params?.payChain ?? resolveChainNameById(chainId),
+      chainId,
+      walletAddress,
+      multisigWalletId: route.params?.multisigWalletId,
+    }),
+    [chainId, route.params?.multisigWalletId, route.params?.payChain, walletAddress],
+  )
+  const receiveHomeQuery = useReceiveHomeQuery(receiveHomeArgs, {
+    enabled: false,
+  })
+  const { createOrder: createReceiveOrder } = useCreateReceiveOrderMutation(receiveHomeArgs)
   const [items, setItems] = useState<ReceiveExpireOption[]>([])
   const [selected, setSelected] = useState<number>(0)
   const [initial, setInitial] = useState<number>(0)
   const [submitting, setSubmitting] = useState(false)
+  const createConfig = receiveHomeQuery.data?.config ?? (
+    route.params?.sellerId && route.params?.sendCoinCode && route.params?.recvCoinCode
+      ? {
+          sellerId: route.params.sellerId,
+          sendCoinCode: route.params.sendCoinCode,
+          recvCoinCode: route.params.recvCoinCode,
+        }
+      : null
+  )
 
   useEffect(() => {
     void (async () => {
@@ -97,11 +120,12 @@ export function ReceiveExpiryScreen({ navigation, route }: Props) {
                     multisigWalletId: route.params?.multisigWalletId,
                   })
 
-                  if (route.params?.sellerId && route.params?.sendCoinCode && route.params?.recvCoinCode && walletAddress) {
-                    await createOrder({
+                  if (walletAddress && createConfig) {
+                    await createReceiveOrder({
                       variant: route.params?.collapse === "business" ? "long" : "short",
                       walletAddress,
                       multisigWalletId: route.params?.multisigWalletId,
+                      config: createConfig,
                     })
                   }
 
