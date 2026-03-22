@@ -10,23 +10,17 @@ import { HeaderTextAction, HomeScaffold } from "@/features/home/components/HomeS
 import { formatAddress } from "@/features/home/utils/format"
 import { FilterChip, OrderMonthSection, SuccessStateCard } from "@/features/orders/components/OrdersUi"
 import { SeedAddressAvatar } from "@/features/orders/components/OrderCounterpartyAvatar"
+import {
+  flattenOrderLogPages,
+  useOrderBillSummaryQuery,
+  useOrderLogsInfiniteQuery,
+} from "@/features/orders/queries/orderQueries"
 import { exportOrderBillFile } from "@/features/orders/services/orderExport"
 import {
-  buildOrderBillCacheKey,
-  buildOrderLogsCacheKey,
   countNewOrderRecords,
-  getOrderBillAddresses,
-  getOrderBillStatistics,
-  getOrderTxlogs,
-  getOrderTxlogStatistics,
-  readOrderBillCache,
-  readOrderLogsCache,
-  type OrderBillAddressItem,
   type OrderListItem,
   type OrderStatistics,
   type OrderTypeFilter,
-  writeOrderBillCache,
-  writeOrderLogsCache,
 } from "@/features/orders/services/ordersApi"
 import {
   buildRangeSelection,
@@ -36,7 +30,6 @@ import {
   resolveOrderTypeOptions,
   type RangePreset,
 } from "@/features/orders/utils/orderHelpers"
-import { createLatestTaskController } from "@/shared/async/taskController"
 import { PageEmpty, PrimaryButton, SectionCard } from "@/shared/ui/AppFlowUi"
 import { useErrorPresenter } from "@/shared/errors/useErrorPresenter"
 import { useUserStore } from "@/shared/store/useUserStore"
@@ -49,6 +42,12 @@ import { getFloatingOverlayContentInset } from "@/shared/ui/floatingInsets"
 import type { OrdersStackParamList } from "@/app/navigation/types"
 
 const ORDER_PAGE_SIZE = 20
+const DEFAULT_ORDER_STATISTICS: OrderStatistics = {
+  receiptAmount: 0,
+  paymentAmount: 0,
+  fee: 0,
+  transactions: 0,
+}
 
 type TxlogsProps = NativeStackScreenProps<OrdersStackParamList, "TxlogsScreen">
 type TxlogsByAddressProps = NativeStackScreenProps<OrdersStackParamList, "TxlogsByAddressScreen">
@@ -94,31 +93,28 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
   const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
   const [orderType, setOrderType] = useState<OrderTypeFilter | undefined>(undefined)
-  const [items, setItems] = useState<OrderListItem[]>([])
-  const [statistics, setStatistics] = useState<OrderStatistics>({ receiptAmount: 0, paymentAmount: 0, fee: 0, transactions: 0 })
-  const [loading, setLoading] = useState(true)
-  const [loadingMore, setLoadingMore] = useState(false)
-  const [refreshing, setRefreshing] = useState(false)
-  const [page, setPage] = useState(1)
-  const [total, setTotal] = useState(0)
-  const loadingMoreRef = useRef(false)
-  const mountedRef = useRef(true)
-  const loadTaskControllerRef = useRef(createLatestTaskController())
-  const itemsRef = useRef<OrderListItem[]>([])
-  const statisticsRef = useRef<OrderStatistics>({ receiptAmount: 0, paymentAmount: 0, fee: 0, transactions: 0 })
-  const totalRef = useRef(0)
+  const previousFirstPageItemsRef = useRef<OrderListItem[] | null>(null)
+  const presentedLoadErrorAtRef = useRef(0)
+  const presentedLoadMoreErrorAtRef = useRef(0)
+  const presentedRefreshErrorAtRef = useRef(0)
 
   const rangeSelection = useMemo(() => buildRangeSelection("all"), [])
   const contentBottomInset = getFloatingOverlayContentInset(route.name, insets.bottom)
-  const cacheKey = useMemo(
-    () =>
-      buildOrderLogsCacheKey({
-        otherAddress: props.otherAddress,
-        orderType,
-        ...rangeSelection,
-      }),
+  const logsArgs = useMemo(
+    () => ({
+      otherAddress: props.otherAddress,
+      orderType,
+      ...rangeSelection,
+    }),
     [orderType, props.otherAddress, rangeSelection],
   )
+  const logsQuery = useOrderLogsInfiniteQuery(logsArgs, ORDER_PAGE_SIZE)
+  const items = useMemo(() => flattenOrderLogPages(logsQuery.data), [logsQuery.data])
+  const firstPageItems = logsQuery.data?.pages[0]?.data ?? []
+  const total = logsQuery.data?.pages[logsQuery.data.pages.length - 1]?.total ?? 0
+  const loading = !logsQuery.data && logsQuery.isLoading
+  const loadingMore = logsQuery.isFetchingNextPage
+  const refreshing = !loadingMore && logsQuery.isRefetching
   const orderGroups = useMemo(() => groupOrdersByMonth(items), [items])
   const typeOptions = useMemo(() => resolveOrderTypeOptions(t), [t])
   const typeChipToneStyle = useMemo(
@@ -130,207 +126,73 @@ function OrderLogsScreenBase(props: OrderListBaseProps) {
   )
 
   useEffect(() => {
-    itemsRef.current = items
-  }, [items])
+    previousFirstPageItemsRef.current = null
+  }, [logsArgs])
 
   useEffect(() => {
-    statisticsRef.current = statistics
-  }, [statistics])
-
-  useEffect(() => {
-    totalRef.current = total
-  }, [total])
-
-  useEffect(() => {
-    return () => {
-      mountedRef.current = false
-      loadingMoreRef.current = false
-      loadTaskControllerRef.current.cancel()
-    }
-  }, [])
-
-  useEffect(() => {
-    const run = loadTaskControllerRef.current.begin()
-    const cachedSnapshot = readOrderLogsCache(cacheKey)
-    loadingMoreRef.current = false
-
-    if (cachedSnapshot) {
-      setItems(cachedSnapshot.items)
-      setStatistics(cachedSnapshot.statistics)
-      setPage(cachedSnapshot.page)
-      setTotal(cachedSnapshot.total)
-      setLoading(false)
-      setLoadingMore(false)
-      setRefreshing(false)
-    } else {
-      setLoading(true)
-      setLoadingMore(false)
-      setRefreshing(false)
-      setItems([])
-      setStatistics({ receiptAmount: 0, paymentAmount: 0, fee: 0, transactions: 0 })
-      setPage(1)
-      setTotal(0)
-    }
-
-    void (async () => {
-      try {
-        const [listResponse, statsResponse] = await Promise.all([
-          getOrderTxlogs({
-            page: 1,
-            perPage: ORDER_PAGE_SIZE,
-            orderType,
-            otherAddress: props.otherAddress,
-            ...rangeSelection,
-          }),
-          getOrderTxlogStatistics({
-            orderType,
-            otherAddress: props.otherAddress,
-            ...rangeSelection,
-          }),
-        ])
-
-        if (!run.isCurrent() || !mountedRef.current) {
-          return
-        }
-
-        setItems(listResponse.data)
-        setStatistics(statsResponse)
-        setPage(listResponse.page)
-        setTotal(listResponse.total)
-        writeOrderLogsCache(cacheKey, {
-          items: listResponse.data,
-          statistics: statsResponse,
-          page: listResponse.page,
-          total: listResponse.total,
-        })
-
-        if (cachedSnapshot) {
-          const nextCount = countNewOrderRecords(cachedSnapshot.items, listResponse.data)
-          if (nextCount > 0) {
-            showToast({
-              message: t("orders.list.updatedWithCount", { count: nextCount }),
-              tone: "success",
-            })
-          }
-        }
-      } catch (error) {
-        if (run.isCurrent() && mountedRef.current && !cachedSnapshot) {
-          presentError(error, {
-            fallbackKey: "orders.list.loadFailed",
-          })
-        }
-      } finally {
-        if (run.isCurrent() && mountedRef.current) {
-          loadingMoreRef.current = false
-          setLoading(false)
-          setRefreshing(false)
-          setLoadingMore(false)
-        }
-      }
-    })()
-  }, [cacheKey, orderType, presentError, props.otherAddress, rangeSelection, showToast, t])
-
-  const handleLoadMore = async () => {
-    if (loading || refreshing || loadingMoreRef.current || itemsRef.current.length >= totalRef.current) {
+    if (!previousFirstPageItemsRef.current || previousFirstPageItemsRef.current.length === 0) {
+      previousFirstPageItemsRef.current = firstPageItems
       return
     }
 
-    const run = loadTaskControllerRef.current.begin()
+    const nextCount = countNewOrderRecords(previousFirstPageItemsRef.current, firstPageItems)
+    previousFirstPageItemsRef.current = firstPageItems
 
-    try {
-      loadingMoreRef.current = true
-      setLoadingMore(true)
-      const nextPage = page + 1
-      const response = await getOrderTxlogs({
-        page: nextPage,
-        perPage: ORDER_PAGE_SIZE,
-        orderType,
-        otherAddress: props.otherAddress,
-        ...rangeSelection,
+    if (nextCount > 0) {
+      showToast({
+        message: t("orders.list.updatedWithCount", { count: nextCount }),
+        tone: "success",
       })
-
-      if (!run.isCurrent() || !mountedRef.current) {
-        return
-      }
-
-      const nextStatistics = statisticsRef.current
-      setItems(current => {
-        const nextItems = [...current, ...response.data]
-        writeOrderLogsCache(cacheKey, {
-          items: nextItems,
-          statistics: nextStatistics,
-          page: response.page,
-          total: response.total,
-        })
-        return nextItems
-      })
-      setPage(response.page)
-      setTotal(response.total)
-    } catch (error) {
-      if (!run.isCurrent() || !mountedRef.current) {
-        return
-      }
-
-      presentError(error, {
-        fallbackKey: "orders.list.loadMoreFailed",
-      })
-    } finally {
-      if (run.isCurrent() && mountedRef.current) {
-        loadingMoreRef.current = false
-        setLoadingMore(false)
-      }
     }
+  }, [firstPageItems, showToast, t])
+
+  useEffect(() => {
+    if (logsQuery.errorUpdatedAt === 0 || logsQuery.errorUpdatedAt === presentedLoadErrorAtRef.current) {
+      return
+    }
+
+    if (!items.length && logsQuery.isError) {
+      presentedLoadErrorAtRef.current = logsQuery.errorUpdatedAt
+      presentError(logsQuery.error, {
+        fallbackKey: "orders.list.loadFailed",
+      })
+    }
+  }, [items.length, logsQuery.error, logsQuery.errorUpdatedAt, logsQuery.isError, presentError])
+
+  useEffect(() => {
+    if (!logsQuery.isFetchNextPageError || logsQuery.errorUpdatedAt === presentedLoadMoreErrorAtRef.current) {
+      return
+    }
+
+    presentedLoadMoreErrorAtRef.current = logsQuery.errorUpdatedAt
+    presentError(logsQuery.error, {
+      fallbackKey: "orders.list.loadMoreFailed",
+    })
+  }, [logsQuery.error, logsQuery.errorUpdatedAt, logsQuery.isFetchNextPageError, presentError])
+
+  useEffect(() => {
+    if (logsQuery.errorUpdatedAt === 0 || logsQuery.errorUpdatedAt === presentedRefreshErrorAtRef.current) {
+      return
+    }
+
+    if (logsQuery.isRefetchError) {
+      presentedRefreshErrorAtRef.current = logsQuery.errorUpdatedAt
+      presentError(logsQuery.error, {
+        fallbackKey: "orders.list.refreshFailed",
+      })
+    }
+  }, [logsQuery.error, logsQuery.errorUpdatedAt, logsQuery.isRefetchError, presentError])
+
+  const handleLoadMore = async () => {
+    if (loading || refreshing || loadingMore || !logsQuery.hasNextPage || items.length >= total) {
+      return
+    }
+
+    await logsQuery.fetchNextPage()
   }
 
   const handleRefresh = async () => {
-    const run = loadTaskControllerRef.current.begin()
-    loadingMoreRef.current = false
-    setLoadingMore(false)
-    setRefreshing(true)
-
-    try {
-      const [listResponse, statsResponse] = await Promise.all([
-        getOrderTxlogs({
-          page: 1,
-          perPage: ORDER_PAGE_SIZE,
-          orderType,
-          otherAddress: props.otherAddress,
-          ...rangeSelection,
-        }),
-        getOrderTxlogStatistics({
-          orderType,
-          otherAddress: props.otherAddress,
-          ...rangeSelection,
-        }),
-      ])
-
-      if (!run.isCurrent() || !mountedRef.current) {
-        return
-      }
-
-      setItems(listResponse.data)
-      setStatistics(statsResponse)
-      setPage(listResponse.page)
-      setTotal(listResponse.total)
-      writeOrderLogsCache(cacheKey, {
-        items: listResponse.data,
-        statistics: statsResponse,
-        page: listResponse.page,
-        total: listResponse.total,
-      })
-    } catch (error) {
-      if (!run.isCurrent() || !mountedRef.current) {
-        return
-      }
-
-      presentError(error, {
-        fallbackKey: "orders.list.refreshFailed",
-      })
-    } finally {
-      if (run.isCurrent() && mountedRef.current) {
-        setRefreshing(false)
-      }
-    }
+    await logsQuery.refetch()
   }
 
   return (
@@ -439,13 +301,14 @@ export function OrderBillScreen({ navigation, route }: OrderBillProps) {
   const { presentError } = useErrorPresenter()
   const profile = useUserStore(state => state.profile)
   const [preset, setPreset] = useState<Exclude<RangePreset, "all">>(route.params?.preset ?? "today")
-  const [statistics, setStatistics] = useState<OrderStatistics>({ receiptAmount: 0, paymentAmount: 0, fee: 0, transactions: 0 })
-  const [items, setItems] = useState<OrderBillAddressItem[]>([])
-  const [loading, setLoading] = useState(true)
+  const presentedErrorAtRef = useRef(0)
 
   const rangeSelection = useMemo(() => buildRangeSelection(preset), [preset])
   const contentBottomInset = getFloatingOverlayContentInset(route.name, insets.bottom)
-  const cacheKey = useMemo(() => buildOrderBillCacheKey(rangeSelection), [rangeSelection])
+  const billQuery = useOrderBillSummaryQuery(rangeSelection)
+  const statistics = billQuery.data?.statistics ?? DEFAULT_ORDER_STATISTICS
+  const items = billQuery.data?.items ?? []
+  const loading = billQuery.isLoading && !billQuery.data
   const rangeOptions = useMemo(() => resolveOrderBillRangeOptions(t), [t])
   const rangeChipToneStyle = useMemo(
     () => ({
@@ -466,53 +329,15 @@ export function OrderBillScreen({ navigation, route }: OrderBillProps) {
   const billPeriodTitle = useMemo(() => resolveBillPeriodTitle(preset, rangeSelection), [preset, rangeSelection])
 
   useEffect(() => {
-    let active = true
-    const cachedSnapshot = readOrderBillCache(cacheKey)
-
-    if (cachedSnapshot) {
-      setStatistics(cachedSnapshot.statistics)
-      setItems(cachedSnapshot.items)
-      setLoading(false)
-    } else {
-      setLoading(true)
-      setStatistics({ receiptAmount: 0, paymentAmount: 0, fee: 0, transactions: 0 })
-      setItems([])
+    if (!billQuery.error || billQuery.data || billQuery.errorUpdatedAt === presentedErrorAtRef.current) {
+      return
     }
 
-    void (async () => {
-      try {
-        const [statsResponse, listResponse] = await Promise.all([
-          getOrderBillStatistics(rangeSelection),
-          getOrderBillAddresses(rangeSelection),
-        ])
-
-        if (!active) {
-          return
-        }
-
-        setStatistics(statsResponse)
-        setItems(listResponse.data)
-        writeOrderBillCache(cacheKey, {
-          statistics: statsResponse,
-          items: listResponse.data,
-        })
-      } catch (error) {
-        if (active && !cachedSnapshot) {
-          presentError(error, {
-            fallbackKey: "orders.bill.loadFailed",
-          })
-        }
-      } finally {
-        if (active) {
-          setLoading(false)
-        }
-      }
-    })()
-
-    return () => {
-      active = false
-    }
-  }, [cacheKey, presentError, rangeSelection])
+    presentedErrorAtRef.current = billQuery.errorUpdatedAt
+    presentError(billQuery.error, {
+      fallbackKey: "orders.bill.loadFailed",
+    })
+  }, [billQuery.data, billQuery.error, billQuery.errorUpdatedAt, presentError])
 
   return (
     <HomeScaffold

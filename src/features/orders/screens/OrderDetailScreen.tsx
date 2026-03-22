@@ -1,5 +1,6 @@
-import React, { useCallback, useMemo, useRef, useState } from "react"
+import React, { useCallback, useEffect, useMemo } from "react"
 
+import { useQueryClient } from "@tanstack/react-query"
 import { useFocusEffect } from "@react-navigation/native"
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
@@ -9,15 +10,10 @@ import { navigateRoot } from "@/app/navigation/navigationRef"
 import type { OrdersStackParamList } from "@/app/navigation/types"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
 import {
-  confirmOrder,
-  findOrderLabels,
-  getOrderDetail,
-  isOrderDetailCacheSnapshotEqual,
-  readOrderDetailCache,
-  writeOrderDetailCache,
   type OrderDetail,
   type OrderLabelBinding,
 } from "@/features/orders/services/ordersApi"
+import { EMPTY_ORDER_LABEL_BINDING, useConfirmOrderMutation, useOrderDetailQuery } from "@/features/orders/queries/orderQueries"
 import {
   OrderStatus,
   formatAddressLabel,
@@ -59,81 +55,35 @@ type ShortcutItem = {
   onPress: () => void
 }
 
-const EMPTY_LABEL_BINDING: OrderLabelBinding = {
-  notes: "",
-  notesImageUrl: "",
-  labels: [],
-}
-
-function resolveLabelBinding(detail: OrderDetail, binding?: OrderLabelBinding | null): OrderLabelBinding {
-  if (binding) {
-    return binding
-  }
-
-  return {
-    notes: detail.note,
-    notesImageUrl: detail.notesImageUrl,
-    labels: [],
-  }
-}
-
 export function OrderDetailScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
   const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
+  const queryClient = useQueryClient()
   const orderSn = route.params.orderSn
-  const cacheSnapshotRef = useRef(readOrderDetailCache(orderSn))
-  const [detail, setDetail] = useState<OrderDetail | null>(() => cacheSnapshotRef.current?.detail ?? null)
-  const [labelBinding, setLabelBinding] = useState<OrderLabelBinding>(() => cacheSnapshotRef.current?.labelBinding ?? EMPTY_LABEL_BINDING)
-  const [loading, setLoading] = useState(() => cacheSnapshotRef.current == null)
-  const [confirming, setConfirming] = useState(false)
-  const hasLoadedDetailRef = useRef(cacheSnapshotRef.current != null)
-
-  const loadOrderDetail = useCallback(async (options?: { silent?: boolean }) => {
-    const silent = Boolean(options?.silent && hasLoadedDetailRef.current)
-
-    if (!silent) {
-      setLoading(true)
-    }
-
-    try {
-      const [response, binding] = await Promise.all([getOrderDetail(orderSn), findOrderLabels(orderSn).catch(() => null)])
-      const previousSnapshot = cacheSnapshotRef.current
-      const nextSnapshot = {
-        detail: response,
-        labelBinding: resolveLabelBinding(response, binding),
-      }
-      const hasChanged = !isOrderDetailCacheSnapshotEqual(previousSnapshot, nextSnapshot)
-
-      writeOrderDetailCache(orderSn, nextSnapshot)
-      cacheSnapshotRef.current = nextSnapshot
-      hasLoadedDetailRef.current = true
-
-      if (hasChanged || previousSnapshot == null) {
-        setDetail(nextSnapshot.detail)
-        setLabelBinding(nextSnapshot.labelBinding)
-      }
-    } catch (error) {
-      if (!hasLoadedDetailRef.current) {
-        setDetail(null)
-        setLabelBinding(EMPTY_LABEL_BINDING)
-        presentError(error, {
-          fallbackKey: "orders.detail.loadFailed",
-        })
-      }
-    } finally {
-      if (!silent) {
-        setLoading(false)
-      }
-    }
-  }, [orderSn, presentError])
+  const detailQuery = useOrderDetailQuery(orderSn)
+  const confirmMutation = useConfirmOrderMutation(queryClient, orderSn)
+  const detail = detailQuery.data?.detail ?? null
+  const labelBinding: OrderLabelBinding = detailQuery.data?.labelBinding ?? EMPTY_ORDER_LABEL_BINDING
+  const loading = detailQuery.isLoading && !detail
+  const confirming = confirmMutation.isPending
 
   useFocusEffect(
     useCallback(() => {
-      void loadOrderDetail({ silent: true })
-    }, [loadOrderDetail]),
+      if (detailQuery.data) {
+        void detailQuery.refetch()
+      }
+    }, [detailQuery.data, detailQuery.refetch]),
   )
+
+  useEffect(() => {
+    if (detailQuery.error && !detail) {
+      presentError(detailQuery.error, {
+        fallbackKey: "orders.detail.loadFailed",
+      })
+    }
+  }, [detail, detailQuery.error, detailQuery.errorUpdatedAt, presentError])
 
   const counterpartyAddress = useMemo(() => (detail ? resolveDetailCounterparty(detail) : ""), [detail])
   const explorerUrl = useMemo(() => (detail ? resolveOrderExplorerUrl(detail) : ""), [detail])
@@ -158,23 +108,12 @@ export function OrderDetailScreen({ navigation, route }: Props) {
     }
 
     try {
-      setConfirming(true)
-      await confirmOrder(detail.orderSn)
-      const refreshed = await getOrderDetail(detail.orderSn)
-      const nextSnapshot = {
-        detail: refreshed,
-        labelBinding,
-      }
-      writeOrderDetailCache(detail.orderSn, nextSnapshot)
-      cacheSnapshotRef.current = nextSnapshot
-      setDetail(refreshed)
+      await confirmMutation.mutateAsync()
       showToast({ message: t("orders.detail.confirmSuccess"), tone: "success" })
     } catch (error) {
       presentError(error, {
         fallbackKey: "orders.detail.confirmFailed",
       })
-    } finally {
-      setConfirming(false)
     }
   }
 
