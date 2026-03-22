@@ -33,7 +33,7 @@ import { useWalletBalanceQuery } from "@/shared/queries/balanceQueries"
 import { useWalletStore } from "@/shared/store/useWalletStore"
 import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
-import { FieldRow, PageEmpty, PrimaryButton, SecondaryButton, SectionCard } from "@/shared/ui/AppFlowUi"
+import { PageEmpty, PrimaryButton, SectionCard } from "@/shared/ui/AppFlowUi"
 
 export type TransferConfirmVariant = "default" | "normal"
 
@@ -399,14 +399,6 @@ function TransferConfirmBody(props: {
     [props.detail],
   )
   const formattedRecipientLabel = useMemo(() => formatWalletAddress(receiveAddressLabel, 8, 4), [receiveAddressLabel])
-  const selectedPaymentAssetLabel = useMemo(() => {
-    if (!props.detail) {
-      return "-"
-    }
-
-    return props.detail.sendCoinName || props.detail.sendCoinCode || "-"
-  }, [props.detail])
-
   if (props.loading && !props.detail) {
     return (
       <View style={styles.stateWrap}>
@@ -492,39 +484,8 @@ function TransferConfirmBody(props: {
               )
             })}
           </SectionCard>
-
-          {props.paymentOptions.length > 1 ? (
-            <Text style={[styles.paymentHint, { color: theme.colors.mutedText }]}>{t("transfer.confirm.switchHint")}</Text>
-          ) : null}
         </View>
       ) : null}
-
-      <SectionCard>
-        <FieldRow label={t("transfer.confirm.to")} value={receiveAddressLabel} />
-        <FieldRow
-          emphasized
-          label={t("transfer.confirm.receive")}
-          value={`${props.detail?.recvAmount ?? 0} ${props.detail?.recvCoinName || props.detail?.recvCoinCode || ""}`.trim()}
-        />
-        <FieldRow
-          label={t("transfer.confirm.fee")}
-          value={`${props.detail?.sendEstimateFeeAmount ?? 0} ${props.detail?.sendCoinName || props.detail?.sendCoinCode || ""}`.trim()}
-        />
-        <FieldRow
-          label={t("transfer.confirm.paymentAsset")}
-          value={selectedPaymentAssetLabel}
-        />
-        <FieldRow
-          label={t("transfer.confirm.paymentMethod")}
-          value={props.detail?.multisigWalletId ? t("transfer.confirm.copouch") : t("transfer.confirm.balance")}
-        />
-        {props.detail?.note ? <FieldRow label={t("transfer.confirm.note")} value={props.detail.note} /> : null}
-      </SectionCard>
-
-      <SectionCard>
-        <Text style={[styles.tipTitle, { color: theme.colors.text }]}>{t("transfer.confirm.tipTitle")}</Text>
-        <Text style={[styles.tipBody, { color: theme.colors.mutedText }]}>{t("transfer.confirm.tipBody")}</Text>
-      </SectionCard>
 
       {props.submitUnavailableMessage ? (
         <SectionCard>
@@ -533,15 +494,11 @@ function TransferConfirmBody(props: {
           </Text>
         </SectionCard>
       ) : null}
-
-      <View style={styles.actions}>
-        <SecondaryButton disabled={props.submitting || props.switchingPayment} label={t("common.cancel")} onPress={props.onClose} />
-        <PrimaryButton
-          disabled={props.submitting || props.loading || props.switchingPayment || !props.detail || Boolean(props.submitUnavailableMessage)}
-          label={props.submitting || props.switchingPayment ? t("common.loading") : t("transfer.confirm.submit")}
-          onPress={props.onSubmit}
-        />
-      </View>
+      <PrimaryButton
+        disabled={props.submitting || props.loading || props.switchingPayment || !props.detail || Boolean(props.submitUnavailableMessage)}
+        label={props.submitting || props.switchingPayment ? t("common.loading") : t("transfer.confirm.submit")}
+        onPress={props.onSubmit}
+      />
     </ScrollView>
   )
 }
@@ -742,14 +699,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: "center",
   },
-  tipTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  tipBody: {
-    fontSize: 13,
-    lineHeight: 20,
-  },
   paymentHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -816,18 +765,10 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "700",
   },
-  paymentHint: {
-    paddingHorizontal: 4,
-    fontSize: 12,
-    lineHeight: 18,
-  },
   capabilityWarning: {
     fontSize: 13,
     lineHeight: 20,
     fontWeight: "600",
-  },
-  actions: {
-    gap: 10,
   },
   stateWrap: {
     flex: 1,
