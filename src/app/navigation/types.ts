@@ -27,7 +27,6 @@ export type SettingsStackParamList = {
   ExportPasskeyScreen: undefined
   EmailNotificationScreen: undefined
   EmailHomeScreen: undefined
-  EmailBindedScreen: undefined
   EmailUnbindScreen: undefined
   VerifyEmailScreen: { email: string }
   LanguageScreen: undefined
@@ -99,7 +98,6 @@ export type OrdersStackParamList = {
   TagsNotesScreen: {
     orderSn: string
   }
-  TagsNotesEditScreen: undefined
   LabelManagementScreen: undefined
 }
 

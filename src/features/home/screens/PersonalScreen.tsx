@@ -37,7 +37,6 @@ export function PersonalScreen({ navigation }: Props) {
 
   const address = walletAddress ?? profile?.address ?? session?.address ?? ""
   const nickname = profile?.nickname || t("home.shell.defaultNickname")
-  const hasEmail = Boolean(profile?.email)
   const email = profile?.email || t("settingsHub.email.unbound")
   const avatar = profile?.avatar
 
@@ -150,7 +149,7 @@ export function PersonalScreen({ navigation }: Props) {
         <AppListRow
           hideDivider
           left={<AppGlyph name="mail" />}
-          onPress={() => navigation.navigate(hasEmail ? "EmailBindedScreen" : "EmailHomeScreen")}
+          onPress={() => navigation.navigate("EmailHomeScreen")}
           right={
             <View style={styles.rowRight}>
               <Text numberOfLines={1} style={[styles.rowValue, styles.rowValueCompressed, { color: theme.colors.mutedText }]}>

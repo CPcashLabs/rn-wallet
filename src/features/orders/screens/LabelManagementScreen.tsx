@@ -14,7 +14,7 @@ import { AppTextField } from "@/shared/ui/AppTextField"
 
 import type { OrdersStackParamList } from "@/app/navigation/types"
 
-type Props = NativeStackScreenProps<OrdersStackParamList, "LabelManagementScreen" | "TagsNotesEditScreen">
+type Props = NativeStackScreenProps<OrdersStackParamList, "LabelManagementScreen">
 
 export function LabelManagementScreen({ navigation }: Props) {
   const theme = useAppTheme()

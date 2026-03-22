@@ -155,7 +155,7 @@ export function TagsNotesScreen({ navigation, route }: Props) {
       onBack={navigation.goBack}
       title={t("orders.tags.title")}
       scroll={false}
-      right={<HeaderTextAction label={t("orders.tags.manage")} onPress={() => navigation.navigate("TagsNotesEditScreen")} />}
+      right={<HeaderTextAction label={t("orders.tags.manage")} onPress={() => navigation.navigate("LabelManagementScreen")} />}
     >
       <ScrollView contentContainerStyle={styles.content}>
         {loading ? (

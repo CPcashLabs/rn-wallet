@@ -130,7 +130,7 @@ export function SettingsScreen({ navigation }: Props) {
           icon="mail"
           detail={profile?.email || t("settingsHub.email.unbound")}
           label={t("home.settings.email")}
-          onPress={() => navigation.navigate(profile?.email ? "EmailBindedScreen" : "EmailHomeScreen")}
+          onPress={() => navigation.navigate("EmailHomeScreen")}
         />
         <SettingsRow
           icon="spark"

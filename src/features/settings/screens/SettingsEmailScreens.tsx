@@ -29,7 +29,6 @@ export function EmailNotificationScreen({ navigation }: StackProps<"EmailNotific
   const theme = useAppTheme()
   const { t } = useTranslation()
   const { presentError } = useErrorPresenter()
-  const { showToast } = useToast()
   const profile = useUserStore(state => state.profile)
   const patchProfile = useUserStore(state => state.patchProfile)
   const refreshProfile = useProfileRefresh()
@@ -133,21 +132,6 @@ export function EmailHomeScreen({ navigation }: StackProps<"EmailHomeScreen">) {
         />
       </Card>
       <PrimaryButton disabled={!emailValid} label={t("common.next")} loading={loading} onPress={() => void handleNext()} />
-    </HomeScaffold>
-  )
-}
-
-export function EmailBindedScreen({ navigation }: StackProps<"EmailBindedScreen">) {
-  const { t } = useTranslation()
-  const profile = useUserStore(state => state.profile)
-
-  return (
-    <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.email.title")}>
-      <Card>
-        <Text style={styles.centerMuted}>{t("settingsHub.email.currentBound")}</Text>
-        <Text style={styles.emailValue}>{profile?.email}</Text>
-      </Card>
-      <PrimaryButton label={t("settingsHub.email.unbindAction")} onPress={() => navigation.navigate("EmailUnbindScreen")} />
     </HomeScaffold>
   )
 }

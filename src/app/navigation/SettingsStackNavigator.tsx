@@ -8,7 +8,6 @@ import { PersonalScreen } from "@/features/home/screens/PersonalScreen"
 import { SettingsScreen } from "@/features/home/screens/SettingsScreen"
 import { UpdateNameScreen } from "@/features/home/screens/UpdateNameScreen"
 import {
-  EmailBindedScreen,
   EmailHomeScreen,
   EmailNotificationScreen,
   EmailUnbindScreen,
@@ -41,7 +40,6 @@ export function SettingsStackNavigator() {
       <Stack.Screen name="ExportPasskeyScreen" component={ExportPasskeyScreen} />
       <Stack.Screen name="EmailNotificationScreen" component={EmailNotificationScreen} />
       <Stack.Screen name="EmailHomeScreen" component={EmailHomeScreen} />
-      <Stack.Screen name="EmailBindedScreen" component={EmailBindedScreen} />
       <Stack.Screen name="EmailUnbindScreen" component={EmailUnbindScreen} />
       <Stack.Screen name="VerifyEmailScreen" component={VerifyEmailScreen} />
       <Stack.Screen name="LanguageScreen" component={LanguageScreen} />

@@ -41,7 +41,6 @@ export function OrdersStackNavigator() {
       <Stack.Screen name="OrderBillScreen" component={OrderBillScreen} />
       <Stack.Screen name="BillExportScreen" component={BillExportScreen} />
       <Stack.Screen name="TagsNotesScreen" component={TagsNotesScreen} />
-      <Stack.Screen name="TagsNotesEditScreen" component={LabelManagementScreen} />
       <Stack.Screen name="LabelManagementScreen" component={LabelManagementScreen} />
     </Stack.Navigator>
   )
