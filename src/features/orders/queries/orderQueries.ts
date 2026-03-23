@@ -1,5 +1,3 @@
-import { useEffect, useMemo } from "react"
-
 import {
   useInfiniteQuery,
   useMutation,
@@ -23,7 +21,6 @@ import {
   type OrderTypeFilter,
   type RangeQuery,
 } from "@/features/orders/services/ordersApi"
-import { buildOrderLogSnapshotKey, readOrderLogSnapshot, writeOrderLogSnapshot } from "@/features/orders/queries/orderLogSnapshotStorage"
 
 type OrderLogsQueryArgs = {
   otherAddress?: string
@@ -36,8 +33,6 @@ type OrderBillSummary = {
   statistics: OrderStatistics
   items: OrderBillAddressItem[]
 }
-
-type OrderLogsCacheSnapshot = NonNullable<ReturnType<typeof readOrderLogSnapshot>>
 
 export type OrderDetailQueryData = {
   detail: OrderDetail
@@ -52,13 +47,6 @@ export const EMPTY_ORDER_LABEL_BINDING: OrderLabelBinding = {
   notes: "",
   notesImageUrl: "",
   labels: [],
-}
-
-const EMPTY_ORDER_STATISTICS: OrderStatistics = {
-  receiptAmount: 0,
-  paymentAmount: 0,
-  fee: 0,
-  transactions: 0,
 }
 
 function normalizeRange(range: RangeQuery) {
@@ -103,46 +91,12 @@ export function flattenOrderLogPages(data?: InfiniteData<OrderLogsPage, unknown>
   return data?.pages.flatMap(page => page.data) ?? []
 }
 
-export function buildOrderLogsInfinitePlaceholderData(
-  snapshot: OrderLogsCacheSnapshot | null,
-  otherAddress?: string,
-  perPage = 20,
-): InfiniteData<OrderLogsPage, number> | undefined {
-  if (!snapshot) {
-    return undefined
-  }
-
-  const items = snapshot.items.slice(0, perPage)
-
-  return {
-    pages: [
-      {
-        data: items,
-        total: snapshot.total,
-        page: 1,
-        otherAddress: otherAddress ?? "",
-      },
-    ],
-    pageParams: [1],
-  }
-}
-
-export function buildOrderLogsCacheSnapshot(
-  data: InfiniteData<OrderLogsPage, unknown>,
-  perPage: number,
-): Omit<OrderLogsCacheSnapshot, "cachedAt"> | null {
-  const firstPage = data.pages[0]
-  const lastPage = data.pages[data.pages.length - 1]
-  if (!firstPage || !lastPage) {
-    return null
-  }
-
-  return {
-    items: firstPage.data.slice(0, perPage),
-    statistics: EMPTY_ORDER_STATISTICS,
-    page: 1,
-    total: lastPage.total,
-  }
+export function countNewOrderRecords(
+  previous: Array<Pick<OrderLogsPage["data"][number], "orderSn">>,
+  next: Array<Pick<OrderLogsPage["data"][number], "orderSn">>,
+) {
+  const previousIds = new Set(previous.map(item => item.orderSn))
+  return next.reduce((count, item) => count + (previousIds.has(item.orderSn) ? 0 : 1), 0)
 }
 
 export function getNextOrderLogsPageParam(lastPage: OrderLogsPage, allPages: OrderLogsPage[]) {
@@ -151,16 +105,9 @@ export function getNextOrderLogsPageParam(lastPage: OrderLogsPage, allPages: Ord
 }
 
 export function useOrderLogsInfiniteQuery(args: OrderLogsQueryArgs, perPage = 20) {
-  const cacheKey = useMemo(() => buildOrderLogSnapshotKey(args), [args])
-  const cachedSnapshot = useMemo(() => readOrderLogSnapshot(cacheKey), [cacheKey])
-  const placeholderData = useMemo(
-    () => buildOrderLogsInfinitePlaceholderData(cachedSnapshot, args.otherAddress, perPage),
-    [args.otherAddress, cachedSnapshot, perPage],
-  )
-  const query = useInfiniteQuery({
+  return useInfiniteQuery({
     queryKey: orderKeys.logsInfinite(args, perPage),
     initialPageParam: 1,
-    placeholderData,
     queryFn: ({ pageParam }) =>
       getOrderTxlogs({
         ...args,
@@ -169,21 +116,6 @@ export function useOrderLogsInfiniteQuery(args: OrderLogsQueryArgs, perPage = 20
       }),
     getNextPageParam: getNextOrderLogsPageParam,
   })
-
-  useEffect(() => {
-    if (!query.data || query.isPlaceholderData) {
-      return
-    }
-
-    const snapshot = buildOrderLogsCacheSnapshot(query.data, perPage)
-    if (!snapshot) {
-      return
-    }
-
-    writeOrderLogSnapshot(cacheKey, snapshot)
-  }, [cacheKey, perPage, query.data, query.isPlaceholderData])
-
-  return query
 }
 
 export function useOrderLogStatisticsQuery(args: OrderLogsQueryArgs, options?: OrderLogStatisticsQueryOptions) {

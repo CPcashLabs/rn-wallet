@@ -1,7 +1,6 @@
 import type { InfiniteData, QueryClient } from "@tanstack/react-query"
 
-import { countNewOrderRecords } from "@/features/orders/queries/orderLogSnapshotStorage"
-import { buildOrderLogsCacheSnapshot, buildOrderLogsInfinitePlaceholderData, flattenOrderLogPages, getNextOrderLogsPageParam, invalidateOrderQueries, orderKeys } from "@/features/orders/queries/orderQueries"
+import { countNewOrderRecords, flattenOrderLogPages, getNextOrderLogsPageParam, invalidateOrderQueries, orderKeys } from "@/features/orders/queries/orderQueries"
 
 type OrderLogsPage = {
   data: Array<{ orderSn: string }>
@@ -81,72 +80,6 @@ describe("orderQueries", () => {
         ],
       ),
     ).toBeUndefined()
-  })
-
-  it("builds placeholder infinite data from the persisted order logs snapshot", () => {
-    expect(
-      buildOrderLogsInfinitePlaceholderData(
-        {
-          items: [{ orderSn: "ORDER_9" }, { orderSn: "ORDER_10" }, { orderSn: "ORDER_11" }] as never,
-          statistics: {
-            paymentAmount: 0,
-            receiptAmount: 0,
-            fee: 0,
-            transactions: 1,
-          },
-          page: 3,
-          total: 21,
-          cachedAt: 1,
-        },
-        "T_OTHER",
-        2,
-      ),
-    ).toEqual({
-      pages: [
-        {
-          data: [{ orderSn: "ORDER_9" }, { orderSn: "ORDER_10" }],
-          total: 21,
-          page: 1,
-          otherAddress: "T_OTHER",
-        },
-      ],
-      pageParams: [1],
-    })
-  })
-
-  it("keeps only the first page in the persisted order logs snapshot", () => {
-    expect(
-      buildOrderLogsCacheSnapshot(
-        {
-          pages: [
-            {
-              data: [{ orderSn: "ORDER_1" }, { orderSn: "ORDER_2" }] as never,
-              total: 6,
-              page: 1,
-              otherAddress: "",
-            },
-            {
-              data: [{ orderSn: "ORDER_3" }, { orderSn: "ORDER_4" }] as never,
-              total: 6,
-              page: 2,
-              otherAddress: "",
-            },
-          ],
-          pageParams: [1, 2],
-        } as never,
-        1,
-      ),
-    ).toEqual({
-      items: [{ orderSn: "ORDER_1" }],
-      statistics: {
-        paymentAmount: 0,
-        receiptAmount: 0,
-        fee: 0,
-        transactions: 0,
-      },
-      page: 1,
-      total: 6,
-    })
   })
 
   it("invalidates all order queries from the root key", async () => {
