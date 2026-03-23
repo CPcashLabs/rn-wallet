@@ -16,10 +16,11 @@ import { useUserStore } from "@/shared/store/useUserStore"
 import { useToast } from "@/shared/toast/useToast"
 import { AppTextField } from "@/shared/ui/AppTextField"
 
-import { Card, ListCard, PrimaryButton, Row, type StackProps, styles } from "@/features/settings/screens/settingsShared"
+import { Card, ListCard, PrimaryButton, Row, type StackProps, useStyles } from "@/features/settings/screens/settingsShared"
 
 export function InviteHomeScreen({ navigation }: StackProps<"InviteHomeScreen">) {
   const { t } = useTranslation()
+  const styles = useStyles()
   const { presentError, presentMessage } = useErrorPresenter()
   const { showToast } = useToast()
   const profile = useUserStore(state => state.profile)
@@ -178,6 +179,7 @@ export function InviteCodeScreen({ navigation }: StackProps<"InviteCodeScreen">)
 
 export function InvitePromotionScreen({ navigation }: StackProps<"InvitePromotionScreen">) {
   const { t } = useTranslation()
+  const styles = useStyles()
   const { presentError } = useErrorPresenter()
   const [stats, setStats] = useState<Array<{ relationLevel: number; number: number; orderCount: number }>>([])
   const [loading, setLoading] = useState(true)
@@ -225,6 +227,7 @@ export function InvitePromotionScreen({ navigation }: StackProps<"InvitePromotio
 
 export function InviteHowItWorksScreen({ navigation }: StackProps<"InviteHowItWorksScreen">) {
   const { t } = useTranslation()
+  const styles = useStyles()
   const bullets = [t("settingsHub.invite.rule1"), t("settingsHub.invite.rule2"), t("settingsHub.invite.rule3"), t("settingsHub.invite.rule4"), t("settingsHub.invite.rule5")]
 
   return (

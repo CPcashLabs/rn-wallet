@@ -14,7 +14,7 @@ import { KvStorageKeys } from "@/shared/storage/sessionKeys"
 import { DEFAULT_WALLET_CHAIN_ID, useWalletStore } from "@/shared/store/useWalletStore"
 import { resetRpcProvider } from "@/shared/web3/balanceService"
 
-import { Card, DEFAULT_RATES, ListCard, LOCAL_NODE_MAP, Row, type StackProps, styles } from "@/features/settings/screens/settingsShared"
+import { Card, DEFAULT_RATES, ListCard, LOCAL_NODE_MAP, Row, type StackProps, useStyles } from "@/features/settings/screens/settingsShared"
 
 type SelectedCurrency = {
   currency: string
@@ -107,6 +107,7 @@ export function UnitScreen({ navigation }: StackProps<"UnitScreen">) {
 
 export function NodeSetupScreen({ navigation }: StackProps<"NodeSetupScreen">) {
   const { t } = useTranslation()
+  const styles = useStyles()
   const queryClient = useQueryClient()
   const walletChainId = useWalletStore(state => state.chainId) ?? DEFAULT_WALLET_CHAIN_ID
   const [nodes, setNodes] = useState<string[]>(LOCAL_NODE_MAP[String(walletChainId)] ?? LOCAL_NODE_MAP["199"])

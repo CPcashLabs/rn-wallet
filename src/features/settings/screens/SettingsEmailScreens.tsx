@@ -25,7 +25,7 @@ import { useToast } from "@/shared/toast/useToast"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { AppTextField } from "@/shared/ui/AppTextField"
 
-import { Card, PrimaryButton, Row, type StackProps, styles, useProfileRefresh } from "@/features/settings/screens/settingsShared"
+import { Card, PrimaryButton, Row, type StackProps, useStyles, useProfileRefresh } from "@/features/settings/screens/settingsShared"
 import { createEmailCodeSchema, createEmailSchema } from "@/features/settings/utils/emailFormSchemas"
 
 type EmailFormValues = {
@@ -39,6 +39,7 @@ type EmailCodeFormValues = {
 export function EmailNotificationScreen({ navigation }: StackProps<"EmailNotificationScreen">) {
   const theme = useAppTheme()
   const { t } = useTranslation()
+  const styles = useStyles()
   const { presentError } = useErrorPresenter()
   const profile = useUserStore(state => state.profile)
   const patchProfile = useUserStore(state => state.patchProfile)
@@ -75,16 +76,16 @@ export function EmailNotificationScreen({ navigation }: StackProps<"EmailNotific
     <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.email.notificationTitle")}>
       <Card>
         <Row label={t("settingsHub.email.transferNotify")}>
-          <Switch onValueChange={value => void handleToggle("transfer", value)} thumbColor="#FFFFFF" trackColor={{ false: "#CBD5E1", true: theme.colors.primary }} value={Boolean(profile?.transferEmailNotifyEnable)} />
+          <Switch onValueChange={value => void handleToggle("transfer", value)} thumbColor={theme.colors.brandInverse} trackColor={{ false: theme.colors.border, true: theme.colors.primary }} value={Boolean(profile?.transferEmailNotifyEnable)} />
         </Row>
         <Row label={t("settingsHub.email.receiptNotify")}>
-          <Switch onValueChange={value => void handleToggle("receipt", value)} thumbColor="#FFFFFF" trackColor={{ false: "#CBD5E1", true: theme.colors.primary }} value={Boolean(profile?.receiptEmailNotifyEnable)} />
+          <Switch onValueChange={value => void handleToggle("receipt", value)} thumbColor={theme.colors.brandInverse} trackColor={{ false: theme.colors.border, true: theme.colors.primary }} value={Boolean(profile?.receiptEmailNotifyEnable)} />
         </Row>
         <Row label={t("settingsHub.email.backupNotify")}>
-          <Switch onValueChange={value => void handleToggle("backup", value)} thumbColor="#FFFFFF" trackColor={{ false: "#CBD5E1", true: theme.colors.primary }} value={Boolean(profile?.backupWalletNotifyEnable)} />
+          <Switch onValueChange={value => void handleToggle("backup", value)} thumbColor={theme.colors.brandInverse} trackColor={{ false: theme.colors.border, true: theme.colors.primary }} value={Boolean(profile?.backupWalletNotifyEnable)} />
         </Row>
         <Row label={t("settingsHub.email.rewardNotify")}>
-          <Switch onValueChange={value => void handleToggle("reward", value)} thumbColor="#FFFFFF" trackColor={{ false: "#CBD5E1", true: theme.colors.primary }} value={Boolean(profile?.rewardEmailNotifyEnable)} />
+          <Switch onValueChange={value => void handleToggle("reward", value)} thumbColor={theme.colors.brandInverse} trackColor={{ false: theme.colors.border, true: theme.colors.primary }} value={Boolean(profile?.rewardEmailNotifyEnable)} />
         </Row>
       </Card>
     </HomeScaffold>
@@ -93,6 +94,7 @@ export function EmailNotificationScreen({ navigation }: StackProps<"EmailNotific
 
 export function EmailHomeScreen({ navigation }: StackProps<"EmailHomeScreen">) {
   const { t } = useTranslation()
+  const styles = useStyles()
   const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
   const profile = useUserStore(state => state.profile)
@@ -172,6 +174,7 @@ export function EmailHomeScreen({ navigation }: StackProps<"EmailHomeScreen">) {
 
 export function EmailUnbindScreen({ navigation }: StackProps<"EmailUnbindScreen">) {
   const { t } = useTranslation()
+  const styles = useStyles()
   const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
   const profile = useUserStore(state => state.profile)
@@ -260,6 +263,7 @@ export function EmailUnbindScreen({ navigation }: StackProps<"EmailUnbindScreen"
 
 export function VerifyEmailScreen({ navigation, route }: StackProps<"VerifyEmailScreen">) {
   const { t } = useTranslation()
+  const styles = useStyles()
   const { presentError } = useErrorPresenter()
   const { showToast } = useToast()
   const refreshProfile = useProfileRefresh()

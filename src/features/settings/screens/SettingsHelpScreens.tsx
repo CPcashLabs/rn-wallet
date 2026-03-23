@@ -19,12 +19,13 @@ import {
   PrimaryButton,
   Row,
   type StackProps,
-  styles,
+  useStyles,
 } from "@/features/settings/screens/settingsShared"
 
 export function HelpCenterScreen({ navigation }: HelpStackProps<"HelpCenterScreen">) {
   const { t } = useTranslation()
   const theme = useAppTheme()
+  const styles = useStyles()
 
   return (
     <HomeScaffold canGoBack contentContainerStyle={localStyles.helpPage} onBack={navigation.goBack} title={t("settingsHub.help.title")}>
@@ -44,6 +45,7 @@ export function HelpCenterScreen({ navigation }: HelpStackProps<"HelpCenterScree
 export function FAQScreen({ navigation }: HelpStackProps<"FAQScreen">) {
   const { t } = useTranslation()
   const theme = useAppTheme()
+  const styles = useStyles()
   const items = [
     { title: t("settingsHub.faq.crossChainTitle"), body: t("settingsHub.faq.crossChainBody") },
     { title: t("settingsHub.faq.paymentAddressTitle"), body: t("settingsHub.faq.paymentAddressBody") },
@@ -67,6 +69,7 @@ export function FAQScreen({ navigation }: HelpStackProps<"FAQScreen">) {
 export function ReceiveDiffScreen({ navigation }: HelpStackProps<"ReceiveDiffScreen">) {
   const { t } = useTranslation()
   const theme = useAppTheme()
+  const styles = useStyles()
   const rows = [
     [t("settingsHub.receiveDiff.purpose"), t("settingsHub.receiveDiff.individualTemporary"), t("settingsHub.receiveDiff.businessFixed")],
     [t("settingsHub.receiveDiff.feature"), t("settingsHub.receiveDiff.privacy"), t("settingsHub.receiveDiff.public")],
@@ -93,6 +96,7 @@ export function ReceiveDiffScreen({ navigation }: HelpStackProps<"ReceiveDiffScr
 export function AboutScreen({ navigation }: StackProps<"AboutScreen">) {
   const { t } = useTranslation()
   const theme = useAppTheme()
+  const styles = useStyles()
   const links = [
     { title: t("settingsHub.about.privacy"), url: "https://support-cpcash.tawk.help/article/privacy-policy-crosspay" },
     { title: t("settingsHub.about.terms"), url: "https://support-cpcash.tawk.help/article/terms-of-services" },
@@ -180,6 +184,7 @@ export function FeedbackScreen({ navigation }: StackProps<"FeedbackScreen">) {
 export function LicensesScreen({ navigation }: StackProps<"LicensesScreen">) {
   const { t } = useTranslation()
   const theme = useAppTheme()
+  const styles = useStyles()
 
   return (
     <HomeScaffold canGoBack onBack={navigation.goBack} title={t("settingsHub.about.licenses")}>
