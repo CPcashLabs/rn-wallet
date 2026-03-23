@@ -2,29 +2,23 @@ import React from "react"
 
 import { createNativeStackNavigator } from "@react-navigation/native-stack"
 
-import { ExportPasskeyScreen } from "@/features/home/screens/ExportPasskeyScreen"
-import { MeShellScreen } from "@/features/home/screens/MeShellScreen"
-import { PersonalScreen } from "@/features/home/screens/PersonalScreen"
-import { SettingsScreen } from "@/features/home/screens/SettingsScreen"
-import { UpdateNameScreen } from "@/features/home/screens/UpdateNameScreen"
+import { ExportPasskeyScreen, MeShellScreen, PersonalScreen, SettingsScreen, UpdateNameScreen } from "@/features/home"
 import {
+  AboutScreen,
   EmailHomeScreen,
   EmailNotificationScreen,
   EmailUnbindScreen,
-  VerifyEmailScreen,
-} from "@/features/settings/screens/SettingsEmailScreens"
-import {
-  AboutScreen,
   FeedbackScreen,
-  LicensesScreen,
-} from "@/features/settings/screens/SettingsHelpScreens"
-import {
   InviteCodeScreen,
   InviteHomeScreen,
   InviteHowItWorksScreen,
   InvitePromotionScreen,
-} from "@/features/settings/screens/SettingsInviteScreens"
-import { LanguageScreen, UnitScreen, NodeSetupScreen } from "@/features/settings/screens/SettingsPreferenceScreens"
+  LanguageScreen,
+  LicensesScreen,
+  NodeSetupScreen,
+  UnitScreen,
+  VerifyEmailScreen,
+} from "@/features/settings"
 
 import type { SettingsStackParamList } from "@/app/navigation/types"
 

@@ -14,8 +14,8 @@ import { DEFAULT_WALLET_CHAIN_ID, useWalletStore } from "@/shared/store/useWalle
 
 import type { RootStackParamList } from "@/app/navigation/types"
 import { BootScreen } from "@/app/screens/BootScreen"
-import { syncCurrentUserProfile } from "@/features/home/hooks/useProfileSync"
-import { resolveSupportRoute } from "@/features/support/utils/supportRoutes"
+import { syncCurrentUserProfile } from "@/features/home"
+import { resolveSupportRoute } from "@/features/support"
 
 type Navigation = NativeStackNavigationProp<RootStackParamList, "BootstrapGate">
 

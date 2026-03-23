@@ -2,8 +2,8 @@ import React from "react"
 
 import { createNativeStackNavigator } from "@react-navigation/native-stack"
 
-import { AddressBookEditScreen } from "@/features/address-book/screens/AddressBookEditScreen"
-import { AddressBookListScreen } from "@/features/address-book/screens/AddressBookListScreen"
+
+import { AddressBookEditScreen, AddressBookListScreen } from "@/features/address-book"
 
 import type { AddressBookStackParamList } from "@/app/navigation/types"
 

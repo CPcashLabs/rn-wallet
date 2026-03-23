@@ -2,8 +2,7 @@ import React from "react"
 
 import { createNativeStackNavigator } from "@react-navigation/native-stack"
 
-import { HomeShellScreen } from "@/features/home/screens/HomeShellScreen"
-import { TotalAssetsScreen } from "@/features/home/screens/TotalAssetsScreen"
+import { HomeShellScreen, TotalAssetsScreen } from "@/features/home"
 
 import type { HomeTabStackParamList } from "@/app/navigation/types"
 

@@ -2,12 +2,14 @@ import React from "react"
 
 import { createNativeStackNavigator } from "@react-navigation/native-stack"
 
-import { AddDesktopGuideScreen } from "@/features/support/screens/AddDesktopGuideScreen"
-import { MaintenanceScreen } from "@/features/support/screens/MaintenanceScreen"
-import { NoNetworkScreen } from "@/features/support/screens/NoNetworkScreen"
-import { NoWechatScreen } from "@/features/support/screens/NoWechatScreen"
-import { NotFoundScreen } from "@/features/support/screens/NotFoundScreen"
-import { WechatInterceptorScreen } from "@/features/support/screens/WechatInterceptorScreen"
+import {
+  AddDesktopGuideScreen,
+  MaintenanceScreen,
+  NoNetworkScreen,
+  NoWechatScreen,
+  NotFoundScreen,
+  WechatInterceptorScreen,
+} from "@/features/support"
 
 import type { SupportStackParamList } from "@/app/navigation/types"
 

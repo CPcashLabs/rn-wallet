@@ -2,17 +2,19 @@ import React from "react"
 
 import { createNativeStackNavigator } from "@react-navigation/native-stack"
 
-import { CreateMnemonicScreen } from "@/features/auth/screens/CreateMnemonicScreen"
-import { FirstSetPasswordScreen } from "@/features/auth/screens/FirstSetPasswordScreen"
-import { ForgotPasswordAddressScreen } from "@/features/auth/screens/ForgotPasswordAddressScreen"
-import { ForgotPasswordEmailScreen } from "@/features/auth/screens/ForgotPasswordEmailScreen"
-import { ImportWalletLoginScreen } from "@/features/auth/screens/ImportWalletLoginScreen"
-import { LoggedInSetPasswordScreen } from "@/features/auth/screens/LoggedInSetPasswordScreen"
-import { LoginScreen } from "@/features/auth/screens/LoginScreen"
-import { PasskeyIntroScreen } from "@/features/auth/screens/PasskeyIntroScreen"
-import { PasskeySignupScreen } from "@/features/auth/screens/PasskeySignupScreen"
-import { PasswordLoginScreen } from "@/features/auth/screens/PasswordLoginScreen"
-import { SetPasswordScreen } from "@/features/auth/screens/SetPasswordScreen"
+import {
+  CreateMnemonicScreen,
+  FirstSetPasswordScreen,
+  ForgotPasswordAddressScreen,
+  ForgotPasswordEmailScreen,
+  ImportWalletLoginScreen,
+  LoggedInSetPasswordScreen,
+  LoginScreen,
+  PasskeyIntroScreen,
+  PasskeySignupScreen,
+  PasswordLoginScreen,
+  SetPasswordScreen,
+} from "@/features/auth"
 
 import type { AuthStackParamList } from "@/app/navigation/types"
 

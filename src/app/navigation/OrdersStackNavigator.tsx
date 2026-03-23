@@ -4,21 +4,19 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack"
 
 import {
   BillExportScreen,
-  OrderBillScreen,
-  TxlogsByAddressScreen,
-  TxlogsScreen,
-} from "@/features/orders/screens/OrderRecordsScreens"
-import { LabelManagementScreen } from "@/features/orders/screens/LabelManagementScreen"
-import { OrderDetailScreen } from "@/features/orders/screens/OrderDetailScreen"
-import {
   DigitalReceiptScreen,
   FlowProofScreen,
+  LabelManagementScreen,
+  OrderBillScreen,
+  OrderDetailScreen,
   OrderVoucherScreen,
   RefundDetailScreen,
   ReimburseScreen,
   SplitDetailScreen,
-} from "@/features/orders/screens/OrderFollowupScreens"
-import { TagsNotesScreen } from "@/features/orders/screens/TagsNotesScreen"
+  TagsNotesScreen,
+  TxlogsByAddressScreen,
+  TxlogsScreen,
+} from "@/features/orders"
 import { TxPayStatusScreen } from "@/domains/wallet/transfer/screens/TxPayStatusScreen"
 
 import type { OrdersStackParamList } from "@/app/navigation/types"

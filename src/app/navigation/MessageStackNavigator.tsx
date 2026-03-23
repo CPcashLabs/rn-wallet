@@ -2,7 +2,7 @@ import React from "react"
 
 import { createNativeStackNavigator } from "@react-navigation/native-stack"
 
-import { MessageScreen } from "@/features/messages/screens/MessageScreen"
+import { MessageScreen } from "@/features/messages"
 
 import type { MessageStackParamList } from "@/app/navigation/types"
 

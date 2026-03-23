@@ -1,7 +1,7 @@
 import { CommonActions, StackActions, createNavigationContainerRef } from "@react-navigation/native"
 
 import { getCurrentRootRouteDescriptor, type RootRouteDescriptor } from "@/app/navigation/routeDescriptor"
-import { resolveSupportRoute, type SupportRouteName } from "@/features/support/utils/supportRoutes"
+import { resolveSupportRoute, type SupportRouteName } from "@/features/support"
 import { useNavigationStateStore } from "@/app/navigation/useNavigationStateStore"
 
 import type { RootStackParamList } from "@/app/navigation/types"
