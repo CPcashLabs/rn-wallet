@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View, type StyleProp, type TextStyle, type
 
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 import { AppCard, APP_LIST_ROW_MIN_HEIGHT } from "@/shared/ui/AppCard"
+import { SFSymbolIcon } from "@/shared/ui/SFSymbolIcon"
 
 type AppListCardProps = {
   children: React.ReactNode
@@ -80,7 +81,7 @@ export const AppListRow = React.memo(function AppListRow(props: AppListRowProps)
           </>
         )}
       </View>
-      {props.right ?? (props.onPress ? <Text style={[styles.arrow, { color: theme.colors.mutedText }]}>›</Text> : null)}
+      {props.right ?? (props.onPress ? <SFSymbolIcon color={theme.colors.mutedText} fallbackName="chevron-right" name="chevron.right" size={13} weight="semibold" /> : null)}
     </>
   )
 
@@ -141,10 +142,5 @@ const styles = StyleSheet.create({
   title: {
   },
   subtitle: {
-  },
-  arrow: {
-    fontSize: 20,
-    lineHeight: 20,
-    fontWeight: "300",
   },
 })

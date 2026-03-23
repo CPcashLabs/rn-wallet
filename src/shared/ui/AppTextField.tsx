@@ -53,7 +53,7 @@ export const AppTextField = React.memo(function AppTextField(props: AppTextField
       styles.input,
       theme.typography.body,
       {
-        paddingVertical: 14,
+        paddingVertical: theme.components.textField.paddingY,
         minHeight: multiline ? theme.components.textField.multilineMinHeight : undefined,
       },
       multiline ? styles.multilineInput : null,

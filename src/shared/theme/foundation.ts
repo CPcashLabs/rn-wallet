@@ -171,6 +171,7 @@ export const appComponentMetrics = {
       radius: 18,
       paddingX: appSpacing.md,
     },
+    paddingY: 14,
     borderWidth: StyleSheet.hairlineWidth,
     multilineMinHeight: 112,
   },

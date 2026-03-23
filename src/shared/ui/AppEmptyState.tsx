@@ -16,8 +16,8 @@ export const AppEmptyState = React.memo(function AppEmptyState(props: AppEmptySt
 
   return (
     <View style={[styles.container, { minHeight: props.minHeight ?? 180 }, props.style]}>
-      <Text style={[styles.title, { color: theme.colors.text }]}>{props.title}</Text>
-      <Text style={[styles.body, { color: theme.colors.mutedText }]}>{props.body}</Text>
+      <Text style={[styles.title, theme.typography.title3, { color: theme.colors.text }]}>{props.title}</Text>
+      <Text style={[styles.body, theme.typography.subheadline, { color: theme.colors.mutedText }]}>{props.body}</Text>
     </View>
   )
 })
@@ -32,15 +32,9 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   title: {
-    fontSize: 18,
-    lineHeight: 22,
-    fontWeight: "700",
     textAlign: "center",
-    letterSpacing: -0.25,
   },
   body: {
-    fontSize: 14,
-    lineHeight: 21,
     textAlign: "center",
   },
 })
