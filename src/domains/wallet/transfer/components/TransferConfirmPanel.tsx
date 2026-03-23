@@ -104,21 +104,23 @@ function useTransferConfirmController({ enabled = true, onCompleted, onOrderUpda
   const { showToast } = useToast()
   const walletCapability = readLocalWalletCapability()
   const submitUnavailableMessage = walletCapability.supported ? "" : t("auth.errors.walletUnavailable")
-  const [activeOrderSn, setActiveOrderSn] = useState(orderSn)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
-  const [switchingPayment, setSwitchingPayment] = useState(false)
+  const [quoteFetching, setQuoteFetching] = useState(false)
   const [detail, setDetail] = useState<OrderDetail | null>(null)
   const [paymentOptions, setPaymentOptions] = useState<TransferOrderOption[]>([])
   const [paymentOptionsLoading, setPaymentOptionsLoading] = useState(false)
-  const [pendingPaymentCoinCode, setPendingPaymentCoinCode] = useState<string | null>(null)
-  const [pendingOrderUpdate, setPendingOrderUpdate] = useState<TransferConfirmOrderUpdate | null>(null)
+  const [selectedPayment, setSelectedPayment] = useState<{
+    option: TransferOrderOption
+    quote: { sendAmount: string; sellerId?: number | null } | null
+  } | null>(null)
+  const [quoteTimestamp, setQuoteTimestamp] = useState<number | null>(null)
   const mountedRef = useRef(true)
 
+  // Reset selection state whenever the source order changes
   useEffect(() => {
-    setActiveOrderSn(orderSn)
-    setPendingPaymentCoinCode(null)
-    setPendingOrderUpdate(null)
+    setSelectedPayment(null)
+    setQuoteTimestamp(null)
   }, [orderSn])
 
   useEffect(() => {
@@ -147,7 +149,7 @@ function useTransferConfirmController({ enabled = true, onCompleted, onOrderUpda
         }
 
         try {
-          const order = await loadTransferConfirmOrder(activeOrderSn, retryController.signal)
+          const order = await loadTransferConfirmOrder(orderSn, retryController.signal)
 
           if (!retryController.signal.aborted && mountedRef.current) {
             setDetail(order)
@@ -182,7 +184,7 @@ function useTransferConfirmController({ enabled = true, onCompleted, onOrderUpda
     return () => {
       retryController.abort()
     }
-  }, [activeOrderSn, enabled, t])
+  }, [enabled, orderSn, t])
 
   useEffect(() => {
     if (!enabled || !detail) {
@@ -223,35 +225,6 @@ function useTransferConfirmController({ enabled = true, onCompleted, onOrderUpda
     }
   }, [detail, enabled, variant])
 
-  useEffect(() => {
-    if (!detail || !pendingOrderUpdate || detail.orderSn !== pendingOrderUpdate.orderSn) {
-      return
-    }
-
-    setPendingPaymentCoinCode(null)
-    onOrderUpdated?.(pendingOrderUpdate)
-    setPendingOrderUpdate(null)
-  }, [detail, onOrderUpdated, pendingOrderUpdate])
-
-  useEffect(() => {
-    if (!pendingPaymentCoinCode) {
-      return
-    }
-
-    if (detail?.sendCoinCode === pendingPaymentCoinCode) {
-      setPendingPaymentCoinCode(null)
-      return
-    }
-
-    // Only clear as a fallback once the new order has fully loaded with a different coin code.
-    // Using !== here caused a premature clear: right after setActiveOrderSn fires the new sn
-    // doesn't match detail yet (loading hasn't started), triggering a spurious flash back to
-    // the old selection.
-    if (!loading && detail?.orderSn === activeOrderSn) {
-      setPendingPaymentCoinCode(null)
-    }
-  }, [activeOrderSn, detail?.orderSn, detail?.sendCoinCode, loading, pendingPaymentCoinCode])
-
   const handleSubmit = useCallback(async () => {
     if (!detail) {
       return
@@ -268,41 +241,83 @@ function useTransferConfirmController({ enabled = true, onCompleted, onOrderUpda
       const walletState = useWalletStore.getState()
       const walletAddress = walletState.address ?? ""
 
+      // If the user picked a different payment option, create the order now at submit time.
+      // (Quote-only selection does not create orders; that only happens here.)
+      let activeDetail = detail
+      if (selectedPayment != null && selectedPayment.option.sendCoinCode !== detail.sendCoinCode) {
+        const recvAddress = detail.receiveAddress || detail.depositAddress || ""
+        const nextRecvCoinCode = selectedPayment.option.recvCoinCode || detail.recvCoinCode
+        const newOrder =
+          variant === "normal"
+            ? await createNormalTransferOrder({
+                coinCode: selectedPayment.option.sendCoinCode,
+                amount: detail.sendAmount || detail.recvAmount,
+                recvAddress,
+                note: detail.note,
+                multisigWalletId: detail.multisigWalletId ?? undefined,
+              })
+            : await createBridgeTransferOrder({
+                sellerId:
+                  selectedPayment.quote?.sellerId != null && selectedPayment.quote.sellerId > 0
+                    ? selectedPayment.quote.sellerId
+                    : selectedPayment.option.sellerId
+                    ? Number(selectedPayment.option.sellerId)
+                    : undefined,
+                recvAddress,
+                recvCoinCode: nextRecvCoinCode,
+                sendCoinCode: selectedPayment.option.sendCoinCode,
+                sendAmount: selectedPayment.quote?.sendAmount ?? "",
+                note: detail.note,
+                multisigWalletId: detail.multisigWalletId ?? undefined,
+              })
+
+        if (!mountedRef.current) {
+          return
+        }
+
+        // Load the new order detail to obtain deposit address, coin precision, contract, etc.
+        const newDetail = await loadTransferConfirmOrder(newOrder.orderSn, new AbortController().signal)
+        if (!mountedRef.current) {
+          return
+        }
+        activeDetail = newDetail
+      }
+
       const network = await checkTransferNetwork({
-        chainName: detail.sendChainName,
-        address: walletAddress || detail.depositAddress || detail.receiveAddress,
+        chainName: activeDetail.sendChainName,
+        address: walletAddress || activeDetail.depositAddress || activeDetail.receiveAddress,
       })
 
       if (!network.matched) {
         Alert.alert(
           t("common.errorTitle"),
-          t("transfer.confirm.networkMismatch", { chain: network.chainName || detail.sendChainName }),
+          t("transfer.confirm.networkMismatch", { chain: network.chainName || activeDetail.sendChainName }),
         )
         return
       }
 
-      const toAddress = detail.depositAddress || detail.receiveAddress
+      const toAddress = activeDetail.depositAddress || activeDetail.receiveAddress
       const broadcastResult = await broadcastTransferWithLocalWallet({
         toAddress,
-        amount: detail.sendAmount,
-        coinPrecision: detail.sendCoinPrecision,
-        contractAddress: detail.sendCoinContract,
+        amount: activeDetail.sendAmount,
+        coinPrecision: activeDetail.sendCoinPrecision,
+        contractAddress: activeDetail.sendCoinContract,
         chainId: walletState.chainId,
       })
       const txid = broadcastResult.txHash
-      const shipAddress = walletAddress || detail.paymentAddress || detail.transferAddress || ""
+      const shipAddress = walletAddress || activeDetail.paymentAddress || activeDetail.transferAddress || ""
 
       await submitShipOrder({
-        orderSn: detail.orderSn,
+        orderSn: activeDetail.orderSn,
         txid,
         address: shipAddress,
         variant,
-        multisigWalletId: detail.multisigWalletId,
+        multisigWalletId: activeDetail.multisigWalletId,
       })
 
       onCompleted({
-        orderSn: detail.orderSn,
-        walletId: detail.multisigWalletId ?? undefined,
+        orderSn: activeDetail.orderSn,
+        walletId: activeDetail.multisigWalletId ?? undefined,
       })
     } catch (error) {
       if (isCancelledAction(error)) {
@@ -319,89 +334,186 @@ function useTransferConfirmController({ enabled = true, onCompleted, onOrderUpda
         setSubmitting(false)
       }
     }
-  }, [detail, onCompleted, presentError, showToast, t, variant])
+  }, [detail, onCompleted, presentError, selectedPayment, showToast, submitUnavailableMessage, t, variant, walletCapability])
 
   const handleSelectPaymentOption = useCallback(
     async (option: TransferOrderOption) => {
-      if (!detail || submitting || switchingPayment || option.sendCoinCode === detail.sendCoinCode) {
+      if (!detail || submitting || quoteFetching || option.sendCoinCode === detail.sendCoinCode) {
         return
       }
 
-      setPendingPaymentCoinCode(option.sendCoinCode)
-      setSwitchingPayment(true)
+      // Immediately reflect the selection; fetch quote for bridge transfers
+      setSelectedPayment({ option, quote: null })
+      setQuoteTimestamp(null)
 
+      if (variant !== "bridge") {
+        return
+      }
+
+      setQuoteFetching(true)
       try {
-        const recvAddress = detail.receiveAddress || detail.depositAddress || ""
         const nextRecvCoinCode = option.recvCoinCode || detail.recvCoinCode
-        const nextOrder =
-          variant === "normal"
-            ? await createNormalTransferOrder({
-                coinCode: option.sendCoinCode,
-                amount: detail.sendAmount || detail.recvAmount,
-                recvAddress,
-                note: detail.note,
-                multisigWalletId: detail.multisigWalletId ?? undefined,
-              })
-            : await (async () => {
-                const quote = await getTransferQuote({
-                  sendCoinCode: option.sendCoinCode,
-                  recvCoinCode: nextRecvCoinCode,
-                  recvAmount: detail.recvAmount,
-                })
-
-                const quotedSellerId = quote.sellerId != null && quote.sellerId > 0 ? quote.sellerId : undefined
-                const fallbackSellerId = option.sellerId ? Number(option.sellerId) : undefined
-
-                return createBridgeTransferOrder({
-                  sellerId: quotedSellerId ?? (fallbackSellerId && fallbackSellerId > 0 ? fallbackSellerId : undefined),
-                  recvAddress,
-                  recvCoinCode: nextRecvCoinCode,
-                  sendCoinCode: option.sendCoinCode,
-                  sendAmount: quote.sendAmount,
-                  note: detail.note,
-                  multisigWalletId: detail.multisigWalletId ?? undefined,
-                })
-              })()
+        const quote = await getTransferQuote({
+          sendCoinCode: option.sendCoinCode,
+          recvCoinCode: nextRecvCoinCode,
+          recvAmount: detail.recvAmount,
+        })
 
         if (!mountedRef.current) {
           return
         }
 
-        setPendingOrderUpdate({
-          orderSn: nextOrder.orderSn,
-          recvCoinCode: nextRecvCoinCode,
-          sendCoinCode: option.sendCoinCode,
-        })
-        setActiveOrderSn(nextOrder.orderSn)
+        setSelectedPayment({ option, quote })
+        setQuoteTimestamp(Date.now())
       } catch (error) {
         if (mountedRef.current) {
-          setPendingPaymentCoinCode(null)
+          setSelectedPayment(null)
+          presentError(error, {
+            fallbackKey: "transfer.confirm.switchPaymentFailed",
+          })
         }
-        presentError(error, {
-          fallbackKey: "transfer.confirm.switchPaymentFailed",
-        })
       } finally {
         if (mountedRef.current) {
-          setSwitchingPayment(false)
+          setQuoteFetching(false)
         }
       }
     },
-    [detail, presentError, submitting, switchingPayment, variant],
+    [detail, presentError, quoteFetching, submitting, variant],
   )
+
+  const handleQuoteExpired = useCallback(async () => {
+    if (!selectedPayment?.option || !detail || !mountedRef.current) {
+      return
+    }
+
+    setQuoteFetching(true)
+    try {
+      const nextRecvCoinCode = selectedPayment.option.recvCoinCode || detail.recvCoinCode
+      const quote = await getTransferQuote({
+        sendCoinCode: selectedPayment.option.sendCoinCode,
+        recvCoinCode: nextRecvCoinCode,
+        recvAmount: detail.recvAmount,
+      })
+
+      if (!mountedRef.current) {
+        return
+      }
+
+      setSelectedPayment(prev => (prev ? { ...prev, quote } : null))
+      setQuoteTimestamp(Date.now())
+    } catch {
+      // Silent background refresh — quote stays until next user action
+    } finally {
+      if (mountedRef.current) {
+        setQuoteFetching(false)
+      }
+    }
+  }, [detail, selectedPayment])
 
   return {
     detail,
     loading,
     onSelectPaymentOption: handleSelectPaymentOption,
+    onQuoteExpired: handleQuoteExpired,
     paymentOptions,
     paymentOptionsLoading,
-    pendingPaymentCoinCode,
+    quoteFetching,
+    quoteTimestamp,
+    selectedPayment,
     submitUnavailableMessage,
     submitting,
-    switchingPayment,
     onSubmit: handleSubmit,
   }
 }
+
+const QUOTE_TTL_MS = 5_000
+
+function QuoteCountdownRow(props: { quoteTimestamp: number; onExpired: () => void }) {
+  const theme = useAppTheme()
+  const { t } = useTranslation()
+  const progressAnim = useRef(new Animated.Value(1)).current
+  const [secsLeft, setSecsLeft] = useState(Math.ceil(QUOTE_TTL_MS / 1000))
+
+  useEffect(() => {
+    const elapsed = Date.now() - props.quoteTimestamp
+    const remaining = Math.max(0, QUOTE_TTL_MS - elapsed)
+    const startProgress = remaining / QUOTE_TTL_MS
+
+    progressAnim.setValue(startProgress)
+    setSecsLeft(Math.ceil(remaining / 1000))
+
+    if (remaining <= 0) {
+      props.onExpired()
+      return
+    }
+
+    const barAnim = Animated.timing(progressAnim, {
+      toValue: 0,
+      duration: remaining,
+      easing: Easing.linear,
+      useNativeDriver: false,
+    })
+    barAnim.start(({ finished }) => {
+      if (finished) props.onExpired()
+    })
+
+    const endTime = props.quoteTimestamp + QUOTE_TTL_MS
+    const ticker = setInterval(() => {
+      setSecsLeft(Math.max(0, Math.ceil((endTime - Date.now()) / 1000)))
+    }, 200)
+
+    return () => {
+      barAnim.stop()
+      clearInterval(ticker)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.quoteTimestamp])
+
+  const progressWidth = progressAnim.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] })
+
+  return (
+    <View style={countdownStyles.root}>
+      <View style={countdownStyles.row}>
+        <SFSymbolIcon color={theme.colors.mutedText} fallbackName="refresh-cw" name="arrow.clockwise" size={11} weight="medium" />
+        <Text style={[countdownStyles.label, { color: theme.colors.mutedText }]}>
+          {secsLeft > 0
+            ? t("transfer.confirm.quoteExpiresIn", { sec: secsLeft, defaultValue: `报价 ${secsLeft}s 后更新` })
+            : t("transfer.confirm.quoteRefreshing", { defaultValue: "正在更新报价…" })}
+        </Text>
+      </View>
+      <View style={[countdownStyles.track, { backgroundColor: theme.colors.border }]}>
+        <Animated.View style={[countdownStyles.fill, { width: progressWidth, backgroundColor: theme.colors.primary }]} />
+      </View>
+    </View>
+  )
+}
+
+const countdownStyles = StyleSheet.create({
+  root: {
+    gap: 6,
+    paddingHorizontal: 4,
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+  },
+  label: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "500",
+  },
+  track: {
+    height: 2,
+    borderRadius: 1,
+    overflow: "hidden",
+  },
+  fill: {
+    height: "100%",
+    borderRadius: 1,
+  },
+})
 
 function TransferConfirmPaymentRow(props: {
   active: boolean
@@ -559,14 +671,16 @@ function TransferConfirmBody(props: {
   detail: OrderDetail | null
   loading: boolean
   onClose: () => void
+  onQuoteExpired: () => void
   onSelectPaymentOption: (option: TransferOrderOption) => void
   onSubmit: () => void
   paymentOptions: TransferOrderOption[]
   paymentOptionsLoading: boolean
-  pendingPaymentCoinCode: string | null
+  quoteFetching: boolean
+  quoteTimestamp: number | null
+  selectedPayment: { option: TransferOrderOption; quote: { sendAmount: string; sellerId?: number | null } | null } | null
   submitUnavailableMessage?: string
   submitting: boolean
-  switchingPayment: boolean
   bottomInset?: number
 }) {
   const theme = useAppTheme()
@@ -598,7 +712,7 @@ function TransferConfirmBody(props: {
   const submitDisabled =
     props.submitting ||
     props.loading ||
-    props.switchingPayment ||
+    props.quoteFetching ||
     !props.detail ||
     Boolean(props.submitUnavailableMessage) ||
     paymentOptionGroups.selectedOptionUnavailable
@@ -608,18 +722,23 @@ function TransferConfirmBody(props: {
     [props.detail],
   )
   const formattedRecipientLabel = useMemo(() => formatWalletAddress(receiveAddressLabel, 8, 4), [receiveAddressLabel])
-  const selectedPaymentCoinCode = props.pendingPaymentCoinCode ?? props.detail?.sendCoinCode ?? ""
+  const selectedPaymentCoinCode = props.selectedPayment?.option.sendCoinCode ?? props.detail?.sendCoinCode ?? ""
   const summaryAmountLabel = useMemo(() => {
     if (!props.detail) {
       return t("common.loading")
     }
 
+    if (props.selectedPayment?.quote) {
+      const symbol = props.selectedPayment.option.sendCoinSymbol || props.selectedPayment.option.sendCoinCode
+      return `${formatAmount(props.selectedPayment.quote.sendAmount)} ${symbol}`
+    }
+
     return `${formatAmount(props.detail.sendAmount)} ${props.detail.sendCoinName || props.detail.sendCoinCode}`
-  }, [props.detail, t])
+  }, [props.detail, props.selectedPayment, t])
   const chainLabel = props.detail?.recvChainName || props.detail?.sendChainName || "-"
   const renderPaymentRow = useCallback(
     (item: TransferConfirmPaymentOptionItem) => {
-      const disabled = props.loading || props.submitting || props.switchingPayment || item.unavailableReason != null
+      const disabled = props.loading || props.submitting || props.quoteFetching || item.unavailableReason != null
 
       return (
         <View
@@ -635,7 +754,7 @@ function TransferConfirmBody(props: {
         </View>
       )
     },
-    [props.loading, props.onSelectPaymentOption, props.submitting, props.switchingPayment, selectedPaymentCoinCode],
+    [props.loading, props.onSelectPaymentOption, props.submitting, props.quoteFetching, selectedPaymentCoinCode],
   )
 
   const [paymentExpanded, setPaymentExpanded] = useState(false)
@@ -724,7 +843,7 @@ function TransferConfirmBody(props: {
           <View style={styles.paymentSection}>
             <View style={styles.paymentHeader}>
               <Text style={[styles.paymentSectionLabel, { color: theme.colors.mutedText }]}>{t("transfer.confirm.paymentMethod")}</Text>
-              {props.paymentOptionsLoading || props.switchingPayment ? (
+              {props.paymentOptionsLoading || props.quoteFetching ? (
                 <View style={styles.paymentLoading}>
                   <ActivityIndicator color={theme.colors.primary} size="small" />
                   <Text style={[styles.paymentLoadingText, { color: theme.colors.mutedText }]}>{t("transfer.confirm.switchingPayment")}</Text>
@@ -804,8 +923,17 @@ function TransferConfirmBody(props: {
           label={t("transfer.confirm.submit")}
           loading={props.submitting}
           onPress={props.onSubmit}
-          style={props.switchingPayment ? styles.footerButtonStableDisabled : null}
         />
+        {props.quoteTimestamp != null && !props.quoteFetching && !props.submitting ? (
+          <QuoteCountdownRow onExpired={props.onQuoteExpired} quoteTimestamp={props.quoteTimestamp} />
+        ) : props.quoteFetching && !props.submitting ? (
+          <View style={styles.quoteRefreshingRow}>
+            <ActivityIndicator color={theme.colors.primary} size="small" />
+            <Text style={[styles.quoteRefreshingLabel, { color: theme.colors.mutedText }]}>
+              {t("transfer.confirm.quoteRefreshing", { defaultValue: "正在更新报价…" })}
+            </Text>
+          </View>
+        ) : null}
         <Text style={[styles.footerCaption, { color: theme.colors.mutedText }]}>{t("transfer.order.assurance")}</Text>
       </View>
     </View>
@@ -833,18 +961,20 @@ export function TransferConfirmScreenView(props: SharedProps) {
       headerBackgroundColor={theme.colors.backgroundMuted ?? theme.colors.background}
     >
       <TransferConfirmBody
+        bottomInset={24}
         detail={controller.detail}
         loading={controller.loading}
         onClose={props.onClose}
+        onQuoteExpired={() => void controller.onQuoteExpired()}
         onSelectPaymentOption={option => void controller.onSelectPaymentOption(option)}
         onSubmit={() => void controller.onSubmit()}
         paymentOptions={controller.paymentOptions}
         paymentOptionsLoading={controller.paymentOptionsLoading}
-        pendingPaymentCoinCode={controller.pendingPaymentCoinCode}
+        quoteFetching={controller.quoteFetching}
+        quoteTimestamp={controller.quoteTimestamp}
+        selectedPayment={controller.selectedPayment}
         submitUnavailableMessage={controller.submitUnavailableMessage}
         submitting={controller.submitting}
-        switchingPayment={controller.switchingPayment}
-        bottomInset={24}
       />
     </HomeScaffold>
   )
@@ -899,7 +1029,7 @@ export function TransferConfirmModal(props: ModalProps) {
   }
 
   const dismiss = () => {
-    if (!controller.submitting && !controller.switchingPayment) {
+    if (!controller.submitting && !controller.quoteFetching) {
       props.onClose()
     }
   }
@@ -946,7 +1076,7 @@ export function TransferConfirmModal(props: ModalProps) {
               <Pressable
                 accessibilityLabel={t("common.close")}
                 accessibilityShowsLargeContentViewer={false}
-                disabled={controller.submitting || controller.switchingPayment}
+                disabled={controller.submitting || controller.quoteFetching}
                 hitSlop={8}
                 onPress={dismiss}
                 style={[
@@ -968,14 +1098,16 @@ export function TransferConfirmModal(props: ModalProps) {
           detail={controller.detail}
           loading={controller.loading}
           onClose={dismiss}
+          onQuoteExpired={() => void controller.onQuoteExpired()}
           onSelectPaymentOption={option => void controller.onSelectPaymentOption(option)}
           onSubmit={() => void controller.onSubmit()}
           paymentOptions={controller.paymentOptions}
           paymentOptionsLoading={controller.paymentOptionsLoading}
-          pendingPaymentCoinCode={controller.pendingPaymentCoinCode}
+          quoteFetching={controller.quoteFetching}
+          quoteTimestamp={controller.quoteTimestamp}
+          selectedPayment={controller.selectedPayment}
           submitUnavailableMessage={controller.submitUnavailableMessage}
           submitting={controller.submitting}
-          switchingPayment={controller.switchingPayment}
         />
       </Animated.View>
     </View>
@@ -1220,6 +1352,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     textAlign: "center",
+  },
+  quoteRefreshingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingHorizontal: 4,
+    minHeight: 20,
+  },
+  quoteRefreshingLabel: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "500",
   },
 })
 
