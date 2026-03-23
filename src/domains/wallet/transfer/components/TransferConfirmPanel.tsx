@@ -3,8 +3,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Alert,
-  Animated,
-  Easing,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,6 +12,16 @@ import {
 } from "react-native"
 import { useTranslation } from "react-i18next"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+import RAnimated, {
+  cancelAnimation,
+  Easing,
+  interpolate,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated"
 
 import { formatWalletAddress } from "@/domains/wallet/shared/utils/format"
 import { HomeScaffold } from "@/shared/ui/HomeScaffold"
@@ -23,7 +31,7 @@ import {
   type TransferConfirmPaymentOptionItem,
 } from "@/domains/wallet/transfer/components/transferConfirmPaymentOptions"
 import { createBridgeTransferOrder, createNormalTransferOrder } from "@/shared/exchange/services/orderCreationApi"
-import { getTransferOrderOptions, getTransferQuote, type TransferOrderOption } from "@/shared/exchange/services/exchangeApi"
+import { getTransferOrderOptions, getTransferQuote, type TransferOrderOption, type TransferQuote } from "@/shared/exchange/services/exchangeApi"
 import {
   getTransferConfirmRetryDelay,
   isAbortLikeError,
@@ -112,7 +120,7 @@ function useTransferConfirmController({ enabled = true, onCompleted, onOrderUpda
   const [paymentOptionsLoading, setPaymentOptionsLoading] = useState(false)
   const [selectedPayment, setSelectedPayment] = useState<{
     option: TransferOrderOption
-    quote: { sendAmount: string; sellerId?: number | null } | null
+    quote: TransferQuote | null
   } | null>(null)
   const [quoteTimestamp, setQuoteTimestamp] = useState<number | null>(null)
   const mountedRef = useRef(true)
@@ -266,7 +274,7 @@ function useTransferConfirmController({ enabled = true, onCompleted, onOrderUpda
                 recvAddress,
                 recvCoinCode: nextRecvCoinCode,
                 sendCoinCode: selectedPayment.option.sendCoinCode,
-                sendAmount: selectedPayment.quote?.sendAmount ?? "",
+                sendAmount: selectedPayment.quote?.sendAmount ?? 0,
                 note: detail.note,
                 multisigWalletId: detail.multisigWalletId ?? undefined,
               })
@@ -431,15 +439,19 @@ const QUOTE_TTL_MS = 5_000
 function QuoteCountdownRow(props: { quoteTimestamp: number; onExpired: () => void }) {
   const theme = useAppTheme()
   const { t } = useTranslation()
-  const progressAnim = useRef(new Animated.Value(1)).current
+  const progressAnim = useSharedValue(1)
   const [secsLeft, setSecsLeft] = useState(Math.ceil(QUOTE_TTL_MS / 1000))
+
+  const progressStyle = useAnimatedStyle(() => ({
+    width: `${progressAnim.value * 100}%`,
+  }))
 
   useEffect(() => {
     const elapsed = Date.now() - props.quoteTimestamp
     const remaining = Math.max(0, QUOTE_TTL_MS - elapsed)
     const startProgress = remaining / QUOTE_TTL_MS
 
-    progressAnim.setValue(startProgress)
+    progressAnim.value = startProgress
     setSecsLeft(Math.ceil(remaining / 1000))
 
     if (remaining <= 0) {
@@ -447,14 +459,10 @@ function QuoteCountdownRow(props: { quoteTimestamp: number; onExpired: () => voi
       return
     }
 
-    const barAnim = Animated.timing(progressAnim, {
-      toValue: 0,
-      duration: remaining,
-      easing: Easing.linear,
-      useNativeDriver: false,
-    })
-    barAnim.start(({ finished }) => {
-      if (finished) props.onExpired()
+    const onExpired = props.onExpired
+    progressAnim.value = withTiming(0, { duration: remaining, easing: Easing.linear }, finished => {
+      "worklet"
+      if (finished) runOnJS(onExpired)()
     })
 
     const endTime = props.quoteTimestamp + QUOTE_TTL_MS
@@ -463,13 +471,11 @@ function QuoteCountdownRow(props: { quoteTimestamp: number; onExpired: () => voi
     }, 200)
 
     return () => {
-      barAnim.stop()
+      cancelAnimation(progressAnim)
       clearInterval(ticker)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.quoteTimestamp])
-
-  const progressWidth = progressAnim.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] })
 
   return (
     <View style={countdownStyles.root}>
@@ -482,7 +488,7 @@ function QuoteCountdownRow(props: { quoteTimestamp: number; onExpired: () => voi
         </Text>
       </View>
       <View style={[countdownStyles.track, { backgroundColor: theme.colors.border }]}>
-        <Animated.View style={[countdownStyles.fill, { width: progressWidth, backgroundColor: theme.colors.primary }]} />
+        <RAnimated.View style={[countdownStyles.fill, progressStyle, { backgroundColor: theme.colors.primary }]} />
       </View>
     </View>
   )
@@ -523,49 +529,30 @@ function TransferConfirmPaymentRow(props: {
 }) {
   const theme = useAppTheme()
   const { t } = useTranslation()
-  const highlightProgress = useRef(new Animated.Value(props.active ? 1 : 0)).current
-  const checkProgress = useRef(new Animated.Value(props.active ? 1 : 0)).current
-  const pressProgress = useRef(new Animated.Value(0)).current
+  const highlightProgress = useSharedValue(props.active ? 1 : 0)
+  const checkProgress = useSharedValue(props.active ? 1 : 0)
+  const pressProgress = useSharedValue(0)
   const activeBorderColor = theme.isDark ? "rgba(10,132,255,0.34)" : "rgba(10,132,255,0.22)"
   const rowBackgroundColor = props.item.unavailableReason != null ? theme.colors.surfaceMuted : theme.colors.surfaceElevated ?? theme.colors.surface
-  const highlightScale = highlightProgress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.985, 1],
-  })
-  const pressScale = pressProgress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 0.985],
-  })
-  const checkScale = checkProgress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.78, 1],
-  })
-  const checkTranslateY = checkProgress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [3, 0],
-  })
+
+  const highlightStyle = useAnimatedStyle(() => ({
+    opacity: highlightProgress.value,
+    transform: [{ scale: interpolate(highlightProgress.value, [0, 1], [0.985, 1]) }],
+  }))
+  const pressStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: interpolate(pressProgress.value, [0, 1], [1, 0.985]) }],
+  }))
+  const checkStyle = useAnimatedStyle(() => ({
+    opacity: checkProgress.value,
+    transform: [
+      { scale: interpolate(checkProgress.value, [0, 1], [0.78, 1]) },
+      { translateY: interpolate(checkProgress.value, [0, 1], [3, 0]) },
+    ],
+  }))
 
   useEffect(() => {
-    const animation = Animated.parallel([
-      Animated.timing(highlightProgress, {
-        toValue: props.active ? 1 : 0,
-        duration: props.active ? 260 : 180,
-        easing: PAYMENT_ROW_ACTIVE_EASING,
-        useNativeDriver: true,
-      }),
-      Animated.timing(checkProgress, {
-        toValue: props.active ? 1 : 0,
-        duration: props.active ? 280 : 160,
-        easing: PAYMENT_ROW_ACTIVE_EASING,
-        useNativeDriver: true,
-      }),
-    ])
-
-    animation.start()
-
-    return () => {
-      animation.stop()
-    }
+    highlightProgress.value = withTiming(props.active ? 1 : 0, { duration: props.active ? 260 : 180, easing: PAYMENT_ROW_ACTIVE_EASING })
+    checkProgress.value = withTiming(props.active ? 1 : 0, { duration: props.active ? 280 : 160, easing: PAYMENT_ROW_ACTIVE_EASING })
   }, [checkProgress, highlightProgress, props.active])
 
   useEffect(() => {
@@ -573,8 +560,8 @@ function TransferConfirmPaymentRow(props: {
       return
     }
 
-    pressProgress.stopAnimation()
-    pressProgress.setValue(0)
+    cancelAnimation(pressProgress)
+    pressProgress.value = 0
   }, [pressProgress, props.disabled])
 
   const handlePressIn = useCallback(() => {
@@ -582,21 +569,11 @@ function TransferConfirmPaymentRow(props: {
       return
     }
 
-    Animated.timing(pressProgress, {
-      toValue: 1,
-      duration: 90,
-      easing: PAYMENT_ROW_PRESS_EASING,
-      useNativeDriver: true,
-    }).start()
+    pressProgress.value = withTiming(1, { duration: 90, easing: PAYMENT_ROW_PRESS_EASING })
   }, [pressProgress, props.disabled])
 
   const handlePressOut = useCallback(() => {
-    Animated.timing(pressProgress, {
-      toValue: 0,
-      duration: 180,
-      easing: PAYMENT_ROW_PRESS_EASING,
-      useNativeDriver: true,
-    }).start()
+    pressProgress.value = withTiming(0, { duration: 180, easing: PAYMENT_ROW_PRESS_EASING })
   }, [pressProgress])
 
   const symbol = props.item.option.sendCoinSymbol || props.item.option.sendCoinCode
@@ -616,18 +593,15 @@ function TransferConfirmPaymentRow(props: {
         },
       ]}
     >
-      <Animated.View
+      <RAnimated.View
         pointerEvents="none"
         style={[
           styles.paymentRowHighlight,
-          {
-            backgroundColor: theme.colors.primarySoft ?? `${theme.colors.primary}12`,
-            opacity: highlightProgress,
-            transform: [{ scale: highlightScale }],
-          },
+          highlightStyle,
+          { backgroundColor: theme.colors.primarySoft ?? `${theme.colors.primary}12` },
         ]}
       />
-      <Animated.View style={[styles.paymentRowInner, { transform: [{ scale: pressScale }] }]}>
+      <RAnimated.View style={[styles.paymentRowInner, pressStyle]}>
         <View style={styles.paymentRowIcon}>
           <NetworkLogo
             chainColor={props.item.option.paymentNetworkColor || props.item.option.sendChainColor || theme.colors.primary}
@@ -650,19 +624,11 @@ function TransferConfirmPaymentRow(props: {
           ) : null}
         </View>
         <View style={styles.paymentRowAccessory}>
-          <Animated.View
-            style={[
-              styles.paymentRowCheckWrap,
-              {
-                opacity: checkProgress,
-                transform: [{ scale: checkScale }, { translateY: checkTranslateY }],
-              },
-            ]}
-          >
+          <RAnimated.View style={[styles.paymentRowCheckWrap, checkStyle]}>
             <SFSymbolIcon color={theme.colors.primary} fallbackName="check-circle" name="checkmark.circle.fill" size={20} />
-          </Animated.View>
+          </RAnimated.View>
         </View>
-      </Animated.View>
+      </RAnimated.View>
     </Pressable>
   )
 }
@@ -678,7 +644,7 @@ function TransferConfirmBody(props: {
   paymentOptionsLoading: boolean
   quoteFetching: boolean
   quoteTimestamp: number | null
-  selectedPayment: { option: TransferOrderOption; quote: { sendAmount: string; sellerId?: number | null } | null } | null
+  selectedPayment: { option: TransferOrderOption; quote: TransferQuote | null } | null
   submitUnavailableMessage?: string
   submitting: boolean
   bottomInset?: number
@@ -729,12 +695,20 @@ function TransferConfirmBody(props: {
     }
 
     if (props.selectedPayment?.quote) {
-      const symbol = props.selectedPayment.option.sendCoinSymbol || props.selectedPayment.option.sendCoinCode
-      return `${formatAmount(props.selectedPayment.quote.sendAmount)} ${symbol}`
+      return `$${formatAmount(props.selectedPayment.quote.sendAmount)}`
     }
 
-    return `${formatAmount(props.detail.sendAmount)} ${props.detail.sendCoinName || props.detail.sendCoinCode}`
+    return `$${formatAmount(props.detail.sendAmount)}`
   }, [props.detail, props.selectedPayment, t])
+  const infoRecvAmount = props.selectedPayment?.quote?.recvAmount ?? props.detail?.recvAmount ?? 0
+  const infoFeeAmount = props.selectedPayment?.quote?.feeAmount ?? props.detail?.sendEstimateFeeAmount ?? 0
+  const infoRecvCoinSymbol = props.detail?.recvCoinName || props.detail?.recvCoinCode || ""
+  const infoSendCoinSymbol =
+    props.selectedPayment?.option.sendCoinSymbol ||
+    props.selectedPayment?.option.sendCoinCode ||
+    props.detail?.sendCoinName ||
+    props.detail?.sendCoinCode ||
+    ""
   const chainLabel = props.detail?.recvChainName || props.detail?.sendChainName || "-"
   const renderPaymentRow = useCallback(
     (item: TransferConfirmPaymentOptionItem) => {
@@ -757,12 +731,17 @@ function TransferConfirmBody(props: {
     [props.loading, props.onSelectPaymentOption, props.submitting, props.quoteFetching, selectedPaymentCoinCode],
   )
 
-  const [paymentExpanded, setPaymentExpanded] = useState(false)
+  const paymentExpandedRef = useRef(false)
+  const expandHeightAnim = useSharedValue(0)
+  const chevronRotAnim = useSharedValue(0)
+  const extraRowsMeasuredHeight = useRef(0)
 
   // Collapse back to single-row view whenever the underlying order changes (e.g. after a successful switch)
   useEffect(() => {
-    setPaymentExpanded(false)
-  }, [props.detail?.orderSn])
+    paymentExpandedRef.current = false
+    expandHeightAnim.value = 0
+    chevronRotAnim.value = 0
+  }, [props.detail?.orderSn, expandHeightAnim, chevronRotAnim])
 
   const activePaymentItem = useMemo(
     () =>
@@ -775,6 +754,29 @@ function TransferConfirmBody(props: {
   )
   const hasMultiplePaymentOptions =
     paymentOptionGroups.available.length + paymentOptionGroups.unavailable.length > 1
+  const otherAvailableItems = useMemo(
+    () => paymentOptionGroups.available.filter(item => item !== activePaymentItem),
+    [paymentOptionGroups.available, activePaymentItem],
+  )
+
+  const extraRowsAnimStyle = useAnimatedStyle(() => ({
+    height: expandHeightAnim.value,
+  }))
+  const chevronAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${chevronRotAnim.value}deg` }],
+  }))
+
+  const handleToggleExpand = useCallback(() => {
+    const next = !paymentExpandedRef.current
+    paymentExpandedRef.current = next
+    if (next) {
+      expandHeightAnim.value = withSpring(extraRowsMeasuredHeight.current, { damping: 18, stiffness: 200, mass: 0.9 })
+      chevronRotAnim.value = withSpring(180, { damping: 18, stiffness: 200 })
+    } else {
+      expandHeightAnim.value = withSpring(0, { damping: 20, stiffness: 260, mass: 0.9 })
+      chevronRotAnim.value = withSpring(0, { damping: 18, stiffness: 200 })
+    }
+  }, [chevronRotAnim, expandHeightAnim])
 
   if (props.loading && !props.detail) {
     return (
@@ -839,6 +841,23 @@ function TransferConfirmBody(props: {
           </View>
         </View>
 
+        {props.detail && infoFeeAmount > 0 ? (
+          <View style={[styles.infoSection, { backgroundColor: cardBackgroundColor, borderColor: cardBorderColor }]}>
+            <View style={styles.infoRow}>
+              <Text style={[styles.infoLabel, { color: theme.colors.mutedText }]}>{t("transfer.confirm.estimatedReceive", { defaultValue: "预计到账" })}</Text>
+              <Text style={[styles.infoValue, { color: theme.colors.text }]}>
+                {`${formatAmount(infoRecvAmount)} ${infoRecvCoinSymbol}`.trim()}
+              </Text>
+            </View>
+            <View style={[styles.infoRow, styles.infoRowDivider, { borderTopColor: theme.colors.border }]}>
+              <Text style={[styles.infoLabel, { color: theme.colors.mutedText }]}>{t("transfer.confirm.fee", { defaultValue: "手续费" })}</Text>
+              <Text style={[styles.infoFeeValue, { color: infoFeeAmount > 0 ? (theme.colors.warning ?? "#FF9500") : theme.colors.mutedText }]}>
+                {`+${formatAmount(infoFeeAmount)} ${infoSendCoinSymbol}`.trim()}
+              </Text>
+            </View>
+          </View>
+        ) : null}
+
         {props.paymentOptions.length > 0 ? (
           <View style={styles.paymentSection}>
             <View style={styles.paymentHeader}>
@@ -851,41 +870,75 @@ function TransferConfirmBody(props: {
               ) : null}
             </View>
 
-            {!paymentExpanded ? (
-              <View style={styles.paymentGroup}>
-                {activePaymentItem != null ? renderPaymentRow(activePaymentItem) : null}
-              </View>
-            ) : (
-              <>
-                {paymentOptionGroups.available.length > 0 ? (
-                  <View style={styles.paymentGroup}>{paymentOptionGroups.available.map(item => renderPaymentRow(item))}</View>
-                ) : null}
-                {paymentOptionGroups.unavailable.length > 0 ? (
-                  <View style={styles.unavailableSection}>
-                    <Text style={[styles.paymentSectionLabel, { color: theme.colors.mutedText }]}>
-                      {t("transfer.confirm.unavailablePaymentMethods")}
-                    </Text>
-                    <View style={[styles.paymentGroup, { opacity: 0.82 }]}>
-                      {paymentOptionGroups.unavailable.map(item => renderPaymentRow(item))}
+            {/* Active row — always visible */}
+            <View style={styles.paymentGroup}>
+              {activePaymentItem != null ? renderPaymentRow(activePaymentItem) : null}
+            </View>
+
+            {/* Expandable extra rows with spring animation */}
+            {otherAvailableItems.length > 0 || paymentOptionGroups.unavailable.length > 0 ? (
+              <View style={styles.paymentExpandRegion}>
+                {/* Hidden measurement view — absolutely positioned so it doesn't affect layout */}
+                <View
+                  pointerEvents="none"
+                  onLayout={e => {
+                    extraRowsMeasuredHeight.current = e.nativeEvent.layout.height
+                  }}
+                  style={styles.paymentExtraMeasure}
+                >
+                  <View style={styles.paymentExtraContent}>
+                    <View style={styles.paymentGroup}>
+                      {otherAvailableItems.map(item => renderPaymentRow(item))}
                     </View>
+                    {paymentOptionGroups.unavailable.length > 0 ? (
+                      <View style={styles.unavailableSection}>
+                        <Text style={[styles.paymentSectionLabel, { color: theme.colors.mutedText }]}>
+                          {t("transfer.confirm.unavailablePaymentMethods")}
+                        </Text>
+                        <View style={[styles.paymentGroup, { opacity: 0.82 }]}>
+                          {paymentOptionGroups.unavailable.map(item => renderPaymentRow(item))}
+                        </View>
+                      </View>
+                    ) : null}
                   </View>
-                ) : null}
-              </>
-            )}
+                </View>
+
+                {/* Animated container */}
+                <RAnimated.View style={[styles.paymentExtraAnim, extraRowsAnimStyle]}>
+                  <View style={styles.paymentExtraContent}>
+                    <View style={styles.paymentGroup}>
+                      {otherAvailableItems.map(item => renderPaymentRow(item))}
+                    </View>
+                    {paymentOptionGroups.unavailable.length > 0 ? (
+                      <View style={styles.unavailableSection}>
+                        <Text style={[styles.paymentSectionLabel, { color: theme.colors.mutedText }]}>
+                          {t("transfer.confirm.unavailablePaymentMethods")}
+                        </Text>
+                        <View style={[styles.paymentGroup, { opacity: 0.82 }]}>
+                          {paymentOptionGroups.unavailable.map(item => renderPaymentRow(item))}
+                        </View>
+                      </View>
+                    ) : null}
+                  </View>
+                </RAnimated.View>
+              </View>
+            ) : null}
 
             {hasMultiplePaymentOptions ? (
               <Pressable
                 hitSlop={8}
-                onPress={() => setPaymentExpanded(prev => !prev)}
+                onPress={handleToggleExpand}
                 style={styles.paymentExpandToggle}
               >
-                <SFSymbolIcon
-                  color={theme.colors.mutedText}
-                  fallbackName={paymentExpanded ? "chevron-up" : "chevron-down"}
-                  name={paymentExpanded ? "chevron.up" : "chevron.down"}
-                  size={14}
-                  weight="semibold"
-                />
+                <RAnimated.View style={chevronAnimStyle}>
+                  <SFSymbolIcon
+                    color={theme.colors.mutedText}
+                    fallbackName="chevron-down"
+                    name="chevron.down"
+                    size={14}
+                    weight="semibold"
+                  />
+                </RAnimated.View>
               </Pressable>
             ) : null}
           </View>
@@ -991,36 +1044,25 @@ export function TransferConfirmModal(props: ModalProps) {
     orderSn: props.orderSn,
     variant: props.variant,
   })
-  const sheetOpacity = useRef(new Animated.Value(0)).current
-  const sheetTranslateY = useRef(new Animated.Value(28)).current
+  const sheetOpacity = useSharedValue(0)
+  const sheetTranslateY = useSharedValue(28)
+
+  const backdropAnimStyle = useAnimatedStyle(() => ({ opacity: sheetOpacity.value }))
+  const sheetAnimStyle = useAnimatedStyle(() => ({ transform: [{ translateY: sheetTranslateY.value }] }))
 
   useEffect(() => {
     if (!props.visible) {
       return
     }
 
-    sheetOpacity.setValue(0)
-    sheetTranslateY.setValue(28)
-
-    const animation = Animated.parallel([
-      Animated.timing(sheetOpacity, {
-        toValue: 1,
-        duration: 220,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(sheetTranslateY, {
-        toValue: 0,
-        duration: 260,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ])
-
-    animation.start()
+    sheetOpacity.value = 0
+    sheetTranslateY.value = 28
+    sheetOpacity.value = withTiming(1, { duration: 220, easing: Easing.out(Easing.cubic) })
+    sheetTranslateY.value = withTiming(0, { duration: 260, easing: Easing.out(Easing.cubic) })
 
     return () => {
-      animation.stop()
+      cancelAnimation(sheetOpacity)
+      cancelAnimation(sheetTranslateY)
     }
   }, [props.visible, sheetOpacity, sheetTranslateY])
 
@@ -1036,18 +1078,18 @@ export function TransferConfirmModal(props: ModalProps) {
 
   return (
     <View style={styles.modalRoot}>
-      <Animated.View style={[styles.modalBackdrop, { opacity: sheetOpacity }]}>
+      <RAnimated.View style={[styles.modalBackdrop, backdropAnimStyle]}>
         <Pressable disabled={controller.submitting} onPress={dismiss} style={StyleSheet.absoluteFillObject} />
-      </Animated.View>
+      </RAnimated.View>
 
-      <Animated.View
+      <RAnimated.View
         style={[
           styles.sheetSurface,
+          sheetAnimStyle,
           {
             backgroundColor: theme.colors.backgroundMuted ?? theme.colors.background,
             borderColor: theme.colors.border,
             top: Math.max(insets.top + 8, 20),
-            transform: [{ translateY: sheetTranslateY }],
           },
         ]}
       >
@@ -1109,7 +1151,7 @@ export function TransferConfirmModal(props: ModalProps) {
           submitUnavailableMessage={controller.submitUnavailableMessage}
           submitting={controller.submitting}
         />
-      </Animated.View>
+      </RAnimated.View>
     </View>
   )
 }
@@ -1171,6 +1213,40 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontWeight: "500",
   },
+  infoSection: {
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    gap: 12,
+  },
+  infoRowDivider: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  infoLabel: {
+    fontSize: 14,
+    lineHeight: 19,
+    fontWeight: "400",
+  },
+  infoValue: {
+    fontSize: 14,
+    lineHeight: 19,
+    fontWeight: "500",
+    flexShrink: 1,
+    textAlign: "right",
+  },
+  infoFeeValue: {
+    fontSize: 14,
+    lineHeight: 19,
+    fontWeight: "600",
+    flexShrink: 1,
+    textAlign: "right",
+  },
   paymentHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -1201,6 +1277,22 @@ const styles = StyleSheet.create({
     fontWeight: "400",
   },
   paymentGroup: {
+    gap: 10,
+  },
+  paymentExpandRegion: {
+    position: "relative",
+  },
+  paymentExtraMeasure: {
+    position: "absolute",
+    opacity: 0,
+    left: 0,
+    right: 0,
+    top: 0,
+  },
+  paymentExtraAnim: {
+    overflow: "hidden",
+  },
+  paymentExtraContent: {
     gap: 10,
   },
   paymentExpandToggle: {
