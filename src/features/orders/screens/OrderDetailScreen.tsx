@@ -9,6 +9,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { navigateRoot } from "@/app/navigation/navigationRef"
 import type { OrdersStackParamList } from "@/app/navigation/types"
 import { HomeScaffold } from "@/features/home/components/HomeScaffold"
+import { OrderCounterpartyAvatar } from "@/features/orders/components/OrderCounterpartyAvatar"
 import {
   type OrderDetail,
   type OrderLabelBinding,
@@ -98,9 +99,20 @@ export function OrderDetailScreen({ navigation, route }: Props) {
   const isIncoming = detail ? isIncomingOrderType(detail.orderType) : false
   const statusTone = detail ? resolveDetailTone(detail.status) : "info"
   const statusColor = resolveToneColor(theme, statusTone)
+  const statusLabelColor = statusTone === "warning"
+    ? theme.colors.warning
+    : statusTone === "danger"
+      ? theme.colors.danger
+      : theme.colors.text
   const amountValue = detail ? resolvePrimaryAmount(detail) : 0
   const feeValue = detail ? resolveFeeAmount(detail) : 0
   const signedAmount = `${isIncoming ? "+" : "-"}${formatTokenAmount(amountValue, 2)}`
+  const isCompleted = detail?.status === OrderStatus.OrderFinished
+  const receiveAmountValue = detail
+    ? isCompleted
+      ? detail.recvActualAmount || detail.recvAmount
+      : detail.recvAmount
+    : 0
 
   const handleConfirm = async () => {
     if (!detail) {
@@ -156,16 +168,18 @@ export function OrderDetailScreen({ navigation, route }: Props) {
     }
 
     return [
-      {
+      feeValue !== 0 ? {
         key: "amount",
-        label: isIncoming ? t("orders.detail.receive") : t("orders.detail.send"),
-        value: formatTokenAmount(amountValue, 2),
-      },
-      {
+        label: isCompleted
+          ? t("orders.detail.actualReceive")
+          : t("orders.detail.estimatedReceive"),
+        value: formatTokenAmount(receiveAmountValue, 2),
+      } : null,
+      feeValue !== 0 ? {
         key: "fee",
         label: t("orders.detail.fee"),
         value: formatTokenAmount(feeValue, 2),
-      },
+      } : null,
       {
         key: "counterparty",
         label: t("orders.detail.counterpartyAddress"),
@@ -176,18 +190,20 @@ export function OrderDetailScreen({ navigation, route }: Props) {
       {
         key: "network",
         label: t("orders.detail.network"),
-        value: detail.recvChainName || detail.sendChainName || "--",
+        value: isIncoming
+          ? detail.sendChainName || detail.recvChainName || "--"
+          : detail.recvChainName || detail.sendChainName || "--",
       },
       {
         key: "createdAt",
         label: t("orders.detail.createdAt"),
         value: formatTimestamp(detail.createdAt),
       },
-      {
+      detail.recvActualReceivedAt ? {
         key: "receivedAt",
         label: t("orders.detail.receiveTime"),
-        value: formatTimestamp(detail.recvActualReceivedAt || detail.finishedAt || detail.sendActualReceivedAt),
-      },
+        value: formatTimestamp(detail.recvActualReceivedAt),
+      } : null,
       {
         key: "orderSn",
         label: t("orders.detail.orderNumber"),
@@ -195,16 +211,18 @@ export function OrderDetailScreen({ navigation, route }: Props) {
         onPress: () => void handleCopyOrderNumber(),
         accessory: "copy",
       },
-    ]
+    ].filter((row): row is DetailRowItem => row !== null)
   }, [
     amountValue,
     counterpartyAddress,
     detail,
     feeValue,
     handleCopyOrderNumber,
+    isCompleted,
     isIncoming,
     navigation,
     orderSn,
+    receiveAmountValue,
     showHistoryAction,
     t,
   ])
@@ -313,8 +331,8 @@ export function OrderDetailScreen({ navigation, route }: Props) {
           <>
             <SectionCard style={styles.overviewCard}>
               <View style={styles.statusHero}>
-                <StatusIndicator color={statusColor} tone={statusTone} />
-                <Text style={[styles.statusLabel, { color: statusColor }]}>{resolveOrderStatusLabel(t, detail.status)}</Text>
+                <OrderCounterpartyAvatar item={detail} size={48} />
+                <Text style={[styles.statusLabel, { color: statusLabelColor }]}>{resolveOrderStatusLabel(t, detail.status)}</Text>
                 <Text style={[styles.amountText, { color: isIncoming ? theme.colors.success : theme.colors.text }]}>{signedAmount}</Text>
               </View>
 
@@ -438,36 +456,6 @@ function HeaderLinkAction(props: {
   )
 }
 
-function StatusIndicator(props: {
-  tone: DetailTone
-  color: string
-}) {
-  return (
-    <View style={[styles.statusOrb, { backgroundColor: props.color }]}>
-      {props.tone === "success" ? <CheckIcon /> : null}
-      {props.tone === "danger" ? <CloseIcon /> : null}
-      {props.tone === "warning" || props.tone === "info" ? <DotIcon /> : null}
-    </View>
-  )
-}
-
-function DotIcon() {
-  return <View style={styles.dotIcon} />
-}
-
-function CheckIcon() {
-  return <View style={styles.checkIcon} />
-}
-
-function CloseIcon() {
-  return (
-    <View style={styles.closeIconShell}>
-      <View style={[styles.closeIconStroke, styles.closeIconStrokeA]} />
-      <View style={[styles.closeIconStroke, styles.closeIconStrokeB]} />
-    </View>
-  )
-}
-
 function ChevronIcon(props: { color: string }) {
   return <View style={[styles.chevronIcon, { borderColor: props.color }]} />
 }
@@ -483,7 +471,7 @@ function CopyIcon(props: { color: string }) {
 
 function resolvePrimaryAmount(detail: OrderDetail) {
   return isIncomingOrderType(detail.orderType)
-    ? detail.recvActualAmount || detail.recvAmount
+    ? detail.sendActualAmount || detail.sendAmount
     : detail.sendActualAmount || detail.sendAmount
 }
 
@@ -522,8 +510,9 @@ function resolveToneColor(theme: ReturnType<typeof useAppTheme>, tone: DetailTon
 
 const styles = StyleSheet.create({
   content: {
-    padding: 16,
-    gap: 16,
+    paddingHorizontal: 0,
+    paddingVertical: 12,
+    gap: 12,
     paddingBottom: 28,
   },
   loadingWrap: {
@@ -550,53 +539,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingTop: 28,
     paddingBottom: 18,
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
     gap: 10,
-  },
-  statusOrb: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  dotIcon: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: "#FFFFFF",
-  },
-  checkIcon: {
-    width: 15,
-    height: 8,
-    borderLeftWidth: 3,
-    borderBottomWidth: 3,
-    borderColor: "#FFFFFF",
-    transform: [{ rotate: "-45deg" }],
-    marginTop: -2,
-  },
-  closeIconShell: {
-    width: 18,
-    height: 18,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  closeIconStroke: {
-    position: "absolute",
-    width: 16,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: "#FFFFFF",
-  },
-  closeIconStrokeA: {
-    transform: [{ rotate: "45deg" }],
-  },
-  closeIconStrokeB: {
-    transform: [{ rotate: "-45deg" }],
   },
   statusLabel: {
     fontSize: 18,
-    fontWeight: "500",
+    fontWeight: "400",
   },
   amountText: {
     fontSize: 40,
@@ -605,11 +553,11 @@ const styles = StyleSheet.create({
     letterSpacing: -1.2,
   },
   detailRows: {
-    paddingHorizontal: 18,
-    paddingBottom: 10,
+    paddingHorizontal: 14,
+    paddingBottom: 4,
   },
   infoRow: {
-    minHeight: 62,
+    minHeight: 40,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -669,7 +617,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   managementHeader: {
-    paddingHorizontal: 18,
+    paddingHorizontal: 14,
     paddingTop: 18,
     paddingBottom: 4,
   },
@@ -680,7 +628,7 @@ const styles = StyleSheet.create({
   },
   tagsRow: {
     minHeight: 74,
-    paddingHorizontal: 18,
+    paddingHorizontal: 14,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -701,14 +649,14 @@ const styles = StyleSheet.create({
   },
   cardDivider: {
     height: StyleSheet.hairlineWidth,
-    marginHorizontal: 18,
+    marginHorizontal: 14,
   },
   shortcutGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     columnGap: 12,
     rowGap: 18,
-    paddingHorizontal: 18,
+    paddingHorizontal: 14,
     paddingTop: 18,
     paddingBottom: 20,
   },

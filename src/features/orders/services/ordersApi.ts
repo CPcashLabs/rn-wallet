@@ -96,6 +96,7 @@ type OrderDetailPayload = {
   is_buyer?: boolean
   notes_image_url?: string | null
   txid?: string
+  avatar?: string
 }
 
 type TransferVoucherPayload = {
@@ -265,6 +266,7 @@ export type OrderDetail = {
   isBuyer: boolean
   notesImageUrl: string
   txid: string
+  avatar: string
 }
 
 export type TransferVoucherDetail = {
@@ -465,6 +467,7 @@ function toOrderDetail(payload: OrderDetailPayload): OrderDetail {
     isBuyer: Boolean(payload.is_buyer),
     notesImageUrl: toStringValue(payload.notes_image_url),
     txid: toStringValue(payload.txid),
+    avatar: toStringValue(payload.avatar),
   }
 }
 

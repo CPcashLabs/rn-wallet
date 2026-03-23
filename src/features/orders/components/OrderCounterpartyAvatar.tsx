@@ -2,7 +2,6 @@ import React from "react"
 
 import { Image, StyleSheet, View } from "react-native"
 
-import type { OrderListItem } from "@/features/orders/services/ordersApi"
 import { createJazziconSpec, resolveJazziconSeed } from "@/features/orders/utils/jazzicon"
 import { useAppTheme } from "@/shared/theme/useAppTheme"
 
@@ -18,8 +17,19 @@ const ADDRESS_FROM_PAYMENT_TYPES = new Set([
   "SEND_TOKEN_RECEIVE",
 ])
 
+type AvatarItem = {
+  orderType: string
+  paymentAddress?: string
+  receiveAddress?: string
+  transferAddress?: string
+  depositAddress?: string
+  walletAddress?: string
+  orderSn?: string
+  avatar?: string
+}
+
 type Props = {
-  item: OrderListItem
+  item: AvatarItem
   size?: number
 }
 
@@ -122,6 +132,16 @@ const NATIVE_AVATAR_MODEL: AbstractAvatarModel = {
 export function OrderCounterpartyAvatar(props: Props) {
   const size = props.size ?? 32
   const normalizedType = props.item.orderType.toUpperCase()
+
+  if (props.item.avatar) {
+    return (
+      <SeedAddressAvatar
+        seedSource={resolveAvatarSeedSource(props.item)}
+        size={size}
+        uri={props.item.avatar}
+      />
+    )
+  }
 
   if (SEND_CODE_TYPES.has(normalizedType)) {
     return <AbstractAvatar model={SEND_CODE_AVATAR_MODEL} size={size} />
@@ -284,11 +304,11 @@ function AbstractAvatar(props: {
   )
 }
 
-function resolveAvatarSeedSource(item: OrderListItem) {
+function resolveAvatarSeedSource(item: AvatarItem) {
   return resolveAvatarAddress(item) || item.walletAddress || item.orderSn || item.orderType || "counterparty"
 }
 
-function resolveAvatarAddress(item: Pick<OrderListItem, "orderType" | "paymentAddress" | "receiveAddress" | "transferAddress" | "depositAddress">) {
+function resolveAvatarAddress(item: Pick<AvatarItem, "orderType" | "paymentAddress" | "receiveAddress" | "transferAddress" | "depositAddress">) {
   const normalizedType = item.orderType.toUpperCase()
 
   if (ADDRESS_FROM_PAYMENT_TYPES.has(normalizedType)) {
