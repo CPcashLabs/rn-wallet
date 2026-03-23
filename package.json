@@ -15,9 +15,10 @@
     "test:unit:coverage": "jest --runInBand --coverage",
     "test:integration": "jest --config jest.integration.config.js --runInBand",
     "typecheck": "tsc --noEmit",
-    "lint": "npm run typecheck && npm run check:wp00 && npm run check:repo",
+    "lint": "npm run typecheck && npm run check:wp00 && npm run check:repo && npm run check:conventions",
     "check:wp00": "node ./scripts/verify-wp00.mjs",
-    "check:repo": "node ./scripts/verify-repo-standards.mjs"
+    "check:repo": "node ./scripts/verify-repo-standards.mjs",
+    "check:conventions": "node ./scripts/verify-conventions.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

@@ -11,6 +11,9 @@ const requiredFiles = [
   "LICENSE",
   "docs/README.md",
   "docs/architecture/source-layout.md",
+  "docs/architecture/module-boundaries.md",
+  "docs/architecture/data-fetching.md",
+  "scripts/verify-conventions.mjs",
   "tests/README.md",
   "tests/integration/README.md",
   "e2e/README.md",
@@ -19,6 +22,17 @@ const requiredFiles = [
   ".github/ISSUE_TEMPLATE/bug_report.md",
   ".github/ISSUE_TEMPLATE/feature_request.md",
   "scripts/verify-repo-standards.mjs",
+  "src/features/auth/index.ts",
+  "src/features/home/index.ts",
+  "src/features/messages/index.ts",
+  "src/features/orders/index.ts",
+  "src/features/settings/index.ts",
+  "src/features/address-book/index.ts",
+  "src/features/support/index.ts",
+  "src/features/invite/index.ts",
+  "src/features/transfer/index.ts",
+  "src/features/receive/index.ts",
+  "src/features/copouch/index.ts",
 ]
 
 const requiredDirs = [
@@ -88,6 +102,18 @@ const checks = [
   {
     name: "docs index links source layout",
     passed: docsIndex.includes("architecture/source-layout.md"),
+  },
+  {
+    name: "docs index links module boundaries",
+    passed: docsIndex.includes("architecture/module-boundaries.md"),
+  },
+  {
+    name: "docs index links data fetching",
+    passed: docsIndex.includes("architecture/data-fetching.md"),
+  },
+  {
+    name: "package.json exposes check:conventions",
+    passed: packageJson.scripts?.["check:conventions"] === "node ./scripts/verify-conventions.mjs",
   },
   {
     name: "README documents test layout",
