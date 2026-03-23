@@ -1,14 +1,14 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import React, { useCallback, useEffect, useRef } from "react"
 
 import { useQueryClient } from "@tanstack/react-query"
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native"
 import { useTranslation } from "react-i18next"
+import { useController, useForm, useWatch } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
-import {
-  type AddressBookDraft,
-  type AddressBookEntry,
-} from "@/features/address-book/services/addressBookApi"
+import { type AddressBookDraft } from "@/features/address-book/services/addressBookApi"
 import { useAddressBookDetailQuery, useDeleteAddressBookEntryMutation, useSaveAddressBookEntryMutation } from "@/shared/address-book/addressBookQueries"
 import { useAddressBookStore } from "@/features/address-book/store/useAddressBookStore"
 import { HeaderTextAction, HomeScaffold } from "@/features/home/components/HomeScaffold"
@@ -62,6 +62,15 @@ function resolveScanErrorMessage(error: Error, t: (key: string) => string) {
   })
 }
 
+const addressBookSchema = z.object({
+  name: z.string().min(1),
+  walletAddress: z.string().min(1).refine(
+    addr => detectAddressChainType(addr.trim()) !== null,
+    { message: "home.addressBook.invalidAddress" },
+  ),
+})
+type AddressBookFormValues = z.infer<typeof addressBookSchema>
+
 export function AddressBookEditScreen({ navigation, route }: Props) {
   const theme = useAppTheme()
   const { t } = useTranslation()
@@ -70,42 +79,34 @@ export function AddressBookEditScreen({ navigation, route }: Props) {
   const saveMutation = useSaveAddressBookEntryMutation(queryClient)
   const deleteMutation = useDeleteAddressBookEntryMutation(queryClient)
   const presentedDetailErrorAtRef = useRef(0)
-  const [name, setName] = useState("")
-  const [walletAddress, setWalletAddress] = useState(route.params?.initialAddress ?? "")
-  const [chainType, setChainType] = useState<AddressBookChainType | null>(route.params?.chainType ?? null)
-  const [addressError, setAddressError] = useState("")
+
+  const { control, handleSubmit, setValue, formState: { isValid } } = useForm<AddressBookFormValues>({
+    resolver: zodResolver(addressBookSchema),
+    defaultValues: { name: "", walletAddress: route.params?.initialAddress ?? "" },
+    mode: "onChange",
+  })
+
+  const { field: nameField } = useController({ control, name: "name" })
+  const { field: addressField, fieldState: addressFieldState } = useController({ control, name: "walletAddress" })
+  const walletAddress = useWatch({ control, name: "walletAddress" })
+
+  const chainType: AddressBookChainType | null = detectAddressChainType(walletAddress.trim()) ?? (route.params?.chainType ?? null)
+  const addressError = addressFieldState.error ? t(addressFieldState.error.message ?? "home.addressBook.invalidAddress") : ""
 
   const isEdit = Boolean(route.params?.id)
   const loading = isEdit && detailQuery.isLoading && !detailQuery.data
   const submitting = saveMutation.isPending
   const deleting = deleteMutation.isPending
-
-  useEffect(() => {
-    const normalized = walletAddress.trim()
-    if (!normalized) {
-      setChainType(route.params?.chainType ?? null)
-      setAddressError("")
-      return
-    }
-
-    const nextChainType = detectAddressChainType(normalized)
-    if (!nextChainType) {
-      setChainType(null)
-      setAddressError(t("home.addressBook.invalidAddress"))
-      return
-    }
-
-    setChainType(nextChainType)
-    setAddressError("")
-  }, [route.params?.chainType, t, walletAddress])
+  const saveDisabled = !isValid || submitting || deleting || loading
 
   useEffect(() => {
     if (!detailQuery.data) {
       return
     }
 
-    setFormState(detailQuery.data, setName, setWalletAddress, setChainType)
-  }, [detailQuery.data])
+    setValue("name", detailQuery.data.name)
+    setValue("walletAddress", detailQuery.data.walletAddress, { shouldValidate: true })
+  }, [detailQuery.data, setValue])
 
   useEffect(() => {
     if (!isEdit || !detailQuery.error || detailQuery.errorUpdatedAt === presentedDetailErrorAtRef.current) {
@@ -120,10 +121,6 @@ export function AddressBookEditScreen({ navigation, route }: Props) {
       },
     ])
   }, [detailQuery.error, detailQuery.errorUpdatedAt, isEdit, navigation, t])
-
-  const saveDisabled = useMemo(() => {
-    return submitting || deleting || !name.trim() || !walletAddress.trim() || !chainType || Boolean(addressError)
-  }, [addressError, chainType, deleting, name, submitting, walletAddress])
 
   const networkDescription = chainType ? t(`home.addressBook.chain.${chainType}`) : t("home.addressBook.networkPending")
 
@@ -150,18 +147,18 @@ export function AddressBookEditScreen({ navigation, route }: Props) {
       return
     }
 
-    setWalletAddress(result.data.value)
-  }, [t])
+    setValue("walletAddress", result.data.value, { shouldValidate: true })
+  }, [setValue, t])
 
-  const save = async () => {
+  const save = handleSubmit(async (values) => {
     if (!chainType) {
       Alert.alert(t("common.errorTitle"), t("home.addressBook.invalidAddress"))
       return
     }
 
     const draft: AddressBookDraft = {
-      name: name.trim(),
-      walletAddress: walletAddress.trim(),
+      name: values.name.trim(),
+      walletAddress: values.walletAddress.trim(),
       chainType,
     }
 
@@ -188,7 +185,7 @@ export function AddressBookEditScreen({ navigation, route }: Props) {
     } catch (error) {
       Alert.alert(t("common.errorTitle"), resolveAddressBookSaveError(error, t))
     }
-  }
+  })
 
   const remove = async () => {
     if (!route.params?.id) {
@@ -247,9 +244,9 @@ export function AddressBookEditScreen({ navigation, route }: Props) {
           backgroundTone="background"
           label={t("home.addressBook.nameLabel")}
           maxLength={MAX_NAME_LENGTH}
-          onChangeText={setName}
+          onChangeText={nameField.onChange}
           placeholder={t("home.addressBook.namePlaceholder")}
-          value={name}
+          value={nameField.value}
         />
       </AppCard>
 
@@ -259,11 +256,11 @@ export function AddressBookEditScreen({ navigation, route }: Props) {
           autoCorrect={false}
           backgroundTone="background"
           editable={!loading}
-          error={addressError}
+          error={addressError || undefined}
           helperText={t("home.addressBook.addressHelper")}
           label={t("home.addressBook.addressLabel")}
           multiline
-          onChangeText={setWalletAddress}
+          onChangeText={v => addressField.onChange(v)}
           placeholder={t("home.addressBook.addressPlaceholder")}
           rightSlot={(
             <Pressable
@@ -283,7 +280,7 @@ export function AddressBookEditScreen({ navigation, route }: Props) {
               <AppGlyph backgroundColor="transparent" name="scan" size={18} tintColor={theme.colors.primary} />
             </Pressable>
           )}
-          value={walletAddress}
+          value={addressField.value}
         />
       </AppCard>
 
@@ -299,23 +296,10 @@ export function AddressBookEditScreen({ navigation, route }: Props) {
       <AppButton
         disabled={saveDisabled}
         label={submitting || loading ? t("common.loading") : t("home.addressBook.save")}
-        onPress={() => {
-          void save()
-        }}
+        onPress={save}
       />
     </HomeScaffold>
   )
-}
-
-function setFormState(
-  detail: AddressBookEntry,
-  setName: (value: string) => void,
-  setWalletAddress: (value: string) => void,
-  setChainType: (value: AddressBookChainType | null) => void,
-) {
-  setName(detail.name)
-  setWalletAddress(detail.walletAddress)
-  setChainType(detail.chainType)
 }
 
 function detectAddressChainType(address: string): AddressBookChainType | null {
