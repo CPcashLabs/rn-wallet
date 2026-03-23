@@ -11,11 +11,11 @@ import { formatAddress } from "@/features/home/utils/format"
 import { FilterChip, OrderMonthSection, SuccessStateCard } from "@/features/orders/components/OrdersUi"
 import { SeedAddressAvatar } from "@/features/orders/components/OrderCounterpartyAvatar"
 import {
+  countNewOrderRecords,
   flattenOrderLogPages,
   useOrderBillSummaryQuery,
   useOrderLogsInfiniteQuery,
 } from "@/features/orders/queries/orderQueries"
-import { countNewOrderRecords } from "@/features/orders/queries/orderLogSnapshotStorage"
 import { exportOrderBillFile } from "@/features/orders/services/orderExport"
 import {
   type OrderListItem,
@@ -579,8 +579,9 @@ function resolveBillPeriodTitle(preset: Exclude<RangePreset, "all">, rangeSelect
 
 const styles = StyleSheet.create({
   content: {
-    padding: 18,
-    gap: 14,
+    paddingHorizontal: 0,
+    paddingVertical: 12,
+    gap: 12,
   },
   headerContent: {
     gap: 16,

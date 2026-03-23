@@ -127,6 +127,11 @@ export function OrderListCard(props: {
   const theme = useAppTheme()
   const counterparty = resolveCounterpartyAddress(props.item)
   const statusBadge = resolveOrderListStatusBadge(props.t, props.item.status)
+  const statusColor = statusBadge?.tone === "warning"
+    ? theme.colors.warning
+    : statusBadge?.tone === "danger"
+      ? theme.colors.danger
+      : theme.colors.mutedText
 
   return (
     <Pressable onPress={props.onPress}>
@@ -143,12 +148,18 @@ export function OrderListCard(props: {
           <Text style={[styles.rowMeta, styles.rowMetaAddress, { color: theme.colors.mutedText }]}>
             {formatAddress(counterparty || props.item.walletAddress || props.item.receiveAddress || props.item.paymentAddress || "")}
           </Text>
-          {statusBadge ? <Text style={[styles.rowStatusText, { color: theme.colors.mutedText }]}>{statusBadge.label}</Text> : null}
+          {statusBadge ? <Text style={[styles.rowStatusText, { color: statusColor }]}>{statusBadge.label}</Text> : null}
         </View>
         <Text style={[styles.rowTime, { color: theme.colors.mutedText }]}>{formatCompactTimestamp(props.item.createdAt)}</Text>
       </SectionCard>
     </Pressable>
   )
+}
+
+function resolveStatusColor(theme: ReturnType<typeof useAppTheme>, tone?: string) {
+  if (tone === "warning") return theme.colors.warning
+  if (tone === "danger") return theme.colors.danger
+  return theme.colors.mutedText
 }
 
 export function OrderMonthSection(props: {
@@ -234,8 +245,6 @@ export function OrderMonthSection(props: {
 
               <View style={styles.recordRowRight}>
                 <Text
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.88}
                   numberOfLines={1}
                   style={[
                     styles.recordAmount,
@@ -252,7 +261,7 @@ export function OrderMonthSection(props: {
                     style={[
                       styles.recordStatusText,
                       {
-                        color: theme.colors.mutedText,
+                        color: resolveStatusColor(theme, statusBadge.tone),
                       },
                     ]}
                   >
@@ -278,8 +287,16 @@ function formatSummaryValue(value?: number) {
 
 function formatAmountWithSign(item: OrderListItem) {
   const isIncoming = isIncomingOrderType(item.orderType)
-  const amount = isIncoming ? item.recvActualAmount || item.recvAmount : item.sendActualAmount || item.sendAmount
   const sign = isIncoming ? "+" : "-"
+  let amount: number
+
+  if (isIncoming) {
+    const sendVal = item.sendActualAmount || item.sendAmount
+    const recvVal = item.recvActualAmount || item.recvAmount
+    amount = Math.max(sendVal, recvVal)
+  } else {
+    amount = item.sendActualAmount || item.sendAmount
+  }
 
   return `${sign}${formatTokenAmount(amount, 2)}`
 }
@@ -431,7 +448,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   recordGroupHeader: {
-    paddingHorizontal: 18,
+    paddingHorizontal: 14,
     paddingTop: 18,
     paddingBottom: 6,
   },
@@ -444,7 +461,7 @@ const styles = StyleSheet.create({
   recordGroupSummary: {
     flexDirection: "row",
     gap: 36,
-    paddingHorizontal: 18,
+    paddingHorizontal: 14,
     paddingTop: 4,
     paddingBottom: 10,
   },
@@ -465,7 +482,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   recordRow: {
-    paddingHorizontal: 18,
+    paddingHorizontal: 14,
     paddingVertical: 18,
     flexDirection: "row",
     alignItems: "flex-start",
