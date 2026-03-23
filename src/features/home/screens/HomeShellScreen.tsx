@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
-import { Alert, Animated, Easing, Pressable, StyleSheet, Text, View } from "react-native"
+import { Alert, Animated as NativeAnimated, Easing, Pressable, StyleSheet, Text, View } from "react-native"
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from "react-native-reanimated"
 import { useTranslation } from "react-i18next"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -30,6 +31,12 @@ import { AppCard } from "@/shared/ui/AppCard"
 import { SFSymbolIcon, type MaterialIconName, type SFSymbolName, type SFSymbolWeight } from "@/shared/ui/SFSymbolIcon"
 
 import type { HomeTabStackParamList } from "@/app/navigation/types"
+
+// iOS-style spring physics for press interactions.
+// PRESS: fast, snappy compression. RELEASE: slightly lower stiffness so
+// the element springs back with a natural, subtle overshoot.
+const SPRING_PRESS = { damping: 16, stiffness: 300, mass: 1 } as const
+const SPRING_RELEASE = { damping: 13, stiffness: 200, mass: 1 } as const
 
 type Props = NativeStackScreenProps<HomeTabStackParamList, "HomeShellScreen">
 
@@ -88,7 +95,7 @@ export function HomeShellScreen({ navigation, route }: Props) {
   const [showBalance, setShowBalance] = useState(true)
   const mountedRef = useRef(true)
   const inviteHandledRef = useRef(false)
-  const balanceValueAnim = useRef(new Animated.Value(0)).current
+  const balanceValueAnim = useRef(new NativeAnimated.Value(0)).current
   const displayedBalanceValueRef = useRef(0)
   const hasAppliedLiveValueRef = useRef(false)
   const [displayedBalanceValue, setDisplayedBalanceValue] = useState(0)
@@ -197,7 +204,7 @@ export function HomeShellScreen({ navigation, route }: Props) {
     hasAppliedLiveValueRef.current = true
 
     balanceValueAnim.stopAnimation()
-    Animated.timing(balanceValueAnim, {
+    NativeAnimated.timing(balanceValueAnim, {
       toValue: nextValue,
       duration,
       easing: Easing.out(Easing.cubic),
@@ -242,6 +249,27 @@ export function HomeShellScreen({ navigation, route }: Props) {
       cancelled = true
     }
   }, [route.params?.inviteCode, showToast, t])
+
+  // Reanimated shared values for press feedback
+  const profileScale = useSharedValue(1)
+  const profileOpacity = useSharedValue(1)
+  const scanScale = useSharedValue(1)
+  const balanceCardScale = useSharedValue(1)
+  const eyeScale = useSharedValue(1)
+
+  const profileAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: profileScale.value }],
+    opacity: profileOpacity.value,
+  }))
+  const scanAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scanScale.value }],
+  }))
+  const balanceCardAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: balanceCardScale.value }],
+  }))
+  const eyeAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: eyeScale.value }],
+  }))
 
   const handleToggleBalance = () => {
     const next = !showBalance
@@ -359,45 +387,59 @@ export function HomeShellScreen({ navigation, route }: Props) {
   ]
 
   return (
-    <HomeScaffold contentContainerStyle={styles.contentStack} hideHeader title={t("home.shell.title")}>
+    <HomeScaffold bounces contentContainerStyle={styles.contentStack} hideHeader title={t("home.shell.title")}>
       <View style={styles.topBar}>
         <Pressable
           accessibilityLabel={`${t("home.me.personal")} ${displayName}`}
           accessibilityRole="button"
           onPress={handleOpenProfile}
-          style={({ pressed }) => [styles.profileHero, pressed ? styles.profileHeroPressed : null]}
+          onPressIn={() => {
+            profileScale.value = withSpring(0.97, SPRING_PRESS)
+            profileOpacity.value = withTiming(0.82, { duration: 80 })
+          }}
+          onPressOut={() => {
+            profileScale.value = withSpring(1, SPRING_RELEASE)
+            profileOpacity.value = withTiming(1, { duration: 200 })
+          }}
         >
-          <View
-            style={[
-              styles.profileHeroAvatarShell,
-              {
-                backgroundColor: theme.colors.surfaceElevated ?? theme.colors.surface,
-                borderColor: theme.colors.border,
-              },
-            ]}
-          >
-            <UserAvatar accountKey={profileAddress} cacheVersion={avatarVersion} label={displayName} size={48} uri={avatar} />
-          </View>
-          <Text numberOfLines={1} style={[styles.profileHeroName, { color: theme.colors.text }]}>
-            {displayName}
-          </Text>
+          <Animated.View style={[styles.profileHero, profileAnimStyle]}>
+            <View
+              style={[
+                styles.profileHeroAvatarShell,
+                {
+                  backgroundColor: theme.colors.surfaceElevated ?? theme.colors.surface,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+            >
+              <UserAvatar accountKey={profileAddress} cacheVersion={avatarVersion} label={displayName} size={48} uri={avatar} />
+            </View>
+            <Text numberOfLines={1} style={[styles.profileHeroName, { color: theme.colors.text }]}>
+              {displayName}
+            </Text>
+          </Animated.View>
         </Pressable>
 
         <Pressable
           accessibilityLabel={t("home.shell.scan")}
           hitSlop={10}
           onPress={() => void handleScan()}
-          style={({ pressed }) => [styles.topBarAction, pressed ? styles.topBarActionPressed : null]}
+          onPressIn={() => { scanScale.value = withSpring(0.82, SPRING_PRESS) }}
+          onPressOut={() => { scanScale.value = withSpring(1, SPRING_RELEASE) }}
         >
-          <SFSymbolIcon color={theme.colors.primary} fallbackName="qrcode-scan" name="qrcode.viewfinder" size={28} weight="medium" />
+          <Animated.View style={[styles.topBarAction, scanAnimStyle]}>
+            <SFSymbolIcon color={theme.colors.primary} fallbackName="qrcode-scan" name="qrcode.viewfinder" size={28} weight="medium" />
+          </Animated.View>
         </Pressable>
       </View>
 
       <Pressable
         accessibilityRole="button"
         onPress={() => navigation.navigate("TotalAssetsScreen")}
-        style={({ pressed }) => [styles.balanceCardPressable, pressed ? styles.balanceCardPressed : null]}
+        onPressIn={() => { balanceCardScale.value = withSpring(0.97, SPRING_PRESS) }}
+        onPressOut={() => { balanceCardScale.value = withSpring(1, SPRING_RELEASE) }}
       >
+        <Animated.View style={[styles.balanceCardPressable, balanceCardAnimStyle]}>
         <AppCard
           backgroundColor={theme.colors.surfaceElevated ?? theme.colors.surface}
           borderColor={theme.colors.border}
@@ -418,9 +460,12 @@ export function HomeShellScreen({ navigation, route }: Props) {
                   event.stopPropagation()
                   handleToggleBalance()
                 }}
-                style={styles.eyeButton}
+                onPressIn={() => { eyeScale.value = withSpring(0.75, SPRING_PRESS) }}
+                onPressOut={() => { eyeScale.value = withSpring(1, SPRING_RELEASE) }}
               >
-                <EyeToggleIcon color={theme.colors.text} visible={showBalance} />
+                <Animated.View style={[styles.eyeButton, eyeAnimStyle]}>
+                  <EyeToggleIcon color={theme.colors.text} visible={showBalance} />
+                </Animated.View>
               </Pressable>
             </View>
 
@@ -455,6 +500,7 @@ export function HomeShellScreen({ navigation, route }: Props) {
             </View>
           )}
         </AppCard>
+        </Animated.View>
       </Pressable>
 
       <View style={styles.actionGrid}>
@@ -495,36 +541,48 @@ export function HomeShellScreen({ navigation, route }: Props) {
 
 function QuickActionButton(props: { label: string; onPress: () => void; icon: QuickActionIconSpec }) {
   const theme = useAppTheme()
+  const scale = useSharedValue(1)
+  const opacity = useSharedValue(1)
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    opacity: opacity.value,
+  }))
 
   return (
     <Pressable
       accessibilityRole="button"
       onPress={props.onPress}
-      style={({ pressed }) => [
-        styles.actionButtonWrap,
-        pressed ? styles.actionButtonWrapPressed : null,
-      ]}
+      onPressIn={() => {
+        scale.value = withSpring(0.88, SPRING_PRESS)
+        opacity.value = withTiming(0.72, { duration: 80 })
+      }}
+      onPressOut={() => {
+        scale.value = withSpring(1, SPRING_RELEASE)
+        opacity.value = withTiming(1, { duration: 200 })
+      }}
     >
-      <View
-        style={[
-          styles.actionIconCard,
-          {
-            backgroundColor: theme.colors.surfaceMuted ?? theme.colors.background,
-            borderColor: theme.colors.border,
-          },
-        ]}
-      >
-        <SFSymbolIcon
-          color={theme.colors.primary}
-          fallbackName={props.icon.fallbackName}
-          name={props.icon.name}
-          size={28}
-          weight={props.icon.weight ?? "semibold"}
-        />
-      </View>
-      <Text numberOfLines={2} style={[styles.actionLabel, theme.typography.footnoteEmphasized, { color: theme.colors.text }]}>
-        {props.label}
-      </Text>
+      <Animated.View style={[styles.actionButtonWrap, animStyle]}>
+        <View
+          style={[
+            styles.actionIconCard,
+            {
+              backgroundColor: theme.colors.surfaceMuted ?? theme.colors.background,
+              borderColor: theme.colors.border,
+            },
+          ]}
+        >
+          <SFSymbolIcon
+            color={theme.colors.primary}
+            fallbackName={props.icon.fallbackName}
+            name={props.icon.name}
+            size={28}
+            weight={props.icon.weight ?? "semibold"}
+          />
+        </View>
+        <Text numberOfLines={2} style={[styles.actionLabel, theme.typography.footnoteEmphasized, { color: theme.colors.text }]}>
+          {props.label}
+        </Text>
+      </Animated.View>
     </Pressable>
   )
 }
@@ -569,9 +627,6 @@ const styles = StyleSheet.create({
     gap: 14,
     paddingVertical: 6,
   },
-  profileHeroPressed: {
-    opacity: 0.9,
-  },
   profileHeroAvatarShell: {
     width: 58,
     height: 58,
@@ -595,14 +650,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  topBarActionPressed: {
-    opacity: 0.84,
-  },
   balanceCardPressable: {
     borderRadius: 28,
-  },
-  balanceCardPressed: {
-    transform: [{ scale: 0.992 }],
   },
   balanceCard: {
   },
@@ -664,9 +713,6 @@ const styles = StyleSheet.create({
     minWidth: 0,
     alignItems: "center",
     gap: 8,
-  },
-  actionButtonWrapPressed: {
-    opacity: 0.9,
   },
   actionIconCard: {
     width: "100%",

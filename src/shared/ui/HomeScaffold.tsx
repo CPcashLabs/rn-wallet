@@ -17,6 +17,7 @@ export function HomeScaffold(props: {
   right?: React.ReactNode
   hideHeader?: boolean
   scroll?: boolean
+  bounces?: boolean
   backgroundColor?: string
   headerBackgroundColor?: string
   headerBorderColor?: string
@@ -60,10 +61,12 @@ export function HomeScaffold(props: {
     </View>
   ) : (
     <ScrollView
-      bounces={false}
+      alwaysBounceVertical={props.bounces ?? false}
+      bounces={props.bounces ?? false}
       contentContainerStyle={styles.scrollContainer}
       keyboardDismissMode="on-drag"
       keyboardShouldPersistTaps="handled"
+      overScrollMode="never"
       style={styles.body}
     >
       <View
