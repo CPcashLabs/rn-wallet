@@ -332,8 +332,8 @@ export function OrderDetailScreen({ navigation, route }: Props) {
             <SectionCard style={styles.overviewCard}>
               <View style={styles.statusHero}>
                 <OrderCounterpartyAvatar item={detail} size={48} />
-                <Text style={[styles.statusLabel, { color: statusLabelColor }]}>{resolveOrderStatusLabel(t, detail.status)}</Text>
                 <Text style={[styles.amountText, { color: isIncoming ? theme.colors.success : theme.colors.text }]}>{signedAmount}</Text>
+                <Text style={[styles.statusLabel, { color: statusLabelColor }]}>{resolveOrderStatusLabel(t, detail.status)}</Text>
               </View>
 
               <View style={styles.detailRows}>
