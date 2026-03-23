@@ -243,7 +243,11 @@ function useTransferConfirmController({ enabled = true, onCompleted, onOrderUpda
       return
     }
 
-    if (!loading && detail?.orderSn !== activeOrderSn) {
+    // Only clear as a fallback once the new order has fully loaded with a different coin code.
+    // Using !== here caused a premature clear: right after setActiveOrderSn fires the new sn
+    // doesn't match detail yet (loading hasn't started), triggering a spurious flash back to
+    // the old selection.
+    if (!loading && detail?.orderSn === activeOrderSn) {
       setPendingPaymentCoinCode(null)
     }
   }, [activeOrderSn, detail?.orderSn, detail?.sendCoinCode, loading, pendingPaymentCoinCode])
@@ -634,6 +638,25 @@ function TransferConfirmBody(props: {
     [props.loading, props.onSelectPaymentOption, props.submitting, props.switchingPayment, selectedPaymentCoinCode],
   )
 
+  const [paymentExpanded, setPaymentExpanded] = useState(false)
+
+  // Collapse back to single-row view whenever the underlying order changes (e.g. after a successful switch)
+  useEffect(() => {
+    setPaymentExpanded(false)
+  }, [props.detail?.orderSn])
+
+  const activePaymentItem = useMemo(
+    () =>
+      paymentOptionGroups.available.find(
+        item => item.option.sendCoinCode === selectedPaymentCoinCode && item.unavailableReason == null,
+      ) ??
+      paymentOptionGroups.available[0] ??
+      null,
+    [paymentOptionGroups.available, selectedPaymentCoinCode],
+  )
+  const hasMultiplePaymentOptions =
+    paymentOptionGroups.available.length + paymentOptionGroups.unavailable.length > 1
+
   if (props.loading && !props.detail) {
     return (
       <View style={styles.stateWrap}>
@@ -709,26 +732,42 @@ function TransferConfirmBody(props: {
               ) : null}
             </View>
 
-            {paymentOptionGroups.available.length > 0 ? (
-              <View style={styles.paymentGroup}>{paymentOptionGroups.available.map(item => renderPaymentRow(item))}</View>
-            ) : null}
-
-            {paymentOptionGroups.unavailable.length > 0 ? (
-              <View style={styles.unavailableSection}>
-                <Text style={[styles.paymentSectionLabel, { color: theme.colors.mutedText }]}>
-                  {t("transfer.confirm.unavailablePaymentMethods")}
-                </Text>
-                <View
-                  style={[
-                    styles.paymentGroup,
-                    {
-                      opacity: 0.82,
-                    },
-                  ]}
-                >
-                  {paymentOptionGroups.unavailable.map(item => renderPaymentRow(item))}
-                </View>
+            {!paymentExpanded ? (
+              <View style={styles.paymentGroup}>
+                {activePaymentItem != null ? renderPaymentRow(activePaymentItem) : null}
               </View>
+            ) : (
+              <>
+                {paymentOptionGroups.available.length > 0 ? (
+                  <View style={styles.paymentGroup}>{paymentOptionGroups.available.map(item => renderPaymentRow(item))}</View>
+                ) : null}
+                {paymentOptionGroups.unavailable.length > 0 ? (
+                  <View style={styles.unavailableSection}>
+                    <Text style={[styles.paymentSectionLabel, { color: theme.colors.mutedText }]}>
+                      {t("transfer.confirm.unavailablePaymentMethods")}
+                    </Text>
+                    <View style={[styles.paymentGroup, { opacity: 0.82 }]}>
+                      {paymentOptionGroups.unavailable.map(item => renderPaymentRow(item))}
+                    </View>
+                  </View>
+                ) : null}
+              </>
+            )}
+
+            {hasMultiplePaymentOptions ? (
+              <Pressable
+                hitSlop={8}
+                onPress={() => setPaymentExpanded(prev => !prev)}
+                style={styles.paymentExpandToggle}
+              >
+                <SFSymbolIcon
+                  color={theme.colors.mutedText}
+                  fallbackName={paymentExpanded ? "chevron-up" : "chevron-down"}
+                  name={paymentExpanded ? "chevron.up" : "chevron.down"}
+                  size={14}
+                  weight="semibold"
+                />
+              </Pressable>
             ) : null}
           </View>
         ) : null}
@@ -1031,6 +1070,13 @@ const styles = StyleSheet.create({
   },
   paymentGroup: {
     gap: 10,
+  },
+  paymentExpandToggle: {
+    alignSelf: "center",
+    minHeight: 32,
+    minWidth: 48,
+    alignItems: "center",
+    justifyContent: "center",
   },
   paymentRowContainer: {
     overflow: "visible",
